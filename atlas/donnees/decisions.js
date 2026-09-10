@@ -9611,6 +9611,49 @@ window.ATLAS.decisions = {
     "E16US008",
     "E16US013"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-10",
+   "date_brute": "2026-09-10",
+   "extrait": "1. L'ordre est poste de cible \u003c scoreur \u003c admin. Une écriture d'un rang supérieur à celui qui a déjà écrit écrase. Une écriture d'un rang inférieur est refusée (409), et l'écran dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace. 2. Le rang est celui du jeton, jamais celui du message. Volee.saisie_par existe mais sa propre docstring le qualifie de déclaratif : c'est un nom libre, issu du corps de la requête. L'employer comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant admin. Le rang se lit sur l'identité authentifiée, résolue à la frontière API. 3. À rangs égaux, la règle n'arbitre rien — et c'est assumé. Deux tablettes de cibles […]",
+   "fichier": "docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-rang-de-qui-ecrit.md",
+   "identifiant": "0107",
+   "liens": [
+    {
+     "cible": "E16US020",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0030",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0035",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0102",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*",
+   "titre": "Une écriture concurrente est arbitrée par le rang de qui écrit",
+   "us": [
+    "E16US019",
+    "E16US020"
+   ]
   }
  ]
 };

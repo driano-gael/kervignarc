@@ -481,23 +481,34 @@
 - **⛔ NE PLUS PRENDRE — cette fiche est une CARTE, pas un plan de travail.** Découpée le 10/09/2026
   comme ses propres Notes le prescrivaient. Les sept règles ont été **vérifiées une par une dans le
   code du jour avant tout arbitrage**, et le rendement de ce contrôle justifie à lui seul la séance :
-  **trois des sept constats de la rédaction d'origine étaient faux**, et deux CA sont tombés sans
-  coûter une ligne. ⚠️ **La leçon de pilotage est la même qu'aux quatre US précédentes** : une fiche
-  de rattrapage décrit le code du jour où elle a été écrite (ici le 05/08/2026), pas celui du jour où
-  on la prend. La relire contre le code **avant** de poser les questions au commanditaire a évité
-  deux arbitrages inutiles.
+  **sept des dix lignes du tableau ci-dessous corrigent la rédaction d'origine**, et deux CA sont
+  tombés sans coûter une ligne. ⚠️ **La leçon de pilotage est la même qu'aux quatre US précédentes** :
+  une fiche de rattrapage décrit le code du jour où elle a été écrite (ici le 05/08/2026), pas celui
+  du jour où on la prend. La relire contre le code **avant** de poser les questions au commanditaire
+  a évité deux arbitrages inutiles.
+  ⚠️ **Ce compte a lui-même dû être corrigé en revue** : la 1ʳᵉ rédaction annonçait « trois des sept
+  constats », chiffre qu'aucune lecture du tableau ne donnait — un décompte mis en avant comme
+  conclusion de l'US, et faux. Il est désormais aligné sur le grain qu'il annonce (les **lignes** du
+  tableau), le seul qui soit vérifiable en le lisant.
+  ⚠️ **Et la vérification elle-même avait un angle mort, trouvé par la revue adversariale** : tout a
+  été relu contre **le code**, rien contre les **questionnaires bruts** — les extraits recopiés dans
+  cette fiche il y a cinq semaines ont été pris pour argent comptant, alors que toute la séance
+  consistait à ne pas faire confiance à cette fiche. Deux réponses étaient **tronquées** (S08) ou
+  **lues dans un seul sens** (P05). Les questionnaires vivent dans
+  [`maquettes/questionnaires/tour-1-2026-08-04/`](../maquettes/questionnaires/tour-1-2026-08-04/) :
+  les rouvrir coûte une minute, ne pas le faire a coûté deux bloquants.
 
   | CA d'origine | Ce que disait la fiche | Ce que dit le code au 10/09/2026 | Destination |
   |---|---|---|---|
   | S06 minuteur | absent | ✅ exact — aucun minuteur, sortie par bouton seul | `E16US018` |
   | S06 place finale | absente | ⚠️ **inexact** — le rang est calculé et affiché ; la règle existe *par accident*, par repli sur `None` | `E16US018` |
-  | S08 plus de modification | contredit un endpoint vivant | ⚠️ **à moitié** — les **duels** refusent déjà toute réécriture (`DuelVerrouille`) ; seule la **qualification** a `corriger_volee` | `E16US019` |
-  | S08 annuler une validation | aucune route | ✅ exact — rien, sur les trois granularités | `E16US019` |
+  | S08 plus de modification | contredit un endpoint vivant | ⚠️ **à moitié** — les **duels** refusent déjà toute réécriture (`DuelVerrouille`) ; la **qualification** a `corriger_volee`, et le **barrage de places** réécrit une manche close | `E16US019` |
+  | S08 annuler une validation | aucune route | ⚠️ **inexact** — vrai pour la volée, la série et le duel ; **faux pour le barrage**, que `DELETE …/barrages/{id}` annule même clos | `E16US019` |
   | S09 hiérarchie des rôles | non implémentée | ✅ exact, **et pire** — aucun mécanisme de conflit : *last-write-wins* silencieux | `E16US020` |
   | A09 licence unique | contredit ADR-0014/0015 | ⚠️ **mal cadré** — les ADR **nomment le point de réouverture** : `E02US007` | `E02US007` |
-  | A09 retardataire | à faire | ❌ **déjà tenu** (ADR-0024 + « Placer les restants ») | — caduc |
+  | A09 retardataire | à faire | ❌ **déjà tenu** — mais ⚠️ **pas pour la raison d'abord écrite** : ce qui le tient, c'est que **rien ne place tout seul** à l'inscription (ADR-0024) | — écarté, tracé |
   | A02 encart par départ | seul le bandeau livré | ✅ exact — l'accueil ne porte que des **totaux tournoi** | `E16US021` |
-  | P05 horaires prévisionnels | à restreindre | ⚠️ **rien à restreindre** — refus déjà tranché le 04/08/2026 | — écarté |
+  | P05 horaires prévisionnels | à restreindre | ⚠️ **deux lectures possibles**, et la réponse ne tranche pas entre elles — l'une demande une **création**, l'autre un **bornage** de `Depart.horaire` | — **question ouverte**, à reposer |
   | Vocabulaire « position » | reliquat à corriger | ❌ **faux, 5ᵉ fois d'affilée** | — retiré |
 
 - **✅ QUATRE ARBITRAGES RENDUS le 10/09/2026** *(reversés ici, règle 9)* :
@@ -508,16 +519,39 @@
      décrivait un enchaînement. **Décision : `corriger_volee` disparaît** au profit de ce parcours —
      un seul chemin d'écriture sur un score validé, donc un seul endroit où tenir l'audit, et la
      qualification s'aligne sur les duels. → `E16US019`
+     ⚠️ **RECTIFIÉ le 10/09/2026 en revue — la réponse S08 était TRONQUÉE depuis l'origine**, et
+     l'arbitrage tel que rendu supprimait la moitié perdue. Texte intégral
+     ([`s08-validation-cible.md`](../maquettes/questionnaires/tour-1-2026-08-04/s08-validation-cible.md),
+     Q2 — *« la cible peut-elle corriger seule, ou le scoreur corrige-t-il lui-même sur place ? »*) :
+     > « **les deux, archer et scoreur** mais plus de modification une fois valider »
+
+     La fiche d'origine n'avait retenu que la subordonnée. Or `corriger_volee` est **le seul chemin
+     par lequel un scoreur peut écrire un score** : `saisir_volee` est gardée par `autoriser_saisie`,
+     qui ne rend qu'un `Poste` ou l'admin — **le scoreur n'y a aucune identité**. Le retirer sans
+     rien mettre à la place lui aurait fait redescendre demander à la cible. **Décision rectifiée du
+     commanditaire : `autoriser_saisie` est ÉLARGIE au scoreur** — même patron qu'`autoriser_forfait`
+     en `E16US008` (une route, plusieurs identités), et c'est le « les deux » de la réponse. Le poste
+     de cible garde son accès : `corriger_volee` disparaît **sans rien retirer à personne**.
   2. **A09 est redirigé vers `E02US007`**, ce qu'ADR-0014 et ADR-0015 avaient déjà prévu mot pour
      mot : la licence arrive avec le fichier inscript'arc **qui la porte déjà**, sans imposer la
      saisie d'un numéro à 7 chiffres au guichet. ⚠️ Contrepartie assumée et écrite : jusque-là, deux
      homonymes du même club restent indécidables autrement que par la confirmation d'homonyme
      existante (ADR-0015). → CA déplacé dans [`stories/E02`](E02-inscriptions.md)
-  3. **S09 : la hiérarchie `archer < scoreur < admin` est retenue**, au pied de la lettre du
-     questionnaire. ⚠️ **Le revers a été exposé au commanditaire et assumé** : une hiérarchie
-     *tranche* sans *prévenir* — un scoreur qui se trompe écrasera silencieusement un archer qui
-     avait raison, là où un refus explicite aurait montré le conflit aux deux. L'alternative
-     (409 + rafraîchir) est écartée, non oubliée. → `E16US020`
+  3. **S09 : la hiérarchie est retenue**, au pied de la lettre du questionnaire — mais **sur les
+     identités réelles du dépôt**. ⚠️ **RECTIFIÉ le 10/09/2026 en revue : la 1ʳᵉ rédaction disait
+     `archer < scoreur < admin`, et ce rang du bas N'EXISTE PAS.**
+     [`stories/E10`](E10-acces-roles.md) le dit en gras depuis le 14/07/2026 (`D-13`,
+     [ADR-0030](../docs/adr/0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md)) : *« **Il n'y
+     a pas de rôle archer** : il y a **un poste ouvert** »* — l'identité y est **le lieu**, pas la
+     personne. Le scénario sur lequel l'arbitrage avait été présenté (« un scoreur écrasera un
+     archer ») **ne peut pas se produire** : le scoreur n'a aucun accès à `POST /volees`.
+     **Décision rectifiée : `poste de cible < scoreur < admin`.** ⚠️ **Le revers reste exposé et
+     assumé** — une hiérarchie *tranche* sans *prévenir*. ⚠️ **Et elle ne couvre pas tout, ce qui a
+     été dit au commanditaire avant qu'il confirme** : deux tablettes de cibles différentes portent
+     le **même** rang, donc la hiérarchie n'arbitre **rien** entre elles — le dernier écrit gagne,
+     comme aujourd'hui. Elle ne règle que *poste vs admin* (et *vs scoreur*, celui-ci entrant par
+     l'élargissement d'`autoriser_saisie` décidé en 1). L'alternative (`409` + rafraîchir) est
+     **écartée, non oubliée** : c'est elle qu'on reprend si le silence se paie en salle. → `E16US020`
   4. **A02 : l'encart va sur l'ACCUEIL**, pas sur « Suivi du déroulé ». L'organisateur qui ouvre un
      tournoi y atterrit (`axes.ts`, destination par défaut de l'axe pilotage) ; l'y renvoyer d'un
      clic aurait laissé le besoin « j'arrive et je vois » à un clic. → `E16US021`
@@ -525,9 +559,13 @@
 - ~~**CA — S06 (routage)**~~ → `E16US018` : *« 3 mn si un autre tour suit »* — le panneau de routage doit rendre la tablette à la saisie au bout de trois minutes lorsqu'un tour suit. `PanneauRoutage` n'a aucun minuteur. Et *« visible si classement établi »* pour la place finale du perdant.
 - ~~**CA — S08 (validation cible)**~~ → `E16US019` : *« plus de modification une fois validé »*. ~~⚠️ **Cela contredit un endpoint vivant**~~ ✅ **Requalifié le 10/09/2026 : ce n'est pas une contradiction** (cf. arbitrage 1 ci-dessus) — et le constat était **à moitié faux**, les duels tenant déjà la règle. Et *« [une validation peut être annulée] oui, par admin et scoreur »*, qui n'a aucune route.
 - ~~**CA — S09 (états système)**~~ → `E16US020` : *« hiérarchie → archer < scoreur < admin »* pour trancher un conflit de modification concurrente. C'est une politique d'autorisation, énoncée sans ambiguïté et non implémentée.
-- ~~**CA — A09 (inscriptions)**~~ → **`E02US007`** : *« on ne permettra pas 2 fois le même numéro de licence »*. ~~⚠️ **Contredit ADR-0014 et ADR-0015**~~ ✅ **Requalifié le 10/09/2026** : les deux ADR n'écartent pas la licence, ils **nomment son point de réouverture** (cf. arbitrage 2). ❌ **Le second CA est CADUC** — *« placement manuel obligatoire, mais seulement si possible »* est **déjà tenu** : une inscription tardive vaut réserve ([ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md)) et « Placer les restants » (E03US004) comble les trous **sans déplacer** l'existant, donc « seulement si possible » au sens littéral.
+- ~~**CA — A09 (inscriptions)**~~ → **`E02US007`** : *« on ne permettra pas 2 fois le même numéro de licence »*. ~~⚠️ **Contredit ADR-0014 et ADR-0015**~~ ✅ **Requalifié le 10/09/2026** : les deux ADR n'écartent pas la licence, ils **nomment son point de réouverture** (cf. arbitrage 2). ❌ **Le second CA est tenu** — *« placement manuel obligatoire, mais seulement si possible »*. ⚠️ **La justification a été REFAITE en revue le 10/09/2026, l'originale invoquait l'option refusée.** La question brute ([`a09-inscriptions.md`](../maquettes/questionnaires/tour-1-2026-08-04/a09-inscriptions.md), Q1) était **binaire** : *« proposition **automatique**, ou placement **manuel obligatoire** ? »* — et le commanditaire a choisi le manuel. Citer « Placer les restants » comme preuve, ainsi que le faisait la 1ʳᵉ rédaction, revenait à **invoquer la branche refusée** : ce bouton *est* la proposition automatique. Ce qui tient réellement le CA, c'est que **rien ne place tout seul à l'inscription** — une inscription tardive vaut réserve ([ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md)), et « Placer les restants » est un **geste de l'organisateur**, pas un automatisme. ⚠️ **Ne pas en déduire qu'un auto-placement à l'inscription honorerait A09 : il le violerait.**
 - ~~**CA — A02**~~ → `E16US021` : *« une fois un tournoi choisi, on arrive sur la page du déroulé du tournoi avec un accueil qui reprend les informations du tournoi **par départ dans un grand encart** (mettre toutes les informations utiles au déroulé) »*. Seul le bandeau a été livré ; l'encart par départ, non.
-- ❌ **CA — P05 : ÉCARTÉ le 10/09/2026, sans US.** *« [les horaires prévisionnels] seulement pour les départs des différentes phases du tournoi, les autres sont trop imprévisibles »*. ⚠️ **Il n'y a rien à restreindre** : le refus est **déjà tranché depuis le 04/08/2026** et tracé dans le code (`frontend/src/features/tableaux/VueTableaux.tsx` : *« le domaine n'en porte aucun au grain de la phase, et les inventer serait pire que les taire »*). `Depart.horaire` est l'heure de **départ du créneau**, pas une prévision par phase. Le CA demande donc une **création**, pas un bornage — réouverture possible sur demande du commanditaire, non prise ici faute d'avoir un horaire à afficher.
+- ⚠️ **CA — P05 : QUESTION OUVERTE, à reposer au commanditaire** *(statut rectifié en revue le 10/09/2026 — la 1ʳᵉ rédaction l'écartait, à tort)*. *« [les horaires prévisionnels] seulement pour les **depart** des differentes phases du tournoi, les autres sont trop imprevisible »*. **La réponse admet deux lectures, et elle ne tranche pas entre elles** :
+  - **(a) un horaire prévisionnel par phase** — n'existe pas dans le domaine : le CA demande une **création**, pas un bornage ;
+  - **(b) l'heure des DÉPARTS** — *départ* est un terme du domaine (créneau, [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)) et `Depart.horaire` existe déjà, **obligatoire**, en `HH:MM`. Sous cette lecture la réponse dit « affichez l'heure des départs, pas des prévisions de tour » : c'est un **bornage d'existant**, front seul, quelques lignes.
+
+  ⚠️ **L'autorité invoquée par la 1ʳᵉ rédaction était circulaire** : elle s'appuyait sur le commentaire de `frontend/src/features/tableaux/VueTableaux.tsx` (*« arbitrage du 04/08/2026 »*) — or ce prétendu arbitrage n'existe **ni en ADR, ni en story, ni au journal**, et le 04/08/2026 est la date **du questionnaire**, dont la réponse est un *oui* qualifié. Fermer un CA du commanditaire en citant le commentaire de code qui aurait dû l'implémenter est exactement la boucle que la règle 9 interdit — et le défaut qu'`E16US007` avait commis sur « audit consultable ». **Le CA reste dû tant qu'il n'est pas tranché.**
 - ~~**⚠️ Vocabulaire (E16US001, ADR-0073)**~~ — ❌ **vérifié le 10/09/2026 : l'avertissement était FAUX, pour la 5ᵉ fois d'affilée** (après `E16US004`, `E16US005`, `E16US010`). Tout texte visible dit déjà « couloir » (`presentation.ts`, `VueSuivi.tsx`, `PlaceDeLArcher.tsx`, et les `aria-label` de `Placement.tsx`/`Duels.tsx`). Les occurrences restantes sont du CSS, des identifiants couverts par `DETTE-042`, ou un **autre sens** (`ClassementColline.tsx` : « Position » = le **rang**, hors périmètre d'ADR-0073). ⚠️ **Enseignement à ne pas reperdre** : cet avertissement a été recopié de fiche en fiche sans jamais être vérifié, et il a coûté cinq contrôles pour zéro correction. **Il n'est reconduit sur aucune des quatre US filles.**
 - **Notes** : ~~⚠️ **US de rattrapage — à découper avant de prendre.**~~ ✅ **Découpage fait le 10/09/2026**, et la consigne s'est vérifiée : prise telle quelle, cette fiche aurait fait implémenter deux CA déjà tenus, poser un arbitrage prématuré (A09) et corriger un vocabulaire correct. ⚠️ **Ce que le découpage a ajouté et qui n'était dans aucune rédaction** : `saisie_par` est **déclaratif** (un nom libre, dit tel quel par sa docstring), donc **inutilisable comme source d'autorité** — la hiérarchie de S09 exige de persister le **rôle**, tiré du **jeton d'authentification** et jamais du corps de la requête. Sans ce constat, `E16US020` se serait livrée avec une hiérarchie qu'un poste peut contourner en se déclarant admin.
 - **Dépend de** : E04US018 (routage), **E04US002** (saisie & validation de qualification — ~~`E04US003`~~ **n'existe pas** : l'identifiant a été absorbé par `E04US002` le 17/07/2026 à la refonte de maille. Corrigé le 08/08/2026), E10US001 (rôles), E02US002 (inscriptions) · **Jalon** : J3 · **Origine** : revue adversariale du 05/08/2026 sur le tri des questionnaires
@@ -535,18 +573,21 @@
 ---
 
 ### E16US018 — Le panneau de routage rend la tablette tout seul
-*En tant que* scoreur, *je veux* que le panneau de routage se referme seul quand un tour suit, *afin de* ne pas laisser une tablette bloquée sur un écran d'annonce pendant que la cible attend.
+*En tant que* **marqueur au poste de cible** (et scoreur en duels), *je veux* que le panneau de routage se referme seul quand un tour suit, *afin de* ne pas laisser une tablette bloquée sur un écran d'annonce pendant que la cible attend.
 
 - **Contexte** : CA S06, sorti d'`E16US011` au découpage du 10/09/2026. Questionnaire S06 : *« 3 mn si un autre tour suit »* et *« visible si classement établi »*.
-- **CA — le panneau se referme au bout de 3 minutes lorsqu'un tour suit** : passé ce délai, la tablette revient d'elle-même à la saisie, sans geste. Un compte à rebours **visible** le dit — un écran qui disparaît sans prévenir se lit comme un plantage.
-- **CA — il ne se referme JAMAIS quand c'est fini** : sur une issue terminale, le panneau reste, parce que c'est le seul endroit où l'archer lit sa place finale.
+- ⚠️ **LE PANNEAU PORTE PLUSIEURS ARCHERS À LA FOIS — lire ce point avant les CA** *(relevé en revue le 10/09/2026, absent de la 1ʳᵉ rédaction)*. `PanneauRoutage` reçoit `archerIds: number[]` et rend **une ligne par archer**. Ses deux appelants : `SaisieDuels.tsx` le monte pour **les deux duellistes** du duel qu'on vient de valider — donc **un `prochain_duel` et un `termine`**, c'est le cas **nominal**, pas un cas limite — et `Saisie.tsx` pour **tous les archers de la cible** (jusqu'à quatre issues différentes). Les CA ci-dessous étaient écrits au singulier et se contredisaient dès le premier duel validé.
+- **CA — agrégation** : le panneau ne se referme que si **toutes** ses lignes ont une suite ; **dès qu'une ligne est terminale, il reste**. C'est la lecture sûre — on ne prive personne de sa place finale pour rendre une tablette trois minutes plus tôt.
+- **CA — le panneau se referme au bout de 3 minutes lorsqu'un tour suit** : passé ce délai, la tablette revient d'elle-même à la saisie, sans geste. ⚠️ **Le compte à rebours visible est un AJOUT, pas une demande** : le questionnaire S06 a retenu la variante **A** et **écarté la variante C — « Retour automatique compté »**, dont un compteur est la signature. La justification (un écran qui disparaît sans prévenir se lit comme un plantage) vient de l'assistant. **À faire confirmer au cadrage, et à écrire dans la planche S06** — sans quoi `E17US008`, qui confrontera les neuf planches `S**` aux écrans livrés, le relèvera comme écart de structure et le **retirera**, cassant ce CA.
+- **CA — il ne se referme pas quand c'est fini** : sur une issue terminale, le panneau reste, parce que c'est le seul endroit où l'archer lit sa place finale. ⚠️ **Déduction, pas citation** : le questionnaire est **muet** sur le cas terminal (il ne dit que *« 3 mn si un autre tour suit »*). ⚠️ Et cela laisse chaque tablette de la salle bloquée sur son annonce au **dernier tour** — soit l'inverse de l'intention de l'US. À trancher au cadrage : borner (« il reste au moins N minutes », « jusqu'à acquittement ») plutôt que « jamais ».
 - **CA — la place finale n'est annoncée que si le rang est établi** : sinon l'écran dit ce qu'il sait (fourchette, ou tour de sortie), sans jamais laisser croire à un classement acquis.
 - **Notes** : ⚠️ **Vérifié dans le code au découpage — la moitié du travail est déjà là, l'autre pas du tout.**
   - **Le minuteur est absent, sans ambiguïté** : `grep` vide sur `frontend/src/features/routage/`. La seule sortie est le bouton `onRetour`/`libelleRetour` (`PanneauRoutage.tsx`), câblé par `Saisie.tsx` et `SaisieDuels.tsx`. Le panneau s'**ouvre** seul (`presentation.ts`, `panneauOuvert`) — rien ne le **ferme** seul.
-  - **La distinction « un tour suit » existe DÉJÀ côté serveur** et c'est ce qui rend l'US petite : `IssueRoutage` porte `prochain_duel`, `prochaine_manche`, `termine`, `repeche`, `en_attente`, `indisponible`. **Front seul, aucune route, aucune migration, aucun DTO touché.**
-  - ⚠️ **Le seul point à trancher au cadrage** : quelles issues comptent comme « un tour suit ». La lecture proposée est *suite* pour `prochain_duel` / `prochaine_manche` / `repeche`, *terminal* pour `termine`, et **à décider** pour `en_attente` et `indisponible` — l'archer y a bien une suite, mais elle n'est pas encore connue, et refermer la tablette pourrait faire perdre l'information au moment où elle arrive.
-  - ⚠️ **Le 2ᵉ CA est en grande partie tenu, mais par accident, et c'est le piège** : `rang_final` est calculé **inconditionnellement** dès l'issue `TERMINE` (`backend/application/routage.py`), et le front replie sur `rang_min`/`rang_max` puis sur `tour_sortie` (`presentation.ts`). Le comportement observable ressemble à la règle ; **rien dans le code ne la porte**. Un `null` qui cesse d'être `null` la révoque en silence — d'où un test qui l'épingle, plutôt qu'un correctif.
-  - `docs/fonctionnel/E04US018.md` décrit déjà l'affichage du rang et son repli, et **ne mentionne aucune fermeture automatique** : la fiche fonctionnelle sera à compléter, pas à réécrire.
+  - **La distinction « un tour suit » existe DÉJÀ côté serveur** et c'est ce qui rend l'US petite : `IssueRoutage` porte `prochain_duel`, `prochaine_manche`, `termine`, `repeche`, `en_attente`, `indisponible`. **Front seul côté production** — mais ⚠️ le test qui épingle le CA *la place finale…* est un test **backend** (`rang_final` se calcule côté serveur). Aucune route, aucune migration, aucun DTO touché.
+  - ⚠️ **Deux points distincts à trancher au cadrage, à ne pas confondre** : **(1) quelles issues** comptent comme « un tour suit » — lecture proposée : *suite* pour `prochain_duel` / `prochaine_manche` / `repeche`, *terminal* pour `termine`, **à décider** pour `en_attente` et `indisponible` (l'archer y a bien une suite, mais elle n'est pas encore connue) ; **(2) comment on agrège** plusieurs lignes, cf. le CA d'agrégation. La 1ʳᵉ rédaction ne posait que (1) et raisonnait encore par issue unique.
+  - ⚠️ **Deux cas adverses à couvrir, rendus par la revue** : un **repêché sans destination** (`REPECHAGE_SANS_DESTINATION`, `destination = None`) a « une suite », donc le minuteur emporterait le seul écran qui lui dit qu'il est repêché **sans lui dire où aller** ; et un **`TERMINE` sans aucune place** (`rang_final`, `rang_min` et `rang_max` tous `None`, motif `RANG_A_VENIR`) fait tomber la prémisse du CA « il reste, c'est là qu'il lit sa place » — il n'y a aucune place à lire.
+  - ⚠️ **Le CA *la place finale…* est en grande partie tenu, mais par accident, et c'est le piège** : `rang_final` est calculé **inconditionnellement** dès l'issue `TERMINE` (`backend/application/routage.py`), et le front replie sur `rang_min`/`rang_max` puis sur `tour_sortie` (`presentation.ts`). Le comportement observable ressemble à la règle ; **rien dans le code ne la porte**. Un `null` qui cesse d'être `null` la révoque en silence — d'où un test qui l'épingle. ⚠️ **Un test qui épingle une règle que le code ne fonde pas EST de la dette de conception** : à l'implémentation, soit la règle entre dans le code, soit elle s'inscrit au registre.
+  - ⚠️ **`docs/fonctionnel/E04US018.md` est PÉRIMÉE sur ce point, pas seulement incomplète** *(corrigé en revue)* : elle affirme que pour un archer sorti avant les demi-finales « la mention **reste** *rang publié en fin de phase* », alors que depuis `E07US008` le front rend une **fourchette** (« 5ᵉ-8ᵉ du tableau ») et que `RANG_A_VENIR` ne subsiste **que** là où rien n'est acquis. L'US la **reprend**, elle ne fait pas que l'étendre. Elle ne mentionne par ailleurs aucune fermeture automatique.
 - **Dépend de** : E04US018 (routage) · **Jalon** : J3 · **Origine** : questionnaire S06, 04/08/2026 — sortie d'`E16US011` le 10/09/2026
 
 ---
@@ -556,34 +597,51 @@
 
 - **Contexte** : CA S08, sorti d'`E16US011` au découpage du 10/09/2026. Questionnaire S08 : *« plus de modification une fois validé »* et *« [une validation peut être annulée] oui, par admin et scoreur »*.
 - **✅ ARBITRÉ le 10/09/2026 — ce n'étaient pas deux règles contradictoires, mais UNE procédure en deux temps.** La fiche d'origine annonçait un affrontement entre le questionnaire et un endpoint vivant ; la relecture du code montre un **enchaînement** : on n'édite pas un score validé, on **annule la validation**, on corrige, on revalide. Décision du commanditaire : **c'est ce parcours, et lui seul**.
-- **CA — annuler une validation est un acte à part entière** : ouvert à l'**admin et au scoreur** (élargi, pas doublé — la ligne du dépôt depuis `E16US008`), **tracé à l'audit**, et il **rouvre** la volée à la saisie ordinaire.
+- **CA — annuler une validation est un acte à part entière** : ouvert à l'**admin et au scoreur** (élargi, pas doublé — la ligne du dépôt depuis `E16US008`), **tracé à l'audit**, et il **rouvre** la volée à l'écriture.
+- **CA — QUI peut réécrire après l'annulation** *(CA neuf, ajouté en revue le 10/09/2026 — son absence était un bloquant)*. La réponse S08 complète dit *« **les deux, archer et scoreur** »* : la volée rouverte doit être écrivable par **le poste de cible ET le scoreur**. Or `saisir_volee` est gardée par `autoriser_saisie`, qui ne rend qu'un `Poste` ou l'admin — **le scoreur n'y a aucune identité**, et `corriger_volee` (`exiger_scoreur`) est aujourd'hui son **seul** chemin d'écriture. **Décision du commanditaire : `autoriser_saisie` est ÉLARGIE au scoreur**, même patron qu'`autoriser_forfait` en `E16US008` — une route, plusieurs identités, jamais une route parallèle. ⚠️ **Sans ce CA, l'US livrait DEUX défauts en même temps** : une **régression** (le scoreur ne peut plus corriger, il doit redescendre demander à la cible) et un **élargissement non voulu** (la réécriture d'un score validé, aujourd'hui réservée au scoreur, tombait au niveau du jeton de tablette).
 - **CA — `corriger_volee` disparaît** : il n'existe plus qu'un seul chemin d'écriture sur un score validé, donc un seul endroit où tenir l'audit, l'idempotence et les règles métier. La qualification s'aligne enfin sur les **duels**, qui refusent déjà toute réécriture.
+- **CA — la granularité de l'annulation** *(à trancher au cadrage, relevé en revue)*. « Annuler **une** validation » n'est pas dérivable en l'état : `Serie.valider` valide un **lot** dont la taille dépend d'une politique injectée (`GrainValidation` : `FIN_DE_SERIE`, ou `TOUTES_LES_N_VOLEES` avec reliquat de fin de barème), et `validee_par` est un **nom**, pas un identifiant d'acte — deux lots validés par le même scoreur sont indistinguables. Recommandation : **le lot**, sinon on rouvre un trou au milieu d'un bloc validé. ⚠️ **Contrairement à ce qu'annonce la note « aucune migration » ci-dessous, tracer l'acte de validation pour le rendre annulable PEUT en exiger une.**
 - **CA — l'écran dit ce qu'il fait** : annuler une validation n'est pas anodin ; le geste passe par une confirmation qui **nomme** ce qui va être rouvert, comme le forfait depuis `E16US007`.
 - **Notes** : ⚠️ **Le constat d'origine était à moitié faux, et cela réduit l'US.**
-  - **Les duels tiennent déjà S08** : `Duel.verrouille` (`backend/domain/duel.py`) fait refuser `saisir_manche`, `saisir_barrage` et une seconde `valider` (`DuelVerrouille`, *« sa validation ne se réécrit pas »*). Aucune route de correction n'existe sous `/api/v1/duels/`. **Rien à faire de ce côté pour le premier CA.**
-  - **Seule la qualification a le chemin direct** : `POST /api/v1/saisie/corrections` → `corriger_volee` (`backend/api/v1/saisie.py`), `exiger_scoreur`, docstring *« Seul chemin d'écriture sur une série verrouillée »*, tracé `CORRECTION_SCORE`. C'est **lui** que l'arbitrage retire.
-  - **Le verrou est dérivé, pas stocké** : `Volee.verrouillee` est une property qui vaut `validee_par is not None` (`backend/domain/serie.py`). **Annuler = reposer `validee_par` à `None`** — donc probablement **aucune migration**, ce qui est la bonne surprise de cette US.
-  - ⚠️ **Question de périmètre à trancher au cadrage, absente du questionnaire** : l'annulation vaut-elle aussi pour un **duel** ? Le questionnaire dit « une validation », sans préciser. La recommandation est de **borner à la qualification** pour cette tranche : valider un duel fait **avancer le tableau** (routage, élimination, cible du tour suivant) — annuler cette validation, c'est défaire une progression déjà diffusée aux écrans, soit une US de moteur, pas une US de saisie.
+  - ⚠️ **L'INVENTAIRE DES SURFACES — refait en revue, la 1ʳᵉ rédaction en oubliait deux.** Il y a **quatre** surfaces où un résultat s'acte, pas deux :
+
+    | Surface | État au 10/09/2026 | Dans l'US ? |
+    |---|---|---|
+    | **Qualification** | `corriger_volee` (`POST /saisie/corrections`, `exiger_scoreur`, tracé `CORRECTION_SCORE`) réécrit une série verrouillée ; aucune annulation | **oui** — c'est le périmètre |
+    | **Duels** | `DuelVerrouille` refuse `saisir_manche`, `saisir_barrage` et une seconde `valider` ; aucune route de correction sous `/api/v1/duels/` | **non** — S08 y est **déjà tenu**, rien à faire |
+    | **Barrage de places** | ⚠️ `PUT …/barrages/{id}/manche` *« Saisit la manche suivante, ou **réécrit** celle indiquée »*, **aucune garde sur `clos`** ; et `DELETE …/barrages/{id}` annule un barrage **même clos** | **à trancher** — S08 n'y est **pas** tenu |
+    | **Big Shoot Off** | l'agrégat `Serie` se verrouille ; `POST /validations` mais **aucune** route de correction **ni d'annulation** | **à trancher** — immuable, donc S08 tenu à moitié, l'autre moitié impossible |
+
+    Sans cet inventaire, le CA « il n'existe plus qu'un seul chemin d'écriture » aurait été **faux à l'instant de sa livraison**. Si les deux dernières surfaces restent dehors, **l'écrire** — sinon la carte laisse croire que S08 sera tenu partout.
+  - **Le verrou est dérivé, pas stocké** : `Volee.verrouillee` est une property qui vaut `validee_par is not None` (`backend/domain/serie.py`). **Annuler = reposer `validee_par` à `None`** — donc probablement **aucune migration** pour le verrou lui-même (sous réserve du CA de granularité ci-dessus).
+  - ⚠️ **CONSÉQUENCE MÉTIER NON ÉCRITE, trouvée en revue : la volée dévalidée SORT DU CLASSEMENT.** `Serie.cumul` somme `v.points for v in self.volees if v.verrouillee` — idem `compter` et `nb_fleches_validees`. Le temps de la correction, la volée quitte donc le total : classement, palmarès, écran de salle, et l'exposition publique la rebascule en `en_attente` (ADR-0039). **Le chemin actuel n'a pas cette fenêtre** — `corriger_volee` réécrit en place sans déverrouiller. C'est le **coût réel** de l'arbitrage, constatable dans le code d'aujourd'hui. À trancher : soit annulation + ressaisie sont **un seul acte** côté service (la volée ne quitte jamais le total), soit la fenêtre est assumée **et les écrans la disent**.
+  - ⚠️ **Tension à lever avec `E16US020`** : un **admin** qui annule devient le dernier écrivain ; sous la hiérarchie de `E16US020`, la volée se verrouille alors contre le scoreur **et** contre la tablette — c'est-à-dire contre ceux qui doivent la corriger. La règle S09 arbitre une **concurrence**, pas une **préséance permanente** : les deux fiches doivent se borner mutuellement.
   - ⚠️ **Retirer une route est un changement d'API** : vérifier les appelants front avant de la supprimer, et la fiche fonctionnelle de la saisie sera à reprendre — deux fiches décrivent aujourd'hui la correction directe.
-  - ⚠️ **L'audit gagne un type de trace** (`E10US005`) : `CORRECTION_SCORE` disparaît avec son endpoint, une annulation de validation doit laisser la sienne, sinon l'US **retire** de la traçabilité au lieu d'en ajouter.
+  - ⚠️ **Cette US ROUVRE [ADR-0035](../docs/adr/0035-atomicite-acte-trace-session-partagee.md)**, dont les § Décision 2 et 3 nomment explicitement la **réécriture d'un score corrigé** et `CORRECTION_SCORE` : section « Porté dans le code par » **exigée** (règle « décision structurante ⇒ ADR », ADR-0075 § Portée). L'audit gagne donc un type de trace (`E10US005`) — `CORRECTION_SCORE` disparaît avec son endpoint, une annulation doit laisser la sienne, sinon l'US **retire** de la traçabilité au lieu d'en ajouter.
 - **Dépend de** : E04US002 (saisie & validation de qualification), E10US001 / E10US003 (rôles), E10US005 (audit) · **Jalon** : J3 · **Origine** : questionnaire S08, 04/08/2026 — sortie d'`E16US011` le 10/09/2026
 
 ---
 
-### E16US020 — Deux postes, une même volée : le rôle tranche
-*En tant qu'*organisateur, *je veux* qu'une écriture concurrente sur la même volée soit arbitrée par le **rôle** de qui écrit, *afin de* qu'une saisie d'archer n'efface pas la correction du scoreur qui vient de passer.
+### E16US020 — Deux écritures, une même volée : le rang tranche
+*En tant qu'*organisateur, *je veux* qu'une écriture concurrente sur la même volée soit arbitrée par le **rang** de qui écrit, *afin qu'*une saisie de tablette n'efface pas la correction que le scoreur vient de faire.
 
 - **Contexte** : CA S09, sorti d'`E16US011` au découpage du 10/09/2026. Questionnaire S09 : *« hiérarchie → archer < scoreur < admin »* pour trancher un conflit de modification concurrente.
-- **✅ ARBITRÉ le 10/09/2026** : la **hiérarchie** est retenue, au pied de la lettre du questionnaire. ⚠️ **Le revers a été exposé au commanditaire et assumé** : une hiérarchie **tranche sans prévenir**. Un scoreur qui se trompe écrasera silencieusement un archer qui avait raison, là où l'alternative — refus explicite en `409` et rafraîchissement — aurait montré le conflit aux deux. Cette alternative est **écartée, pas oubliée** : si le silence se paie en salle, c'est elle qu'on reprend.
-- **CA — le rang supérieur écrase, l'inférieur est refusé** : `archer < scoreur < admin`. Une écriture d'un rang inférieur à celui qui a déjà écrit est **refusée**, et l'écran dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace.
-- **CA — le rôle est celui du JETON, jamais celui du message** : l'arbitrage se fait sur l'identité authentifiée, pas sur ce que la requête déclare.
-- **Notes** : ⚠️ **Candidate à un ADR** — un ordre entre rôles est une politique d'autorisation, là où le dépôt n'a aujourd'hui que des prédicats indépendants.
-  - ⚠️ **Le piège central, trouvé au découpage et absent de toutes les rédactions** : `Volee.saisie_par` **existe** mais sa propre docstring le qualifie de **« déclaratif »** — c'est un **nom libre**, pas un rôle, et il vient du corps de la requête. **L'utiliser comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant admin.** Il faut **persister le rôle**, tiré du jeton — donc une colonne et **une migration**.
+- **✅ ARBITRÉ le 10/09/2026, puis RECTIFIÉ le même jour en revue.** La **hiérarchie** est retenue — mais sur les identités réelles du dépôt. ⚠️ **La 1ʳᵉ rédaction disait `archer < scoreur < admin` : ce rang du bas N'EXISTE PAS.** [`stories/E10`](E10-acces-roles.md) le dit en gras depuis le 14/07/2026 (`D-13`, [ADR-0030](../docs/adr/0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md)) : *« **Il n'y a pas de rôle archer** : il y a **un poste ouvert** »*. Le scénario sur lequel l'arbitrage avait été présenté au commanditaire — « un scoreur écrasera un archer » — **ne pouvait pas se produire** : le scoreur n'a aucun accès à `POST /volees`.
+- **CA — le rang supérieur écrase, l'inférieur est refusé** : **`poste de cible < scoreur < admin`**, les trois identités que le dépôt porte vraiment.
+- **CA — à rangs ÉGAUX, la hiérarchie n'arbitre rien** *(conséquence dite au commanditaire avant qu'il confirme)*. Deux tablettes de cibles différentes portent le **même** rang : entre elles, le dernier écrit gagne, exactement comme aujourd'hui. Cette US ne règle que *poste vs scoreur* et *poste vs admin*. ⚠️ **Le cas le plus fréquent en salle est justement poste vs poste** — c'est ce que le `409` aurait couvert, et c'est la raison pour laquelle il est écarté **et non oublié**.
+- **CA — ce qui est écarté est le refus SYMÉTRIQUE, pas le refus** *(précision de revue : la 1ʳᵉ rédaction se contredisait)*. Le rang **supérieur** écrase sans notifier celui qu'il écrase — c'est le revers assumé. Le rang **inférieur** est refusé (`409`), et l'écran lui dit pourquoi : un refus muet serait pire que l'écrasement qu'il remplace. Ce qui a été écarté, c'est le refus **indépendant du rang**, qui aurait montré le conflit aux **deux** parties.
+- **CA — le rang est celui du JETON, jamais celui du message** : l'arbitrage se fait sur l'identité authentifiée, pas sur ce que la requête déclare. ⚠️ **Mais le jeton du rang le plus bas identifie un LIEU, pas une personne** (`autoriser_saisie` rend un `Poste`) — c'est une conséquence assumée d'`E10US007`, pas un oubli, et c'est précisément ce qui rend l'ordre nécessaire.
+- **CA — la préséance ne survit pas au conflit** *(borne ajoutée en revue)* : le rang de la dernière écriture ne verrouille pas la volée **pour toujours** contre les rangs inférieurs. Sans cette borne, un admin qui annule une validation (`E16US019`) rendrait la volée inaccessible au scoreur **et** à la tablette — c'est-à-dire à ceux qui doivent la corriger. La règle arbitre une **concurrence**, pas une préséance permanente : la fenêtre est à définir au cadrage.
+- **Notes** : ✅ **ADR écrit** — [ADR-0107](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-rang-de-qui-ecrit.md). Un ordre entre rangs est une politique d'autorisation, là où le dépôt n'a aujourd'hui que des prédicats indépendants : c'est le **premier** du dépôt. *(Écrit **avant** l'implémentation, sur le patron d'[ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) : § « Porté dans le code par » = « rien à ce jour, et c'est écrit exprès » — ce qui évite le défaut d'ADR-0017 sans pour autant laisser la décision sans trace.)*
+  - ⚠️ **Le piège central, trouvé au découpage et absent de toutes les rédactions** : `Volee.saisie_par` **existe** mais sa propre docstring le qualifie de **« déclaratif »** — c'est un **nom libre**, pas un rang, et il vient du corps de la requête. **L'utiliser comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant admin.**
+  - ⚠️ **« Migration attendue » était trop affirmatif** *(corrigé en revue)* : **migration probable, à trancher**. Les trois rangs sont **déjà** discriminables à la frontière API sans aucune colonne (`autoriser_saisie` → `Poste | None`, `exiger_scoreur` → `Scoreur`, `exiger_admin`) ; le rang peut donc se **dériver de la garde** au lieu de se persister sur la volée. Le choix dépend de la fenêtre retenue au CA de préséance.
+  - ⚠️ **Si la hiérarchie vaut pour tous les formats, elle atterrit sur les 7 sites de `DETTE-065`** (le garde d'autorisation des routeurs d'écriture, recopié sept fois). La règle doit alors vivre en **un** endroit — service ou domaine —, pas dans chaque routeur, et la ligne de `DETTE-065` sera à élargir ou à résorber au même moment.
   - **Il n'y a aucun mécanisme de conflit aujourd'hui** : `backend/infrastructure/idempotence.py` ne dédoublonne qu'un **rejeu du même client** (`identifiant_saisie` identique). Deux écritures d'identifiants différents sur la même volée non validée → la seconde écrase la première **en silence** (`Serie.saisir_volee`), sans version, sans horodatage comparé, sans `409`.
   - **La file d'écriture (règle 7) ne protège de rien ici** : le writer unique **sérialise** les écritures, donc il n'y a pas de course en base — mais sérialiser n'est pas arbitrer, et c'est exactement ce qui rend le défaut invisible.
   - **Les rôles n'ont aucun ordre** : `exiger_admin`, `exiger_scoreur`, `exiger_poste_de_cible`, `autoriser_saisie`, `autoriser_forfait` (`backend/api/dependances.py`) sont des prédicats indépendants. L'US introduit la **première** notion de rang entre rôles du dépôt — d'où l'ADR.
-  - ⚠️ **Deux cas que le questionnaire ne couvre pas, à trancher au cadrage** : (a) **deux rôles égaux** (deux scoreurs) — retombe-t-on sur *last-write-wins*, ou refuse-t-on aussi ? (b) la hiérarchie vaut-elle pour les **duels** et les autres formats, ou seulement pour la volée de qualification que le questionnaire visait ?
-- **Dépend de** : E04US002 (saisie), E10US001 (rôles), **E10US007** (saisie par l'archer — sans elle, le rang « archer » n'a aucun porteur) · **Jalon** : J3 · **Origine** : questionnaire S09, 04/08/2026 — sortie d'`E16US011` le 10/09/2026
+  - ⚠️ **Un cas adverse rendu par la revue** : un **admin** saisit par erreur sur la cible 7, puis le **poste de cible 7** — rang inférieur — veut corriger. La hiérarchie **refuse** : la cible ne peut plus se corriger elle-même, et le seul recours est un admin. Le questionnaire ne couvre pas ce sens ; c'est le CA de préséance qui doit le borner.
+  - ⚠️ **Question de périmètre à trancher au cadrage** : la hiérarchie vaut-elle pour les **duels** et les autres formats, ou seulement pour la volée de qualification que le questionnaire visait ?
+- **Dépend de** : E04US002 (saisie), E10US001 (rôles), **E10US007** ✅ *(livrée — « **Poste de cible : saisir sans s'identifier** ». ⚠️ La 1ʳᵉ rédaction la nommait « saisie par l'archer » et la disait prérequise : elle est livrée, et c'est **elle** qui fixe l'identité du rang le plus bas — le **lieu**, pas la personne.)* · **Jalon** : J3 · **Origine** : questionnaire S09, 04/08/2026 — sortie d'`E16US011` le 10/09/2026
 
 ---
 
@@ -592,12 +650,12 @@
 
 - **Contexte** : CA A02, sorti d'`E16US011` au découpage du 10/09/2026. Questionnaire A02 : *« une fois un tournoi choisi, on arrive sur la page du déroulé du tournoi avec un accueil qui reprend les informations du tournoi **par départ dans un grand encart** (mettre toutes les informations utiles au déroulé) »*.
 - **✅ ARBITRÉ le 10/09/2026 — l'encart va sur l'ACCUEIL**, pas sur « Suivi du déroulé ». C'est là que l'organisateur atterrit en ouvrant un tournoi (`frontend/src/features/admin/axes.ts`, destination par défaut de l'axe pilotage) ; le renvoyer ailleurs aurait laissé le besoin « j'arrive et je vois » à un clic.
-- **CA — un bloc par départ** : chaque créneau porte ce qui sert au déroulé — horaire, effectif, avancement des phases, pauses en cours —, tous visibles **côte à côte** et non un à la fois.
+- **CA — un bloc par départ** : chaque créneau porte ce qui sert au déroulé, tous visibles **côte à côte** et non un à la fois. ⚠️ **L'énumération qui suit est une PISTE à confirmer au cadrage, pas le CA** — horaire, effectif, avancement des phases, pauses en cours. La 1ʳᵉ rédaction la posait comme normative tout en demandant deux puces plus bas de borner la formule avec le commanditaire : un test en aurait dérivé l'énumération et l'arbitrage n'aurait jamais eu lieu.
 - **CA — sans fabriquer une seconde source** : les chiffres et les états viennent de ce qui les calcule déjà ; l'accueil **lit**, il ne recalcule pas.
 - **Notes** : ⚠️ **Le constat de la fiche d'origine est exact, et le trou est réel.**
   - **L'accueil ne porte aujourd'hui que des totaux tournoi** : `frontend/src/features/accueil/Accueil.tsx` rend le nom + `BadgeStatut`, `PastilleDeRelance` (E05US034), `FriseCycleDeVie`, trois chiffres agrégés (Inscrits / Réglés / Postes en ligne) et deux cartes « À faire » / « Alertes ». **Rien n'y est ventilé par créneau.**
   - **L'écran par créneau existe, mais fait l'inverse de ce que le CA demande** : `SuiviDeroule.tsx` montre **un seul** départ à la fois via un sélecteur `ChoixCreneau`, et `PilotageCreneau.tsx` en porte le détail. Le CA veut **tous les départs d'un coup**.
-  - ⚠️ **Le vrai risque est le doublon d'affordance, pas le rendu** : l'accueil porte déjà la frise (avec ses boutons « Démarrer »/« Terminer »), la pastille de relance de pauses, et « Prêt à démarrer ? » vit à côté (`E16US012`). ⚠️ **`E16US012` a laissé un angle mort explicite** — « deux endroits pour le même geste » — ; cette US **ajoute une troisième surface au même écran** et doit donc dire ce qu'elle **enlève**, pas seulement ce qu'elle ajoute.
+  - ⚠️ **Le vrai risque est le doublon d'affordance, pas le rendu** : l'accueil porte déjà la frise (avec ses boutons « Démarrer »/« Terminer »), la pastille de relance de pauses, et « Prêt à démarrer ? » vit à côté (`E16US012`). C'est **`DETTE-082`** — *deux endroits pour démarrer le même tournoi* —, dont la section *Résorption* désigne nommément la refonte de navigation d'`EPIC-16` plutôt qu'un correctif local : **cette US en est le candidat naturel**. Elle **ajoute une troisième surface au même écran** et doit donc dire ce qu'elle **enlève**, pas seulement ce qu'elle ajoute. *(La 1ʳᵉ rédaction décrivait cette dette en prose sans la nommer — ce qui casse le geste de résorption, un `grep DETTE-082`.)*
   - ⚠️ **Point à vérifier au cadrage** : existe-t-il une lecture **agrégée par départ** côté serveur, ou faut-il la construire ? L'accueil ne doit pas monter une requête par créneau — un tournoi à quatre départs paierait quatre allers-retours à chaque poll. ADR-0075 (*le départ est la portée sportive*) rend cette agrégation légitime ; `DETTE-031` (chaque lecture reconstruit les phases à tableau) dit ce qu'elle coûtera.
   - ⚠️ **« toutes les informations utiles au déroulé » est la formule la plus large de tout le questionnaire** : à borner **avec le commanditaire avant de coder**, sinon l'US n'a pas de fin.
 - **Dépend de** : E14US001 (frise), E16US012 (jalons), E05US034 (pauses visibles) · **Jalon** : J3 · **Origine** : questionnaire A02, 04/08/2026 — sortie d'`E16US011` le 10/09/2026
@@ -665,21 +723,33 @@ Consignés ici pour qu'aucun questionnaire ne reste sans réponse.
   frise **porte les boutons d'action** (démarrer, terminer) ; la replier ou la borner par axe
   risquerait de masquer l'action principale du jour J. Le mot « peut-être » du questionnaire marque
   d'ailleurs une hésitation, pas une demande. À rouvrir si la gêne se confirme à l'usage.
-- **P05 — « [les horaires prévisionnels] seulement pour les départs des différentes phases du
-  tournoi, les autres sont trop imprévisibles »** *(écarté le 10/09/2026, au découpage d'`E16US011`)* :
-  non appliqué, et **pour une raison qui n'est pas celle de la fiche**. Elle le présentait comme un
-  bornage à poser ; il n'y a **rien à borner**. Le refus des horaires prévisionnels est **déjà
-  tranché depuis le 04/08/2026** et tracé en commentaire dans `frontend/src/features/tableaux/VueTableaux.tsx` :
-  *« le domaine n'en porte aucun au grain de la phase, et les inventer serait pire que les taire »*.
-  `Depart.horaire` est l'heure de **départ du créneau**, pas une prévision de phase. Le CA demande
-  donc une **création** — modéliser un horaire prévisionnel par phase, puis le restreindre — et non
-  la restriction d'un existant. **À rouvrir sur demande du commanditaire**, comme une US à part
-  entière.
+- **A09 (2ᵉ règle) — « placement manuel obligatoire, mais seulement si possible »** *(traité le
+  10/09/2026, au découpage d'`E16US011`)* : **tenu**, et voici par quoi — **rien ne place un
+  retardataire tout seul**. Une inscription tardive vaut réserve
+  ([ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md)), et « Placer les restants »
+  (`placer_les_restants`) est un **geste de l'organisateur**, pas un automatisme. ⚠️ **Ne pas
+  invoquer ce bouton comme preuve** : la question était **binaire** (*« proposition automatique, ou
+  placement manuel obligatoire ? »*) et il *est* la branche automatique, celle qui a été refusée —
+  en déduire qu'un auto-placement à l'inscription honorerait A09 le **violerait**. Rouvrir si
+  l'organisateur veut un **blocage explicite** plutôt qu'une simple absence d'automatisme.
+  *(Inscrit ici parce que la 1ʳᵉ rédaction le classait « caduc » dans une fiche close ⛔ : un CA
+  rangé là n'est jamais relu — c'est le mécanisme même qui a fait naître `E16US011`.)*
 - **A03, A13, A19, S03, S04, S07** : validés ✅, et leurs réponses aux questions ciblées ne
   demandent rien qui ne soit déjà livré. ⚠️ **S06, S08 et S09 ont été retirés de cette liste** le
   05/08/2026 : leur verdict ✅ portait sur l'écran, mais leurs réponses portaient des règles — elles
   sont passées en `E16US011` — **puis, le 10/09/2026, dans les US filles de son découpage** :
   S06 → `E16US018`, S08 → `E16US019`, S09 → `E16US020`.
+- ⚠️ **P05 Q2 — « les horaires prévisionnels » : question à REPOSER en priorité**, le CA reste **dû**
+  *(statut fixé le 10/09/2026 en revue d'`E16US011` — la 1ʳᵉ rédaction l'écartait à tort)*. Réponse
+  brute : *« seulement pour les **depart** des differentes phases du tournoi, les autres sont trop
+  imprevisible »*. **Deux lectures, et la réponse ne tranche pas** : **(a)** un horaire prévisionnel
+  **par phase**, qui n'existe pas dans le domaine — c'est une **création** ; **(b)** l'heure des
+  **départs**, terme du domaine ([ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md))
+  dont `Depart.horaire` est déjà **obligatoire** — c'est un **bornage** d'existant, front seul.
+  ⚠️ **Ne pas refermer ce CA en citant le commentaire de `VueTableaux.tsx`** : l'« arbitrage du
+  04/08/2026 » qu'il invoque n'existe **ni en ADR, ni en story, ni au journal**, et cette date est
+  celle **du questionnaire**. Fermer un CA en citant le code qui aurait dû l'implémenter est la
+  boucle que la règle 9 interdit.
 - **Questions restées sans réponse au questionnaire**, à reposer si le sujet revient : A02 Q3
   (« espace » / « étape » / « Résultats »), Q4 (le mot pour un niveau qui boucle) et Q5 (référence ou
   copie des briques à l'assemblage) ; A03 Q1-Q2 ; A05 Q1-Q2 ; A06 Q1-Q2 ; A07 Q1 ; A08 Q2 (comment

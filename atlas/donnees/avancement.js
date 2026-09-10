@@ -875,7 +875,12 @@ window.ATLAS.avancement = {
   }
  ],
  "entete": {
-  "adr_du_resume": [],
+  "adr_du_resume": [
+   "0106",
+   "0105",
+   "0075",
+   "0048"
+  ],
   "derniere": "E03US012"
  },
  "epics": [
@@ -4542,7 +4547,9 @@ window.ATLAS.avancement = {
    "titre_story": "Le panneau de routage rend la tablette tout seul"
   },
   {
-   "adr": [],
+   "adr": [
+    "0107"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",
@@ -4557,7 +4564,9 @@ window.ATLAS.avancement = {
    "titre_story": "Annuler une validation pour corriger"
   },
   {
-   "adr": [],
+   "adr": [
+    "0107"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",
@@ -4568,8 +4577,8 @@ window.ATLAS.avancement = {
     "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (15/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
-   "titre": "Deux postes, une même volée : le rôle tranche",
-   "titre_story": "Deux postes, une même volée : le rôle tranche"
+   "titre": "Deux écritures, une même volée : le rang tranche",
+   "titre_story": "Deux écritures, une même volée : le rang tranche"
   },
   {
    "adr": [],
@@ -5815,7 +5824,7 @@ window.ATLAS.avancement = {
      "comptee": true,
      "etat": "⬜",
      "identifiant": "E16US020",
-     "titre": "Deux postes, une même volée : le rôle tranche"
+     "titre": "Deux écritures, une même volée : le rang tranche"
     },
     {
      "comptee": true,

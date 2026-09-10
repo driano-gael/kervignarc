@@ -299,7 +299,11 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | **E16US008** | Feu vert : agir depuis la ligne du duel qui bloque | J2 | recoupe `E16US012` |
 | **E16US009** | Écran de salle : régler ce qui défile, et défiler ce qui ne tient pas | J3 | questionnaires P06/P07 |
 | **E16US010** | Chercher partout, et voir d'avance ce qui bloque un lancement | J3 | questionnaire A02 |
-| **E16US011** | Ce que trois questionnaires « validés » demandaient quand même | J3 | **rattrapage** · 2 contradictions à arbitrer (S08, A09) |
+| ~~**E16US011**~~ | Ce que trois questionnaires « validés » demandaient quand même | J3 | ✅ **close le 10/09/2026 par découpage** — carte, remplacée par `E16US018` (routage) · `E16US019` (annuler une validation) · `E16US020` (rang et écriture concurrente) · `E16US021` (accueil par départ). ⚠️ Ses « 2 contradictions à arbitrer » **n'en étaient aucune** |
+| **E16US018** | Le panneau de routage rend la tablette tout seul | J3 | S06 · front seul, aucune migration |
+| **E16US019** | Annuler une validation pour corriger | J3 | S08 · rouvre `ADR-0035` |
+| **E16US020** | Deux écritures, une même volée : le rang tranche | J3 | S09 · [`ADR-0107`](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-rang-de-qui-ecrit.md) |
+| **E16US021** | L'accueil du tournoi parle par départ | J3 | A02 · candidat à résorber `DETTE-082` |
 | **E16US012** | La famille des écrans « prêt à… » | J3 | née d'`E16US003` · **refonte de navigation, à instruire avant `E16US007`/`E16US008`** |
 
 ## Vague du 05/08/2026 — fidélité du produit aux maquettes ([`E17`](E17-fidelite-aux-maquettes.md))
@@ -317,7 +321,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | **E17US005** | Embarquer la police du club pour le jour J | J3 | `DV-07` · 🔒 **arbitrage d'ajout d'actif en attente (règle 11)** |
 | **E17US006** | Donner une couleur à l'action destructrice | J3 | `DV-03` · 🔒 **trou de charte, ADR attendu** |
 | **E17US007** | Résorber les écarts relevés sur les écrans d'administration | J3 | le relevé est **fait** ; l'US qui le solde manquait |
-| **E17US008** | Confronter les 9 planches de saisie `S**` et résorber | J3 | recoupe `E16US011` (S08) |
+| **E17US008** | Confronter les 9 planches de saisie `S**` et résorber | J3 | recoupe `E16US019` (S08) et `E16US018` — ⚠️ **le compte à rebours de `E16US018` est un ajout postérieur au questionnaire** (variante C non retenue) : à écrire dans la planche S06, sinon cette US le relèvera comme écart de structure et le retirera |
 | **E17US009** | Confronter les 7 planches publiques `P**` et résorber | J3 | A14 et P03 **hors résorption** (réserve 2 d'ADR-0074) |
 | **E17US010** | Empêcher le dossier de maquettes de dériver du produit | J3 | **à prendre avant `E17US008`/`E17US009`** |
 
