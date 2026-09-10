@@ -36,6 +36,7 @@ qui en sortent sont consignés ici jusqu'à leur traitement — ils ne s'arbitre
 |---|---|---|---|
 | `D-20` non implémenté | Le CA d'E00US015 (livrée ✅) promet un écran par défaut variant selon le statut du tournoi — « brouillon→préparation, en cours→supervision, terminé→résultats ». `frontend/src/features/admin/axes.ts:163` renvoie toujours `'accueil'`, sans lire le statut. Ce qui varie est le **contenu** de l'écran `Accueil`, pas la destination. | Coquille admin, 03/09/2026 | **À trancher** : bug à ouvrir, ou CA à aligner ? |
 | Largeur de la sidebar admin | `cahier-des-charges-ux.md` §7.1 annonce **240 px** ; `App.css` applique `flex: 0 0 17rem` = **272 px**. | Coquille admin, 03/09/2026 | **À trancher** : aligner la doc sur le code, ou l'inverse. |
+| Planche `S06` sans signal de retour | La planche S06 ne montre **aucun** signal de retour automatique : le questionnaire avait retenu la variante **A** et écarté la **C** (« retour automatique compté »). `E16US018` livre un signal **discret et non chiffré** — barre de progression + mention « Retour automatique » — arbitré avec le commanditaire le 10/09/2026 : un écran qui disparaît sans prévenir se lit comme un plantage, mais un compte à rebours chiffré aurait rétabli la variante C. | `E16US018`, 10/09/2026 | **À reporter dans la planche S06.** ⚠️ Tant que ce n'est pas fait, `E17US008` (confrontation des neuf planches `S**` aux écrans livrés) relèvera le signal comme écart de structure et le **retirera**, cassant le CA. |
 
 ## Maquettes retirées
 
