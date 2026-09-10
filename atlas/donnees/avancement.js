@@ -691,7 +691,9 @@ window.ATLAS.avancement = {
     "E16US012"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E16US021"
+   ],
    "severite": "mineur"
   },
   {
@@ -753,7 +755,9 @@ window.ATLAS.avancement = {
     "E05US027"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E16US020"
+   ],
    "severite": "majeur"
   },
   {
@@ -4394,7 +4398,9 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0073"
+    "0073",
+    "0075",
+    "0107"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -4547,9 +4553,7 @@ window.ATLAS.avancement = {
    "titre_story": "Le panneau de routage rend la tablette tout seul"
   },
   {
-   "adr": [
-    "0107"
-   ],
+   "adr": [],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",
@@ -4564,11 +4568,11 @@ window.ATLAS.avancement = {
    "titre_story": "Annuler une validation pour corriger"
   },
   {
-   "adr": [
-    "0107"
-   ],
+   "adr": [],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "065"
+   ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "⬜",
@@ -4577,13 +4581,15 @@ window.ATLAS.avancement = {
     "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (15/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
-   "titre": "Deux écritures, une même volée : le rang tranche",
-   "titre_story": "Deux écritures, une même volée : le rang tranche"
+   "titre": "Deux écritures, une même volée : le rôle tranche",
+   "titre_story": "Deux écritures, une même volée : le rôle tranche"
   },
   {
    "adr": [],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "082"
+   ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "⬜",
@@ -5824,7 +5830,7 @@ window.ATLAS.avancement = {
      "comptee": true,
      "etat": "⬜",
      "identifiant": "E16US020",
-     "titre": "Deux écritures, une même volée : le rang tranche"
+     "titre": "Deux écritures, une même volée : le rôle tranche"
     },
     {
      "comptee": true,

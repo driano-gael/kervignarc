@@ -9,6 +9,19 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 
 ## Index
 
+> ⛔ **CETTE TABLE N'EST PAS L'INDEX QUI FAIT AUTORITÉ, et elle est périmée.** Elle s'arrête à
+> `0098` : **neuf ADR y manquent** (`0099` → `0107`), le dernier commit l'ayant alimentée datant
+> d'`E16US009`. L'index **complet et à jour** est celui que l'**atlas dérive** du répertoire —
+> `cd backend && python -m atlas`, puis `atlas/adr.html` — et qui, lui, ne peut pas se périmer
+> ([ADR-0086](0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md)).
+>
+> ⚠️ **Un index manuel qui ment sur neuf entrées est pire qu'un index absent** : il se lit comme
+> exhaustif. Le remède n'est pas d'y recopier neuf lignes de plus — c'est [ADR-0102](0102-la-documentation-porte-des-pointeurs-pas-des-copies.md)
+> (« la documentation porte des pointeurs, pas des copies ») appliqué ici : la table doit céder la
+> place à ce renvoi. *(Constat posé le 10/09/2026 en 2ᵉ passe de revue d'`E16US011`, qui aggravait
+> l'écart d'une entrée sans l'avoir créé. Le retrait de la table est une décision de convention
+> documentaire : elle appartient à une US dédiée, pas à une US de découpage.)*
+
 | # | Titre | Statut |
 |---|---|---|
 | [0001](0001-adopter-les-adr.md) | Adopter les ADR | Accepté |

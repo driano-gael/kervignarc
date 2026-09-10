@@ -308,7 +308,13 @@ que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US), *
 politique injectable au sens de la règle 2. ✅ **Inscrit du premier coup, hors revue** — 3ᵉ US
 d'affilée), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
 que `0099` : une règle d'écriture ne touche ni portée, ni moteur, ni politique injectable.
-✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée) —
+✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée), **`0107`** (E16US011 —
+**politique d'autorisation** : un ordre entre rôles pour arbitrer une écriture concurrente ne touche
+ni la portée, ni le moteur sportif, ni une politique injectable au sens de la règle 2.
+⚠️ **Inscrit en 2ᵉ passe de revue, et la série de quatre est rompue** : l'ADR argumentait son
+exclusion **chez lui** et l'énumération sautait de `0102` à rien — **6ᵉ** occurrence du mode de panne
+que ce paragraphe décrit, alors même que l'ADR revendiquait `0102` comme patron. Le patron avait été
+copié sur la forme, pas sur le geste) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

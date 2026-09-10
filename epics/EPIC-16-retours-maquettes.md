@@ -86,7 +86,7 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 - [x] Écran de salle : réglages et défilement (E16US009).
 - [x] Recherche transverse et alerte de complétude en liste (E16US010) — livrée le 29/08/2026,
       ADR-0100. ⚠️ Case restée décochée jusqu'au 30/08/2026, corrigée en découpant `E16US007`.
-- [ ] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 (E16US011).
+- [x] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 — `E16US011` **close par découpage** le 10/09/2026. Elle se remplace par `E16US018` (S06), `E16US019` (S08), `E16US020` (S09, [ADR-0107](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md)) et `E16US021` (A02) ; A09-licence part sur `E02US007`, A09-retardataire est **tenu** et tracé aux retours écartés, **P05 reste dû** (deux lectures, question à reposer).
 - [x] Podiums configurables (E16US014) — **sortie d'E16US007** le 30/08/2026, livrée le
       31/08/2026 (ADR-0103). ⚠️ Case restée décochée à la livraison, corrigée par `E16US017`.
       ⚠️ **Coupée en deux au cadrage** : classer les clubs entre eux part en `E16US017`.
