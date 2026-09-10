@@ -129,9 +129,11 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
   const tableau = useTableau(tournoiId, phaseId)
   const [matchOuvert, setMatchOuvert] = useState<number | null>(null)
   // Les deux duellistes du duel qu'on vient de valider (E04US018) : la validation fait avancer le
-  // tableau, donc leur destination est **immédiatement** lisible côté serveur. `null` = pas de
-  // bascule en cours.
+  // tableau, donc leur destination est **immédiatement** lisible côté serveur. `null` = aucun duel
+  // validé sur cette tablette. ⚠️ **Ne se remet plus à `null` à la fermeture** (E16US018) : c'est
+  // ce qui rend le panneau **rouvrable**, donc ce qui rend sa fermeture automatique sans danger.
   const [routageDe, setRoutageDe] = useState<number[] | null>(null)
+  const [panneauFerme, setPanneauFerme] = useState(false)
 
   if (tableau.isPending) return <p className="carte__etat">Chargement du tableau…</p>
   if (tableau.isError) {
@@ -147,8 +149,9 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
   }
 
   // Panneau de routage (E04US018) : il **remplace** la grille dès le duel tranché — les deux archers
-  // sont encore là, c'est la seconde où l'information leur sert. « Retour à la liste » referme tout.
-  if (routageDe !== null) {
+  // sont encore là, c'est la seconde où l'information leur sert. Il se referme au bouton, ou seul
+  // au bout de trois minutes (E16US018) ; dans les deux cas il reste rouvrable depuis la liste.
+  if (routageDe !== null && !panneauFerme) {
     return (
       <PanneauRoutage
         tournoiId={tournoiId}
@@ -157,7 +160,7 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
         titrePanneau="Où tire-t-on ensuite ?"
         libelleRetour="Retour à la liste"
         onRetour={() => {
-          setRoutageDe(null)
+          setPanneauFerme(true)
           setMatchOuvert(null)
         }}
       />
@@ -172,12 +175,27 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
         phaseId={phaseId}
         matchNumero={matchOuvert}
         onRetour={() => setMatchOuvert(null)}
-        onValide={setRoutageDe}
+        onValide={(duellistes) => {
+          setRoutageDe(duellistes)
+          setPanneauFerme(false)
+        }}
       />
     )
   }
 
-  return <ListeDuels tableau={tableau.data} onOuvrir={setMatchOuvert} />
+  return (
+    <>
+      {/* La poignée que la qualification a depuis E04US018, et que les duels n'avaient pas : sans
+          elle, la fermeture automatique du panneau serait irréversible pour ce duel — l'écran qui
+          dit à un repêché qu'il est repêché, ou à un sorti quelle place il prend. */}
+      {routageDe !== null && (
+        <button type="button" className="lien" onClick={() => setPanneauFerme(false)}>
+          Où tire-t-on ensuite ?
+        </button>
+      )}
+      <ListeDuels tableau={tableau.data} onOuvrir={setMatchOuvert} />
+    </>
+  )
 }
 
 // La liste des duels **groupés par libellé de tour** (finale en tête). Le regroupement (par libellé,

@@ -4,9 +4,12 @@ import {
   adversaire,
   alerte,
   apresRetour,
+  avanceeFermeture,
   destination,
   detail,
+  doitSeRefermer,
   encoreEnLice,
+  FERMETURE_MS,
   panneauOuvert,
   partitionner,
   posesParCible,
@@ -510,5 +513,41 @@ describe('routage d’un tireur en attente de la ronde suivante (E05US030)', () 
   it('reste distinct de « terminé » et d’« indisponible »', () => {
     expect(encoreEnLice(archer({ issue: 'termine', prochain: null }))).toBe(false)
     expect(encoreEnLice(archer({ issue: 'indisponible', prochain: null }))).toBe(false)
+  })
+})
+// Le retour automatique (E16US018). Logique **pure** : le composant ne fait qu'y brancher un
+// battement d'horloge. ⚠️ Le CA « **dans tous les cas** » ne se prouve pas ici — ces fonctions ne
+// reçoivent que des instants, jamais des lignes : c'est `PanneauRoutage.test.tsx` qui referme un
+// panneau mêlant `prochain_duel` et `termine`, le cas nominal en duels.
+describe('retour automatique du panneau', () => {
+  const OUVERTURE = 1_700_000_000_000
+
+  it('rend la tablette au bout de trois minutes', () => {
+    expect(FERMETURE_MS).toBe(180_000)
+    expect(doitSeRefermer(OUVERTURE, OUVERTURE + FERMETURE_MS)).toBe(true)
+  })
+
+  it('ne rend rien une seconde trop tôt', () => {
+    expect(doitSeRefermer(OUVERTURE, OUVERTURE + FERMETURE_MS - 1_000)).toBe(false)
+    expect(doitSeRefermer(OUVERTURE, OUVERTURE)).toBe(false)
+  })
+
+  it('borne l’avancée entre 0 et 1', () => {
+    expect(avanceeFermeture(OUVERTURE, OUVERTURE)).toBe(0)
+    expect(avanceeFermeture(OUVERTURE, OUVERTURE + FERMETURE_MS / 2)).toBeCloseTo(0.5)
+    expect(avanceeFermeture(OUVERTURE, OUVERTURE + FERMETURE_MS)).toBe(1)
+    expect(avanceeFermeture(OUVERTURE, OUVERTURE + FERMETURE_MS * 10)).toBe(1)
+  })
+
+  it('ne recule pas si l’horloge recule', () => {
+    // Une tablette qui se resynchronise pendant que le panneau est ouvert (heure d'été, NTP du
+    // jour J) rendait une avancée négative, donc une barre qui repart en arrière.
+    expect(avanceeFermeture(OUVERTURE, OUVERTURE - 60_000)).toBe(0)
+    expect(doitSeRefermer(OUVERTURE, OUVERTURE - 60_000)).toBe(false)
+  })
+
+  it('ne divise pas par zéro si la durée est nulle', () => {
+    expect(avanceeFermeture(OUVERTURE, OUVERTURE, 0)).toBe(1)
+    expect(doitSeRefermer(OUVERTURE, OUVERTURE, 0)).toBe(true)
   })
 })

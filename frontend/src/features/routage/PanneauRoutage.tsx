@@ -7,12 +7,18 @@
 // encore connu est écrit**, jamais laissé en blanc (cadrage du 30/07/2026), et les phrases viennent
 // du **serveur** : les quatre canaux doivent dire la même chose.
 
+import { useEffect, useRef, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { useMaintenant } from '../../shared/ui/useMaintenant'
 import type { RoutageArcher } from './api'
 import { useDeparts } from '../departs/hooks'
 import { departDeSalle } from '../salle/rotation'
 import { useRoutage } from './hooks'
-import { alerte, detail, titre } from './presentation'
+import { alerte, avanceeFermeture, detail, doitSeRefermer, titre } from './presentation'
+
+// La jauge se lit à la seconde, pas plus fin : un battement plus rapide ne ferait que multiplier
+// les re-rendus d'un écran de tablette posé sur une butte.
+const BATTEMENT_MS = 1000
 
 export function PanneauRoutage({
   tournoiId,
@@ -40,6 +46,22 @@ export function PanneauRoutage({
   const departId = departDeSalle(departs.data ?? [])?.id ?? null
   const routage = useRoutage(departId, archerIds, phaseId)
   const lignes = routage.data?.archers ?? []
+
+  // Le retour automatique (E16US018). ⚠️ Le décompte part à **l'ouverture du panneau**, pas à
+  // l'arrivée des données : un écran resté trois minutes sur « Recherche des destinations… » n'a
+  // plus rien à apprendre à personne, et le rendre à la saisie est alors la bonne issue.
+  const [ouverture] = useState(() => Date.now())
+  const maintenant = useMaintenant(BATTEMENT_MS)
+  const rendu = useRef(false)
+  useEffect(() => {
+    // ⚠️ Le garde n'est pas décoratif : `onRetour` est une lambda recréée à chaque rendu chez les
+    // deux appelants, et le battement continue après l'échéance. Sans lui, la liste des matchs
+    // remonterait une fois par seconde.
+    if (rendu.current || !doitSeRefermer(ouverture, maintenant)) return
+    rendu.current = true
+    onRetour()
+  }, [ouverture, maintenant, onRetour])
+  const avancee = avanceeFermeture(ouverture, maintenant)
 
   return (
     <section className="routage" aria-label={titrePanneau}>
@@ -71,6 +93,8 @@ export function PanneauRoutage({
           <LigneRoutage key={ligne.archer_id} ligne={ligne} />
         ))}
       </ul>
+
+      <JaugeRetour avancee={avancee} />
     </section>
   )
 }
@@ -97,5 +121,27 @@ function LigneRoutage({ ligne }: { ligne: RoutageArcher }) {
         </span>
       )}
     </li>
+  )
+}
+
+// Le signal du retour automatique : une jauge et une mention, **jamais un chiffre**. Le compte à
+// rebours en secondes est la signature de la variante C du questionnaire S06, écartée au profit
+// de la variante A ; l'afficher serait un écart de structure qu'`E17US008` retirerait. La mention
+// existe parce qu'un écran qui disparaît sans prévenir se lit comme un plantage.
+function JaugeRetour({ avancee }: { avancee: number }) {
+  return (
+    <div className="routage__retour">
+      <span className="routage__retour-mention">Retour automatique</span>
+      <div
+        className="routage__retour-piste"
+        role="progressbar"
+        aria-label="Retour automatique à la saisie"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(avancee * 100)}
+      >
+        <span className="routage__retour-jauge" style={{ width: `${avancee * 100}%` }} />
+      </div>
+    </div>
   )
 }

@@ -88,3 +88,34 @@
   font-size: 13px;
   color: var(--danger);
 }
+
+/* Signal du retour automatique (E16US018) : discret par construction — il annonce que l'écran va
+   se rendre, il ne réclame pas l'attention que la destination doit garder. Aucun chiffre : la
+   variante « retour automatique compté » a été écartée au questionnaire S06. */
+.routage__retour {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.routage__retour-mention {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.routage__retour-piste {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.routage__retour-jauge {
+  display: block;
+  height: 100%;
+  background: var(--brand-border);
+}

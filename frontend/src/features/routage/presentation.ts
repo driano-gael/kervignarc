@@ -226,6 +226,38 @@ export function apresRetour(etat: { cibleClose: boolean }): { ferme: boolean; fo
   return { ferme: etat.cibleClose, force: false }
 }
 
+// Le retour automatique (E16US018) — **une durée, aucune issue regardée**.
+//
+// ⚠️ Ne pas conditionner la fermeture aux issues des lignes. Le panneau porte plusieurs archers,
+// et en duels il est monté sur les **deux** duellistes du duel qu'on vient de valider : il y a donc
+// une ligne terminale à chaque duel, à tous les tours. Une règle « il reste dès qu'une ligne est
+// terminale » ne refermerait **jamais** l'écran de duels, tests verts compris (arbitrage du
+// 10/09/2026, story E16US018). La contrepartie est la poignée de réouverture, des deux côtés.
+export const FERMETURE_MS = 3 * 60 * 1000
+
+// L'avancée vers le retour automatique, de 0 (on vient d'ouvrir) à 1 (il est temps de rendre la
+// tablette). ⚠️ Calculée sur **deux instants**, jamais par un compteur incrémenté : une tablette
+// qui se resynchronise, ou un onglet en arrière-plan dont le navigateur bride les minuteurs,
+// dériveraient sans fin. Bornée aux deux bouts — une horloge peut reculer.
+export function avanceeFermeture(
+  ouvertureMs: number,
+  maintenantMs: number,
+  dureeMs = FERMETURE_MS,
+): number {
+  if (dureeMs <= 0) return 1
+  const ecoule = maintenantMs - ouvertureMs
+  if (ecoule <= 0) return 0
+  return Math.min(1, ecoule / dureeMs)
+}
+
+export function doitSeRefermer(
+  ouvertureMs: number,
+  maintenantMs: number,
+  dureeMs = FERMETURE_MS,
+): boolean {
+  return avanceeFermeture(ouvertureMs, maintenantMs, dureeMs) >= 1
+}
+
 export function serieClose(
   volees: { verrouillee: boolean }[],
   nbVolees: number | null,
