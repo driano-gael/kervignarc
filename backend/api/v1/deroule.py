@@ -43,7 +43,10 @@ class VoleeDerouleReponse(BaseModel):
             numero=volee.numero,
             valeurs=[zone.value for zone in volee.valeurs],
             points=volee.points,
-            statut="valide" if volee.verrouillee else "en_attente",
+            # ⚠️ `validee`, PAS `verrouillee` : une volée en correction est rouverte à l'écriture
+            # mais ses points restent dans le `cumul` rendu ci-dessous (ADR-0109). Publier
+            # `en_attente` ferait mentir la réponse sur elle-même.
+            statut="valide" if volee.validee else "en_attente",
             horodatage=horodatage,
         )
 

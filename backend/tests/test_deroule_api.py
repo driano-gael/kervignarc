@@ -185,3 +185,35 @@ def test_deroule_accessible_sans_jeton(app_deroule: tuple[FastAPI, int, int]) ->
         reponse = client.get(f"/api/v1/tournois/{tournoi_id}/archers/{archer_id}/deroule")
 
     assert reponse.status_code != 401
+
+
+def test_deroule_publie_comme_valide_une_volee_en_correction(
+    app_deroule: tuple[FastAPI, int, int],
+) -> None:
+    """E16US019 — le public ne dit jamais « en attente » d'une volée qui est dans le cumul.
+
+    ⚠️ **Bloquant de revue, et le défaut était invisible axe par axe** : `verrouillee` a cessé de
+    vouloir dire « ce score compte » (ADR-0109), mais ce lecteur-ci n'avait pas été relu. La
+    réponse publique se contredisait alors elle-même — cumul 27, et la volée qui le compose
+    marquée « en attente ».
+
+    L'assertion est posée en **invariant** (cumul = somme des volées publiées « valide ») et non
+    sur une valeur littérale : c'est la contradiction qu'il faut empêcher, pas un chiffre.
+    """
+    app, tournoi_id, archer_id = app_deroule
+    repo = SerieRepositorySQL(
+        app.state.database.session_factory,
+        AuditRepositorySQL(app.state.database.session_factory),
+        HorlogeSysteme(),
+    )
+    phase_id = qualification_de_secours(app.state.database.session_factory, tournoi_id)
+    serie = repo.par_archer(phase_id, archer_id)
+    assert serie is not None
+    repo.enregistrer(serie.annuler_validation(1, par="ROUX"))
+
+    with TestClient(app) as client:
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/archers/{archer_id}/deroule").json()
+
+    valides = [v for v in corps["volees"] if v["statut"] == "valide"]
+    assert corps["cumul"] == sum(v["points"] for v in valides)
+    assert corps["cumul"] == 27, "le score reste au public pendant la correction (ADR-0109)"

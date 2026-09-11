@@ -510,7 +510,9 @@ function PaveArcher({
         <p className="saisie__meta">
           Saisie par <strong>{existante.saisie_par ?? '—'}</strong>
           {existante.saisie_le !== null ? ` à ${heureSaisie(existante.saisie_le)}` : ''}
-          {existante.validee_par !== null ? ` · validée par ${existante.validee_par}` : ''}
+          {existante.validee_par !== null && existante.en_correction !== true
+            ? ` · validée par ${existante.validee_par}`
+            : ''}
           {existante.en_attente === true ? ' · en attente d’envoi' : ''}
         </p>
       )}
@@ -519,6 +521,13 @@ function PaveArcher({
         <p className="saisie__vide" role="status">
           Volée validée par {existante?.validee_par ?? 'le scoreur'} — sa correction relève du
           scoreur.
+        </p>
+      )}
+
+      {existante?.en_correction === true && (
+        <p className="saisie__rendue" role="status">
+          Volée rendue par {existante.correction_ouverte_par ?? 'le scoreur'} — à ressaisir. Son
+          score reste au classement jusqu’à votre saisie.
         </p>
       )}
 

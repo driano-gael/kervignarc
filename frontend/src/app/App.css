@@ -2573,6 +2573,14 @@ button:disabled {
   color: var(--danger);
 }
 
+/* La volée que le scoreur vient de rendre à la cible (E16US019) : même registre d'alerte que
+   `.saisie__vide`, mais elle appelle une action au lieu de constater un refus. */
+.saisie__rendue {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .saisie__grain {
   margin: 4px 0 0;
   font-size: 13px;
@@ -3928,6 +3936,12 @@ button:disabled {
 
 .validation-liste__volee {
   font-variant-numeric: tabular-nums;
+}
+
+.validation-liste__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* `--danger` est l'**ambre** de la charte, pas un rouge (`DV-03`) : c'est le registre d'alerte. */

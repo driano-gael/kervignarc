@@ -425,15 +425,19 @@ class ServiceSaisie:
         """Saisit ou réédite (avant validation) la volée `numero` de l'archer.
 
         Le pavé (zones admises) se déduit du **blason** de l'archer, le nombre de flèches du
-        **barème** de la phase. Persiste sans trace (une saisie ordinaire n'est pas un acte de fin).
-        `contexte` cloisonne la saisie à la cible/départ du poste (ADR-0033 §3) ; `None` = admin.
-        """
+        **barème** de la phase. Persiste sans trace — ⚠️ **sauf sur une volée en correction**, déjà
+        comptée au classement : la réécrire est tracée `CORRECTION_SCORE`, comme le chemin direct
+        qu'elle remplace (E16US019 ; sinon l'annulation **baisserait** la traçabilité).
+        `contexte` cloisonne la saisie à la cible/départ du poste (ADR-0033 §3) ; `None` = admin."""
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         refuser_si_en_pause(phase)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
+        existante = serie.volee(numero)
+        en_correction = existante is not None and existante.en_correction
+        avant = _valeurs_lisibles(serie, numero) if en_correction else None
         serie = serie.saisir_volee(
             numero,
             valeurs,
@@ -442,7 +446,18 @@ class ServiceSaisie:
             nb_volees_bareme=phase.bareme.nb_volees,
             saisie_par=saisie_par,
         )
-        return self._series.enregistrer(serie)
+        if not en_correction:
+            return self._series.enregistrer(serie)
+        entree = EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.CORRECTION_SCORE,
+            auteur=saisie_par or "Poste de cible",
+            horodatage=self._horloge.maintenant(),
+            objet=f"volée {numero} de l'archer {archer_id}",
+            avant=avant,
+            apres=_valeurs_lisibles(serie, numero),
+        )
+        return self._series.enregistrer_avec_trace(serie, entree)
 
     def valider(
         self,
@@ -532,12 +547,12 @@ class ServiceSaisie:
 
         Premier temps du parcours *annuler → ressaisir → revalider* : la volée redevient saisissable
         par le poste de cible, **sans quitter les totaux** (E16US019). Trace `ANNULATION_VALIDATION`
-        dans la même transaction (ADR-0035). ⚠️ **Pas de `refuser_si_en_pause`** : comme la
-        correction, réparer reste possible pendant une pause — c'est l'avancement qui est gelé
-        (E05US033).
-        """
+        dans la même transaction (ADR-0035). ⚠️ **Refusé pendant une pause** : les deux gestes qui
+        referment une correction — ressaisie et revalidation — y sont gelés, donc annuler laisserait
+        la volée ouverte sans recours. On y répare par `corriger_volee` (E05US033, revue)."""
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        refuser_si_en_pause(phase)
         serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.annuler_validation(numero, par=auteur)
         entree = EntreeAudit.creer(

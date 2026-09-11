@@ -46,7 +46,11 @@ renvoie un **déroulé vide en 200**, jamais un 404 : corollaire de la frontièr
 l'endpoint public ne **révèle pas** l'existence d'un couple, l'énumération ne distingue rien.
 
 **2. Le déroulé inclut les volées NON validées.** Chaque volée porte un **statut explicite**
-`en_attente` (= `not Volee.verrouillee`) ou `valide`. Le public voit donc des scores **provisoires**,
+`en_attente` ou `valide`. ⚠️ **Amendé le 11/09/2026 par [ADR-0109](0109-une-volee-en-correction-reste-comptee.md)**
+(E16US019) : la définition d'origine était `not Volee.verrouillee`, qui a cessé de vouloir dire
+« ce score ne compte pas » le jour où une validation est devenue **annulable**. Le statut dérive
+désormais de `Volee.validee` — sans quoi le public lisait « en attente » sur des volées dont les
+points étaient dans le `cumul` de la **même** réponse. Le public voit donc des scores **provisoires**,
 susceptibles de correction avant verrouillage. **Choix demandé et assumé par l'organisateur**
 (20/07/2026) : c'est un outil de suivi (« où en est mon archer »), pas un résultat officiel — le
 classement (validé seul) reste la source de vérité des scores.

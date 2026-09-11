@@ -19,6 +19,7 @@ function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
     saisie_par: null,
     validee_par: verrouillee ? 'ROUX' : null,
     en_correction: false,
+    correction_ouverte_par: null,
     lot_validation: verrouillee ? 1 : null,
     verrouillee,
     saisie_le: null,
@@ -135,6 +136,7 @@ describe('quelSaisiePar', () => {
       validee_par: null,
       verrouillee: false,
       en_correction: false,
+      correction_ouverte_par: null,
       lot_validation: null,
       saisie_le: null,
     }
@@ -186,6 +188,7 @@ describe('serieOptimiste', () => {
           validee_par: 'ROUX',
           verrouillee: true,
           en_correction: false,
+          correction_ouverte_par: null,
           lot_validation: 1,
           saisie_le: '2026-07-19T09:00:00Z',
         },
@@ -202,6 +205,106 @@ describe('serieOptimiste', () => {
     const premiere = serieOptimiste(undefined, corps(1, ['5', '5', '5']))
     const corrigee = serieOptimiste(premiere, corps(1, ['10', '10', '10']))
     expect(corrigee.volees).toMatchObject([{ numero: 1, valeurs: ['10', '10', '10'] }])
+  })
+
+  it('préserve la validation et le lot d’une volée rendue par le scoreur', () => {
+    // ADR-0109, décision 3 versant hors-ligne : sans cette clause, la ressaisie d'une volée
+    // rendue la repasserait « jamais validée » — elle disparaîtrait des volées comptées à
+    // l'écran le temps de la reconnexion, c'est-à-dire exactement ce que l'US achète.
+    const base: Serie = {
+      tournoi_id: 1,
+      archer_id: 7,
+      cumul: 27,
+      volees: [
+        {
+          numero: 1,
+          valeurs: ['10', '9', '8'],
+          saisie_par: 'DURAND',
+          validee_par: 'ROUX',
+          verrouillee: false,
+          en_correction: true,
+          correction_ouverte_par: 'MARTIN',
+          lot_validation: 3,
+          saisie_le: '2026-09-11T09:00:00Z',
+        },
+      ],
+    }
+
+    const serie = serieOptimiste(base, corps(1, ['6', '6', '6']))
+
+    expect(serie.volees).toMatchObject([
+      {
+        numero: 1,
+        valeurs: ['6', '6', '6'],
+        validee_par: 'ROUX',
+        en_correction: true,
+        correction_ouverte_par: 'MARTIN',
+        lot_validation: 3,
+        en_attente: true,
+      },
+    ])
+  })
+
+  it('ne recopie PAS la validation quand la volée remplacée n’était pas rendue', () => {
+    // Oracle de non-garde : sans ce cas, « on recopie toujours l'existant » passerait le test
+    // précédent tout en ressuscitant une validation que le scoreur n'a jamais donnée.
+    const base: Serie = {
+      tournoi_id: 1,
+      archer_id: 7,
+      cumul: 0,
+      volees: [
+        {
+          numero: 1,
+          valeurs: ['10', '9', '8'],
+          saisie_par: 'DURAND',
+          validee_par: null,
+          verrouillee: false,
+          en_correction: false,
+          correction_ouverte_par: null,
+          lot_validation: null,
+          saisie_le: null,
+        },
+      ],
+    }
+
+    const serie = serieOptimiste(base, corps(1, ['6', '6', '6']))
+
+    expect(serie.volees[0]).toMatchObject({
+      validee_par: null,
+      en_correction: false,
+      lot_validation: null,
+    })
+  })
+
+  it('une volée rendue passe devant dans le pavé (le marqueur la trouve sans chercher)', () => {
+    const volees = [
+      {
+        numero: 1,
+        valeurs: ['10', '9', '8'],
+        saisie_par: 'DURAND',
+        validee_par: 'ROUX',
+        verrouillee: false,
+        en_correction: true,
+        correction_ouverte_par: 'MARTIN',
+        lot_validation: 1,
+        saisie_le: null,
+      },
+      {
+        numero: 2,
+        valeurs: ['9', '9', '9'],
+        saisie_par: 'DURAND',
+        validee_par: 'ROUX',
+        verrouillee: true,
+        en_correction: false,
+        correction_ouverte_par: null,
+        lot_validation: 2,
+        saisie_le: null,
+      },
+    ]
+
+    // Toutes les volées sont saisies : sans la clause d'E16US019, on retombait sur la dernière
+    // du barème — verrouillée, avec le message « sa correction relève du scoreur ».
+    expect(prochaineASaisir(volees, 2)).toBe(1)
   })
 })
 

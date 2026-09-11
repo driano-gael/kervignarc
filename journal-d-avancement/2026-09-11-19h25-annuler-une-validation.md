@@ -49,7 +49,8 @@ décorative, elle est la moitié de la décision.
 Trois garde-fous se seraient relâchés en silence si la volée avait quitté les totaux : l'avertissement
 quand on change la catégorie d'un archer **qui a déjà tiré**, le décompte « cibles avec scores »
 qu'on lit avant de régénérer un plan de cibles, et la clôture d'un créneau. Les trois lisent la même
-mesure. Avec la solution retenue, aucun ne bouge — et trois tests le vérifient désormais.
+mesure. Avec la solution retenue, aucun ne bouge — et **un test par garde** le vérifie désormais,
+au niveau où la garde vit, pas seulement au niveau de la mesure dont elle dérive.
 
 ## Ce qui ne change pas
 
@@ -57,6 +58,20 @@ mesure. Avec la solution retenue, aucun ne bouge — et trois tests le vérifien
 - Les **duels**, le **Big Shoot Off** et les **barrages de places** ne sont pas touchés. Ils sont
   déjà réglés, chacun à sa façon — et pour le barrage, rouvrir sur saisie est une **décision**, pas
   un oubli : la refermer réintroduirait un défaut corrigé.
+
+## Deux points trouvés par la relecture
+
+La relecture croisée a rattrapé deux choses que l'implémentation avait manquées, et qui valent
+d'être dites parce qu'elles portent sur le résultat, pas sur la forme.
+
+**L'affichage public se contredisait.** Le suivi en ligne marquait « en attente » des volées dont
+les points étaient déjà dans le total affiché juste au-dessus : un spectateur qui additionnait la
+colonne obtenait zéro en face d'un total de 54. Corrigé — ce qui compte est publié comme comptant.
+
+**Annuler pendant une pause menait dans une impasse.** L'annulation était permise, mais la
+ressaisie et la revalidation, elles, sont gelées tant que la salle est en pause : la volée restait
+donc ouverte sans aucun moyen de la refermer avant la relance. L'annulation est désormais refusée
+pendant une pause — on y répare par la correction directe, comme avant.
 
 ## Un point à connaître
 

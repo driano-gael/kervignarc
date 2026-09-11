@@ -14,6 +14,7 @@ from dataclasses import dataclass, replace
 from domain.archer import ArcherId
 from domain.blason import ZoneScore
 from domain.erreurs import (
+    IncoherenceVolee,
     NombreFlechesVoleeInvalide,
     NomIntervenantInvalide,
     NumeroVoleeInvalide,
@@ -52,6 +53,18 @@ class Volee:
     validee_par: str | None = None
     lot_validation: int | None = None
     correction_ouverte_par: str | None = None
+
+    def __post_init__(self) -> None:
+        """Tient l'invariant « validée ⇔ lot » dont dépend `annuler_validation` (E16US019).
+
+        ⚠️ **Une validée sans lot est NORMALISÉE, pas refusée** : elle devient son propre lot, la
+        convention du backfill de la migration 0054. L'invariant tenait sinon par la coopération de
+        trois sites sans lien, et `pilotage_simulation` le violait déjà (revue). L'incohérence
+        inverse — un lot sans validateur — n'a aucune lecture sensée : refusée."""
+        if self.lot_validation is not None and self.validee_par is None:
+            raise IncoherenceVolee("Un lot de validation suppose un validateur.")
+        if self.validee_par is not None and self.lot_validation is None:
+            object.__setattr__(self, "lot_validation", self.numero)
 
     @property
     def validee(self) -> bool:
@@ -239,10 +252,17 @@ class Serie:
         **Fin de série** (et fin de duel) : verrouille tout un bloc, mais seulement quand la série
         est **complète** — sinon `SerieIncomplete`. **Toutes les N volées** : verrouille le
         prochain lot de N non validées ; en fin de barème un **reliquat** de moins de N est validé
-        plutôt que laissé ouvert. `RienAValider` si aucun lot complet ni reliquat n'est disponible.
-        """
+        plutôt que laissé ouvert. `RienAValider` si aucun lot ni reliquat n'est disponible.
+        Une **correction en cours** se referme en priorité, hors grain (voir plus bas)."""
         par = _intervenant_valide(par)
         a_valider = tuple(v for v in self.volees if not v.verrouillee)
+        en_correction = tuple(v for v in self.volees if v.en_correction)
+        if en_correction:
+            # ⚠️ **Refermer une correction n'obéit pas au grain** (E16US019). Le grain régit la
+            # **première** validation ; le lui appliquer ici laisserait ouvert indéfiniment tout lot
+            # rouvert plus petit que N — et sur une série incomplète, `RienAValider` serait le seul
+            # résultat possible. Relevé en revue sur un lot non contigu.
+            return self._verrouiller(en_correction, par)
         # Complétude **explicite** : les volées 1..N sont toutes présentes. Ne pas se fier au seul
         # `len` : même borné à la saisie, l'ensemble exact est un contrat plus clair.
         serie_complete = {v.numero for v in self.volees} == set(range(1, nb_volees_bareme + 1))
@@ -263,6 +283,10 @@ class Serie:
             if not a_valider:
                 raise RienAValider("Toutes les volées sont déjà validées.")
             lot = a_valider
+        return self._verrouiller(lot, par)
+
+    def _verrouiller(self, lot: tuple[Volee, ...], par: str) -> Serie:
+        """Verrouille `lot` au nom de `par`, sous un rang d'acte neuf, et referme sa correction."""
         rang = max((v.lot_validation or 0) for v in self.volees) + 1 if self.volees else 1
         verrouillees = self.volees
         for volee in lot:
@@ -291,8 +315,7 @@ class Serie:
             )
         if not existante.validee:
             raise VoleeNonVerrouillee("Cette volée n'est pas validée : il n'y a rien à annuler.")
-        lot = existante.lot_validation
-        assert lot is not None  # une volée validée porte un lot (migration 0054 : backfill)
+        lot = existante.lot_validation  # non nul : garanti par `Volee.__post_init__`
         rouvertes = self.volees
         for volee in self.volees:
             if volee.lot_validation == lot:

@@ -146,6 +146,9 @@ class VoleeReponse(BaseModel):
     # `verrouillee` et `en_correction` ne sont pas complémentaires : une volée en correction n'est
     # plus verrouillée **mais compte toujours** au cumul rendu ci-dessous (ADR-0109).
     en_correction: bool
+    # Qui a rendu la volée : la tablette le **nomme** (« Volée rendue par MARTIN »), comme elle
+    # nomme déjà le validateur. Surface de saisie, pas le déroulé public (ADR-0039).
+    correction_ouverte_par: str | None
     # Exposé pour que l'écran puisse **nommer** les volées qu'une annulation va rouvrir (E16US019) :
     # sans lui, le front ne pourrait que les deviner, et sa confirmation mentirait.
     lot_validation: int | None
@@ -175,6 +178,7 @@ class SerieReponse(BaseModel):
                     validee_par=volee.validee_par,
                     verrouillee=volee.verrouillee,
                     en_correction=volee.en_correction,
+                    correction_ouverte_par=volee.correction_ouverte_par,
                     lot_validation=volee.lot_validation,
                     saisie_le=horodatages.get(volee.numero),
                 )

@@ -201,7 +201,9 @@ class FauxSerieRepository:
     def __init__(self) -> None:
         self._series: list[Serie] = []
 
-    def semer_score(self, tournoi_id: int, archer_id: ArcherId) -> None:
+    def semer_score(
+        self, tournoi_id: int, archer_id: ArcherId, *, en_correction: bool = False
+    ) -> None:
         """Donne à un archer une série avec **une volée validée** — il « a des scores » (impact).
 
         Validée (`validee_par`), pas seulement saisie : « données réelles produites » = tir
@@ -211,6 +213,8 @@ class FauxSerieRepository:
             numero=1,
             valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
             validee_par="Scoreur",
+            # E16US019 : une validation annulee ne retire pas la volee du compte.
+            correction_ouverte_par="Scoreur" if en_correction else None,
         )
         self._series.append(
             Serie(
@@ -295,9 +299,9 @@ class _Monde:
             self.horloge,
         )
 
-    def semer_score(self, archer_id: int) -> None:
+    def semer_score(self, archer_id: int, *, en_correction: bool = False) -> None:
         """Donne un score (une volée **validée**) à un archer inscrit — pour les tests d'impact."""
-        self.series.semer_score(self.tournoi_id, archer_id)
+        self.series.semer_score(self.tournoi_id, archer_id, en_correction=en_correction)
 
     def depart(self, numero: int) -> int:
         depart = self.departs.ajouter(
@@ -750,6 +754,26 @@ def test_impact_compte_les_cibles_avec_scores_sans_doublon() -> None:
     assert impact.niveau is NiveauImpact.MASSIF
     assert impact.archers_deplaces == 2
     assert impact.cibles_avec_scores == 1  # une seule cible, malgré deux archers scorés
+
+
+def test_impact_compte_une_cible_dont_la_validation_est_annulee() -> None:
+    """E16US019 — le decompte « cibles avec scores » ne sous-compte PAS pendant une correction.
+
+    Deuxieme des trois decisions qu'ADR-0109 devait preserver : l'organisateur confirme une
+    regeneration sur ce chiffre. S'il tombait a 0 le temps d'une correction, il confirmerait
+    l'ecrasement de scores reels en croyant la cible vierge.
+    """
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    a1 = monde.inscrire(depart, monde.categorie(taille=0.25))
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    monde.semer_score(a1, en_correction=True)
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.MASSIF
+    assert impact.cibles_avec_scores == 1
 
 
 def test_impact_compte_les_cibles_scorees_de_maniere_additive() -> None:

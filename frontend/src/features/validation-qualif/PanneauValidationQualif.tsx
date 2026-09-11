@@ -39,6 +39,11 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         validation annulée rouvre la saisie sur la tablette de la cible ; le score reste au
         classement jusqu'à la ressaisie.
       </p>
+      {/* ⚠️ DETTE-052 — ce sélecteur filtre la **liste d'archers**, et rien d'autre : les trois
+          appels qu'il déclenche ne transportent aucun `depart_id`, donc le serveur **devine** le
+          créneau (le plus petit où l'archer est inscrit). Sur un archer engagé matin et
+          après-midi, on peut donc valider la feuille du matin en ayant choisi l'après-midi. La
+          résorption est serveur — porter le créneau dans les corps de requête. */}
       <ChoixCreneau
         departs={liste}
         valeur={departId}

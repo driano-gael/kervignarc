@@ -50,7 +50,9 @@ export const CLE_TOURNOIS = ['tournois'] as const
 // Le pas de rafraîchissement de cette lecture. Chaque feature déclare le sien — 5 s ici comme pour
 // la complétude, les jalons et la supervision ; 10 s pour le suivi du déroulé, davantage ailleurs :
 // il n'y a pas de parité générale à revendiquer, seulement une constante nommée par module.
-const INTERVALLE_POLL_MS = 5000
+// Exportée depuis E16US019 : la feuille du scoreur se relit à la même cadence que le
+// classement — une valeur recopiée divergerait sans que rien ne rougisse.
+export const INTERVALLE_POLL_MS = 5000
 
 // Le classement **d'un créneau** (ADR-0075). `categorieId` optionnel : filtre l'affichage à une
 // catégorie (les rangs restent ceux du classement complet du départ).

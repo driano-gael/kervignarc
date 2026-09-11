@@ -56,6 +56,17 @@ vi.mock('../suisse/SaisieSuisse', () => ({ SaisieSuisse: panneau('suisse') }))
 // du test censé garder `DETTE-056`. Seules ses données sont doublées.
 vi.mock('../competition/hooks', () => ({
   useClassement: () => ({ data: undefined, isPending: false, isError: false, error: null }),
+  // ⚠️ Un mock partiel **casse** dès qu'un consommateur importe un autre export : le panneau de
+  // validation (E16US019) réemploie la cadence de poll du classement, et les six cas de ce fichier
+  // sont tombés d'un coup sur « No "INTERVALLE_POLL_MS" export is defined ». Le mock doit refléter
+  // ce que le module offre, pas ce que le test croit utiliser.
+  INTERVALLE_POLL_MS: 5000,
+  cleClassement: (tournoiId: number) => ['classement', tournoiId],
+}))
+vi.mock('../validation-qualif/hooks', () => ({
+  useSerieScoreur: () => ({ data: undefined, isSuccess: false, error: null }),
+  useValiderSerie: () => MUTATION,
+  useAnnulerValidation: () => MUTATION,
 }))
 vi.mock('../forfaits/hooks', () => ({
   useDeclarerForfaitQualif: () => MUTATION,

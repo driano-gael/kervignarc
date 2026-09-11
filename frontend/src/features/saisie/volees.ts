@@ -27,6 +27,12 @@ export function totalVolee(valeurs: readonly string[]): number {
 // (l'édition d'une volée déjà saisie passe par le navigateur de volées, tant qu'elle n'est pas
 // verrouillée — CA « édition avant validation »).
 export function prochaineASaisir(volees: readonly Volee[], nbVolees: number): number {
+  // ⚠️ **Une volée rendue par le scoreur passe devant** (E16US019). Sans cela, après une
+  // annulation toutes les volées sont saisies, donc le pavé s'ouvrait sur la **dernière** du
+  // barème — encore verrouillée — avec le message « sa correction relève du scoreur », c'est-à-dire
+  // l'exact contraire de ce que le scoreur venait d'afficher.
+  const rendue = volees.find((v) => v.en_correction)
+  if (rendue !== undefined) return rendue.numero
   for (let numero = 1; numero <= nbVolees; numero += 1) {
     if (!volees.some((v) => v.numero === numero)) return numero
   }
@@ -63,6 +69,7 @@ export function serieOptimiste(serie: Serie | undefined, corps: SaisirVolee): Se
     validee_par: enCorrection ? remplacee.validee_par : null,
     verrouillee: false,
     en_correction: enCorrection,
+    correction_ouverte_par: enCorrection ? remplacee.correction_ouverte_par : null,
     lot_validation: enCorrection ? remplacee.lot_validation : null,
     saisie_le: null,
     en_attente: true,

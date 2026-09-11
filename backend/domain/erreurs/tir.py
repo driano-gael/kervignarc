@@ -132,6 +132,16 @@ class VoleeNonVerrouillee(DomainError):
     code = "volee_non_verrouillee"
 
 
+class IncoherenceVolee(DomainError):
+    """Une volée se construit dans un état que ses invariants interdisent (E16US019).
+
+    Aujourd'hui : validée sans lot de validation, ou l'inverse. ⚠️ Ce n'est pas une erreur
+    d'utilisateur mais un **producteur fautif** — le mapping HTTP la traitera comme telle.
+    """
+
+    code = "incoherence_volee"
+
+
 class VoleeIntrouvable(DomainError):
     """Aucune volée de ce numéro dans la série (E04US002) — corriger n'est pas créer."""
 

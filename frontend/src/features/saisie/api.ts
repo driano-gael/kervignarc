@@ -38,6 +38,8 @@ export interface Volee {
   verrouillee: boolean
   // Sa validation a été annulée : saisissable de nouveau, et toujours comptée (E16US019).
   en_correction: boolean
+  // Qui l'a rendue — la tablette le nomme, pour que le marqueur sache de qui vient la demande.
+  correction_ouverte_par: string | null
   // L'acte de validation qui l'a verrouillée — deux volées de même lot se rouvrent ensemble.
   lot_validation: number | null
   saisie_le: string | null

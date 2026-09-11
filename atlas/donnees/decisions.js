@@ -1649,7 +1649,8 @@ window.ATLAS.decisions = {
     "E06US001",
     "E07US006",
     "E07US009",
-    "E10US001"
+    "E10US001",
+    "E16US019"
    ]
   },
   {
@@ -3993,7 +3994,8 @@ window.ATLAS.decisions = {
     "E16US011",
     "E16US014",
     "E16US015",
-    "E16US017"
+    "E16US017",
+    "E16US019"
    ]
   },
   {
@@ -9788,6 +9790,16 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/api/v1/deroule.py",
+     "existe": true,
+     "symboles": [
+      "VoleeDerouleReponse.de_volee",
+      "validee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/api/v1/saisie.py",
      "existe": true,
      "symboles": [
@@ -9803,7 +9815,10 @@ window.ATLAS.decisions = {
      "symboles": [
       "ServiceSaisie.annuler_validation",
       "ANNULATION_VALIDATION",
-      "refuser_si_en_pause"
+      "refuser_si_en_pause",
+      "ServiceSaisie.saisir_volee",
+      "CORRECTION_SCORE",
+      "annuler_validation"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9865,10 +9880,18 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/saisie/Saisie.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/saisie/volees.ts",
      "existe": true,
      "symboles": [
-      "serieOptimiste"
+      "serieOptimiste",
+      "prochaineASaisir"
      ],
      "symboles_absents": [],
      "verifiable": true

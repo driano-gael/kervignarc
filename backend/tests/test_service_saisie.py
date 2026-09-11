@@ -1237,23 +1237,48 @@ def test_annuler_est_aussi_cloisonnee_au_poste() -> None:
         )
 
 
-def test_annuler_une_validation_pendant_la_pause_reste_possible() -> None:
-    """Même arbitrage que la correction (E05US033) : la pause gèle
-    ce qui *avance*, pas ce qui *répare*.
+def test_annuler_une_validation_pendant_la_pause_est_refuse() -> None:
+    """⚠️ **Inverse du réflexe** — correctif de revue, pas un choix d'origine.
 
-    Annuler est le premier geste du parcours de correction — le refuser pendant la pause rendrait
-    le test jumeau `test_corriger_une_volee_pendant_la_pause_reste_possible` sans objet dès que le
-    scoreur passe par le nouveau chemin.
+    La pause gèle ce qui *avance*, pas ce qui *répare* (E05US033), et la première rédaction en
+    déduisait que l'annulation restait ouverte. Mais les **deux** gestes qui referment une
+    correction sont gelés, eux : `saisir_volee` et `valider` portent `refuser_si_en_pause`, et
+    `corriger_volee` refuse une volée rouverte. Annuler y laissait donc la volée ouverte **sans
+    aucun recours** jusqu'à la relance. Pendant une pause, on répare par `corriger_volee`.
     """
     m = Montage()
     m.saisir_serie_complete()
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
     _mettre_la_phase_en_pause(m)
 
-    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
+    with pytest.raises(PhaseEnPause):
+        m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
 
-    serie = m.series.par_archer(m.phase_id, m.archer_id)
-    assert serie is not None
-    volee = serie.volee(1)
-    assert volee is not None
-    assert volee.en_correction is True
+
+def test_la_ressaisie_d_une_volee_en_correction_est_tracee() -> None:
+    """Une volée rouverte est **déjà comptée** : la réécrire est un acte sensible, pas une saisie.
+
+    ⚠️ Sans cette trace, l'annulation **baisserait** la traçabilité — le seul chemin d'écriture qui
+    reste sur la volée est `saisir_volee`, ouvert au poste de cible et muet, là où `corriger_volee`
+    exigeait le scoreur et écrivait l'avant/après (relevé en revue).
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+
+    trace = m.series.traces[-1]
+    assert trace.action is ActionAuditee.CORRECTION_SCORE
+    assert trace.auteur == "DURAND"
+    assert (trace.avant, trace.apres) == ("10, 9, 8", "6, 6, 6")
+
+
+def test_une_saisie_ordinaire_ne_trace_toujours_rien() -> None:
+    """Oracle de non-garde : la trace ci-dessus ne doit pas déborder sur la saisie courante."""
+    m = Montage()
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+
+    assert m.series.traces == []

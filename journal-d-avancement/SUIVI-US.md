@@ -12,28 +12,23 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 11/09/2026, 19 h 25** · **138 US livrées** · dernière : `E16US019`
-*(**le panneau de routage rend la tablette tout seul** — l'écran « Où tire-t-on ensuite ? »
-s'ouvrait seul mais ne se refermait que si **quelqu'un** appuyait sur « Retour » : le jour J
-personne n'appuie, et la tablette restait bloquée sur l'annonce pendant que la cible attendait le
-tireur suivant. Il se referme désormais au bout de **3 minutes**, avec un signal **discret et non
-chiffré**, et les duels gagnent la **poignée de réouverture** que la qualification avait déjà.
-⚠️ **Le cadrage a SUPPRIMÉ les deux questions au lieu de les arbitrer** : un minuteur **unique**,
-aveugle aux issues, clôt d'un coup l'**agrégation** et le **cas terminal**, que la fiche demandait
-de trancher séparément. ⚠️ **La règle « il reste dès qu'une ligne est terminale » était un piège
-mesuré** : en duels le panneau est monté sur les **deux** duellistes du duel qu'on vient de valider,
-il y a donc une ligne terminale à **chaque** duel, à **tous** les tours — elle n'aurait **jamais**
-refermé l'écran de duels, US livrée sans effet et suite verte. ⚠️ **Le compte à rebours chiffré a
-été écarté** : c'est la signature de la variante **C** du questionnaire S06, elle-même écartée au
-profit de la **A** ; reste un **écart ouvert à la planche S06**, qui ne montre aucun signal — tracé
-dans `docs/maquettes.md`, faute de quoi `E17US008` le retirera. ⚠️ **La fiche disait le CA « place
-finale » tenu « par accident » : c'est inexact** — il est fondé dans `Tableau.classement()`
-(« places **acquises** », décernées par un match terminal). Manquaient un **pointeur** au site du
-routage et le sens « pas encore décidé ⇒ rien annoncé », qu'aucun test ne couvrait : test ajouté
-(petite finale jouée, finale non tirée — aucun finaliste ne porte de rang). ⚠️
-**`docs/fonctionnel/E04US018.md` était PÉRIMÉE** et non seulement incomplète — « rang publié en fin
-de phase » là où `E07US008` rend une fourchette : **reprise**. Front seul côté production, aucune
-route, aucune migration)*
+**Dernière mise à jour : 11/09/2026, 21 h 05** · **138 US livrées** · dernière : `E16US019`
+*(**annuler une validation pour corriger** — le scoreur reçoit enfin l'**écran de validation de
+qualification** que `E04US002` annonçait « à venir » et qu'aucune US n'avait repris, et il peut
+**rendre une volée à la tablette** qui l'a saisie : on n'édite pas un score signé, on annule la
+signature, la cible ressaisit, le scoreur revalide. ⚠️ **Le commanditaire a écarté les DEUX
+branches proposées** sur le sort du score pendant la correction (sortir la volée des totaux /
+forcer annulation et ressaisie en un geste) pour une troisième : la volée **reste comptée** —
+[ADR-0109](../docs/adr/0109-une-volee-en-correction-reste-comptee.md), migration `0054`. Sans quoi
+une annulation que personne ne reprend laissait l'archer **hors classement indéfiniment**.
+⚠️ **Un bloquant de revue** : `deroule.py` était le seul lecteur de `verrouillee` non relu, et le
+**public** affichait « en attente » sur des volées dont les points étaient dans le même `cumul` —
+l'ADR affirmait pourtant le contraire, mode de panne d'ADR-0017. ⚠️ **Deux arbitrages retournés en
+revue** : annuler pendant une **pause** est désormais **refusé** (les deux gestes qui referment une
+correction y sont gelés — on rouvrait sans recours), et la **ressaisie** d'une volée rouverte est
+**tracée** (sans quoi l'US baissait la traçabilité : le chemin restant est ouvert au poste et muet).
+⚠️ **`DETTE-052` élargie** : le sélecteur « Départ à valider » ne transporte aucun créneau — une
+portée **affichée puis ignorée**, ce qui est pire qu'implicite)*
 
 > ⚠️ **137 fiches closes, mais 135 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,

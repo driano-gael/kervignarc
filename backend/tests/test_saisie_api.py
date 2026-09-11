@@ -727,6 +727,18 @@ def test_annuler_puis_ressaisir_au_poste_puis_revalider(
             headers=entete,
         )
 
+        # ⚠️ En-tête de poste **explicite**, et session admin retirée : sans cela c'est l'admin
+        # de `_semer` qui écrivait, et le test promettait une garde qu'il ne traversait pas
+        # (relevé en revue). Le chemin poste est celui qui passe par `ContexteSaisie` — et il
+        # exige que la tablette ait choisi son départ courant (ADR-0034), ce que la version admin
+        # du test contournait sans le dire.
+        client.headers.pop("Authorization", None)
+        depart = client.post(
+            "/api/v1/saisie/depart-courant",
+            json={"depart_id": s.depart_id},
+            headers=_entete(s.jeton),
+        )
+        assert depart.status_code == 200, depart.text
         ressaisie = client.post(
             "/api/v1/saisie/volees",
             json={
@@ -734,7 +746,9 @@ def test_annuler_puis_ressaisir_au_poste_puis_revalider(
                 "archer_id": s.archer_id,
                 "numero": 1,
                 "valeurs": ["6", "6", "6"],
+                "saisie_par": "DURAND",
             },
+            headers=_entete(s.jeton),
         )
         revalidation = client.post(
             "/api/v1/saisie/validations",
@@ -857,3 +871,28 @@ def test_le_scoreur_ne_lit_pas_la_feuille_d_un_autre_tournoi(
 
         assert reponse.status_code == 403, reponse.text
         assert reponse.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_un_poste_de_cible_ne_peut_pas_annuler_une_validation(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Élargir n'est pas ouvrir : l'annulation reste fermée à la tablette.
+
+    ⚠️ **Oracle de non-garde** : la garde est `_admin_ou_scoreur`, qui ne regarde jamais le jeton
+    de poste — donc le refus est vrai *par construction* et rien ne l'épingle. Or le réflexe, sur
+    ce routeur, est de monter `autoriser_saisie` (la garde des routes voisines) : ce test est ce
+    qui rougirait si quelqu'un le faisait, ouvrant l'annulation à toute tablette de la salle.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        _valider(client, s, _connecter_scoreur(client, s.scoreur_code))
+        client.headers.pop("Authorization", None)
+
+        reponse = client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=_entete(s.jeton),
+        )
+
+        assert reponse.status_code == 401, reponse.text

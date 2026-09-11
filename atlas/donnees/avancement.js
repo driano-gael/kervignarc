@@ -879,7 +879,10 @@ window.ATLAS.avancement = {
   }
  ],
  "entete": {
-  "adr_du_resume": [],
+  "adr_du_resume": [
+   "0109",
+   "0017"
+  ],
   "derniere": "E16US019"
  },
  "epics": [
@@ -4554,6 +4557,8 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0039",
+    "0075",
     "0109"
    ],
    "dettes_introduites": [],

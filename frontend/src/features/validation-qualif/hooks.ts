@@ -10,14 +10,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Serie } from '../saisie/api'
 import { cleSerie } from '../saisie/hooks'
 import { nouvelIdentifiant } from '../saisie/volees'
-import { cleClassement } from '../competition/hooks'
+import { cleClassement, INTERVALLE_POLL_MS } from '../competition/hooks'
 import { annulerValidation, getSerieScoreur, validerSerie } from './api'
 
 export function useSerieScoreur(tournoiId: number, archerId: number | null) {
   return useQuery({
-    queryKey: cleSerie(tournoiId, archerId ?? 0),
-    queryFn: () => getSerieScoreur(tournoiId, archerId as number),
+    queryKey: cleSerie(tournoiId, archerId ?? 0, 'scoreur'),
+    queryFn: () => {
+      // `enabled` garantit le non-`null`, mais un `as number` ne le **dit** pas : on lève plutôt
+      // que de mentir au compilateur (règle 4).
+      if (archerId === null) throw new Error('Aucun archer choisi.')
+      return getSerieScoreur(tournoiId, archerId)
+    },
     enabled: archerId !== null,
+    // La tablette écrit pendant que le scoreur regarde : sans relecture, il validerait un
+    // affichage périmé. Même cadence que le classement (`competition/hooks.ts`).
+    refetchInterval: INTERVALLE_POLL_MS,
   })
 }
 
@@ -26,7 +34,7 @@ export function useValiderSerie(tournoiId: number) {
   return useMutation({
     mutationFn: (archerId: number) => validerSerie(tournoiId, archerId, nouvelIdentifiant()),
     onSuccess: (serie: Serie) => {
-      queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id), serie)
+      queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id, 'scoreur'), serie)
       void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
     },
   })
@@ -41,7 +49,7 @@ export function useAnnulerValidation(tournoiId: number) {
     // volontaire, l'annulation en change l'affichage (la feuille passe « en correction ») sans en
     // changer les chiffres. Ne pas « optimiser » en le retirant.
     onSuccess: (serie: Serie) => {
-      queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id), serie)
+      queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id, 'scoreur'), serie)
       void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
     },
   })

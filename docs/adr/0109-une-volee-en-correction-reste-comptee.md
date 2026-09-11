@@ -4,10 +4,11 @@
 - **Date** : 2026-09-11
 - **Décideurs** : Organisateur / Architecte
 - **Portée** : E16US019 (annuler une validation pour corriger)
-- **S'appuie sur** : [ADR-0035](0035-atomicite-acte-trace-audit.md) (l'acte et sa trace dans une
-  seule transaction — l'annulation y entre sans rien changer), [ADR-0036](0036-idempotence-de-la-saisie-par-identifiant-en-memoire.md)
-  (l'idempotence par identifiant, que l'annulation réemploie), [ADR-0039](0039-exposition-publique-des-scores-valides.md)
-  (le public ne voit que le validé — cet ADR est précisément ce qui l'empêche de vaciller)
+- **S'appuie sur** : [ADR-0035](0035-atomicite-acte-trace-session-partagee.md) (l'acte et sa trace
+  dans une seule transaction — l'annulation y entre sans rien changer), [ADR-0036](0036-idempotence-de-la-saisie-par-identifiant-en-memoire.md)
+  (l'idempotence par identifiant, que l'annulation réemploie), [ADR-0039](0039-exposition-publique-du-deroule-scores-provisoires.md)
+  (le déroulé public distingue le **provisoire** du validé — c'est le statut par volée que la
+  décision 1 oblige à redériver)
 - **Voisin** : [ADR-0107](0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md),
   dont le CA de préséance dépend de la notion de « volée rouverte » définie ici
 
@@ -66,7 +67,10 @@ saisie, la volée ne quitte jamais le compte. Sans cette clause, la décision 1 
 l'endroit exact où elle sert — la même clause vaut côté front pour la saisie optimiste hors-ligne.
 
 **4. Revalider referme la correction** dans un **nouveau** lot (`correction_ouverte_par` remis à
-`None`). C'est le seul geste qui la referme ; il n'existe pas d'« annuler l'annulation ».
+`None`), **avant toute autre validation et sans égard au grain**. Le grain régit la **première**
+validation ; le lui appliquer ici laisserait ouvert indéfiniment tout lot rouvert plus petit que
+`N` — et, sur une série incomplète, `RienAValider` serait le seul résultat possible. C'est le seul
+geste qui referme une correction ; il n'existe pas d'« annuler l'annulation ».
 
 **5. La contrepartie est assumée et rendue visible.** Entre l'annulation et la ressaisie, le
 classement affiche un score que le scoreur a déclaré faux. C'est le prix de ne jamais faire
@@ -79,7 +83,9 @@ qui fait partie de la décision, pas de son habillage.
   Le backfill donne `lot_validation = numero` aux volées déjà validées — **un lot par volée**. Les
   lots d'avant l'US ne sont pas connus et les inventer par le grain serait faux (le grain a pu
   changer) ; la conséquence est bornée et dicible : sur un tournoi antérieur, annuler rouvre la
-  volée seule au lieu de son bloc. Le backfill tient l'invariant dont dépend `annuler_validation` —
+  volée seule au lieu de son bloc. ⚠️ **Un lot d'une seule volée doit rester revalidable** même
+  sous un grain « toutes les N » : c'est pourquoi la décision 4 referme une correction **hors
+  grain** (relevé en revue — sinon un tel lot restait ouvert jusqu'à ce que N volées se libèrent). Le backfill tient l'invariant dont dépend `annuler_validation` —
   `lot_validation` non `NULL` **si et seulement si** `validee_par` l'est.
 - **`corriger_volee` survit** et n'est pas touché. Deux chemins d'écriture coexistent donc sur un
   score validé — le scoreur corrige en place, ou il rouvre pour que la tablette ressaisisse — et
@@ -89,10 +95,25 @@ qui fait partie de la décision, pas de son habillage.
 - **L'audit gagne un acte**, `ANNULATION_VALIDATION` — pas l'inverse d'un acte : rouvrir une volée
   à l'écriture est une décision humaine, elle se trace comme telle.
 - **`ADR-0035` n'est pas rouvert** : ses §2 et §3 (réécriture d'un score corrigé, `CORRECTION_SCORE`)
-  survivent tous les deux. **`ADR-0039` non plus**, et c'est le point : rien ne sortant du compte,
-  l'exposition publique ne rebascule jamais en `en_attente` pendant une correction.
-- **La pause ne bloque pas l'annulation**, comme elle ne bloque pas la correction (E05US033) : la
-  pause gèle ce qui *avance*, jamais ce qui *répare*.
+  survivent tous les deux.
+- ⚠️ **`ADR-0039` EST touché, et sa Décision 2 est redéfinie.** Elle posait le statut public comme
+  `en_attente = not Volee.verrouillee` ; ce n'est plus une définition tenable, puisque `verrouillee`
+  a cessé de vouloir dire « ce score compte ». Le statut public dérive désormais de `validee`.
+  *(La première rédaction de cet ADR affirmait l'inverse — « l'exposition publique ne rebascule
+  jamais en `en_attente` » — alors que `deroule.py` n'avait pas été touché : la réponse publique se
+  contredisait elle-même, cumul 54 face à zéro volée publiée « valide ». **Bloquant de revue**, et
+  exactement le mode de panne d'ADR-0017 : un ADR qui décrit un code qu'il n'a pas relu.)*
+- ⚠️ **La pause BLOQUE l'annulation** — à rebours de `corriger_volee`, et à rebours de la première
+  rédaction. « La pause gèle ce qui *avance*, jamais ce qui *répare* » (E05US033) reste vrai, mais
+  les **deux** gestes qui referment une correction sont, eux, gelés : `saisir_volee` et `valider`
+  portent `refuser_si_en_pause`. Annuler pendant une pause rouvrait donc une volée que plus rien ne
+  pouvait refermer jusqu'à la relance. Pendant une pause, on répare par `corriger_volee`.
+  *(Relevé en revue : le test d'origine prouvait la permissivité sans jamais dérouler la suite du
+  parcours qu'elle rendait possible.)*
+- ⚠️ **La ressaisie d'une volée rouverte est tracée `CORRECTION_SCORE`.** Sans cela, l'annulation
+  faisait **baisser** la traçabilité : le seul chemin d'écriture restant est `saisir_volee`, ouvert
+  au **poste de cible** et muet, là où `corriger_volee` exigeait le scoreur et écrivait
+  l'avant/après. Une volée déjà comptée ne se réécrit pas sans trace.
 - ⚠️ **Asymétrie connue, non résolue ici** : l'annulation est ouverte à l'admin **et** au scoreur
   (réponse S08), mais `POST /saisie/validations` reste réservé au scoreur. Un admin qui annule ne
   peut donc pas **re**valider lui-même. Rien ne se bloque — la volée reste comptée, précisément par
@@ -124,5 +145,13 @@ qui fait partie de la décision, pas de son habillage.
   `autoriser_lecture_serie`, qui élargit au scoreur la lecture d'une feuille.
 - `frontend/src/features/validation-qualif/etat.ts` — `voleesQueLAnnulationRouvre` et
   `avertissementAnnulation` : la décision 5 rendue lisible **avant** le geste.
+- `backend/api/v1/deroule.py` — `VoleeDerouleReponse.de_volee` : le statut public dérive de
+  `validee`. ⚠️ **Ce module manquait à la première rédaction**, et c'est lui qui contredisait
+  l'ADR ; son test d'API pose l'invariant « cumul = somme des volées publiées *valide* ».
+- `backend/application/saisie.py` — `ServiceSaisie.saisir_volee` trace `CORRECTION_SCORE` quand la
+  volée est en correction, et `annuler_validation` porte `refuser_si_en_pause`.
 - `frontend/src/features/saisie/volees.ts` — `serieOptimiste` préserve l'état de validation d'une
-  volée en correction (décision 3, versant hors-ligne).
+  volée en correction (décision 3, versant hors-ligne), et `prochaineASaisir` **met la volée rendue
+  en tête** : sans quoi la tablette ouvrait un pavé verrouillé sur la dernière volée du barème.
+- `frontend/src/features/saisie/Saisie.tsx` — la tablette **nomme** la volée qu'on lui rend
+  (« Volée rendue par MARTIN — à ressaisir »), au lieu de la laisser deviner.

@@ -21,6 +21,7 @@ function volee(numero: number, options: Partial<Volee> = {}): Volee {
     validee_par: null,
     verrouillee: false,
     en_correction: false,
+    correction_ouverte_par: null,
     lot_validation: null,
     saisie_le: null,
     ...options,

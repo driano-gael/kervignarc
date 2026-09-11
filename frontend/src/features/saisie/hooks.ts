@@ -13,6 +13,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import type { PorteeAuth } from '../../shared/api/client'
 import { useConnexionStore } from '../../shared/stores/connexionStore'
 import { useFileHorsLigneStore, type VoleeEnFile } from '../../shared/stores/fileHorsLigneStore'
 import { useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
@@ -33,9 +34,14 @@ import { serieOptimiste } from './volees'
 
 const cleGrille = () => ['saisie-grille'] as const
 // Exportée depuis E16US019 : la surface scoreur écrit dans **cette** série et doit poser son
-// résultat sous la même clé. Une clé recopiée diverge en silence — le symptôme est une vue périmée.
-export const cleSerie = (tournoiId: number, archerId: number) =>
-  ['saisie-serie', tournoiId, archerId] as const
+// résultat sous la même forme de clé. Une clé recopiée diverge en silence — le symptôme est une
+// vue périmée. ⚠️ **La PORTÉE d'identité fait partie de la clé** : la tablette lit la feuille avec
+// son jeton de poste, le scoreur avec le sien. React Query n'associe qu'**une** `queryFn` par clé —
+// deux écrans montés ensemble se voleraient la leur, et le perdant prendrait un 401 qui **purge sa
+// session** (`purgerSessionSiNonAutorise`). Le préfixe `saisie-serie` reste commun, donc une
+// invalidation large continue de couvrir les deux (relevé en revue).
+export const cleSerie = (tournoiId: number, archerId: number, portee: PorteeAuth = 'poste') =>
+  ['saisie-serie', portee, tournoiId, archerId] as const
 const cleBareme = (tournoiId: number) => ['saisie-bareme', tournoiId] as const
 const cleGrain = (tournoiId: number) => ['saisie-grain', tournoiId] as const
 const cleDeparts = (tournoiId: number) => ['saisie-departs', tournoiId] as const
