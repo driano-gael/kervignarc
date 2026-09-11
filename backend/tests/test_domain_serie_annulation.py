@@ -7,16 +7,19 @@ dans les totaux, la ressaisie **préserve** cet état, et `corriger_volee` **sur
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from domain.blason import ZoneScore
 from domain.erreurs import (
+    IncoherenceVolee,
     NomIntervenantInvalide,
     VoleeIntrouvable,
     VoleeNonVerrouillee,
 )
 from domain.grain_validation import GrainValidation
-from domain.serie import Serie
+from domain.serie import Serie, Volee
 
 ZONES_SIMPLE = tuple(ZoneScore)
 
@@ -251,12 +254,42 @@ def test_corriger_une_volee_validee_reste_possible() -> None:
     assert volee.verrouillee is True
 
 
-def test_corriger_une_volee_en_correction_est_refuse() -> None:
-    """Les deux chemins ne se croisent pas : rouverte, la volée se ressaisit — pas se corrige."""
+def test_corriger_une_volee_en_correction_reste_possible() -> None:
+    """⚠️ **Oracle RETOURNÉ en 2ᵉ passe** — il disait « les deux chemins ne se croisent pas ».
+
+    Ils se croisent, et il le faut : c'est le **seul** recours quand une pause tombe entre
+    l'annulation et la ressaisie. `saisir_volee` et `valider` portent `refuser_si_en_pause`, donc
+    sans ce chemin la volée rouverte attendait la relance sans qu'aucun geste puisse la réparer —
+    alors que la docstring, l'ADR et la recette promettaient toutes trois « on y répare par
+    `corriger_volee` ». L'arbitrage du commanditaire (E05US033 : « la pause gèle ce qui *avance*,
+    jamais ce qui *répare* ») primait sur le CA dérivé que j'avais écrit.
+
+    ⚠️ **Corriger ne referme PAS la correction** : la volée reste rouverte, c'est le scoreur qui
+    referme en revalidant. Sinon une correction faite en pause ferait, elle, avancer le tour.
+    """
     serie = _serie(1, _v("10", "9", "8")).valider(
         "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
     )
     serie = serie.annuler_validation(1, par="MARTIN")
+
+    serie = serie.corriger_volee(
+        1,
+        _v("6", "6", "6"),
+        par="DURAND",
+        zones_admises=ZONES_SIMPLE,
+        nb_fleches_par_volee=3,
+    )
+
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.valeurs == _v("6", "6", "6")
+    assert volee.en_correction is True, "la fenêtre reste ouverte : revalider est l'acte du scoreur"
+    assert serie.cumul == 18
+
+
+def test_corriger_une_volee_jamais_validee_reste_refuse() -> None:
+    """La moitié qui ne bouge pas : sans validation, il n'y a rien à corriger — on saisit."""
+    serie = _serie(1, _v("10", "9", "8"))
 
     with pytest.raises(VoleeNonVerrouillee):
         serie.corriger_volee(
@@ -266,3 +299,131 @@ def test_corriger_une_volee_en_correction_est_refuse() -> None:
             zones_admises=ZONES_SIMPLE,
             nb_fleches_par_volee=3,
         )
+
+
+# --- Refermer une correction est un ACTE : un lot par geste (bloquant de revue) --------------
+
+
+def test_revalider_ne_referme_qu_un_lot_a_la_fois() -> None:
+    """Miroir exact de `test_annuler_ne_rouvre_pas_les_autres_lots`, au retour.
+
+    ⚠️ **Bloquant de revue, sondé à l'exécution.** Une première rédaction refermait *toutes* les
+    corrections de la feuille : deux lots annulés séparément — par deux personnes, pour deux motifs
+    — se retrouvaient re-signés d'un seul clic. Les volées **jamais ressaisies** redevenaient
+    « valides » avec leurs valeurs fausses, perdaient leur marqueur à l'écran, et changeaient de
+    validateur au profit de qui avait cliqué. Les deux lots fusionnaient ensuite en un seul, si
+    bien qu'une annulation ultérieure en rouvrait six au lieu de trois.
+    """
+    serie = _serie(4, _v("10", "9", "8"))
+    grain = GrainValidation.toutes_les_n_volees(2)
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    serie = serie.valider("DURAND", grain=grain, nb_volees_bareme=4)
+    serie = serie.annuler_validation(1, par="MARTIN")
+    serie = serie.annuler_validation(3, par="ARBITRE")
+
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+
+    assert [v.en_correction for v in serie.volees] == [False, False, True, True]
+    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", "DURAND", "DURAND"]
+
+
+def test_deux_lots_refermes_restent_deux_lots() -> None:
+    """La conséquence durable du bloquant : le lot est l'identité d'un acte, il ne fusionne pas.
+
+    Sans cela, `annuler_validation` sur l'une des six volées les rouvrirait toutes — le lot
+    cesserait de nommer « ce qu'un même acte a verrouillé », qui est le fondement d'ADR-0109.
+    """
+    serie = _serie(4, _v("10", "9", "8"))
+    grain = GrainValidation.toutes_les_n_volees(2)
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    serie = serie.valider("DURAND", grain=grain, nb_volees_bareme=4)
+    serie = serie.annuler_validation(1, par="MARTIN").annuler_validation(3, par="MARTIN")
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+
+    serie = serie.annuler_validation(1, par="MARTIN")
+
+    assert {v.numero for v in serie.volees if v.en_correction} == {1, 2}
+
+
+def test_refermer_une_correction_ne_valide_pas_le_lot_en_attente() -> None:
+    """Le geste referme la correction **et elle seule** : les volées neuves attendent leur tour.
+
+    C'est le prix assumé de la priorité (ADR-0109 § Décision 4). L'écran doit donc distinguer les
+    deux gestes — sans ce test, la propriété n'est écrite nulle part.
+    """
+    serie = _serie(2, _v("10", "9", "8"), bareme=4)
+    grain = GrainValidation.toutes_les_n_volees(2)
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    serie = serie.annuler_validation(1, par="MARTIN")
+    serie = _saisir(serie, 3, _v("7", "7", "7"), 4)
+    serie = _saisir(serie, 4, _v("7", "7", "7"), 4)
+
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+
+    assert [v.en_correction for v in serie.volees] == [False, False, False, False]
+    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", None, None]
+
+
+def test_un_lot_repris_d_une_seule_volee_se_revalide_hors_grain() -> None:
+    """Le cas par défaut des bases migrées : la reprise 0054 donne **un lot par volée**.
+
+    Sous un grain « toutes les 2 » sur une série incomplète, appliquer le grain à la refermeture
+    rendrait `RienAValider` — le lot rouvert resterait ouvert jusqu'à ce que deux volées se
+    libèrent. C'est le cas qui a motivé la clause « hors grain », et il n'était joué nulle part.
+    """
+    reprise = Volee(numero=1, valeurs=_v("10", "9", "8"), validee_par="MARTIN", lot_validation=1)
+    serie = replace(_serie(1, _v("10", "9", "8"), bareme=4), volees=(reprise,))
+    serie = serie.annuler_validation(1, par="MARTIN")
+
+    serie = serie.valider(
+        "MARTIN", grain=GrainValidation.toutes_les_n_volees(2), nb_volees_bareme=4
+    )
+
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.en_correction is False and volee.verrouillee is True
+
+
+def test_un_acte_ne_prend_jamais_le_rang_d_une_volee_reprise() -> None:
+    """Les deux conventions de lot partagent un espace de valeurs — elles doivent rester disjointes.
+
+    ⚠️ Sondé en revue : une volée reprise (lot = son numéro) et un acte réel pouvaient recevoir le
+    **même** lot, et annuler l'une rouvrait l'autre, sans erreur et sans trace.
+    """
+    reprise = Volee(numero=5, valeurs=_v("10", "9", "8"), validee_par="ANCIEN", lot_validation=5)
+    serie = replace(_serie(1, _v("10", "9", "8"), bareme=5), volees=(reprise,))
+    serie = _saisir(serie, 1, _v("7", "7", "7"), 5)
+
+    serie = serie.valider(
+        "MARTIN", grain=GrainValidation.toutes_les_n_volees(1), nb_volees_bareme=5
+    )
+
+    serie = serie.annuler_validation(1, par="MARTIN")
+    assert {v.numero for v in serie.volees if v.en_correction} == {1}
+
+
+# --- L'invariant « validée ⇔ lot », des deux côtés -------------------------------------------
+
+
+def test_une_volee_validee_sans_lot_devient_son_propre_lot() -> None:
+    """La reprise de la migration 0054, portée par le domaine pour valoir partout."""
+    volee = Volee(numero=3, valeurs=_v("10", "9", "8"), validee_par="MARTIN")
+
+    assert volee.lot_validation == 3
+
+
+def test_un_lot_sans_validateur_est_refuse() -> None:
+    """L'incohérence inverse n'a aucune lecture sensée : elle signale un producteur fautif."""
+    with pytest.raises(IncoherenceVolee):
+        Volee(numero=1, valeurs=_v("10", "9", "8"), lot_validation=1)
+
+
+def test_une_correction_sans_validation_est_refusee() -> None:
+    """Sans cette garde, une volée jamais validée pouvait porter `en_correction`.
+
+    Elle aurait alors détourné la priorité de `valider` et fait écrire une trace de correction sur
+    un score que personne n'a jamais signé (relevé en revue).
+    """
+    with pytest.raises(IncoherenceVolee):
+        Volee(numero=1, valeurs=_v("10", "9", "8"), correction_ouverte_par="MARTIN")

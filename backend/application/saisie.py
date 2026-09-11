@@ -22,6 +22,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
+from application.forfaits import AUTEUR_ADMIN  # DETTE-017 : réemploi, pas un site de plus
 from application.gel_de_pause import (
     DeclencheurArrets,
     EvaluateurArrets,
@@ -51,7 +52,7 @@ from domain.ports import (
     PlacementRepository,
     SerieRepository,
 )
-from domain.serie import Serie
+from domain.serie import Serie, Volee
 from domain.suivi_deroule import AvancementDePhase, avancement_de_qualification
 from domain.tournoi import TournoiId
 
@@ -121,6 +122,28 @@ class AvancementCible:
     volee_courante: int
     nb_volees: int
     derniere_saisie: datetime.datetime | None
+
+
+def _auteur_de_saisie(contexte: ContexteSaisie | None) -> str:
+    """Qui a écrit, pour la trace — d'après la **garde**, jamais d'après le corps de requête.
+
+    Le jeton de poste authentifie un **lieu** (ADR-0030) : c'est donc la cible qu'on nomme. `None`
+    = chemin admin. ⚠️ Ne jamais y faire entrer `saisie_par` : il est déclaratif (E16US019).
+    """
+    if contexte is None:
+        return AUTEUR_ADMIN
+    return f"Poste de cible {contexte.cible_index}"
+
+
+def _objet_de_ressaisie(numero: int, archer_id: ArcherId, volee: Volee | None) -> str:
+    """L'objet tracé : la volée, le chemin emprunté, et le marqueur **déclaré** s'il y en a un.
+
+    Le chemin est nommé parce que `CORRECTION_SCORE` a désormais deux producteurs — la correction
+    directe du scoreur et la ressaisie après annulation — qui n'ont pas la même valeur probante.
+    """
+    marqueur = volee.saisie_par if volee is not None else None
+    signature = f", marqueur déclaré {marqueur}" if marqueur else ""
+    return f"volée {numero} de l'archer {archer_id} (ressaisie après annulation{signature})"
 
 
 def _valeurs_lisibles(serie: Serie, numero: int) -> str | None:
@@ -446,16 +469,24 @@ class ServiceSaisie:
             nb_volees_bareme=phase.bareme.nb_volees,
             saisie_par=saisie_par,
         )
-        if not en_correction:
+        apres = _valeurs_lisibles(serie, numero)
+        if not en_correction or avant == apres:
+            # Une ressaisie à l'identique n'est pas une correction : la tracer noierait les vraies
+            # dans le registre qu'on ouvre quand un archer conteste un score.
             return self._series.enregistrer(serie)
         entree = EntreeAudit.creer(
             tournoi_id=tournoi_id,
             action=ActionAuditee.CORRECTION_SCORE,
-            auteur=saisie_par or "Poste de cible",
+            # ⚠️ **L'auteur ne vient JAMAIS du corps de requête** : `saisie_par` est un marqueur
+            # **déclaratif**, qu'un poste pourrait signer « Administrateur ». Une trace falsifiable
+            # est pire que pas de trace — c'est ce registre qu'on ouvre en cas de contestation.
+            # L'identité tracée est donc celle que la garde a résolue (relevé en revue).
+            auteur=_auteur_de_saisie(contexte),
             horodatage=self._horloge.maintenant(),
-            objet=f"volée {numero} de l'archer {archer_id}",
+            # Le nom déclaré reste **une donnée**, à côté de l'identité — jamais à sa place.
+            objet=_objet_de_ressaisie(numero, archer_id, serie.volee(numero)),
             avant=avant,
-            apres=_valeurs_lisibles(serie, numero),
+            apres=apres,
         )
         return self._series.enregistrer_avec_trace(serie, entree)
 

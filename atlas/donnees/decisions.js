@@ -1638,7 +1638,50 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/deroule.py",
+     "existe": true,
+     "symboles": [
+      "VoleeDerouleReponse",
+      "saisie_par",
+      "validee_par",
+      "VoleeDerouleReponse.de_volee",
+      "statut",
+      "Volee.validee",
+      "DerouleReponse.vide",
+      "consulter_deroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_acces_public.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_deroule_api.py",
+     "existe": true,
+     "symboles": [
+      "test_deroule_ne_fuite_pas_l_identite_du_scoreur",
+      "test_deroule_publie_comme_valide_une_volee_en_correction"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi/VueSuivi.tsx",
+     "existe": true,
+     "symboles": [
+      "statut"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -9818,7 +9861,7 @@ window.ATLAS.decisions = {
       "refuser_si_en_pause",
       "ServiceSaisie.saisir_volee",
       "CORRECTION_SCORE",
-      "annuler_validation"
+      "_auteur_de_saisie"
      ],
      "symboles_absents": [],
      "verifiable": true

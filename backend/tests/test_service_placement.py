@@ -213,7 +213,7 @@ class FauxSerieRepository:
             numero=1,
             valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
             validee_par="Scoreur",
-            # E16US019 : une validation annulee ne retire pas la volee du compte.
+            # E16US019 : une validation annulée ne retire pas la volée du compte.
             correction_ouverte_par="Scoreur" if en_correction else None,
         )
         self._series.append(
@@ -757,11 +757,11 @@ def test_impact_compte_les_cibles_avec_scores_sans_doublon() -> None:
 
 
 def test_impact_compte_une_cible_dont_la_validation_est_annulee() -> None:
-    """E16US019 — le decompte « cibles avec scores » ne sous-compte PAS pendant une correction.
+    """E16US019 — le décompte « cibles avec scores » ne sous-compte PAS pendant une correction.
 
-    Deuxieme des trois decisions qu'ADR-0109 devait preserver : l'organisateur confirme une
-    regeneration sur ce chiffre. S'il tombait a 0 le temps d'une correction, il confirmerait
-    l'ecrasement de scores reels en croyant la cible vierge.
+    Deuxième des trois décisions qu'ADR-0109 devait préserver : l'organisateur confirme une
+    régénération sur ce chiffre. S'il tombait à 0 le temps d'une correction, il confirmerait
+    l'écrasement de scores réels en croyant la cible vierge.
     """
     monde = _Monde(capacites=(4,))
     depart = monde.depart(1)

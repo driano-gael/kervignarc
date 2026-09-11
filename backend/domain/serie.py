@@ -63,6 +63,8 @@ class Volee:
         inverse — un lot sans validateur — n'a aucune lecture sensée : refusée."""
         if self.lot_validation is not None and self.validee_par is None:
             raise IncoherenceVolee("Un lot de validation suppose un validateur.")
+        if self.correction_ouverte_par is not None and self.validee_par is None:
+            raise IncoherenceVolee("Une correction ouverte suppose une validation.")
         if self.validee_par is not None and self.lot_validation is None:
             object.__setattr__(self, "lot_validation", self.numero)
 
@@ -258,11 +260,16 @@ class Serie:
         a_valider = tuple(v for v in self.volees if not v.verrouillee)
         en_correction = tuple(v for v in self.volees if v.en_correction)
         if en_correction:
-            # ⚠️ **Refermer une correction n'obéit pas au grain** (E16US019). Le grain régit la
-            # **première** validation ; le lui appliquer ici laisserait ouvert indéfiniment tout lot
-            # rouvert plus petit que N — et sur une série incomplète, `RienAValider` serait le seul
-            # résultat possible. Relevé en revue sur un lot non contigu.
-            return self._verrouiller(en_correction, par)
+            # ⚠️ **UN lot par geste, le plus ancien** — refermer est un acte, comme annuler. Une
+            # première rédaction refermait *toutes* les corrections de la feuille : deux lots
+            # annulés séparément se retrouvaient re-signés d'un clic, **valeurs fausses comprises**,
+            # sous un validateur qui n'avait relu que l'un des deux (bloquant de revue).
+            # ⚠️ Et **hors grain** : le grain régit la *première* validation ; l'appliquer ici
+            # laisserait ouvert tout lot rouvert plus petit que N.
+            plus_ancien = min(v.lot_validation or 0 for v in en_correction)
+            return self._verrouiller(
+                tuple(v for v in en_correction if (v.lot_validation or 0) == plus_ancien), par
+            )
         # Complétude **explicite** : les volées 1..N sont toutes présentes. Ne pas se fier au seul
         # `len` : même borné à la saisie, l'ensemble exact est un contrat plus clair.
         serie_complete = {v.numero for v in self.volees} == set(range(1, nb_volees_bareme + 1))
@@ -286,8 +293,14 @@ class Serie:
         return self._verrouiller(lot, par)
 
     def _verrouiller(self, lot: tuple[Volee, ...], par: str) -> Serie:
-        """Verrouille `lot` au nom de `par`, sous un rang d'acte neuf, et referme sa correction."""
-        rang = max((v.lot_validation or 0) for v in self.volees) + 1 if self.volees else 1
+        """Verrouille `lot` au nom de `par`, sous un rang d'acte neuf, et referme sa correction.
+
+        ⚠️ Le rang passe **au-dessus des numéros de volée** : la reprise de `__post_init__` pose
+        `lot = numero`, dans le même espace de valeurs. Sans cette borne, un acte pouvait recevoir
+        le rang d'une volée reprise, et annuler rouvrait les deux ensemble (revue, sondé).
+        """
+        rangs = (*(v.lot_validation or 0 for v in self.volees), *(v.numero for v in self.volees))
+        rang = max(rangs, default=0) + 1
         verrouillees = self.volees
         for volee in lot:
             verrouillees = _avec_volee(
@@ -341,10 +354,15 @@ class Serie:
         existante = self.volee(numero)
         if existante is None:
             raise VoleeIntrouvable(f"Aucune volée numéro {numero} dans cette série.")
-        if not existante.verrouillee:
+        if not existante.validee:
             raise VoleeNonVerrouillee(
                 "Seule une volée validée se corrige ; une volée en cours se modifie par saisie."
             )
         valider_valeurs_volee(nouvelles_valeurs, zones_admises, nb_fleches_par_volee)
+        # ⚠️ `validee`, pas `verrouillee` : une volée **en correction** se corrige aussi. C'est le
+        # seul recours quand une pause tombe entre l'annulation et la ressaisie — les deux gestes
+        # qui referment une correction sont gelés, celui-ci ne l'est pas (E05US033 : « la pause
+        # gèle ce qui avance, jamais ce qui répare »). ⚠️ La correction **ne referme pas** la
+        # fenêtre : `correction_ouverte_par` survit au `replace`, le scoreur revalide ensuite.
         corrigee = replace(existante, valeurs=nouvelles_valeurs, validee_par=par)
         return replace(self, volees=_avec_volee(self.volees, corrigee))

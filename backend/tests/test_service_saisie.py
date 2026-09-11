@@ -1271,8 +1271,55 @@ def test_la_ressaisie_d_une_volee_en_correction_est_tracee() -> None:
 
     trace = m.series.traces[-1]
     assert trace.action is ActionAuditee.CORRECTION_SCORE
-    assert trace.auteur == "DURAND"
     assert (trace.avant, trace.apres) == ("10, 9, 8", "6, 6, 6")
+    # L'auteur vient de la **garde** (ici : pas de contexte ⇒ chemin admin), pas du corps de
+    # requête. Le marqueur déclaré est une donnée, rangée dans l'objet.
+    assert trace.auteur == "Administrateur"
+    assert trace.objet is not None and "marqueur déclaré DURAND" in trace.objet
+
+
+def test_la_trace_de_ressaisie_nomme_le_poste_et_non_le_marqueur_declare() -> None:
+    """⚠️ **Oracle de non-garde (sécurité)** — `saisie_par` ne doit JAMAIS devenir l'auteur.
+
+    C'est un champ libre du corps de requête : un poste pourrait s'y déclarer « Administrateur » et
+    déposer au registre une correction indiscernable d'une vraie — au seul endroit qu'on ouvre
+    quand un archer conteste un score. Le jeton de poste authentifie un **lieu** (ADR-0030), c'est
+    donc la cible qui signe. Relevé en revue : la première rédaction traçait le nom déclaré.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    m.service.saisir_volee(
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        saisie_par="Administrateur",
+        contexte=contexte,
+    )
+
+    trace = m.series.traces[-1]
+    assert trace.auteur == "Poste de cible 1"
+
+
+def test_une_ressaisie_a_l_identique_ne_trace_rien() -> None:
+    """Le marqueur retape les mêmes flèches : ce n'est pas une correction.
+
+    Sans ce filtre, le registre se remplit d'entrées `avant == apres` qui noient les vraies.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    avant = len(m.series.traces)
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+
+    assert len(m.series.traces) == avant
 
 
 def test_une_saisie_ordinaire_ne_trace_toujours_rien() -> None:

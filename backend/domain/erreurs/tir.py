@@ -135,8 +135,11 @@ class VoleeNonVerrouillee(DomainError):
 class IncoherenceVolee(DomainError):
     """Une volée se construit dans un état que ses invariants interdisent (E16US019).
 
-    Aujourd'hui : validée sans lot de validation, ou l'inverse. ⚠️ Ce n'est pas une erreur
-    d'utilisateur mais un **producteur fautif** — le mapping HTTP la traitera comme telle.
+    Aujourd'hui : un lot de validation sans validateur, ou une correction sans validation —
+    l'incohérence inverse (validée sans lot) est **normalisée**, pas levée (`Volee.__post_init__`).
+    ⚠️ Elle signale un **producteur fautif**, pas une saisie fautive ; elle sort néanmoins en **422**
+    comme toute `DomainError`, faute de canal dédié. Un 422 de ce code en production se lit donc
+    comme un **bug**, jamais comme un refus adressé à l'utilisateur.
     """
 
     code = "incoherence_volee"

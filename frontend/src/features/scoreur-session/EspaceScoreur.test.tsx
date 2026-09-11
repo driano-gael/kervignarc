@@ -95,6 +95,11 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
     await screen.findByText('duels : 41')
 
     expect(screen.getAllByRole('combobox', { name: 'Départ' })).toHaveLength(1)
+    // ⚠️ Le matcher `name` est **plein** : il ne voit donc pas « Départ des forfaits » ni « Départ
+    // à valider ». L'invariant « un seul sélecteur pour les quatre panneaux de saisie » ne tient
+    // que grâce à ces libellés distincts — on énumère donc les créneaux indépendants attendus,
+    // pour qu'un cinquième fasse rougir au lieu de s'ajouter en silence (relevé en revue).
+    expect(screen.getAllByRole('combobox', { name: /Départ/ })).toHaveLength(3)
   })
 
   it('laisse aux FORFAITS leur propre sélecteur, nommé distinctement', async () => {

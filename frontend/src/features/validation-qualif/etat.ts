@@ -41,8 +41,22 @@ export function etatVolee(volee: Volee): 'en_correction' | 'validee' | 'en_cours
   return estValidee(volee) ? 'validee' : 'en_cours'
 }
 
-// Y a-t-il quelque chose à valider ? Une volée saisie non validée, ou une correction à refermer —
-// les deux se présentent au serveur de la même façon : une volée non verrouillée.
+// Y a-t-il quelque chose à valider — au sens large : une volée non verrouillée, donc une saisie en
+// attente **ou** une correction à refermer.
 export function aValider(serie: Serie): boolean {
   return serie.volees.some((volee) => !volee.verrouillee)
+}
+
+// Les volées du prochain lot que « Valider » refermerait, ou `[]` s'il validera une saisie neuve.
+// ⚠️ **Le serveur donne la priorité à la correction, hors grain et un lot à la fois** (ADR-0109
+// § Décision 4) : sans cette distinction, l'écran proposait « Valider » pour acter des volées
+// fraîches et refermait en fait la correction d'autres volées — le marqueur « En correction »
+// s'éteignait sur un geste qui visait ailleurs (relevé en revue).
+export function voleesQueValiderReferme(serie: Serie): number[] {
+  const enCorrection = serie.volees.filter((volee) => volee.en_correction)
+  if (enCorrection.length === 0) return []
+  const plusAncien = Math.min(...enCorrection.map((volee) => volee.lot_validation ?? 0))
+  return enCorrection
+    .filter((volee) => (volee.lot_validation ?? 0) === plusAncien)
+    .map((volee) => volee.numero)
 }

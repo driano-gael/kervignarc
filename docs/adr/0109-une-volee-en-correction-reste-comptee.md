@@ -66,8 +66,12 @@ d'un acte, deux lots du même scoreur étaient jusqu'ici indiscernables.
 saisie, la volée ne quitte jamais le compte. Sans cette clause, la décision 1 serait perdue à
 l'endroit exact où elle sert — la même clause vaut côté front pour la saisie optimiste hors-ligne.
 
-**4. Revalider referme la correction** dans un **nouveau** lot (`correction_ouverte_par` remis à
-`None`), **avant toute autre validation et sans égard au grain**. Le grain régit la **première**
+**4. Revalider referme UNE correction — le lot le plus ancien — dans un **nouveau** lot
+(`correction_ouverte_par` remis à `None`), **avant toute autre validation et sans égard au grain**.
+⚠️ **Un lot par geste** : refermer est un acte, comme annuler. Une première implémentation refermait
+*toutes* les corrections de la feuille — deux lots annulés par deux personnes se retrouvaient
+re-signés d'un clic, **valeurs jamais ressaisies comprises**, sous un validateur qui n'avait relu
+que l'un des deux (bloquant de revue, sondé à l'exécution). Le grain régit la **première**
 validation ; le lui appliquer ici laisserait ouvert indéfiniment tout lot rouvert plus petit que
 `N` — et, sur une série incomplète, `RienAValider` serait le seul résultat possible. C'est le seul
 geste qui referme une correction ; il n'existe pas d'« annuler l'annulation ».
@@ -87,11 +91,13 @@ qui fait partie de la décision, pas de son habillage.
   sous un grain « toutes les N » : c'est pourquoi la décision 4 referme une correction **hors
   grain** (relevé en revue — sinon un tel lot restait ouvert jusqu'à ce que N volées se libèrent). Le backfill tient l'invariant dont dépend `annuler_validation` —
   `lot_validation` non `NULL` **si et seulement si** `validee_par` l'est.
-- **`corriger_volee` survit** et n'est pas touché. Deux chemins d'écriture coexistent donc sur un
-  score validé — le scoreur corrige en place, ou il rouvre pour que la tablette ressaisisse — et
-  c'est assumé : les supprimer coûtait la garde inter-tournois, la trace d'audit et un `None`
-  polysémique. Les deux ne se croisent pas : une volée **en correction** n'est plus verrouillée,
-  donc `corriger_volee` la refuse.
+- **`corriger_volee` survit.** Deux chemins d'écriture coexistent donc sur un score validé — le
+  scoreur corrige en place, ou il rouvre pour que la tablette ressaisisse — et c'est assumé.
+  ⚠️ **Les deux SE CROISENT, et il le faut** *(retourné en 2ᵉ passe de revue : la rédaction
+  précédente disait que `corriger_volee` refusait une volée en correction)*. Il opère sur une volée
+  **comptée**, pas verrouillée : c'est le **seul** recours quand une pause tombe entre l'annulation
+  et la ressaisie, puisque les deux gestes qui referment une correction sont, eux, gelés. Corriger
+  ne referme pas la fenêtre — le scoreur revalide ensuite.
 - **L'audit gagne un acte**, `ANNULATION_VALIDATION` — pas l'inverse d'un acte : rouvrir une volée
   à l'écriture est une décision humaine, elle se trace comme telle.
 - **`ADR-0035` n'est pas rouvert** : ses §2 et §3 (réécriture d'un score corrigé, `CORRECTION_SCORE`)
@@ -129,15 +135,15 @@ qui fait partie de la décision, pas de son habillage.
   (décision 1), `Serie.annuler_validation` (décision 2), la clause de préservation dans
   `Serie.saisir_volee` (décision 3) et la pose du lot dans `Serie.valider` (décision 4). ⚠️ Les
   quatre lecteurs de totaux (`cumul`, `compter`, `nb_fleches_validees`, `est_complete`) filtrent sur
-  `validee` : **les repasser à `verrouillee` annulerait silencieusement tout cet ADR**, et seuls les
-  tests de `test_domain_serie_annulation.py` le diraient.
+  `validee` : **les repasser à `verrouillee` annulerait silencieusement tout cet ADR**. Le diraient
+  `test_domain_serie_annulation.py` d'abord, puis les trois tests de chaînage
+  (`test_service_{archers,placement,completude}.py`) qui prouvent que les gardes ne se relâchent pas.
 - `backend/migrations/versions/0054_volee_annulation_validation.py` — les deux colonnes et le
   backfill qui tient l'invariant `lot_validation ⇔ validee_par`.
 - `backend/infrastructure/db/models.py` — `VoleeORM.lot_validation` / `correction_ouverte_par`, et
   `backend/infrastructure/db/repositories/tir.py` — le mapping aller-retour des deux champs (sans
   lui, l'agrégat perdrait son lot à chaque relecture : la persistance rejoue purge + réinsertion).
-- `backend/application/saisie.py` — `ServiceSaisie.annuler_validation` : résolution de phase, trace
-  `ANNULATION_VALIDATION`, et **absence délibérée** de `refuser_si_en_pause`.
+
 - `backend/domain/entree_audit.py` — `ActionAuditee.ANNULATION_VALIDATION`.
 - `backend/api/v1/saisie.py` — `POST /api/v1/saisie/annulations`, et `VoleeReponse.en_correction` /
   `lot_validation` : le lot est exposé **pour que l'écran puisse nommer** ce qu'il va rouvrir.
@@ -148,8 +154,11 @@ qui fait partie de la décision, pas de son habillage.
 - `backend/api/v1/deroule.py` — `VoleeDerouleReponse.de_volee` : le statut public dérive de
   `validee`. ⚠️ **Ce module manquait à la première rédaction**, et c'est lui qui contredisait
   l'ADR ; son test d'API pose l'invariant « cumul = somme des volées publiées *valide* ».
-- `backend/application/saisie.py` — `ServiceSaisie.saisir_volee` trace `CORRECTION_SCORE` quand la
-  volée est en correction, et `annuler_validation` porte `refuser_si_en_pause`.
+- `backend/application/saisie.py` — `ServiceSaisie.annuler_validation` : résolution de phase, trace
+  `ANNULATION_VALIDATION`, et `refuser_si_en_pause` (⚠️ **inverse de la première rédaction**, qui
+  écrivait ici « absence délibérée » ; cf. § Conséquences). `ServiceSaisie.saisir_volee` trace
+  `CORRECTION_SCORE` quand la volée est en correction, sous l'identité que la **garde** a résolue
+  (`_auteur_de_saisie`) — jamais sous le marqueur déclaré.
 - `frontend/src/features/saisie/volees.ts` — `serieOptimiste` préserve l'état de validation d'une
   volée en correction (décision 3, versant hors-ligne), et `prochaineASaisir` **met la volée rendue
   en tête** : sans quoi la tablette ouvrait un pavé verrouillé sur la dernière volée du barème.

@@ -373,6 +373,8 @@ async def valider_serie(
     )
 
     def ecrire() -> Serie:
+        # DETTE-052 : le corps ne porte pas de `depart_id`, donc le service **devine** le créneau —
+        # alors que le scoreur en a choisi un à l'écran (`validation-qualif`).
         return service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
@@ -457,6 +459,7 @@ async def annuler_validation(
     )
 
     def ecrire() -> Serie:
+        # DETTE-052 : idem — annuler sur la feuille devinée, pas sur le créneau choisi à l'écran.
         return service_saisie.annuler_validation(
             requete.tournoi_id, requete.archer_id, requete.numero, auteur
         )

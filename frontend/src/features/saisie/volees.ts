@@ -26,12 +26,15 @@ export function totalVolee(valeurs: readonly string[]): number {
 // tard : le marqueur avance sans l'attendre. Si toutes sont saisies, on reste sur la **dernière**
 // (l'édition d'une volée déjà saisie passe par le navigateur de volées, tant qu'elle n'est pas
 // verrouillée — CA « édition avant validation »).
-export function prochaineASaisir(volees: readonly Volee[], nbVolees: number): number {
+export function prochaineASaisir(volees: readonly Volee[], nbVolees: number, apres = 0): number {
   // ⚠️ **Une volée rendue par le scoreur passe devant** (E16US019). Sans cela, après une
   // annulation toutes les volées sont saisies, donc le pavé s'ouvrait sur la **dernière** du
   // barème — encore verrouillée — avec le message « sa correction relève du scoreur », c'est-à-dire
   // l'exact contraire de ce que le scoreur venait d'afficher.
-  const rendue = volees.find((v) => v.en_correction)
+  // ⚠️ `apres` est indispensable : `en_correction` ne tombe qu'à la **revalidation du scoreur**,
+  // pas à la ressaisie. Sans lui, le pavé rouvrait en boucle la volée qu'on venait d'enregistrer,
+  // et un lot de deux volées devenait infranchissable (relevé en revue).
+  const rendue = volees.find((v) => v.en_correction && v.numero > apres)
   if (rendue !== undefined) return rendue.numero
   for (let numero = 1; numero <= nbVolees; numero += 1) {
     if (!volees.some((v) => v.numero === numero)) return numero

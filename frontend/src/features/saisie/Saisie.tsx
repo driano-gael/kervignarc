@@ -468,7 +468,13 @@ function PaveArcher({
       {
         onSuccess: () => {
           onBrouillon(ligne.archer_id, numeroActif, null)
-          setNumeroChoisi(null)
+          // ⚠️ Une volée **rendue** reste `en_correction` jusqu'à ce que le scoreur revalide :
+          // retomber sur `prochaineASaisir` la rouvrirait telle quelle. On vise donc explicitement
+          // la suivante du lot, le cas échéant (relevé en revue).
+          const suivante = existante?.en_correction === true ? numeroActif : 0
+          setNumeroChoisi(
+            suivante > 0 ? prochaineASaisir(volees, bareme.nb_volees, suivante) : null,
+          )
         },
       },
     )
@@ -526,8 +532,9 @@ function PaveArcher({
 
       {existante?.en_correction === true && (
         <p className="saisie__rendue" role="status">
-          Volée rendue par {existante.correction_ouverte_par ?? 'le scoreur'} — à ressaisir. Son
-          score reste au classement jusqu’à votre saisie.
+          Volée <strong>en correction</strong> — rendue par{' '}
+          {existante.correction_ouverte_par ?? 'le scoreur'}. Ressaisissez-la ; son score reste au
+          classement, et le scoreur la revalidera.
         </p>
       )}
 

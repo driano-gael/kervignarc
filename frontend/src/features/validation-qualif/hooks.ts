@@ -29,6 +29,11 @@ export function useSerieScoreur(tournoiId: number, archerId: number | null) {
   })
 }
 
+// ⚠️ L'identifiant d'idempotence est tiré **dans** `mutationFn`, donc deux appels du même geste
+// portent deux clés et le registre serveur ne les dédoublonne pas. Le double-clic reste barré par
+// `disabled={enCours}` ; le résidu est la fenêtre d'un rendu. Assumé plutôt que sur-construit : un
+// identifiant stable par geste demanderait un état de plus dans le panneau, pour un coût réel d'une
+// trace d'audit en double (validation) ou d'un 422 affiché (annulation). Relevé en revue.
 export function useValiderSerie(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({

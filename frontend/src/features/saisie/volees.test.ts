@@ -70,6 +70,77 @@ describe('prochaineASaisir', () => {
     const volees = [volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])]
     expect(prochaineASaisir(volees, 2)).toBe(2)
   })
+
+  it('une volée rendue DÉJÀ ressaisie ne retient plus le pavé', () => {
+    // ⚠️ `en_correction` ne tombe qu'à la **revalidation du scoreur** : sans le paramètre `apres`,
+    // le pavé rouvrait en boucle la volée qu'on venait d'enregistrer, et un lot de deux volées
+    // devenait infranchissable au doigt (relevé en revue).
+    const volees = [
+      {
+        numero: 1,
+        valeurs: ['6', '6', '6'],
+        saisie_par: 'DURAND',
+        validee_par: 'ROUX',
+        verrouillee: false,
+        en_correction: true,
+        correction_ouverte_par: 'MARTIN',
+        lot_validation: 1,
+        saisie_le: null,
+      },
+      {
+        numero: 2,
+        valeurs: ['10', '9', '8'],
+        saisie_par: 'DURAND',
+        validee_par: 'ROUX',
+        verrouillee: false,
+        en_correction: true,
+        correction_ouverte_par: 'MARTIN',
+        lot_validation: 1,
+        saisie_le: null,
+      },
+    ]
+
+    expect(prochaineASaisir(volees, 2, 1)).toBe(2)
+  })
+
+  it('une volée rendue passe devant dans le pavé (le marqueur la trouve sans chercher)', () => {
+    const volees = [
+      {
+        numero: 1,
+        valeurs: ['10', '9', '8'],
+        saisie_par: 'DURAND',
+        validee_par: 'ROUX',
+        verrouillee: false,
+        en_correction: true,
+        correction_ouverte_par: 'MARTIN',
+        lot_validation: 1,
+        saisie_le: null,
+      },
+      {
+        numero: 2,
+        valeurs: ['9', '9', '9'],
+        saisie_par: 'DURAND',
+        validee_par: 'ROUX',
+        verrouillee: true,
+        en_correction: false,
+        correction_ouverte_par: null,
+        lot_validation: 2,
+        saisie_le: null,
+      },
+    ]
+
+    // Toutes les volées sont saisies : sans la clause d'E16US019, on retombait sur la dernière
+    // du barème — verrouillée, avec le message « sa correction relève du scoreur ».
+    expect(prochaineASaisir(volees, 2)).toBe(1)
+  })
+})
+
+describe('nouvelIdentifiant', () => {
+  it('produit un UUID quand crypto.randomUUID est disponible (contexte sécurisé)', () => {
+    expect(nouvelIdentifiant()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    )
+  })
 })
 
 describe('voleeExistante', () => {
@@ -274,45 +345,6 @@ describe('serieOptimiste', () => {
       en_correction: false,
       lot_validation: null,
     })
-  })
-
-  it('une volée rendue passe devant dans le pavé (le marqueur la trouve sans chercher)', () => {
-    const volees = [
-      {
-        numero: 1,
-        valeurs: ['10', '9', '8'],
-        saisie_par: 'DURAND',
-        validee_par: 'ROUX',
-        verrouillee: false,
-        en_correction: true,
-        correction_ouverte_par: 'MARTIN',
-        lot_validation: 1,
-        saisie_le: null,
-      },
-      {
-        numero: 2,
-        valeurs: ['9', '9', '9'],
-        saisie_par: 'DURAND',
-        validee_par: 'ROUX',
-        verrouillee: true,
-        en_correction: false,
-        correction_ouverte_par: null,
-        lot_validation: 2,
-        saisie_le: null,
-      },
-    ]
-
-    // Toutes les volées sont saisies : sans la clause d'E16US019, on retombait sur la dernière
-    // du barème — verrouillée, avec le message « sa correction relève du scoreur ».
-    expect(prochaineASaisir(volees, 2)).toBe(1)
-  })
-})
-
-describe('nouvelIdentifiant', () => {
-  it('produit un UUID quand crypto.randomUUID est disponible (contexte sécurisé)', () => {
-    expect(nouvelIdentifiant()).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    )
   })
 
   it('retombe sur getRandomValues quand randomUUID est absent (LAN http, hors contexte sécurisé)', () => {

@@ -11,6 +11,7 @@ import {
   estValidee,
   etatVolee,
   voleesQueLAnnulationRouvre,
+  voleesQueValiderReferme,
 } from './etat'
 
 function volee(numero: number, options: Partial<Volee> = {}): Volee {
@@ -105,5 +106,34 @@ describe('aValider', () => {
 
   it('est faux sur une feuille entièrement validée', () => {
     expect(aValider(serie([volee(1, VALIDEE), volee(2, VALIDEE)]))).toBe(false)
+  })
+})
+
+describe('voleesQueValiderReferme', () => {
+  it('nomme le lot que « Valider » refermerait', () => {
+    const feuille = serie([
+      volee(1, { ...VALIDEE, verrouillee: false, en_correction: true }),
+      volee(2, { ...VALIDEE, verrouillee: false, en_correction: true }),
+    ])
+
+    expect(voleesQueValiderReferme(feuille)).toEqual([1, 2])
+  })
+
+  it('ne nomme que le lot le plus ancien — le serveur en referme un par geste', () => {
+    const feuille = serie([
+      volee(1, { ...VALIDEE, verrouillee: false, en_correction: true }),
+      volee(2, {
+        validee_par: 'MARTIN',
+        lot_validation: 2,
+        verrouillee: false,
+        en_correction: true,
+      }),
+    ])
+
+    expect(voleesQueValiderReferme(feuille)).toEqual([1])
+  })
+
+  it('est vide quand le bouton validera une saisie neuve', () => {
+    expect(voleesQueValiderReferme(serie([volee(1, VALIDEE), volee(2)]))).toEqual([])
   })
 })

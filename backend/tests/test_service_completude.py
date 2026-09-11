@@ -179,8 +179,8 @@ def _serie(
             numero=n,
             valeurs=(ZoneScore.DIX,),
             validee_par="MARTIN" if n <= volees_validees else None,
-            # E16US019 : rouverte a l'ecriture, la volee reste **comptee** — la completude du
-            # creneau ne doit pas regresser le temps d'une correction (ADR-0109).
+            # E16US019 : rouverte à l'écriture, la volée reste **comptée** — la complétude du
+            # créneau ne doit pas régresser le temps d'une correction (ADR-0109).
             correction_ouverte_par=("MARTIN" if en_correction and n <= volees_validees else None),
         )
         for n in range(1, total + 1)
@@ -500,11 +500,11 @@ def test_la_basse_ne_bloque_pas_les_cibles_de_la_haute() -> None:
 
 
 def test_une_correction_en_cours_ne_rouvre_pas_une_cible_terminee() -> None:
-    """E16US019 — la cloture d'un creneau ne REGRESSE pas pendant une correction.
+    """E16US019 — la clôture d'un créneau ne RÉGRESSE pas pendant une correction.
 
-    Troisieme des trois decisions qu'ADR-0109 devait preserver. Sans elle, annuler une validation
-    faisait repasser « Pret a terminer ? » au rouge et l'organisateur cherchait une cible qui
-    n'avait rien perdu : `nb_fleches_validees` compte les volees **validees**, correction comprise.
+    Troisième des trois décisions qu'ADR-0109 devait préserver. Sans elle, annuler une validation
+    faisait repasser « Prêt à terminer ? » au rouge et l'organisateur cherchait une cible qui
+    n'avait rien perdu : `nb_fleches_validees` compte les volées **validées**, correction comprise.
     """
     m = Montage(nb_volees_bareme=2)
     depart = m.depart_id

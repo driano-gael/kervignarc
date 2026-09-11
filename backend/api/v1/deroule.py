@@ -27,7 +27,8 @@ class VoleeDerouleReponse(BaseModel):
     """Une volée telle que **suivie par le public** : valeurs, total, statut, « quand ».
 
     Restriction (règle 6, ADR-0039) : ni `saisie_par` ni `validee_par` (identité du scoreur) — seul
-    le `statut` dérivé du verrou passe la frontière publique. `valeurs` liste les zones dans l'ordre
+    le `statut`, dérivé du **compte** (`Volee.validee` — ADR-0109 amendant ADR-0039 § Décision 2),
+    passe la frontière publique. `valeurs` liste les zones dans l'ordre
     de saisie (« 10 », « 9 », « M »…) ; `points` en est le total (le manqué vaut 0).
     """
 
