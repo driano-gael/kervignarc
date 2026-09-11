@@ -66,12 +66,17 @@ d'un acte, deux lots du même scoreur étaient jusqu'ici indiscernables.
 saisie, la volée ne quitte jamais le compte. Sans cette clause, la décision 1 serait perdue à
 l'endroit exact où elle sert — la même clause vaut côté front pour la saisie optimiste hors-ligne.
 
-**4. Revalider referme UNE correction — le lot le plus ancien — dans un **nouveau** lot
-(`correction_ouverte_par` remis à `None`), **avant toute autre validation et sans égard au grain**.
-⚠️ **Un lot par geste** : refermer est un acte, comme annuler. Une première implémentation refermait
-*toutes* les corrections de la feuille — deux lots annulés par deux personnes se retrouvaient
-re-signés d'un clic, **valeurs jamais ressaisies comprises**, sous un validateur qui n'avait relu
-que l'un des deux (bloquant de revue, sondé à l'exécution). Le grain régit la **première**
+**4. Refermer une correction est un geste NOMMÉ, distinct de valider.** `refermer_correction(numero)`
+revalide le lot rouvert qui contient cette volée, sous un **nouveau** lot et **hors grain** (le grain
+régit la *première* validation ; l'appliquer ici laisserait ouvert tout lot plus petit que `N`).
+`valider`, qui ne reçoit aucune cible, **refuse** tant qu'une correction est ouverte
+(`CorrectionOuverte`).
+
+⚠️ **Deux rédactions ont essayé de deviner le lot, et les deux ont été des bloquants de revue** :
+« toutes les corrections de la feuille », puis « la plus ancienne ». Dans les deux cas, un scoreur
+qui relisait le lot B re-signait « valides » les volées du lot A qu'il n'avait **jamais vues** —
+avec leurs valeurs fausses, sous **son** nom, dans le registre qu'on ouvre en contestation. La leçon
+est plus large que ce lot : **un geste qui engage une signature ne devine pas sa cible.** Le grain régit la **première**
 validation ; le lui appliquer ici laisserait ouvert indéfiniment tout lot rouvert plus petit que
 `N` — et, sur une série incomplète, `RienAValider` serait le seul résultat possible. C'est le seul
 geste qui referme une correction ; il n'existe pas d'« annuler l'annulation ».
@@ -145,7 +150,8 @@ qui fait partie de la décision, pas de son habillage.
   lui, l'agrégat perdrait son lot à chaque relecture : la persistance rejoue purge + réinsertion).
 
 - `backend/domain/entree_audit.py` — `ActionAuditee.ANNULATION_VALIDATION`.
-- `backend/api/v1/saisie.py` — `POST /api/v1/saisie/annulations`, et `VoleeReponse.en_correction` /
+- `backend/api/v1/saisie.py` — `POST /api/v1/saisie/annulations` et `POST /api/v1/saisie/refermetures`
+  (la route qui **nomme** le lot, décision 4), et `VoleeReponse.en_correction` /
   `lot_validation` : le lot est exposé **pour que l'écran puisse nommer** ce qu'il va rouvrir.
 - `backend/api/dependances.py` — `autoriser_annulation_validation` (admin ou scoreur) et
   `autoriser_lecture_serie`, qui élargit au scoreur la lecture d'une feuille.

@@ -135,6 +135,19 @@ class AnnulerValidationRequete(BaseModel):
     identifiant_saisie: str | None = None
 
 
+class RefermerCorrectionRequete(BaseModel):
+    """Corps de refermeture d'une correction : `numero` **nomme le lot** à revalider (E16US019).
+
+    ⚠️ Le numéro est **obligatoire** : `POST /validations` refuse de deviner quel lot rouvert le
+    scoreur vient de relire — deux rédactions l'ont deviné, et re-signaient des volées jamais lues.
+    """
+
+    tournoi_id: int
+    archer_id: int
+    numero: int = Field(ge=1)
+    identifiant_saisie: str | None = None
+
+
 class VoleeReponse(BaseModel):
     """Une volée telle que relue : valeurs, marqueurs déclaratifs, verrou, et son « quand »."""
 
@@ -462,6 +475,45 @@ async def annuler_validation(
         # DETTE-052 : idem — annuler sur la feuille devinée, pas sur le créneau choisi à l'écran.
         return service_saisie.annuler_validation(
             requete.tournoi_id, requete.archer_id, requete.numero, auteur
+        )
+
+    serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    horodatages = await run_in_threadpool(
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
+    )
+    return SerieReponse.de_serie(serie, horodatages)
+
+
+@router.post("/refermetures", response_model=SerieReponse)
+async def refermer_correction(
+    requete: RefermerCorrectionRequete,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> SerieReponse:
+    """Revalide le lot rouvert qui contient la volée `numero` — dernier temps du parcours S08.
+
+    ⚠️ **Route distincte de `/validations`, et c'est le fond du geste** : valider ne reçoit aucune
+    cible, donc il ne peut pas savoir quel lot rouvert le scoreur vient de relire. Deux rédactions
+    ont essayé de le deviner (« toutes les corrections », puis « la plus ancienne ») et re-signaient
+    des volées jamais relues, sous le nom de qui cliquait. Ici le lot est **nommé** (E16US019).
+    Réservée au scoreur, comme la validation. Via la **file**, **dédoublonnée** par identifiant.
+    """
+    service_saisie: ServiceSaisie = request.app.state.service_saisie
+    write_queue: WriteQueue = request.app.state.write_queue
+    registre: RegistreIdempotence = request.app.state.registre_idempotence
+    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    cle = _cle_idempotence(
+        "refermeture",
+        requete.identifiant_saisie,
+        requete.tournoi_id,
+        requete.archer_id,
+        requete.numero,
+    )
+
+    def ecrire() -> Serie:
+        # DETTE-052 : comme les routes sœurs, le corps ne porte pas de `depart_id`.
+        return service_saisie.refermer_correction(
+            requete.tournoi_id, requete.archer_id, requete.numero, scoreur.nom
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))

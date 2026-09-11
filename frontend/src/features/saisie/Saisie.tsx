@@ -29,6 +29,7 @@ import {
   libelleGrain,
   nouvelIdentifiant,
   prochaineASaisir,
+  voleeApresEnregistrement,
   quelSaisiePar,
   totalVolee,
   voleeExistante,
@@ -468,13 +469,7 @@ function PaveArcher({
       {
         onSuccess: () => {
           onBrouillon(ligne.archer_id, numeroActif, null)
-          // ⚠️ Une volée **rendue** reste `en_correction` jusqu'à ce que le scoreur revalide :
-          // retomber sur `prochaineASaisir` la rouvrirait telle quelle. On vise donc explicitement
-          // la suivante du lot, le cas échéant (relevé en revue).
-          const suivante = existante?.en_correction === true ? numeroActif : 0
-          setNumeroChoisi(
-            suivante > 0 ? prochaineASaisir(volees, bareme.nb_volees, suivante) : null,
-          )
+          setNumeroChoisi(voleeApresEnregistrement(volees, numeroActif))
         },
       },
     )

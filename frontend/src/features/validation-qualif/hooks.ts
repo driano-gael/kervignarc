@@ -11,7 +11,7 @@ import type { Serie } from '../saisie/api'
 import { cleSerie } from '../saisie/hooks'
 import { nouvelIdentifiant } from '../saisie/volees'
 import { cleClassement, INTERVALLE_POLL_MS } from '../competition/hooks'
-import { annulerValidation, getSerieScoreur, validerSerie } from './api'
+import { annulerValidation, getSerieScoreur, refermerCorrection, validerSerie } from './api'
 
 export function useSerieScoreur(tournoiId: number, archerId: number | null) {
   return useQuery({
@@ -38,6 +38,18 @@ export function useValiderSerie(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (archerId: number) => validerSerie(tournoiId, archerId, nouvelIdentifiant()),
+    onSuccess: (serie: Serie) => {
+      queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id, 'scoreur'), serie)
+      void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+    },
+  })
+}
+
+export function useRefermerCorrection(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ archerId, numero }: { archerId: number; numero: number }) =>
+      refermerCorrection(tournoiId, archerId, numero, nouvelIdentifiant()),
     onSuccess: (serie: Serie) => {
       queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id, 'scoreur'), serie)
       void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })

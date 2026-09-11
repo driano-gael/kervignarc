@@ -54,19 +54,20 @@ vi.mock('../suisse/SaisieSuisse', () => ({ SaisieSuisse: panneau('suisse') }))
 // bien son propre sélecteur, volontairement indépendant (un forfait se prononce parfois sur un
 // archer d'un autre créneau), avec un défaut différent. Le doubler revenait à manufacturer le vert
 // du test censé garder `DETTE-056`. Seules ses données sont doublées.
-vi.mock('../competition/hooks', () => ({
+
+// ⚠️ **Mocks ÉTALÉS sur le module réel, pas énumérés.** Un mock partiel casse dès qu'un
+// consommateur importe un export imprévu — ce fichier est tombé **deux fois** ainsi, et le premier
+// rafistolage (recopier l'export manquant) reproduisait le piège. On ne double que le **réseau**.
+vi.mock('../competition/hooks', async (reel) => ({
+  ...(await reel<typeof import('../competition/hooks')>()),
   useClassement: () => ({ data: undefined, isPending: false, isError: false, error: null }),
-  // ⚠️ Un mock partiel **casse** dès qu'un consommateur importe un autre export : le panneau de
-  // validation (E16US019) réemploie la cadence de poll du classement, et les six cas de ce fichier
-  // sont tombés d'un coup sur « No "INTERVALLE_POLL_MS" export is defined ». Le mock doit refléter
-  // ce que le module offre, pas ce que le test croit utiliser.
-  INTERVALLE_POLL_MS: 5000,
-  cleClassement: (tournoiId: number) => ['classement', tournoiId],
 }))
-vi.mock('../validation-qualif/hooks', () => ({
+vi.mock('../validation-qualif/hooks', async (reel) => ({
+  ...(await reel<typeof import('../validation-qualif/hooks')>()),
   useSerieScoreur: () => ({ data: undefined, isSuccess: false, error: null }),
   useValiderSerie: () => MUTATION,
   useAnnulerValidation: () => MUTATION,
+  useRefermerCorrection: () => MUTATION,
 }))
 vi.mock('../forfaits/hooks', () => ({
   useDeclarerForfaitQualif: () => MUTATION,

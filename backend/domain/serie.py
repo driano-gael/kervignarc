@@ -14,6 +14,7 @@ from dataclasses import dataclass, replace
 from domain.archer import ArcherId
 from domain.blason import ZoneScore
 from domain.erreurs import (
+    CorrectionOuverte,
     IncoherenceVolee,
     NombreFlechesVoleeInvalide,
     NomIntervenantInvalide,
@@ -258,17 +259,14 @@ class Serie:
         Une **correction en cours** se referme en priorité, hors grain (voir plus bas)."""
         par = _intervenant_valide(par)
         a_valider = tuple(v for v in self.volees if not v.verrouillee)
-        en_correction = tuple(v for v in self.volees if v.en_correction)
-        if en_correction:
-            # ⚠️ **UN lot par geste, le plus ancien** — refermer est un acte, comme annuler. Une
-            # première rédaction refermait *toutes* les corrections de la feuille : deux lots
-            # annulés séparément se retrouvaient re-signés d'un clic, **valeurs fausses comprises**,
-            # sous un validateur qui n'avait relu que l'un des deux (bloquant de revue).
-            # ⚠️ Et **hors grain** : le grain régit la *première* validation ; l'appliquer ici
-            # laisserait ouvert tout lot rouvert plus petit que N.
-            plus_ancien = min(v.lot_validation or 0 for v in en_correction)
-            return self._verrouiller(
-                tuple(v for v in en_correction if (v.lot_validation or 0) == plus_ancien), par
+        if any(v.en_correction for v in self.volees):
+            # ⚠️ **Un geste qui referme une correction doit NOMMER son lot** : deux rédactions
+            # successives ont essayé de le deviner — « toutes les corrections », puis « la plus
+            # ancienne » — et les deux re-signaient des volées que le validateur n'avait jamais
+            # relues. `valider` ne reçoit ni numéro ni lot : il ne peut pas choisir, donc il refuse
+            # (bloquant de revue, sondé deux fois). Le geste nommé est `refermer_correction`.
+            raise CorrectionOuverte(
+                "Une correction est ouverte sur cette feuille : refermez-la avant de valider."
             )
         # Complétude **explicite** : les volées 1..N sont toutes présentes. Ne pas se fier au seul
         # `len` : même borné à la saisie, l'ensemble exact est un contrat plus clair.
@@ -291,6 +289,26 @@ class Serie:
                 raise RienAValider("Toutes les volées sont déjà validées.")
             lot = a_valider
         return self._verrouiller(lot, par)
+
+    def refermer_correction(self, numero: int, *, par: str) -> Serie:
+        """Revalide **le lot rouvert qui contient la volée `numero`**, au nom de `par`.
+
+        Pendant de `annuler_validation` : on annule un lot nommé, on referme un lot nommé. ⚠️ **Hors
+        grain** — le grain régit la *première* validation ; l'appliquer ici laisserait ouvert
+        indéfiniment tout lot rouvert plus petit que `N`, et sur une série incomplète `RienAValider`
+        serait le seul résultat possible. `VoleeIntrouvable` si le numéro n'existe pas,
+        `VoleeNonVerrouillee` si cette volée n'est pas en correction.
+        """
+        par = _intervenant_valide(par)
+        existante = self.volee(numero)
+        if existante is None:
+            raise VoleeIntrouvable(f"Aucune volée numéro {numero} dans cette série.")
+        if not existante.en_correction:
+            raise VoleeNonVerrouillee("Cette volée n'est pas en correction : rien à refermer.")
+        lot = existante.lot_validation
+        return self._verrouiller(
+            tuple(v for v in self.volees if v.lot_validation == lot and v.en_correction), par
+        )
 
     def _verrouiller(self, lot: tuple[Volee, ...], par: str) -> Serie:
         """Verrouille `lot` au nom de `par`, sous un rang d'acte neuf, et referme sa correction.

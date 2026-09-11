@@ -751,8 +751,8 @@ def test_annuler_puis_ressaisir_au_poste_puis_revalider(
             headers=_entete(s.jeton),
         )
         revalidation = client.post(
-            "/api/v1/saisie/validations",
-            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            "/api/v1/saisie/refermetures",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
             headers=entete,
         )
 
@@ -893,6 +893,61 @@ def test_un_poste_de_cible_ne_peut_pas_annuler_une_validation(
             "/api/v1/saisie/annulations",
             json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
             headers=_entete(s.jeton),
+        )
+
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_valider_refuse_de_deviner_quel_lot_refermer(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Oracle du bloquant de 3ᵉ passe** : `POST /validations` ne reçoit aucune cible.
+
+    Deux rédactions successives l'ont laissé deviner — « toutes les corrections », puis « la plus
+    ancienne » — et les deux re-signaient « valides » des volées que le scoreur n'avait jamais
+    relues, sous **son** nom, dans le registre qu'on ouvre en contestation. Refuser est la seule
+    réponse honnête : le lot se referme par `POST /refermetures`, qui le **nomme**.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            headers=entete,
+        )
+
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "correction_ouverte"
+
+
+def test_refermer_une_correction_est_reserve_au_scoreur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Refermer fait **avancer** le tour : même garde que valider, pas celle d'annuler."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        # La session admin de `_semer` est encore ouverte : elle ne doit pas suffire.
+        reponse = client.post(
+            "/api/v1/saisie/refermetures",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
         )
 
         assert reponse.status_code == 401, reponse.text

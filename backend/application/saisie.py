@@ -142,7 +142,10 @@ def _objet_de_ressaisie(numero: int, archer_id: ArcherId, volee: Volee | None) -
     directe du scoreur et la ressaisie après annulation — qui n'ont pas la même valeur probante.
     """
     marqueur = volee.saisie_par if volee is not None else None
-    signature = f", marqueur déclaré {marqueur}" if marqueur else ""
+    # ⚠️ « d'origine » et non « déclaré » : sur le parcours réel, le front envoie `saisie_par:
+    # null` en ré-édition, donc le domaine **préserve** le marqueur de la première saisie. Écrire
+    # « déclaré » se lisait comme « qui a ressaisi » — faux (3ᵉ passe de revue).
+    signature = f", marqueur d'origine {marqueur}" if marqueur else ""
     return f"volée {numero} de l'archer {archer_id} (ressaisie après annulation{signature})"
 
 
@@ -524,6 +527,37 @@ class ServiceSaisie:
         )
         enregistree = self._series.enregistrer_avec_trace(serie, entree)
         # Le résultat est **écrit** : c'est maintenant qu'un tour peut être achevé (E05US033).
+        self._arrets.signaler(phase.depart_id)
+        return enregistree
+
+    def refermer_correction(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        numero: int,
+        scoreur: str,
+        contexte: ContexteSaisie | None = None,
+    ) -> Serie:
+        """Revalide le lot rouvert qui contient la volée `numero`, au nom du `scoreur`.
+
+        Dernier temps du parcours *annuler → ressaisir → revalider*. ⚠️ **Geste distinct de
+        `valider`** : celui-ci ne reçoit aucune cible, donc il refuserait de deviner quel lot
+        refermer (`CorrectionOuverte`). Gelé par la pause comme `valider` — refermer fait avancer
+        le tour.
+        """
+        self._charger_archer(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        refuser_si_en_pause(phase)
+        serie = self._feuille(tournoi_id, archer_id, phase)
+        serie = serie.refermer_correction(numero, par=scoreur)
+        entree = EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.VALIDATION,
+            auteur=scoreur,
+            horodatage=self._horloge.maintenant(),
+            objet=f"correction refermée sur la volée {numero} de l'archer {archer_id}",
+        )
+        enregistree = self._series.enregistrer_avec_trace(serie, entree)
         self._arrets.signaler(phase.depart_id)
         return enregistree
 

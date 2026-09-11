@@ -132,6 +132,17 @@ class VoleeNonVerrouillee(DomainError):
     code = "volee_non_verrouillee"
 
 
+class CorrectionOuverte(DomainError):
+    """Valider une feuille dont une correction est encore ouverte (E16US019).
+
+    ⚠️ Refuser plutôt que deviner : `valider` ne reçoit ni numéro ni lot, donc il ne peut pas savoir
+    **quel** lot rouvert le scoreur vient de relire. Deux rédactions ont essayé de le deviner et
+    re-signaient des volées jamais relues. Le geste nommé est `Serie.refermer_correction`.
+    """
+
+    code = "correction_ouverte"
+
+
 class IncoherenceVolee(DomainError):
     """Une volée se construit dans un état que ses invariants interdisent (E16US019).
 

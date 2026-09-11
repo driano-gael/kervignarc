@@ -13,6 +13,7 @@ import pytest
 
 from domain.blason import ZoneScore
 from domain.erreurs import (
+    CorrectionOuverte,
     IncoherenceVolee,
     NomIntervenantInvalide,
     VoleeIntrouvable,
@@ -166,7 +167,7 @@ def test_revalider_referme_la_correction_dans_un_nouveau_lot() -> None:
 
     serie = serie.annuler_validation(1, par="MARTIN")
     serie = _saisir(serie, 1, _v("6", "6", "6"), 1)
-    serie = serie.valider("DURAND", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1)
+    serie = serie.refermer_correction(1, par="DURAND")
 
     volee = serie.volee(1)
     assert volee is not None
@@ -320,11 +321,15 @@ def test_revalider_ne_referme_qu_un_lot_a_la_fois() -> None:
     serie = serie.valider("DURAND", grain=grain, nb_volees_bareme=4)
     serie = serie.annuler_validation(1, par="MARTIN")
     serie = serie.annuler_validation(3, par="ARBITRE")
+    # ⚠️ Le marqueur ne ressaisit QUE le second lot : c'est le décor qui a démasqué les deux
+    # rédactions devinettes. Refermer doit viser **ce** lot, pas « le plus ancien ».
+    serie = _saisir(serie, 3, _v("7", "7", "7"), 4)
+    serie = _saisir(serie, 4, _v("7", "7", "7"), 4)
 
-    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    serie = serie.refermer_correction(3, par="ARBITRE")
 
-    assert [v.en_correction for v in serie.volees] == [False, False, True, True]
-    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", "DURAND", "DURAND"]
+    assert [v.en_correction for v in serie.volees] == [True, True, False, False]
+    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", "ARBITRE", "ARBITRE"]
 
 
 def test_deux_lots_refermes_restent_deux_lots() -> None:
@@ -338,8 +343,8 @@ def test_deux_lots_refermes_restent_deux_lots() -> None:
     serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
     serie = serie.valider("DURAND", grain=grain, nb_volees_bareme=4)
     serie = serie.annuler_validation(1, par="MARTIN").annuler_validation(3, par="MARTIN")
-    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
-    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    serie = serie.refermer_correction(1, par="MARTIN")
+    serie = serie.refermer_correction(3, par="MARTIN")
 
     serie = serie.annuler_validation(1, par="MARTIN")
 
@@ -359,10 +364,12 @@ def test_refermer_une_correction_ne_valide_pas_le_lot_en_attente() -> None:
     serie = _saisir(serie, 3, _v("7", "7", "7"), 4)
     serie = _saisir(serie, 4, _v("7", "7", "7"), 4)
 
-    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    with pytest.raises(CorrectionOuverte):
+        serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
 
-    assert [v.en_correction for v in serie.volees] == [False, False, False, False]
-    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", None, None]
+    serie = serie.refermer_correction(1, par="MARTIN")
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
+    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", "MARTIN", "MARTIN"]
 
 
 def test_un_lot_repris_d_une_seule_volee_se_revalide_hors_grain() -> None:
@@ -376,9 +383,7 @@ def test_un_lot_repris_d_une_seule_volee_se_revalide_hors_grain() -> None:
     serie = replace(_serie(1, _v("10", "9", "8"), bareme=4), volees=(reprise,))
     serie = serie.annuler_validation(1, par="MARTIN")
 
-    serie = serie.valider(
-        "MARTIN", grain=GrainValidation.toutes_les_n_volees(2), nb_volees_bareme=4
-    )
+    serie = serie.refermer_correction(1, par="MARTIN")
 
     volee = serie.volee(1)
     assert volee is not None
@@ -388,18 +393,25 @@ def test_un_lot_repris_d_une_seule_volee_se_revalide_hors_grain() -> None:
 def test_un_acte_ne_prend_jamais_le_rang_d_une_volee_reprise() -> None:
     """Les deux conventions de lot partagent un espace de valeurs — elles doivent rester disjointes.
 
-    ⚠️ Sondé en revue : une volée reprise (lot = son numéro) et un acte réel pouvaient recevoir le
-    **même** lot, et annuler l'une rouvrait l'autre, sans erreur et sans trace.
-    """
-    reprise = Volee(numero=5, valeurs=_v("10", "9", "8"), validee_par="ANCIEN", lot_validation=5)
-    serie = replace(_serie(1, _v("10", "9", "8"), bareme=5), volees=(reprise,))
-    serie = _saisir(serie, 1, _v("7", "7", "7"), 5)
+    ⚠️ **L'ORDRE de ce décor est tout le test**, et une première rédaction l'avait à l'envers : la
+    reprise y précédait l'acte, si bien que les deux formules de rang donnaient le même résultat et
+    que le test passait **aussi sans le correctif** (placebo relevé en 3ᵉ passe de revue).
 
+    Ici la reprise arrive **après** l'acte — ce que ferait un import de feuilles papier ou un script
+    de reprise sur une série déjà jouée. Sans la borne, l'acte sur la volée 5 reçoit le rang **1**
+    (aucun lot n'existe encore dans la série), la reprise n° 1 se normalise en lot **1** elle aussi,
+    et annuler l'une rouvre l'autre — deux volées que personne n'a jamais validées ensemble.
+    """
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
+    serie = _saisir(serie, 5, _v("10", "9", "8"), 5)
     serie = serie.valider(
         "MARTIN", grain=GrainValidation.toutes_les_n_volees(1), nb_volees_bareme=5
     )
+    reprise = Volee(numero=1, valeurs=_v("7", "7", "7"), validee_par="ANCIEN")
+    serie = replace(serie, volees=tuple(sorted((*serie.volees, reprise), key=lambda v: v.numero)))
 
     serie = serie.annuler_validation(1, par="MARTIN")
+
     assert {v.numero for v in serie.volees if v.en_correction} == {1}
 
 

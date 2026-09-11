@@ -1241,10 +1241,13 @@ def test_annuler_une_validation_pendant_la_pause_est_refuse() -> None:
     """⚠️ **Inverse du réflexe** — correctif de revue, pas un choix d'origine.
 
     La pause gèle ce qui *avance*, pas ce qui *répare* (E05US033), et la première rédaction en
-    déduisait que l'annulation restait ouverte. Mais les **deux** gestes qui referment une
-    correction sont gelés, eux : `saisir_volee` et `valider` portent `refuser_si_en_pause`, et
-    `corriger_volee` refuse une volée rouverte. Annuler y laissait donc la volée ouverte **sans
-    aucun recours** jusqu'à la relance. Pendant une pause, on répare par `corriger_volee`.
+    déduisait que l'annulation restait ouverte. Mais les **deux** gestes qui **referment** une
+    correction sont gelés, eux : `saisir_volee` et `valider` portent `refuser_si_en_pause`. Annuler
+    pendant une pause ouvre donc une fenêtre que rien ne peut refermer avant la relance.
+    ⚠️ `corriger_volee`, lui, **répare** les valeurs sans être gelé (test jumeau ci-dessus, et
+    `test_corriger_une_volee_en_correction_reste_possible` au domaine) — mais il ne referme pas la
+    fenêtre, et aucun écran ne l'expose. *(Formulation reprise en 3ᵉ passe : la précédente invoquait
+    un refus de `corriger_volee` que le même diff avait supprimé.)*
     """
     m = Montage()
     m.saisir_serie_complete()
@@ -1253,6 +1256,32 @@ def test_annuler_une_validation_pendant_la_pause_est_refuse() -> None:
 
     with pytest.raises(PhaseEnPause):
         m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
+
+
+def test_corriger_une_volee_rendue_pendant_la_pause_repare_quand_meme() -> None:
+    """⚠️ **L'oracle de non-garde du parcours réel** — c'est lui qui fonde le retournement du test
+    domaine `corriger_une_volee_en_correction_reste_possible`.
+
+    Le domaine ignore la pause : prouver là-bas que `corriger_volee` accepte une volée rouverte ne
+    assert volee.en_correction is True, "réparer ne referme pas : revalider reste gelé"
+    les quatre écritures en posant le refus sur `corriger_volee`, le test domaine et
+    `test_corriger_une_volee_pendant_la_pause_reste_possible` resteraient **tous deux verts**, et le
+    seul recours ouvert pendant une pause disparaîtrait en silence (relevé en 3ᵉ passe de revue).
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    _mettre_la_phase_en_pause(m)
+
+    m.service.corriger_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE")
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.valeurs == _v("10", "10", "10")
+    assert volee.en_correction is True, "réparer ne referme pas la fenêtre — revalider est gelé"
 
 
 def test_la_ressaisie_d_une_volee_en_correction_est_tracee() -> None:
@@ -1275,7 +1304,7 @@ def test_la_ressaisie_d_une_volee_en_correction_est_tracee() -> None:
     # L'auteur vient de la **garde** (ici : pas de contexte ⇒ chemin admin), pas du corps de
     # requête. Le marqueur déclaré est une donnée, rangée dans l'objet.
     assert trace.auteur == "Administrateur"
-    assert trace.objet is not None and "marqueur déclaré DURAND" in trace.objet
+    assert trace.objet is not None and "marqueur d'origine DURAND" in trace.objet
 
 
 def test_la_trace_de_ressaisie_nomme_le_poste_et_non_le_marqueur_declare() -> None:

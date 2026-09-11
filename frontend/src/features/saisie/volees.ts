@@ -99,6 +99,23 @@ export function nouvelIdentifiant(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
+// Quelle volée viser **après** avoir enregistré `numeroActif` ? `null` = « rends la main au mode
+// prochaine-à-saisir ». Fonction pure exprès : ce choix a porté deux défauts de suite, et il vivait
+// dans un `onSuccess` que rien ne testait (3ᵉ passe de revue).
+//
+// ⚠️ Deux pièges, tous deux vécus : (a) une volée **rendue** reste `en_correction` jusqu'à la
+// revalidation du scoreur, donc laisser le mode automatique la rouvrirait telle quelle, en boucle ;
+// (b) le repli de `prochaineASaisir` rend la **dernière du barème**, qui peut être verrouillée — on
+// y épinglerait un pavé inécrivable. On ne vise donc que la suivante **du lot**, à défaut on reste.
+export function voleeApresEnregistrement(
+  volees: readonly Volee[],
+  numeroActif: number,
+): number | null {
+  const active = volees.find((v) => v.numero === numeroActif)
+  if (active?.en_correction !== true) return null
+  return volees.find((v) => v.en_correction && v.numero > numeroActif)?.numero ?? numeroActif
+}
+
 // Le marqueur à envoyer avec une volée. Nouvelle volée : le marqueur actif la **signe**. Ré-édition
 // d'une volée déjà saisie (`existante`) : `null`, pour que le domaine **préserve** le marqueur
 // d'origine (`Serie.saisir_volee`, chemin « saisie_par is None ») — une correction ne réattribue pas

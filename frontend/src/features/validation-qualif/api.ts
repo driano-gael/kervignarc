@@ -32,6 +32,29 @@ export function validerSerie(
   )
 }
 
+// Referme le lot rouvert qui contient `numero`. ⚠️ Route **distincte** de `validerSerie` : le lot
+// doit être **nommé**, le serveur refusant de deviner lequel le scoreur vient de relire (E16US019).
+export function refermerCorrection(
+  tournoiId: number,
+  archerId: number,
+  numero: number,
+  identifiantSaisie: string,
+): Promise<Serie> {
+  return fetchJson<Serie>(
+    '/api/v1/saisie/refermetures',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        tournoi_id: tournoiId,
+        archer_id: archerId,
+        numero,
+        identifiant_saisie: identifiantSaisie,
+      }),
+    },
+    'scoreur',
+  )
+}
+
 // `numero` désigne **une** volée ; c'est tout son lot de validation que le serveur rouvre.
 export function annulerValidation(
   tournoiId: number,

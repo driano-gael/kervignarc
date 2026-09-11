@@ -655,12 +655,22 @@
 - **CA — l'US livre AUSSI la surface scoreur de la qualification** *(périmètre arbitré au cadrage du 11/09/2026)*. ⚠️ **Le CA « l'écran dit ce qu'il fait » était insatisfaisable en l'état** : le backend expose `POST /saisie/validations` et `/corrections` depuis `E04US002`, mais **aucun composant front ne les appelait** — `EspaceScoreur.tsx` renvoyait à « une surface distincte, §7.3 » et `docs/fonctionnel/E04US002.md` la notait « à venir ». Le découpage d'`E04US002` le dit en toutes lettres : la surface scoreur n'était dans **aucune** de ses quatre tranches, et **aucune US ne l'a reprise depuis** — c'est un trou de backlog, pas un oubli d'exploration. Périmètre retenu : **voir les feuilles d'un créneau, valider, annuler**. La **correction directe** depuis cet écran reste hors tranche — le parcours S08 passe par la ressaisie sur la **tablette**, qui existe déjà. ⚠️ Conséquence technique : la lecture `GET /saisie/series/…`, gardée `autoriser_saisie` (admin **ou poste**), est **élargie au scoreur** — sans quoi l'écran qui valide ne peut pas afficher ce qu'il agit.
 - **CA — `corriger_volee` opère sur une volée COMPTÉE, pas verrouillée** *(retourné en 2ᵉ passe de
   revue, 11/09/2026)*. Une rédaction précédente disait « les deux chemins ne se croisent pas ». Ils
-  se croisent, et il le faut : c'est le **seul** recours quand une pause tombe **entre** l'annulation
-  et la ressaisie — les deux gestes qui referment une correction sont gelés, celui-ci ne l'est pas.
+  se croisent, et il le faut : c'est le seul recours **au service** quand une pause tombe **entre**
+  l'annulation et la ressaisie — les deux gestes qui referment une correction sont gelés, celui-ci
+  ne l'est pas. ⚠️ **Recours d'API, pas geste d'organisateur** : aucun écran n'expose la correction
+  directe, ni avant cette US ni après. À l'écran, une volée rendue avant une pause **attend la
+  relance** (précisé en 3ᵉ passe de revue : la rédaction précédente promettait un chemin utilisateur
+  qui n'existe pas).
   ⚠️ **L'arbitrage du commanditaire prime sur le CA dérivé** : E05US033 dit « la pause gèle ce qui
   *avance*, jamais ce qui *répare* », et la rédaction précédente restreignait cette règle sans
   l'avoir demandé. Corriger ne **referme pas** la correction : le scoreur revalide ensuite.
-- **CA — revalider referme UN lot, le plus ancien** *(bloquant de revue, 11/09/2026, sondé à
+- **CA — refermer une correction est un geste NOMMÉ** *(bloquant de 3ᵉ passe de revue, sondé)*.
+  `POST /saisie/refermetures` porte le **numéro** de volée, donc le lot ; `POST /saisie/validations`,
+  qui ne reçoit aucune cible, **refuse** tant qu'une correction est ouverte. ⚠️ **Deux rédactions ont
+  essayé de deviner** — « toutes les corrections », puis « la plus ancienne » — et les deux
+  re-signaient des volées jamais relues sous le nom de qui cliquait. *(Remplace le CA ci-dessous,
+  gardé pour mémoire du raisonnement.)*
+- ~~**CA — revalider referme UN lot, le plus ancien**~~ *(bloquant de revue, 11/09/2026, sondé à
   l'exécution)*. Une première implémentation refermait **toutes** les corrections de la feuille :
   deux lots annulés par deux personnes pour deux motifs se retrouvaient re-signés d'un seul clic —
   les volées **jamais ressaisies** redevenaient « valides » avec leurs valeurs fausses et changeaient

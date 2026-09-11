@@ -9,6 +9,7 @@ import {
   quelSaisiePar,
   serieOptimiste,
   totalVolee,
+  voleeApresEnregistrement,
   voleeExistante,
 } from './volees'
 
@@ -360,5 +361,38 @@ describe('serieOptimiste', () => {
     } finally {
       globalThis.crypto.randomUUID = original
     }
+  })
+})
+
+describe('voleeApresEnregistrement', () => {
+  const rendue = (numero: number) => ({
+    numero,
+    valeurs: ['10', '9', '8'],
+    saisie_par: 'DURAND',
+    validee_par: 'ROUX',
+    verrouillee: false,
+    en_correction: true,
+    correction_ouverte_par: 'MARTIN',
+    lot_validation: 1,
+    saisie_le: null,
+  })
+  const verrouillee = (numero: number) => ({
+    ...rendue(numero),
+    verrouillee: true,
+    en_correction: false,
+  })
+
+  it('rend la main au mode automatique sur une volée ordinaire', () => {
+    expect(voleeApresEnregistrement([verrouillee(1)], 1)).toBeNull()
+  })
+
+  it('vise la suivante DU LOT quand il en reste une', () => {
+    expect(voleeApresEnregistrement([rendue(1), rendue(2)], 1)).toBe(2)
+  })
+
+  it('ne saute JAMAIS sur une volée verrouillée quand le lot est épuisé', () => {
+    // Le cas par défaut des bases migrées (reprise 0054 : un lot par volée). Rendre la main au
+    // mode automatique épinglerait la dernière du barème — verrouillée, pavé inécrivable.
+    expect(voleeApresEnregistrement([rendue(1), verrouillee(2), verrouillee(3)], 1)).toBe(1)
   })
 })

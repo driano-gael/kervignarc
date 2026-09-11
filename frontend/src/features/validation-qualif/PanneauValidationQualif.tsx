@@ -16,7 +16,12 @@ import type { Volee } from '../saisie/api'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { aValider, avertissementAnnulation, etatVolee, voleesQueValiderReferme } from './etat'
-import { useAnnulerValidation, useSerieScoreur, useValiderSerie } from './hooks'
+import {
+  useAnnulerValidation,
+  useRefermerCorrection,
+  useSerieScoreur,
+  useValiderSerie,
+} from './hooks'
 
 export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
   const [choixDepart, setChoixDepart] = useState<number | null>(null)
@@ -28,6 +33,7 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
   const serie = useSerieScoreur(tournoiId, archerId)
   const valider = useValiderSerie(tournoiId)
   const annuler = useAnnulerValidation(tournoiId)
+  const refermer = useRefermerCorrection(tournoiId)
 
   const lignes = classement.data?.lignes ?? []
 
@@ -53,7 +59,7 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         }}
         etiquette="Départ à valider"
       />
-      <MessageErreur erreur={serie.error ?? valider.error ?? annuler.error} />
+      <MessageErreur erreur={serie.error ?? valider.error ?? annuler.error ?? refermer.error} />
       {lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer sur ce départ pour l'instant.</p>
       ) : (
@@ -78,11 +84,17 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         <FeuilleAValider
           volees={serie.data.volees}
           cumul={serie.data.cumul}
-          enCours={valider.isPending || annuler.isPending}
+          enCours={valider.isPending || annuler.isPending || refermer.isPending}
           validable={aValider(serie.data)}
           refermera={voleesQueValiderReferme(serie.data)}
           avertissement={(numero) => avertissementAnnulation(serie.data, numero)}
-          onValider={() => valider.mutate(archerId)}
+          // ⚠️ Deux gestes, deux routes : refermer une correction **nomme** son lot, valider ne
+          // nomme rien. Le serveur refuse désormais de deviner (`CorrectionOuverte`).
+          onValider={() => {
+            const [premier] = voleesQueValiderReferme(serie.data)
+            if (premier !== undefined) refermer.mutate({ archerId, numero: premier })
+            else valider.mutate(archerId)
+          }}
           onAnnuler={(numero) => annuler.mutate({ archerId, numero })}
         />
       )}
