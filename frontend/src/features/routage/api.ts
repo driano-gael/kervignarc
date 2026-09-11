@@ -96,6 +96,11 @@ export interface Routage {
   // au lieu de dire qu'on n'en est pas là.
   phase_id: number | null
   archers: RoutageArcher[]
+  // Le panneau porte un **écriteau**, pas une annonce (E16US018) : tir suspendu, phase non
+  // configurée. Il ne se referme alors pas tout seul — un écriteau vaut tant que la situation dure.
+  // ⚠️ Autorité **serveur** : « toutes les lignes sont en attente » ne suffit pas à le déduire,
+  // une ronde suisse où les quatre archers d'une cible portent un bye a la même forme.
+  avis_permanent: boolean
 }
 
 // ⚠️ **L'entrée est le créneau** (E01US025, ADR-0075) : « le tableau qui vient » n'a de sens que

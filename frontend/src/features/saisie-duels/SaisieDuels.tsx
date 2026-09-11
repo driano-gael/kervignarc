@@ -128,10 +128,37 @@ function IndicateurAttente() {
 function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
   const tableau = useTableau(tournoiId, phaseId)
   const [matchOuvert, setMatchOuvert] = useState<number | null>(null)
-  // Les deux duellistes du duel qu'on vient de valider (E04US018) : la validation fait avancer le
-  // tableau, donc leur destination est **immédiatement** lisible côté serveur. `null` = pas de
-  // bascule en cours.
-  const [routageDe, setRoutageDe] = useState<number[] | null>(null)
+  // Le duel qu'on vient de valider (E04US018) : la validation fait avancer le tableau, donc la
+  // destination des deux duellistes est **immédiatement** lisible côté serveur. `null` = aucun duel
+  // validé sur cette tablette. ⚠️ **Ne se remet plus à `null` à la fermeture** (E16US018) : c'est ce
+  // qui rend le panneau rouvrable. ⚠️ Il porte donc le **numéro** : à 11 h, la poignée rouvre le
+  // duel validé à 9 h 40, et un lien muet promettrait le duel qu'on vient de regarder.
+  const [routageDe, setRoutageDe] = useState<{ numero: number; archers: number[] } | null>(null)
+  const [panneauFerme, setPanneauFerme] = useState(false)
+
+  // Panneau de routage (E04US018) : il **remplace** la grille dès le duel tranché — les deux archers
+  // sont encore là, c'est la seconde où l'information leur sert. Il se referme au bouton, ou seul
+  // au bout de trois minutes (E16US018) ; dans les deux cas il reste rouvrable depuis la liste.
+  //
+  // ⚠️ **Avant les sorties `isPending` / `isError`, et c'est le correctif d'E16US018** : le panneau
+  // ne lit pas `tableau`, il a ses propres données. Placé après, un refetch en échec (`retry: false`,
+  // et `useRealtime` invalide sans clé) le démontait puis le remontait — le minuteur repartait à
+  // zéro, si bien que sur un wifi de salle il pouvait ne **jamais** se refermer.
+  if (routageDe !== null && !panneauFerme) {
+    return (
+      <PanneauRoutage
+        tournoiId={tournoiId}
+        archerIds={routageDe.archers}
+        phaseId={phaseId}
+        titrePanneau={`Où tire-t-on ensuite ? — duel n°${routageDe.numero}`}
+        libelleRetour="Retour à la liste"
+        onRetour={() => {
+          setPanneauFerme(true)
+          setMatchOuvert(null)
+        }}
+      />
+    )
+  }
 
   if (tableau.isPending) return <p className="carte__etat">Chargement du tableau…</p>
   if (tableau.isError) {
@@ -146,24 +173,6 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
     )
   }
 
-  // Panneau de routage (E04US018) : il **remplace** la grille dès le duel tranché — les deux archers
-  // sont encore là, c'est la seconde où l'information leur sert. « Retour à la liste » referme tout.
-  if (routageDe !== null) {
-    return (
-      <PanneauRoutage
-        tournoiId={tournoiId}
-        archerIds={routageDe}
-        phaseId={phaseId}
-        titrePanneau="Où tire-t-on ensuite ?"
-        libelleRetour="Retour à la liste"
-        onRetour={() => {
-          setRoutageDe(null)
-          setMatchOuvert(null)
-        }}
-      />
-    )
-  }
-
   if (matchOuvert !== null) {
     return (
       <GrilleDuel
@@ -172,12 +181,29 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
         phaseId={phaseId}
         matchNumero={matchOuvert}
         onRetour={() => setMatchOuvert(null)}
-        onValide={setRoutageDe}
+        onValide={(duellistes) => {
+          setRoutageDe({ numero: matchOuvert, archers: duellistes })
+          setPanneauFerme(false)
+        }}
       />
     )
   }
 
-  return <ListeDuels tableau={tableau.data} onOuvrir={setMatchOuvert} />
+  return (
+    <>
+      {/* La poignée que la qualification a depuis E04US018, et que les duels n'avaient pas : sans
+          elle, la fermeture automatique serait irréversible pour ce duel — l'écran qui dit à un
+          repêché qu'il repart, ou à un sorti quelle place il prend. ⚠️ Elle **nomme** son duel : en
+          qualification le panneau suit la cible affichée, ici il rouvre un instantané qui peut
+          dater d'une heure. */}
+      {routageDe !== null && (
+        <button type="button" className="lien" onClick={() => setPanneauFerme(false)}>
+          Où tire-t-on ensuite ? — duel n°{routageDe.numero}
+        </button>
+      )}
+      <ListeDuels tableau={tableau.data} onOuvrir={setMatchOuvert} />
+    </>
+  )
 }
 
 // La liste des duels **groupés par libellé de tour** (finale en tête). Le regroupement (par libellé,

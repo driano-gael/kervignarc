@@ -222,8 +222,36 @@ export function panneauOuvert(etat: {
 
 // Ce que « Retour » laisse derrière lui : on ne marque « déjà vu » que si le panneau s'était ouvert
 // **de lui-même**. Fermer une consultation manuelle laisse la bascule automatique armée.
+// ⚠️ Depuis E16US018, un **délai** passe par cette même porte : sur une cible qui se clôt alors que
+// personne n'est à la tablette, le panneau s'ouvre seul, se referme seul, et « déjà vu » marque un
+// écran que personne n'a lu. Assumé — la poignée le rouvre (ADR-0108).
 export function apresRetour(etat: { cibleClose: boolean }): { ferme: boolean; force: boolean } {
   return { ferme: etat.cibleClose, force: false }
+}
+
+// Le retour automatique (E16US018) — **une durée, aucune issue regardée**.
+//
+// ⚠️ Ne pas conditionner la fermeture aux issues des lignes. Le panneau porte plusieurs archers,
+// et en duels il est monté sur les **deux** duellistes du duel qu'on vient de valider : il y a donc
+// une ligne terminale à chaque duel, à tous les tours. Une règle « il reste dès qu'une ligne est
+// terminale » ne refermerait **jamais** l'écran de duels, tests verts compris (ADR-0108). La
+// contrepartie est la poignée de réouverture, des deux côtés.
+export const FERMETURE_MS = 3 * 60 * 1000
+
+// L'avancée vers le retour automatique, de 0 (on vient d'ouvrir) à 1 (il est temps de rendre la
+// tablette). ⚠️ Calculée sur **deux instants**, jamais par un compteur incrémenté : un onglet en
+// arrière-plan voit ses minuteurs bridés par le navigateur, et un compteur y dériverait sans fin.
+// ⚠️ Bornée à 0 en bas : sur une tablette BYOD dont l'heure est **recalée à la main** ou reprise
+// du réseau mobile, l'écoulé peut devenir négatif et la barre repartirait en arrière. Le déploiement
+// du jour J est un réseau local **sans internet** : il n'y a pas de NTP pour recaler quoi que ce soit.
+export function avanceeFermeture(ouvertureMs: number, maintenantMs: number): number {
+  const ecoule = maintenantMs - ouvertureMs
+  if (ecoule <= 0) return 0
+  return Math.min(1, ecoule / FERMETURE_MS)
+}
+
+export function doitSeRefermer(ouvertureMs: number, maintenantMs: number): boolean {
+  return avanceeFermeture(ouvertureMs, maintenantMs) >= 1
 }
 
 export function serieClose(

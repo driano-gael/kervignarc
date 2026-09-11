@@ -30,6 +30,9 @@ classement ne s'arrête plus aux trois premiers : ils restent affichés en haut 
 autres archers défilent page après page en dessous. Le **tableau à élimination directe** se conduit
 enfin jusqu'au bout depuis l'application : chaque tour reçoit ses cibles dès qu'il est déterminé, si
 bien que le feu vert et l'écran de routage restent utiles après le premier tour au lieu de s'éteindre.
+Et la tablette **se rend toute seule** : l'écran « où tire-t-on ensuite ? », qui restait ouvert
+tant que personne n'appuyait sur « Retour », revient de lui-même à la saisie au bout de trois
+minutes — en prévenant, sans compte à rebours — et se rouvre à la main des deux côtés.
 L'écran de **placement sur les cibles**
 se lit désormais sur toute la largeur d'un PC — une cible
 par ligne, chaque archer avec son club, sa catégorie et son blason, et une réserve qui reste sous la
@@ -584,10 +587,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **136 US livrées** sur `main` (mergées, revues, CI verte) à la date du 10/09/2026 — dont **deux
+- **137 US livrées** sur `main` (mergées, revues, CI verte) à la date du 10/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E03US012` — **les cibles des tours suivants** : au
+  autorité sur le compte —, la dernière **livraison** étant `E16US018` — **le panneau de routage rend
+  la tablette tout seul** : l'écran « Où tire-t-on ensuite ? » se referme au bout de trois minutes et
+  rend la tablette à la saisie, avec un signal discret (barre + mention « Retour automatique »,
+  **aucun chiffre** — la variante comptée avait été écartée au questionnaire S06), et les duels
+  gagnent la **poignée de réouverture** que la qualification avait déjà. ⚠️ **La règle « on ne
+  referme pas quand c'est fini » a été écartée sur mesure** : il y a un battu à chaque duel, elle
+  n'aurait **jamais** refermé l'écran de duels — l'US aurait été livrée sans effet, tests verts.
+  Avant elle, `E03US012` — **les cibles des tours suivants** : au
   delà du premier tour, les duellistes reçoivent enfin une cible, **tout seuls**, dès que leur tour
   est déterminé. ⚠️ **Ce n'était pas un confort mais un trou** : passé le premier tour, aucun duel
   n'était jamais annoncé « prêt », le feu vert restait éteint et l'écran de routage n'envoyait plus
@@ -1137,5 +1147,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   dessin** aux trois endroits (atelier, poste de l'organisateur, écran projeté) : on ne réapprend pas
   à le lire en changeant d'écran. *(Livré juste avant : **E01US024**, composer, diagnostiquer et
   simuler un déroulé ; puis **E05US015**, le catalogue de types de phase.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E06US006** (classement intégral 1→N &
-  profondeur configurable). Le fil **équipes** est débloqué (E13US002+).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md), qui **fait foi** — le reste d'`EPIC-16`
+  (`E16US019` annuler une validation, `E16US020` hiérarchie de rôles, `E16US021` accueil par départ,
+  `E16US016` reliquat d'exports), l'ordre entre elles restant libre. Le fil **équipes** est
+  débloqué (E13US002+).

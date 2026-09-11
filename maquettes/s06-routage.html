@@ -72,8 +72,11 @@
         <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Les deux archers de cette cible se retrouvent <b>l’un contre l’autre</b> : c’est possible, et l’écran le montre plutôt que de le laisser découvrir sur place. Le tableau apparie par rang de qualification, pas par cible d’origine.</span></div></div>
 
         <div style="max-width:420px;margin-top:18px"><span class="bouton principal geant">Continuer</span></div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;max-width:420px"><span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Retour automatique</span><span style="flex:1;height:3px;border-radius:2px;background:var(--border-subtle);overflow:hidden"><span style="display:block;height:100%;width:38%;background:var(--brand-border)"></span></span></div>
       </div>
     </div></div></div>
+        <p class="verdict"><span class="pouce oui">l'écran se rend tout seul, et le dit</span> Trois minutes, puis la tablette revient à la saisie — sans quoi elle reste bloquée sur l'annonce dès que l'archer s'en va sans toucher à rien. La barre prévient sans **compter** : un compte à rebours chiffré transformerait un écran d'information en minuterie (variante C écartée au questionnaire). <b>Un écriteau, lui, ne part pas</b> : « tir suspendu » reste tant que la pause dure. Livré par E16US018, <a href="../docs/adr/0108-un-panneau-d-annonce-se-referme-sur-une-duree-jamais-sur-ses-issues.md">ADR-0108</a>.</p>
         <p class="verdict"><span class="pouce oui">avant et après, sur la même ligne</span> C’est la seule forme qui évite de mémoriser : on lit son ancienne place et la nouvelle d’un seul mouvement de l’œil.</p>
     <p class="verdict"><span class="pouce oui">un cas de bord montré</span> Deux archers d’une même cible appariés entre eux. Rare, déroutant sur place — et gratuit à afficher ici.</p>
   </figure>
@@ -119,7 +122,11 @@
 <ul class="exigences">
   <li><strong>Le perdant doit-il voir sa place finale immédiatement</strong>, ou est-ce brutal juste après la
   défaite ? (avis personnel : l'information vaut mieux que le vide, mais c'est ta culture de club qui tranche)</li>
-  <li><strong>Combien de temps le panneau reste-t-il</strong> avant de rendre la tablette à la saisie ?</li>
+  <li><s><strong>Combien de temps le panneau reste-t-il</strong> avant de rendre la tablette à la saisie ?</s>
+  — <strong>tranché le 10/09/2026</strong> : <b>3 minutes, quelle que soit l'issue des lignes</b>, avec un signal
+  discret et non chiffré, et une poignée de réouverture des deux côtés. Un écriteau (tir suspendu, phase non
+  configurée) ne se referme pas. Livré par E16US018 ; motifs en
+  <a href="../docs/adr/0108-un-panneau-d-annonce-se-referme-sur-une-duree-jamais-sur-ses-issues.md">ADR-0108</a>.</li>
 </ul>
 
 <footer class="pied">

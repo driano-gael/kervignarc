@@ -196,12 +196,17 @@ class RoutageReponse(BaseModel):
 
     phase_id: int | None
     archers: list[RoutageArcherReponse]
+    avis_permanent: bool = False
+    """Le panneau porte un **écriteau** et non une annonce (E16US018) — tir suspendu, phase non
+    configurée. L'écran ne se referme alors pas tout seul : un écriteau vaut tant que la situation
+    dure, une annonce se lit une fois."""
 
     @staticmethod
     def de_routage(routage: Routage) -> RoutageReponse:
         return RoutageReponse(
             phase_id=routage.phase_id,
             archers=[RoutageArcherReponse.de_archer(ligne) for ligne in routage.archers],
+            avis_permanent=routage.avis_permanent,
         )
 
 
