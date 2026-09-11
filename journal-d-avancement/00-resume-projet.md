@@ -355,10 +355,16 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
 - Un **poste de cible peut saisir sans s'identifier** (le bénévole n'a pas de compte à créer).
 - La **saisie en temps réel** : les volées et flèches se saisissent sur une grille tactile, le total
   se met à jour, et le score validé apparaît en direct sur les autres écrans.
-- **La résilience réseau** (dernier fait marquant, 20/07) : si le wifi saute en pleine saisie, rien
+- **La résilience réseau** (20/07) : si le wifi saute en pleine saisie, rien
   n'est perdu — les volées sont mises en file et **renvoyées automatiquement** au retour du réseau,
   sans doublon, et un **voyant de connexion** indique en permanence l'état. Détail dans
   [`2026-07-20-00h35-saisie-resiste-aux-coupures.md`](2026-07-20-00h35-saisie-resiste-aux-coupures.md).
+- **Le scoreur valide, et peut annuler une validation** (11/09) : son espace porte enfin l'écran de
+  validation de la qualification — la fonction existait dans le serveur, **aucun bouton ne
+  l'appelait**. Une erreur repérée après signature se répare en **rendant la volée à la tablette**,
+  qui la ressaisit, avant revalidation. ⚠️ **L'archer ne quitte jamais le classement** pendant cette
+  fenêtre : c'est le droit d'écrire qui se rouvre, pas le compte. Détail dans
+  [`2026-09-11-19h25-annuler-une-validation.md`](2026-09-11-19h25-annuler-une-validation.md).
 
 ### 7. Les documents imprimables — *les premières listes du jour J*
 
@@ -587,10 +593,16 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **137 US livrées** sur `main` (mergées, revues, CI verte) à la date du 10/09/2026 — dont **deux
+- **138 US livrées** sur `main` (mergées, revues, CI verte) à la date du 11/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E16US018` — **le panneau de routage rend
+  autorité sur le compte —, la dernière **livraison** étant `E16US019` — **annuler une validation
+  pour corriger** : le scoreur reçoit l'écran de validation de qualification annoncé par `E04US002`
+  et jamais livré, et peut **rendre une volée à la tablette** qui l'a saisie. ⚠️ **Le score reste au
+  classement pendant la correction** — les deux branches proposées (sortir la volée des totaux,
+  ou forcer annulation et ressaisie en un geste) ont été **toutes deux écartées** par le
+  commanditaire : la première laissait hors classement, indéfiniment, tout archer dont personne ne
+  reprend la correction. Avant elle, `E16US018` — **le panneau de routage rend
   la tablette tout seul** : l'écran « Où tire-t-on ensuite ? » se referme au bout de trois minutes et
   rend la tablette à la saisie, avec un signal discret (barre + mention « Retour automatique »,
   **aucun chiffre** — la variante comptée avait été écartée au questionnaire S06), et les duels
