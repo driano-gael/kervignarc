@@ -131,11 +131,48 @@ def autoriser_forfait(request: Request) -> Scoreur | None:
     deux identités, jamais une route admin parallèle. Élargie de « duel » à **tout forfait** le
     30/08/2026 (reliquat d'E16US010, cf. `stories/E16-retours-maquettes.md`).
     """
+    return _admin_ou_scoreur(request, "déclarer un forfait")
+
+
+def autoriser_lecture_serie(request: Request) -> Poste | Scoreur | None:
+    """Autorise la **lecture** d'une feuille de qualification : admin, poste de cible, ou scoreur.
+
+    Élargie au scoreur par E16US019 : sans elle, l'écran qui valide et annule ne peut pas afficher
+    la feuille qu'il agit. ⚠️ **L'appelant doit borner les deux identités non admin** — le `Poste`
+    à son tournoi, le `Scoreur` au sien : cette garde dit *qui*, jamais *où*.
+    """
+    service_auth: ServiceAuth = request.app.state.service_auth
+    if service_auth.session_valide(extraire_jeton(request)):
+        return None
+    service_scoreurs: ServiceScoreurs = request.app.state.service_scoreurs
+    scoreur = service_scoreurs.resoudre_session(extraire_jeton_scoreur(request))
+    if scoreur is not None:
+        return scoreur
+    service_postes: ServicePostes = request.app.state.service_postes
+    poste = service_postes.resoudre_session(extraire_jeton_poste(request))
+    if poste is None:
+        raise NonAuthentifie("Session requise pour lire une feuille (admin, poste ou scoreur).")
+    return _refuser_ecran(poste)
+
+
+def autoriser_annulation_validation(request: Request) -> Scoreur | None:
+    """Autorise l'**annulation d'une validation** de qualification : admin ou scoreur (E16US019).
+
+    Réponse S08 du questionnaire de maquettes : *« une validation peut être annulée, par admin et
+    scoreur »*. ⚠️ **Asymétrie assumée** : `POST /saisie/validations` reste `exiger_scoreur`, donc
+    un admin qui annule ne peut pas **re**valider lui-même. Rien ne se bloque — la volée reste
+    comptée, cf. ADR-0109 — mais l'élargir demanderait un CA que S08 ne donne pas.
+    """
+    return _admin_ou_scoreur(request, "annuler une validation")
+
+
+def _admin_ou_scoreur(request: Request, motif: str) -> Scoreur | None:
+    """Corps commun des gardes « admin ou scoreur » : `None` pour l'admin, le `Scoreur` sinon."""
     service_auth: ServiceAuth = request.app.state.service_auth
     if service_auth.session_valide(extraire_jeton(request)):
         return None
     service_scoreurs: ServiceScoreurs = request.app.state.service_scoreurs
     scoreur = service_scoreurs.resoudre_session(extraire_jeton_scoreur(request))
     if scoreur is None:
-        raise NonAuthentifie("Session requise pour déclarer un forfait (admin ou scoreur).")
+        raise NonAuthentifie(f"Session requise pour {motif} (admin ou scoreur).")
     return scoreur

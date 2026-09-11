@@ -42,18 +42,37 @@ class Volee:
     """Une volée saisie : ses `valeurs`, qui l'a saisie (`saisie_par`, déclaratif) et, une fois
     validée, qui l'a validée (`validee_par` = nom du scoreur ; `None` tant qu'elle ne l'est pas).
 
-    Le verrou n'est pas un champ à part : une volée est **verrouillée** dès qu'elle porte un
-    validateur. `points` somme les zones (le manqué vaut 0)."""
+    ⚠️ **`validee` et `verrouillee` ne sont plus le même état** (E16US019) : une validation
+    **annulée** rouvre l'écriture *sans* retirer la volée des totaux. `points` somme les zones
+    (le manqué vaut 0)."""
 
     numero: int
     valeurs: tuple[ZoneScore, ...]
     saisie_par: str | None = None
     validee_par: str | None = None
+    lot_validation: int | None = None
+    correction_ouverte_par: str | None = None
+
+    @property
+    def validee(self) -> bool:
+        """La volée **compte** dans les totaux — y compris pendant une correction (E16US019).
+
+        ⚠️ C'est cette property, et non `verrouillee`, que lisent `cumul`, `compter`,
+        `nb_fleches_validees` et `est_complete` : les trois gardes qui en dérivent (changement de
+        catégorie, impact de replacement, complétude du créneau) ne doivent pas se désarmer le
+        temps d'une correction.
+        """
+        return self.validee_par is not None
+
+    @property
+    def en_correction(self) -> bool:
+        """Sa validation a été annulée : l'écriture est rouverte, le compte est conservé."""
+        return self.correction_ouverte_par is not None
 
     @property
     def verrouillee(self) -> bool:
-        """Une volée validée est verrouillée : seule la correction tracée peut encore l'écrire."""
-        return self.validee_par is not None
+        """Une volée validée est verrouillée **tant que sa validation n'a pas été annulée**."""
+        return self.validee and not self.en_correction
 
     @property
     def points(self) -> int:
@@ -130,7 +149,7 @@ class Serie:
     @property
     def cumul(self) -> int:
         """Total des points des volées **validées** (mis à jour à chaque validation, ex-008)."""
-        return sum(v.points for v in self.volees if v.verrouillee)
+        return sum(v.points for v in self.volees if v.validee)
 
     def compter(self, zone: ZoneScore) -> int:
         """Nombre de flèches d'une zone donnée, sur les volées **validées** seulement.
@@ -140,7 +159,7 @@ class Serie:
         pour rester cohérent avec `cumul` — le score qu'on départage — : une flèche non validée ne
         pèse ni sur le total ni sur son départage.
         """
-        return sum(v.valeurs.count(zone) for v in self.volees if v.verrouillee)
+        return sum(v.valeurs.count(zone) for v in self.volees if v.validee)
 
     @property
     def nb_fleches_validees(self) -> int:
@@ -151,7 +170,7 @@ class Serie:
         non validée est un état intermédiaire. On compte les **flèches** et non les volées car le
         message énumère « N flèches déjà tirées » — le manqué (`M`) en fait partie.
         """
-        return sum(len(v.valeurs) for v in self.volees if v.verrouillee)
+        return sum(len(v.valeurs) for v in self.volees if v.validee)
 
     def est_complete(self, nb_volees_bareme: int) -> bool:
         """La série a-t-elle **toutes** les volées du barème, **validées** (E12US005) ?
@@ -163,7 +182,7 @@ class Serie:
         """
         if nb_volees_bareme <= 0:
             return False
-        valides = {v.numero for v in self.volees if v.verrouillee}
+        valides = {v.numero for v in self.volees if v.validee}
         return valides == set(range(1, nb_volees_bareme + 1))
 
     def saisir_volee(
@@ -200,7 +219,12 @@ class Serie:
         )
         if marqueur is not None:
             marqueur = marqueur.strip() or None
-        volee = Volee(numero=numero, valeurs=valeurs, saisie_par=marqueur)
+        if existante is not None and existante.en_correction:
+            # La volée garde sa validation : ressaisir corrige les valeurs, cela ne la fait pas
+            # sortir des totaux (E16US019). Revalider est ce qui referme la correction.
+            volee = replace(existante, valeurs=valeurs, saisie_par=marqueur)
+        else:
+            volee = Volee(numero=numero, valeurs=valeurs, saisie_par=marqueur)
         return replace(self, volees=_avec_volee(self.volees, volee))
 
     def valider(
@@ -239,10 +263,41 @@ class Serie:
             if not a_valider:
                 raise RienAValider("Toutes les volées sont déjà validées.")
             lot = a_valider
+        rang = max((v.lot_validation or 0) for v in self.volees) + 1 if self.volees else 1
         verrouillees = self.volees
         for volee in lot:
-            verrouillees = _avec_volee(verrouillees, replace(volee, validee_par=par))
+            verrouillees = _avec_volee(
+                verrouillees,
+                replace(volee, validee_par=par, lot_validation=rang, correction_ouverte_par=None),
+            )
         return replace(self, volees=verrouillees)
+
+    def annuler_validation(self, numero: int, *, par: str) -> Serie:
+        """Rouvre à l'écriture **tout le lot** validé avec la volée `numero`, au nom de `par`.
+
+        Le lot rouvert est celui qu'un **même acte** de validation a verrouillé (`lot_validation`),
+        pas une tranche calculée : rien n'impose de saisir les volées dans l'ordre, donc un lot
+        peut être non contigu. ⚠️ **Le score reste au total** — c'est le droit d'écrire qui se
+        rouvre, pas le compte (E16US019). `VoleeIntrouvable` si le numéro n'existe pas,
+        `VoleeNonVerrouillee` si la volée n'est pas validée ou l'est déjà en correction.
+        """
+        par = _intervenant_valide(par)
+        existante = self.volee(numero)
+        if existante is None:
+            raise VoleeIntrouvable(f"Aucune volée numéro {numero} dans cette série.")
+        if existante.en_correction:
+            raise VoleeNonVerrouillee(
+                "Cette volée est déjà en correction : sa validation a été annulée."
+            )
+        if not existante.validee:
+            raise VoleeNonVerrouillee("Cette volée n'est pas validée : il n'y a rien à annuler.")
+        lot = existante.lot_validation
+        assert lot is not None  # une volée validée porte un lot (migration 0054 : backfill)
+        rouvertes = self.volees
+        for volee in self.volees:
+            if volee.lot_validation == lot:
+                rouvertes = _avec_volee(rouvertes, replace(volee, correction_ouverte_par=par))
+        return replace(self, volees=rouvertes)
 
     def corriger_volee(
         self,

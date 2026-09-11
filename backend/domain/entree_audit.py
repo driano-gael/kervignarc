@@ -22,14 +22,15 @@ class ActionAuditee(str, Enum):
     """Nature de l'acte sensible tracé — l'ensemble **fermé** des actions du CA E10US005.
 
     `(str, Enum)` : la valeur est un slug stable, stocké tel quel en base (comme `StatutTournoi`).
-    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (ADR-0050), `REPLACEMENT`
-    (ADR-0040, régénération massive quand des scores existent), `PAIEMENT` (E08US002), `LANCEMENT`
-    (ADR-0056), `REMBOURSEMENT` (ADR-0057 — le *traitement*, pas la création du poste : la ligne du
-    registre est déjà sa trace datée, l'audit ne suit que l'acte **humain**).
-    """
+    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `ANNULATION_VALIDATION` (E16US019),
+    `FORFAIT` (ADR-0050), `REPLACEMENT` (ADR-0040, régénération massive quand des scores existent),
+    `PAIEMENT` (E08US002), `LANCEMENT` (ADR-0056), `REMBOURSEMENT` (ADR-0057 — le *traitement*, pas
+    la création du poste : la ligne du registre est déjà sa trace datée, l'audit ne suit que l'acte
+    **humain**)."""
 
     VALIDATION = "validation"
     CORRECTION_SCORE = "correction_score"
+    ANNULATION_VALIDATION = "annulation_validation"
     FORFAIT = "forfait"
     REPLACEMENT = "replacement"
     PAIEMENT = "paiement"

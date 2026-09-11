@@ -17,12 +17,15 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import (
+    autoriser_annulation_validation,
+    autoriser_lecture_serie,
     autoriser_saisie,
     exiger_poste_de_cible,
     exiger_scoreur,
     extraire_jeton_poste,
 )
 from application.erreurs import DepartCourantNonDefini, SaisieHorsCible, ScoreurHorsTournoi
+from application.forfaits import AUTEUR_ADMIN
 from application.postes import ServicePostes
 from application.saisie import ArcherPositionne, ContexteSaisie, EtatSerie, ServiceSaisie
 from domain.blason import ZoneScore
@@ -121,6 +124,17 @@ class CorrigerRequete(BaseModel):
     identifiant_saisie: str | None = None
 
 
+class AnnulerValidationRequete(BaseModel):
+    """Corps d'annulation d'une validation (admin ou scoreur). `numero` désigne **une** volée ;
+    c'est tout son **lot** de validation qui se rouvre (E16US019). Idempotent par
+    `identifiant_saisie`."""
+
+    tournoi_id: int
+    archer_id: int
+    numero: int = Field(ge=1)
+    identifiant_saisie: str | None = None
+
+
 class VoleeReponse(BaseModel):
     """Une volée telle que relue : valeurs, marqueurs déclaratifs, verrou, et son « quand »."""
 
@@ -129,6 +143,12 @@ class VoleeReponse(BaseModel):
     saisie_par: str | None
     validee_par: str | None
     verrouillee: bool
+    # `verrouillee` et `en_correction` ne sont pas complémentaires : une volée en correction n'est
+    # plus verrouillée **mais compte toujours** au cumul rendu ci-dessous (ADR-0109).
+    en_correction: bool
+    # Exposé pour que l'écran puisse **nommer** les volées qu'une annulation va rouvrir (E16US019) :
+    # sans lui, le front ne pourrait que les deviner, et sa confirmation mentirait.
+    lot_validation: int | None
     saisie_le: datetime.datetime | None
 
 
@@ -154,6 +174,8 @@ class SerieReponse(BaseModel):
                     saisie_par=volee.saisie_par,
                     validee_par=volee.validee_par,
                     verrouillee=volee.verrouillee,
+                    en_correction=volee.en_correction,
+                    lot_validation=volee.lot_validation,
                     saisie_le=horodatages.get(volee.numero),
                 )
                 for volee in serie.volees
@@ -285,15 +307,20 @@ async def lire_serie(
     tournoi_id: int,
     archer_id: int,
     request: Request,
-    poste: Annotated[Poste | None, Depends(autoriser_saisie)],
+    identite: Annotated[Poste | Scoreur | None, Depends(autoriser_lecture_serie)],
 ) -> SerieReponse:
-    """L'état de la série d'un archer (volées, verrou, cumul, « quand » de chacune). Admin ou poste.
+    """L'état de la série d'un archer (volées, verrou, cumul, « quand »). Admin, poste ou scoreur.
 
-    Un poste ne lit que dans **son** tournoi (`403 saisie_hors_cible`). Un archer qui n'a rien
-    saisi renvoie une série **vide** (200), pas un 404 : le front affiche un pavé vierge. Lecture.
+    Un poste ne lit que dans **son** tournoi (`403 saisie_hors_cible`), un scoreur dans le sien
+    (`403 scoreur_hors_tournoi`, E16US019 — il lui faut la feuille pour la valider ou l'annuler).
+    Un archer qui n'a rien saisi renvoie une série **vide** (200), pas un 404 : le front affiche un
+    pavé vierge. Lecture.
     """
     service_saisie: ServiceSaisie = request.app.state.service_saisie
     service_postes: ServicePostes = request.app.state.service_postes
+    if isinstance(identite, Scoreur):
+        _exiger_meme_tournoi(identite, tournoi_id)
+    poste = identite if isinstance(identite, Poste) else None
     if poste is not None and tournoi_id != poste.tournoi_id:
         raise SaisieHorsCible("Ce poste ne sert pas ce tournoi.")
     # ⚠️ **La lecture reçoit le même créneau que l'écriture** (2ᵉ correctif de revue E05US025). Sans
@@ -390,6 +417,47 @@ async def corriger_volee(
     # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
     # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
     # horodatage, et le front n'affichait plus « saisie à HH:MM ».
+    horodatages = await run_in_threadpool(
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
+    )
+    return SerieReponse.de_serie(serie, horodatages)
+
+
+@router.post("/annulations", response_model=SerieReponse)
+async def annuler_validation(
+    requete: AnnulerValidationRequete,
+    request: Request,
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_annulation_validation)],
+) -> SerieReponse:
+    """Annule la validation d'une volée — **tout son lot** se rouvre à l'écriture (E16US019).
+
+    Premier temps du parcours *annuler → ressaisir → revalider* du questionnaire S08 : la volée
+    redevient saisissable **par le poste de cible**, sans quitter les totaux (ADR-0109). Ouverte à
+    l'admin **et** au scoreur, borné à **son** tournoi (`403` sinon) ; **trace** qui/quand
+    (E10US005). Via la **file**, **dédoublonnée** par identifiant (ADR-0036).
+    """
+    service_saisie: ServiceSaisie = request.app.state.service_saisie
+    write_queue: WriteQueue = request.app.state.write_queue
+    registre: RegistreIdempotence = request.app.state.registre_idempotence
+    if scoreur is not None:
+        _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    # DETTE-017 : la constante publique de `application.forfaits` est réemployée plutôt que
+    # recopiée — ce site ne doit pas devenir le 6ᵉ.
+    auteur = AUTEUR_ADMIN if scoreur is None else scoreur.nom
+    cle = _cle_idempotence(
+        "annulation_validation",
+        requete.identifiant_saisie,
+        requete.tournoi_id,
+        requete.archer_id,
+        requete.numero,
+    )
+
+    def ecrire() -> Serie:
+        return service_saisie.annuler_validation(
+            requete.tournoi_id, requete.archer_id, requete.numero, auteur
+        )
+
+    serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
     horodatages = await run_in_threadpool(
         service_saisie.horodatages, serie.phase_id, requete.archer_id
     )

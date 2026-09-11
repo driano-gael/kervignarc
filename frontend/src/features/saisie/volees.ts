@@ -51,12 +51,19 @@ export function serieOptimiste(serie: Serie | undefined, corps: SaisirVolee): Se
     cumul: 0,
     volees: [],
   }
+  // ⚠️ Une volée **en correction** (E16US019) garde sa validation à la ressaisie, exactement comme
+  // au serveur (`Serie.saisir_volee`) : la rendre « non validée » ici la ferait disparaître des
+  // volées comptées à l'écran le temps de la reconnexion, alors que son score tient toujours.
+  const remplacee = voleeExistante(base.volees, corps.numero)
+  const enCorrection = remplacee?.en_correction === true
   const voleeEnAttente: Volee = {
     numero: corps.numero,
     valeurs: corps.valeurs,
     saisie_par: corps.saisie_par,
-    validee_par: null,
+    validee_par: enCorrection ? remplacee.validee_par : null,
     verrouillee: false,
+    en_correction: enCorrection,
+    lot_validation: enCorrection ? remplacee.lot_validation : null,
     saisie_le: null,
     en_attente: true,
   }

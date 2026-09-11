@@ -520,6 +520,35 @@ class ServiceSaisie:
         )
         return self._series.enregistrer_avec_trace(serie, entree)
 
+    def annuler_validation(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        numero: int,
+        auteur: str,
+        contexte: ContexteSaisie | None = None,
+    ) -> Serie:
+        """Rouvre à l'écriture le lot validé avec la volée `numero`, au nom de l'`auteur`.
+
+        Premier temps du parcours *annuler → ressaisir → revalider* : la volée redevient saisissable
+        par le poste de cible, **sans quitter les totaux** (E16US019). Trace `ANNULATION_VALIDATION`
+        dans la même transaction (ADR-0035). ⚠️ **Pas de `refuser_si_en_pause`** : comme la
+        correction, réparer reste possible pendant une pause — c'est l'avancement qui est gelé
+        (E05US033).
+        """
+        self._charger_archer(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        serie = self._feuille(tournoi_id, archer_id, phase)
+        serie = serie.annuler_validation(numero, par=auteur)
+        entree = EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.ANNULATION_VALIDATION,
+            auteur=auteur,
+            horodatage=self._horloge.maintenant(),
+            objet=f"volée {numero} de l'archer {archer_id}",
+        )
+        return self._series.enregistrer_avec_trace(serie, entree)
+
     def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
         """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""
         self._arrets.brancher(evaluateur)

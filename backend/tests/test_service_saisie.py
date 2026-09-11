@@ -1161,3 +1161,99 @@ def test_l_avancement_d_une_phase_inconnue_est_muet() -> None:
     m = Montage()
 
     assert m.service.avancement_de_phase(m.tournoi_id, 999_999) is None
+
+
+# --- Annulation d'une validation (E16US019) -------------------------------------------------
+
+
+def test_annuler_une_validation_trace_une_entree_au_nom_de_qui_annule() -> None:
+    """CA « tracé à l'audit » : annuler est un acte sensible, il laisse sa propre trace."""
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
+
+    trace = m.series.traces[-1]
+    assert trace.action is ActionAuditee.ANNULATION_VALIDATION
+    assert trace.auteur == "ARBITRE"
+    assert trace.horodatage == _QUAND
+
+
+def test_annuler_une_validation_rouvre_la_saisie_par_le_poste() -> None:
+    """CA « elle rouvre la volée à l'écriture » : c'est la tablette qui ressaisit, pas le scoreur.
+
+    Le parcours complet du questionnaire S08 — *annuler, corriger, revalider* — passe par le poste
+    de cible : sans cette réouverture, l'annulation ne servirait à rien.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.valeurs == _v("6", "6", "6")
+
+
+def test_annuler_une_validation_ne_retire_pas_les_fleches_deja_tirees() -> None:
+    """CA « la volée rouverte RESTE COMPTÉE » — la preuve sur l'état **persisté**.
+
+    ⚠️ `nb_fleches_validees` n'alimente aucun total : c'est la mesure de « l'archer a déjà tiré »,
+    et **trois** décisions en dérivent — l'avertissement de changement de catégorie
+    (`application/archers.py`), l'impact d'une régénération de plan (`application/placement.py`) et
+    la clôture d'un créneau (`application/completude.py`). Les trois se désarmeraient d'un coup si
+    une correction en cours faisait sortir la volée du compte.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    avant = m.series.par_archer(m.phase_id, m.archer_id)
+    assert avant is not None
+
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    apres = m.series.par_archer(m.phase_id, m.archer_id)
+    assert apres is not None
+    assert apres.nb_fleches_validees == avant.nb_fleches_validees
+    assert apres.cumul == avant.cumul
+
+
+def test_annuler_est_aussi_cloisonnee_au_poste() -> None:
+    """La garde vaut pour **tout** chemin d'écriture, annulation comprise (ADR-0033 §3)."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=2, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.annuler_validation(
+            m.tournoi_id, m.archer_id, 1, auteur="ARBITRE", contexte=contexte
+        )
+
+
+def test_annuler_une_validation_pendant_la_pause_reste_possible() -> None:
+    """Même arbitrage que la correction (E05US033) : la pause gèle
+    ce qui *avance*, pas ce qui *répare*.
+
+    Annuler est le premier geste du parcours de correction — le refuser pendant la pause rendrait
+    le test jumeau `test_corriger_une_volee_pendant_la_pause_reste_possible` sans objet dès que le
+    scoreur passe par le nouveau chemin.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    _mettre_la_phase_en_pause(m)
+
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.en_correction is True

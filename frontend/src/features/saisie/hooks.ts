@@ -32,7 +32,9 @@ import { rejouer } from './rejeu'
 import { serieOptimiste } from './volees'
 
 const cleGrille = () => ['saisie-grille'] as const
-const cleSerie = (tournoiId: number, archerId: number) =>
+// Exportée depuis E16US019 : la surface scoreur écrit dans **cette** série et doit poser son
+// résultat sous la même clé. Une clé recopiée diverge en silence — le symptôme est une vue périmée.
+export const cleSerie = (tournoiId: number, archerId: number) =>
   ['saisie-serie', tournoiId, archerId] as const
 const cleBareme = (tournoiId: number) => ['saisie-bareme', tournoiId] as const
 const cleGrain = (tournoiId: number) => ['saisie-grain', tournoiId] as const

@@ -18,6 +18,8 @@ function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
     valeurs,
     saisie_par: null,
     validee_par: verrouillee ? 'ROUX' : null,
+    en_correction: false,
+    lot_validation: verrouillee ? 1 : null,
     verrouillee,
     saisie_le: null,
   }
@@ -132,6 +134,8 @@ describe('quelSaisiePar', () => {
       saisie_par: 'DURAND',
       validee_par: null,
       verrouillee: false,
+      en_correction: false,
+      lot_validation: null,
       saisie_le: null,
     }
     expect(quelSaisiePar(existante, 'MARTIN')).toBeNull()
@@ -181,6 +185,8 @@ describe('serieOptimiste', () => {
           saisie_par: 'DURAND',
           validee_par: 'ROUX',
           verrouillee: true,
+          en_correction: false,
+          lot_validation: 1,
           saisie_le: '2026-07-19T09:00:00Z',
         },
       ],

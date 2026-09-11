@@ -3,8 +3,8 @@
 // Le scoreur ouvre l'app sur son propre téléphone et tape **son code** (mode d'identité « la
 // personne », D-13). Une session nominative s'ouvre alors, persistée localement pour survivre à la
 // fermeture de l'onglet le temps de la journée. Il est **itinérant** : sa session n'est rattachée à
-// aucune cible (D-12) — il pourra valider n'importe laquelle. La **surface de validation** (voir les
-// cibles, valider) relève de la saisie (E04US002) : ici, on ouvre et on ferme la session.
+// aucune cible (D-12) — il pourra valider n'importe laquelle. La **surface de validation** de la
+// qualification, longtemps annoncée « à venir » par E04US002, est montée ici depuis E16US019.
 
 import { useEffect, useRef, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -20,6 +20,7 @@ import { SaisieSuisse } from '../suisse/SaisieSuisse'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
+import { PanneauValidationQualif } from '../validation-qualif/PanneauValidationQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
 export function EspaceScoreur({ codeUrl = null }: { codeUrl?: string | null }) {
@@ -111,6 +112,11 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
         </button>
       </div>
       <MessageErreur erreur={deconnexion.error} />
+      {/* Validation de la qualification (E16US019) : la surface annoncée par E04US002 et restée
+          vide — le backend validait, aucun écran ne l'appelait. Placée avant les forfaits : c'est
+          le geste de routine, le forfait est l'exception. */}
+      <PanneauValidationQualif tournoiId={scoreur.tournoi_id} />
+
       {/* Forfaits de qualification (E04US015) : déclarer / annuler un abandon ou une DSQ. Placé
           au-dessus des duels — un abandon en qualif se prononce avant l'entrée en tableau. */}
       <PanneauForfaitsQualif tournoiId={scoreur.tournoi_id} />

@@ -3905,6 +3905,37 @@ button:disabled {
   gap: 8px;
 }
 
+/* Liste des volées de la surface scoreur de qualification (E16US019) : même maille que
+   `.forfaits-liste`, dont elle partage la forme « une ligne, un état, une action ». */
+.validation-liste {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.validation-liste__ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.validation-liste__volee {
+  font-variant-numeric: tabular-nums;
+}
+
+/* `--danger` est l'**ambre** de la charte, pas un rouge (`DV-03`) : c'est le registre d'alerte. */
+.validation-liste__badge {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .duel__forfaits {
   margin-top: 16px;
   padding-top: 12px;

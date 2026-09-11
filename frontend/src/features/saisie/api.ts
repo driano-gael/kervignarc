@@ -26,13 +26,20 @@ export interface LigneGrille {
 }
 
 // Une volée relue : ses valeurs, le marqueur déclaratif, le verrou (validée par le scoreur) et le
-// « quand » (`saisie_le`, ISO 8601). `verrouillee` ⇔ `validee_par` non nul (correction = scoreur).
+// « quand » (`saisie_le`, ISO 8601). ⚠️ **`verrouillee` n'est plus équivalent à `validee_par` non
+// nul** depuis E16US019 : une validation annulée rouvre l'écriture **sans** retirer la volée du
+// cumul (ADR-0109). Pour « ce score compte-t-il ? », lire `validee_par` ; pour « puis-je écrire ? »,
+// `verrouillee`.
 export interface Volee {
   numero: number
   valeurs: string[]
   saisie_par: string | null
   validee_par: string | null
   verrouillee: boolean
+  // Sa validation a été annulée : saisissable de nouveau, et toujours comptée (E16US019).
+  en_correction: boolean
+  // L'acte de validation qui l'a verrouillée — deux volées de même lot se rouvrent ensemble.
+  lot_validation: number | null
   saisie_le: string | null
   // Purement **local** (E04US009) : la volée est en file hors-ligne, pas encore renvoyée au serveur.
   // Le serveur ne renvoie jamais ce champ ; une volée relue le laisse à `undefined` (donc non en

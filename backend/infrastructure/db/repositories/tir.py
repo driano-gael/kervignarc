@@ -63,7 +63,7 @@ def _vers_volee(ligne: VoleeORM) -> Volee:
     `BlasonORM.zones`). Un contenu illisible **ou** un code hors `ZoneScore` est une **incohérence
     technique** — le repository en est le seul rédacteur — donc enveloppée en `InfrastructureError`
     (ADR-0007), jamais laissée fuir en value object invalide. ⚠️ Le verrou n'est pas une colonne :
-    `validee_par` non `NULL` **est** le verrou (`domain.serie.Volee.verrouillee`).
+    il se dérive de `validee_par` **et** `correction_ouverte_par` (`domain.serie.Volee`, ADR-0109).
     """
     try:
         valeurs = tuple(ZoneScore(v) for v in json.loads(ligne.valeurs))
@@ -74,6 +74,8 @@ def _vers_volee(ligne: VoleeORM) -> Volee:
         valeurs=valeurs,
         saisie_par=ligne.saisie_par,
         validee_par=ligne.validee_par,
+        lot_validation=ligne.lot_validation,
+        correction_ouverte_par=ligne.correction_ouverte_par,
     )
 
 
@@ -382,6 +384,8 @@ class SerieRepositorySQL:
                 valeurs=_valeurs_json(volee),
                 saisie_par=volee.saisie_par,
                 validee_par=volee.validee_par,
+                lot_validation=volee.lot_validation,
+                correction_ouverte_par=volee.correction_ouverte_par,
                 created_at=horodatages.get(volee.numero, maintenant),
             )
             for volee in serie.volees
