@@ -15,7 +15,8 @@ import { departDeSalle } from '../salle/rotation'
 import type { Volee } from '../saisie/api'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import { aValider, avertissementAnnulation, etatVolee, voleesQueValiderReferme } from './etat'
+import type { GesteDuBouton } from './etat'
+import { aValider, avertissementAnnulation, etatVolee, gesteDuBouton } from './etat'
 import {
   useAnnulerValidation,
   useRefermerCorrection,
@@ -86,13 +87,12 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
           cumul={serie.data.cumul}
           enCours={valider.isPending || annuler.isPending || refermer.isPending}
           validable={aValider(serie.data)}
-          refermera={voleesQueValiderReferme(serie.data)}
+          geste={gesteDuBouton(serie.data)}
           avertissement={(numero) => avertissementAnnulation(serie.data, numero)}
-          // ⚠️ Deux gestes, deux routes : refermer une correction **nomme** son lot, valider ne
-          // nomme rien. Le serveur refuse désormais de deviner (`CorrectionOuverte`).
-          onValider={() => {
-            const [premier] = voleesQueValiderReferme(serie.data)
-            if (premier !== undefined) refermer.mutate({ archerId, numero: premier })
+          // Deux gestes, deux routes : refermer **nomme** son lot, valider ne nomme rien. La
+          // décision vit dans `gesteDuBouton` (pure, testée) — pas ici.
+          onValider={(geste) => {
+            if (geste.geste === 'refermer') refermer.mutate({ archerId, numero: geste.numero })
             else valider.mutate(archerId)
           }}
           onAnnuler={(numero) => annuler.mutate({ archerId, numero })}
@@ -107,7 +107,7 @@ function FeuilleAValider({
   cumul,
   enCours,
   validable,
-  refermera,
+  geste,
   avertissement,
   onValider,
   onAnnuler,
@@ -116,10 +116,10 @@ function FeuilleAValider({
   cumul: number
   enCours: boolean
   validable: boolean
-  /** Les volées que « Valider » refermerait — vide s'il validera une saisie neuve. */
-  refermera: number[]
+  /** Ce que le bouton du bas va faire — décidé par `gesteDuBouton`, pas ici. */
+  geste: GesteDuBouton
   avertissement: (numero: number) => string
-  onValider: () => void
+  onValider: (geste: GesteDuBouton) => void
   onAnnuler: (numero: number) => void
 }) {
   return (
@@ -141,9 +141,9 @@ function FeuilleAValider({
       {/* ⚠️ Le serveur referme une correction **avant** de valider quoi que ce soit d'autre, un
           lot à la fois : le bouton doit dire lequel des deux gestes il déclenche, sinon il éteint
           le marqueur « En correction » alors qu'on croyait acter des volées fraîches. */}
-      <button type="button" disabled={enCours || !validable} onClick={onValider}>
-        {refermera.length > 0
-          ? `Refermer la correction — volée${refermera.length > 1 ? 's' : ''} ${refermera.join(', ')}`
+      <button type="button" disabled={enCours || !validable} onClick={() => onValider(geste)}>
+        {geste.geste === 'refermer'
+          ? `Refermer la correction — volée${geste.volees.length > 1 ? 's' : ''} ${geste.volees.join(', ')}`
           : 'Valider'}
       </button>
     </>

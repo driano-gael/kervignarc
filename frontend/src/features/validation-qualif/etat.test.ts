@@ -11,7 +11,8 @@ import {
   estValidee,
   etatVolee,
   voleesQueLAnnulationRouvre,
-  voleesQueValiderReferme,
+  gesteDuBouton,
+  lotARefermer,
 } from './etat'
 
 function volee(numero: number, options: Partial<Volee> = {}): Volee {
@@ -109,14 +110,14 @@ describe('aValider', () => {
   })
 })
 
-describe('voleesQueValiderReferme', () => {
+describe('lotARefermer', () => {
   it('nomme le lot que « Valider » refermerait', () => {
     const feuille = serie([
       volee(1, { ...VALIDEE, verrouillee: false, en_correction: true }),
       volee(2, { ...VALIDEE, verrouillee: false, en_correction: true }),
     ])
 
-    expect(voleesQueValiderReferme(feuille)).toEqual([1, 2])
+    expect(lotARefermer(feuille)).toEqual([1, 2])
   })
 
   it('ne nomme que le lot le plus ancien — le serveur en referme un par geste', () => {
@@ -130,10 +131,41 @@ describe('voleesQueValiderReferme', () => {
       }),
     ])
 
-    expect(voleesQueValiderReferme(feuille)).toEqual([1])
+    expect(lotARefermer(feuille)).toEqual([1])
   })
 
   it('est vide quand le bouton validera une saisie neuve', () => {
-    expect(voleesQueValiderReferme(serie([volee(1, VALIDEE), volee(2)]))).toEqual([])
+    expect(lotARefermer(serie([volee(1, VALIDEE), volee(2)]))).toEqual([])
+  })
+})
+
+describe('gesteDuBouton', () => {
+  it('valide quand aucune correction n’est ouverte', () => {
+    expect(gesteDuBouton(serie([volee(1, VALIDEE), volee(2)])).geste).toBe('valider')
+  })
+
+  it('referme, en nommant le lot et sa première volée', () => {
+    const feuille = serie([
+      volee(1, { ...VALIDEE, verrouillee: false, en_correction: true }),
+      volee(2, { ...VALIDEE, verrouillee: false, en_correction: true }),
+    ])
+
+    expect(gesteDuBouton(feuille)).toEqual({ geste: 'refermer', numero: 1, volees: [1, 2] })
+  })
+
+  it('un lot par geste : le second attend son tour', () => {
+    // ⚠️ Le cas qui épingle la règle côté écran. Le serveur REFUSE de valider tant qu'une
+    // correction est ouverte : un bouton qui viserait les deux lots d'un coup rendrait un 422.
+    const feuille = serie([
+      volee(1, { ...VALIDEE, verrouillee: false, en_correction: true }),
+      volee(3, {
+        validee_par: 'MARTIN',
+        lot_validation: 7,
+        verrouillee: false,
+        en_correction: true,
+      }),
+    ])
+
+    expect(gesteDuBouton(feuille)).toEqual({ geste: 'refermer', numero: 1, volees: [1] })
   })
 })

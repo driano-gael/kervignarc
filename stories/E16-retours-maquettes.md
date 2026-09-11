@@ -679,10 +679,13 @@
   saisie neuve — le bouton doit donc nommer le geste qu'il déclenche.
 - **CA — annuler est REFUSÉ pendant une pause** *(retourné en revue le 11/09/2026 — la première
   rédaction disait l'inverse)*. « La pause gèle ce qui *avance*, jamais ce qui *répare* » (E05US033)
-  reste vrai, mais les **deux** gestes qui referment une correction sont gelés, eux :
-  `saisir_volee` et `valider` portent `refuser_si_en_pause`, et `corriger_volee` refuse une volée
-  rouverte. Annuler pendant une pause rouvrait donc une volée que **plus rien** ne pouvait refermer
-  avant la relance. ⚠️ **Le test d'origine prouvait la permissivité sans jamais dérouler la suite du
+  reste vrai, mais les **deux** gestes qui referment une correction sont gelés, eux : `saisir_volee`
+  (la ressaisie, sur la tablette) et `refermer_correction` (chez le scoreur) portent
+  `refuser_si_en_pause`. Annuler pendant une pause rouvre donc une volée que **plus rien** ne peut
+  refermer avant la relance. ⚠️ `corriger_volee`, lui, **répare** sans être gelé — mais il ne
+  referme pas la fenêtre, et aucun écran ne l'expose *(rédaction corrigée en 4ᵉ passe : la
+  précédente nommait `valider`, qui ne referme plus rien, et prêtait à `corriger_volee` un refus que
+  le CA voisin lui avait retiré)*. ⚠️ **Le test d'origine prouvait la permissivité sans jamais dérouler la suite du
   parcours qu'elle rendait possible** — vert, et le parcours mort.
 - **CA — la ressaisie d'une volée rouverte est TRACÉE** *(ajouté en revue le 11/09/2026)*. Elle est
   déjà comptée au classement : la réécrire est un acte sensible. Sans trace, l'annulation **baissait**

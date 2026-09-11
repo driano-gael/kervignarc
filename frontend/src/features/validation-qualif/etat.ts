@@ -35,6 +35,17 @@ export function avertissementAnnulation(serie: Serie, numero: number): string {
   return `${sujet} sur la tablette de la cible. Le score reste au classement jusqu'à la ressaisie.`
 }
 
+// Ce que le bouton du bas va faire — la décision de l'écran, **pure et testable** : elle a vécu
+// inline dans un `onClick`, et cette forme a déjà porté deux défauts sur la surface voisine.
+export type GesteDuBouton =
+  { geste: 'refermer'; numero: number; volees: number[] } | { geste: 'valider' }
+
+export function gesteDuBouton(serie: Serie): GesteDuBouton {
+  const volees = lotARefermer(serie)
+  const [numero] = volees
+  return numero === undefined ? { geste: 'valider' } : { geste: 'refermer', numero, volees }
+}
+
 // L'étiquette d'état d'une volée, telle qu'elle se lit dans la liste.
 export function etatVolee(volee: Volee): 'en_correction' | 'validee' | 'en_cours' {
   if (volee.en_correction) return 'en_correction'
@@ -47,12 +58,12 @@ export function aValider(serie: Serie): boolean {
   return serie.volees.some((volee) => !volee.verrouillee)
 }
 
-// Les volées du prochain lot que « Valider » refermerait, ou `[]` s'il validera une saisie neuve.
-// ⚠️ **Le serveur donne la priorité à la correction, hors grain et un lot à la fois** (ADR-0109
-// § Décision 4) : sans cette distinction, l'écran proposait « Valider » pour acter des volées
-// fraîches et refermait en fait la correction d'autres volées — le marqueur « En correction »
-// s'éteignait sur un geste qui visait ailleurs (relevé en revue).
-export function voleesQueValiderReferme(serie: Serie): number[] {
+// Les volées du prochain lot à refermer, ou `[]` si le bouton validera une saisie neuve.
+// ⚠️ **Le serveur REFUSE de valider tant qu'une correction est ouverte** (`CorrectionOuverte`) :
+// refermer est un geste **nommé**, sur sa propre route. Sans cette distinction, l'écran proposait
+// « Valider » pour acter des volées fraîches et déclenchait en fait une refermeture — le marqueur
+// « En correction » s'éteignait sur un geste qui visait ailleurs (relevé en revue).
+export function lotARefermer(serie: Serie): number[] {
   const enCorrection = serie.volees.filter((volee) => volee.en_correction)
   if (enCorrection.length === 0) return []
   const plusAncien = Math.min(...enCorrection.map((volee) => volee.lot_validation ?? 0))

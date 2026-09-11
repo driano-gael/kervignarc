@@ -67,9 +67,10 @@ saisie, la volée ne quitte jamais le compte. Sans cette clause, la décision 1 
 l'endroit exact où elle sert — la même clause vaut côté front pour la saisie optimiste hors-ligne.
 
 **4. Refermer une correction est un geste NOMMÉ, distinct de valider.** `refermer_correction(numero)`
-revalide le lot rouvert qui contient cette volée, sous un **nouveau** lot et **hors grain** (le grain
-régit la *première* validation ; l'appliquer ici laisserait ouvert tout lot plus petit que `N`).
-`valider`, qui ne reçoit aucune cible, **refuse** tant qu'une correction est ouverte
+revalide le lot rouvert qui contient cette volée, sous un **nouveau** lot et **hors grain** : le
+grain régit la *première* validation, et l'appliquer ici laisserait ouvert indéfiniment tout lot
+rouvert plus petit que `N` — sur une série incomplète, `RienAValider` serait le seul résultat
+possible. `valider`, qui ne reçoit aucune cible, **refuse** tant qu'une correction est ouverte
 (`CorrectionOuverte`).
 
 ⚠️ **Deux rédactions ont essayé de deviner le lot, et les deux ont été des bloquants de revue** :

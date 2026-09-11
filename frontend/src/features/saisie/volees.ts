@@ -101,12 +101,12 @@ export function nouvelIdentifiant(): string {
 
 // Quelle volée viser **après** avoir enregistré `numeroActif` ? `null` = « rends la main au mode
 // prochaine-à-saisir ». Fonction pure exprès : ce choix a porté deux défauts de suite, et il vivait
-// dans un `onSuccess` que rien ne testait (3ᵉ passe de revue).
+// dans un `onSuccess` que rien ne testait (revue).
 //
-// ⚠️ Deux pièges, tous deux vécus : (a) une volée **rendue** reste `en_correction` jusqu'à la
-// revalidation du scoreur, donc laisser le mode automatique la rouvrirait telle quelle, en boucle ;
-// (b) le repli de `prochaineASaisir` rend la **dernière du barème**, qui peut être verrouillée — on
-// y épinglerait un pavé inécrivable. On ne vise donc que la suivante **du lot**, à défaut on reste.
+// ⚠️ Deux pièges vécus : (a) une volée **rendue** reste `en_correction` jusqu'à la revalidation du
+// scoreur — le mode automatique la rouvrirait en boucle ; (b) le repli de `prochaineASaisir` rend
+// la **dernière du barème**, qui peut être verrouillée. On vise donc la suivante **encore en
+// correction**, tous lots confondus, et à défaut on reste sur place.
 export function voleeApresEnregistrement(
   volees: readonly Volee[],
   numeroActif: number,

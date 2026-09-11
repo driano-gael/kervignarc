@@ -1262,11 +1262,10 @@ def test_corriger_une_volee_rendue_pendant_la_pause_repare_quand_meme() -> None:
     """⚠️ **L'oracle de non-garde du parcours réel** — c'est lui qui fonde le retournement du test
     domaine `corriger_une_volee_en_correction_reste_possible`.
 
-    Le domaine ignore la pause : prouver là-bas que `corriger_volee` accepte une volée rouverte ne
-    assert volee.en_correction is True, "réparer ne referme pas : revalider reste gelé"
-    les quatre écritures en posant le refus sur `corriger_volee`, le test domaine et
-    `test_corriger_une_volee_pendant_la_pause_reste_possible` resteraient **tous deux verts**, et le
-    seul recours ouvert pendant une pause disparaîtrait en silence (relevé en 3ᵉ passe de revue).
+    Le domaine ignore la pause : seul ce test de service prouve que `corriger_volee` reste ouvert
+    quand la phase est gelée. Sans lui, ajouter `refuser_si_en_pause` à `corriger_volee` laisserait
+    le test domaine **et** `test_corriger_une_volee_pendant_la_pause_reste_possible` tous deux
+    verts, et le seul recours ouvert pendant une pause disparaîtrait en silence.
     """
     m = Montage()
     m.saisir_serie_complete()
@@ -1358,3 +1357,36 @@ def test_une_saisie_ordinaire_ne_trace_toujours_rien() -> None:
     m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
 
     assert m.series.traces == []
+
+
+def test_refermer_une_correction_pendant_la_pause_est_refuse() -> None:
+    """Refermer fait **avancer** le tour : gelé par la pause, comme valider.
+
+    ⚠️ C'est la garde que la recette promet en toutes lettres (« ni la tablette ni le scoreur ne
+    peuvent la refermer… on attend la relance ») et **le fondement du refus d'annuler en pause** :
+    si elle disparaissait, la suite resterait verte et la fiche deviendrait fausse.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    _mettre_la_phase_en_pause(m)
+
+    with pytest.raises(PhaseEnPause):
+        m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="ROUX")
+
+
+def test_refermer_une_correction_trace_au_nom_du_scoreur() -> None:
+    """Refermer est un acte de signature : il entre au registre comme une validation."""
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+
+    m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="ROUX")
+
+    trace = m.series.traces[-1]
+    assert trace.action is ActionAuditee.VALIDATION
+    assert trace.auteur == "ROUX"
+    assert trace.objet is not None and "volée 1" in trace.objet

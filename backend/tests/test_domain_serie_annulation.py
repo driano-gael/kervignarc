@@ -368,6 +368,9 @@ def test_refermer_une_correction_ne_valide_pas_le_lot_en_attente() -> None:
         serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
 
     serie = serie.refermer_correction(1, par="MARTIN")
+    # ⚠️ L'assertion qui porte le nom du test : refermer **n'a pas** validé 3 et 4 au passage.
+    assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", None, None]
+
     serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=4)
     assert [v.validee_par for v in serie.volees] == ["MARTIN", "MARTIN", "MARTIN", "MARTIN"]
 
