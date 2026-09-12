@@ -597,7 +597,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **139 US livrées** (mergées, revues, CI verte) à la date du 12/09/2026 — dont **deux
+- **140 US livrées** (mergées, revues, CI verte) à la date du 12/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
   autorité sur le compte —, la dernière **livraison** étant `E16US021` — **l'accueil du tournoi
@@ -606,7 +606,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   « Terminer » de la frise renvoient vers les écrans qui listent ce qui manque. ⚠️ **Le cadrage était
   la moitié de l'US** : la fiche exigeait de borner « toutes les informations utiles au déroulé »
   avant de coder, et **deux réponses du commanditaire se contredisaient** — elles auraient effacé de
-  l'accueil l'annonce des pauses et perdu deux chiffres qu'aucun créneau ne porte. Avant elle,
+  l'accueil l'annonce des pauses et perdu deux chiffres qu'aucun créneau ne porte.
+  Avant elle, `E16US020` — **deux écritures, une même volée : le rôle tranche** : une volée retient
+  le **rôle réel** de qui l'a écrite, et une écriture d'un rang inférieur est **refusée**
+  (`poste de cible < scoreur < admin`). ⚠️ **Deux renoncements assumés, dits avant la décision** :
+  entre **deux tablettes** — le cas le plus fréquent en salle — les rangs sont égaux, donc rien n'est
+  arbitré ; et le refus joue **aussi vers le bas**. ⚠️ **Rien n'en est encore visible à l'écran**
+  (`DETTE-100`). Avant elle,
   `E16US019` — **annuler une validation
   pour corriger** : le scoreur reçoit l'écran de validation de qualification annoncé par `E04US002`
   et jamais livré, et peut **rendre une volée à la tablette** qui l'a saisie. ⚠️ **Le score reste au
