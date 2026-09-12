@@ -6876,11 +6876,12 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
-     "chemin": "frontend/src/features/accueil/Accueil.tsx",
+     "chemin": "frontend/src/features/accueil/BlocsParDepart.tsx",
      "existe": true,
      "symboles": [
-      "PastilleDeRelance",
-      "useQueries"
+      "BlocDepart",
+      "useQueries",
+      "useMaintenant"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7019,8 +7020,9 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/shared/ui/useMaintenant.ts",
      "existe": true,
      "symboles": [
-      "PastilleDeRelance",
-      "useQueries"
+      "BlocDepart",
+      "useQueries",
+      "useMaintenant"
      ],
      "symboles_absents": [],
      "verifiable": true

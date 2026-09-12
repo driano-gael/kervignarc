@@ -213,7 +213,18 @@ function Coquille() {
       libelle: 'Accueil (tableau de bord)',
       // Accueil-tableau de bord contextualisé (E14US001, `D-20`) : la « photo d'ensemble » du tournoi
       // courant (frise, checklist, chiffres). Destination d'ouverture par défaut (`destinationParDefaut`).
-      rendu: () => courant && <Accueil tournoi={courant} />,
+      // Le renvoi de la frise vers la famille « prêt à… » (E16US021, DETTE-082) : la navigation
+      // reste ici, une feature ne construit pas de chemin d'administration — même patron que
+      // `FeuVert`/`surPlanDeDuels` plus bas.
+      rendu: () =>
+        courant && (
+          <Accueil
+            tournoi={courant}
+            surJalon={(transition) =>
+              allerA('pilotage', transition === 'demarrer' ? 'pret-demarrer' : 'completude')
+            }
+          />
+        ),
     },
     {
       id: 'formats',

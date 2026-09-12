@@ -129,6 +129,7 @@ def _atteler() -> Attelage:
         # rien à instancier. Les ports sont câblés pour respecter le contrat, pas pour agir ici.
         FauxDerouleRepository(),
         FauxPhaseRepository(depart_repo),
+        CompteurEngagesRepository(depart_repo, inscription_repo),
     )
     service_archers = ServiceArchers(
         tournoi_repo,

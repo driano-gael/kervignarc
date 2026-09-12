@@ -6,10 +6,10 @@
 // de la topologie — la frise ne décide rien, règle 1). Les transitions qui **figent** ou sont
 // terminales sont confirmées ; `terminer` réutilise le message chiffré de la complétude (E12US005).
 
-// DETTE-082 — ⚠️ cette frise porte les boutons « Démarrer » / « Terminer » **nus**, pendant que la
-// famille « prêt à… » (E16US012) porte les mêmes actions **expliquées** par ce qui manque. Deux
-// endroits pour le même geste : à instruire quand `ARCHIVER` rejoindra la famille, la frise portant
-// aussi ce bouton. Ne pas ajouter un 3ᵉ chemin d'action sans trancher celui-ci.
+// DETTE-082 — ⚠️ **résorbée là où `surJalon` est fourni, ouverte ailleurs.** Les boutons
+// « Démarrer » / « Terminer » **nus** deviennent alors un renvoi vers la famille « prêt à… »
+// (E16US012), qui porte la même action **expliquée** par ce qui manque. Sans la prop, la frise
+// garde les boutons nus — c'est encore le cas sur la destination « Tournoi ».
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
@@ -76,7 +76,30 @@ function AvertissementEffectif({ exigence }: { exigence: ExigenceEffectif }) {
   )
 }
 
-export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
+/** Les deux transitions qui ont un écran « prêt à… » pour les expliquer (E16US012, ADR-0096).
+ *
+ * ⚠️ **`archiver` n'y est pas** et ne doit pas y être ajouté avant que son jalon existe : le
+ * serveur répond `404 jalon_non_instruit`, le renvoi mènerait à un écran vide. `annuler` et
+ * `revenir-brouillon` n'ont pas de jalon du tout et gardent donc leur bouton, partout. */
+const TRANSITIONS_EXPLIQUEES: Record<string, string> = {
+  demarrer: 'Prêt à démarrer ?',
+  terminer: 'Prêt à terminer ?',
+}
+
+export function FriseCycleDeVie({
+  tournoi,
+  surJalon,
+}: {
+  tournoi: Tournoi
+  /** Fourni ⇒ `demarrer` et `terminer` **renvoient** vers leur jalon au lieu d'agir (E16US021).
+   *
+   * ⚠️ **Le rappel porte la TRANSITION, pas la destination** : c'est la coquille qui sait où vit
+   * chaque écran (même patron que `FeuVert`/`surPlanDeDuels`). Typer ce rappel sur
+   * `DestinationAdminId` ferait importer `accueil → admin` alors que `admin → accueil` existe
+   * déjà — le cycle entre features que `DETTE-083` décrit. Omise, la frise se comporte comme
+   * avant : c'est ce qui laisse la destination « Tournoi » intacte. */
+  surJalon?: (transition: 'demarrer' | 'terminer') => void
+}) {
   const transitions = useTransitions(tournoi.id)
   const transitionner = useTransitionnerTournoi(tournoi.id)
   const exigence = useExigenceEffectif(tournoi.id)
@@ -199,23 +222,44 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
           (transitions.data ?? []).length === 0 && (
             <p className="carte__etat">Aucune action disponible à ce stade.</p>
           )}
-        {(transitions.data ?? []).map((t) => (
-          <button
-            key={t.nom}
-            type="button"
-            className={
-              t.nom === 'annuler'
-                ? 'bouton--danger'
-                : t.nom === 'revenir-brouillon'
-                  ? 'bouton--discret'
-                  : undefined
-            }
-            disabled={transitionner.isPending}
-            onClick={() => void declencher(t.nom)}
-          >
-            {t.libelle}
-          </button>
-        ))}
+        {(transitions.data ?? []).map((t) => {
+          // ⚠️ Le renvoi porte le **libellé de l'écran visé**, pas celui de la transition : c'est
+          // l'entrée que l'organisateur lit dans la barre latérale, donc ce qui lui fait
+          // comprendre qu'on l'emmène quelque part au lieu d'agir tout de suite. ⚠️ Ces deux
+          // libellés **recopient** ceux de la barre latérale (`CoquilleAdmin`) : les importer
+          // refermerait le cycle décrit ci-dessus. Les renommer là-bas se répercute ici à la main.
+          const vise = surJalon === undefined ? undefined : TRANSITIONS_EXPLIQUEES[t.nom]
+          if (vise !== undefined && surJalon !== undefined) {
+            const transition = t.nom as 'demarrer' | 'terminer'
+            return (
+              <button
+                key={t.nom}
+                type="button"
+                className="bouton--discret"
+                onClick={() => surJalon(transition)}
+              >
+                {vise}
+              </button>
+            )
+          }
+          return (
+            <button
+              key={t.nom}
+              type="button"
+              className={
+                t.nom === 'annuler'
+                  ? 'bouton--danger'
+                  : t.nom === 'revenir-brouillon'
+                    ? 'bouton--discret'
+                    : undefined
+              }
+              disabled={transitionner.isPending}
+              onClick={() => void declencher(t.nom)}
+            >
+              {t.libelle}
+            </button>
+          )
+        })}
       </div>
       <MessageErreur erreur={transitionner.error} />
 

@@ -93,7 +93,7 @@ vi.mock('../identite/api', async (importOriginal) => ({
 // ⚠️ **Décor typé sans `as unknown as`** (correctif de revue, axe B). La première rédaction cassait
 // le type, et la fixture était objectivement fausse : sans `etat`, `departDeSalle` tombait dans son
 // **dernier recours** (« le dernier de la liste ») au lieu du chemin nominal `etat === 'lance'` — le
-// test empruntait donc une branche dégradée sans le dire. `etat: 'lance'` est ce que l'écran voit
+// test empruntait donc une branche dégradée sans le dire. `etat: 'lance', effectif: 0` est ce que l'écran voit
 // un jour de tournoi.
 const CRENEAU: Depart = {
   id: 3,
@@ -103,6 +103,7 @@ const CRENEAU: Depart = {
   tarif_centimes: 800,
   quota: null,
   etat: 'lance',
+  effectif: 0,
 }
 
 function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'statut'>): Phase {

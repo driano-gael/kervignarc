@@ -36,6 +36,7 @@ const _CRENEAU: Depart = {
   tarif_centimes: 800,
   quota: null,
   etat: 'ouvert',
+  effectif: 0,
 }
 
 function duel(patch: Partial<DuelPublic> = {}): DuelPublic {

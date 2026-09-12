@@ -7,6 +7,7 @@ numéro. Sans effet : inscriptions et placement référencent l'`id` technique, 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from application.erreurs import (
@@ -16,6 +17,7 @@ from application.erreurs import (
     DernierDepartNonSupprimable,
     TournoiIntrouvable,
 )
+from application.suivi_deroule import CompteurEngages
 from domain.cycle_depart import AvancementDepart, EtatDepart
 from domain.depart import Depart, DepartId
 from domain.ports import (
@@ -49,6 +51,20 @@ class LecteurAvancementDepart(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class SyntheseDepart:
+    """Un créneau **et ce qui se lit sur lui** — la ligne que l'accueil rend par départ (E16US021).
+
+    ⚠️ **Une photo, pas un agrégat** : `etat` et `effectif` sont dérivés au moment du calcul et ne
+    sont jamais persistés — `Depart` reste sans colonne de statut (cf. `domain/cycle_depart.py`).
+    `effectif` compte des **archers distincts**, la définition de `CompteurEngages`.
+    """
+
+    depart: Depart
+    etat: EtatDepart
+    effectif: int
+
+
 class ServiceDeparts:
     """Cas d'usage des départs d'un tournoi : créer, lister, éditer, supprimer."""
 
@@ -62,6 +78,7 @@ class ServiceDeparts:
         horloge: Horloge,
         deroule_repository: DerouleRepository,
         phase_repository: PhaseRepository,
+        compteur_engages: CompteurEngages,
     ) -> None:
         self._departs = depart_repository
         self._tournois = tournoi_repository
@@ -77,6 +94,11 @@ class ServiceDeparts:
         # déjà engagées des autres créneaux.
         self._deroules = deroule_repository
         self._phases = phase_repository
+        # ⚠️ **L'effectif d'un créneau a déjà une définition, et ce port est la seule** (E16US021) :
+        # des archers *distincts*, pas des lignes d'inscription. `ServiceSuiviDeroule` dimensionne
+        # le déroulé avec, `ServiceTournois` y juge l'exigence d'effectif ; un `len()` local ici
+        # ferait diverger l'accueil du reste de l'application sur les doubles inscriptions.
+        self._engages = compteur_engages
 
     def creer(
         self,
@@ -118,17 +140,21 @@ class ServiceDeparts:
         self._verifier_tournoi(tournoi_id)
         return self._departs.par_tournoi(tournoi_id)
 
-    def lister_avec_etat(self, tournoi_id: TournoiId) -> list[tuple[Depart, EtatDepart]]:
-        """Les départs du tournoi, chacun avec son **état de cycle de vie** dérivé (E12US008).
+    def lister_avec_synthese(self, tournoi_id: TournoiId) -> list[SyntheseDepart]:
+        """Les départs du tournoi, chacun avec son **état de cycle** (E12US008) et son **effectif**.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas. Lecture seule : l'état est **calculé**
-        (jamais stocké) à partir de l'avancement lu au vol — le front en fait un badge par créneau.
-        Simplicité assumée (règle 12) : un appel d'avancement par départ ; les créneaux d'un tournoi
-        se comptent sur les doigts, la relecture n'est pas un goulot.
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas. Lecture seule : les deux sont
+        **calculés** (jamais stockés) au vol — le front en fait un badge et un chiffre par créneau.
+        Simplicité assumée (règle 12) : deux lectures par départ ; les créneaux d'un tournoi se
+        comptent sur les doigts, la relecture n'est pas un goulot — et l'accueil les affiche côte à
+        côte, donc l'alternative serait un aller-retour HTTP *par créneau*, bien plus cher.
         """
         self._verifier_tournoi(tournoi_id)
         departs = self._departs.par_tournoi(tournoi_id)
-        return [(depart, self._etat_de(depart)) for depart in departs]
+        return [
+            SyntheseDepart(depart, self._etat_de(depart), self._effectif_de(depart))
+            for depart in departs
+        ]
 
     def modifier(
         self,
@@ -278,9 +304,21 @@ class ServiceDeparts:
         """
         return self._etat_de(self._depart_du_tournoi(tournoi_id, depart_id))
 
+    def effectif(self, tournoi_id: TournoiId, depart_id: DepartId) -> int:
+        """Effectif d'un créneau donné (E16US021), pour le rafraîchir après édition.
+
+        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi.
+        """
+        return self._effectif_de(self._depart_du_tournoi(tournoi_id, depart_id))
+
     def _etat_de(self, depart: Depart) -> EtatDepart:
         """État de cycle dérivé d'un créneau (pour l'affichage : liste, badge)."""
         return self._avancement_de(depart).etat
+
+    def _effectif_de(self, depart: Depart) -> int:
+        """Archers distincts inscrits sur ce créneau, via le port qui en porte la définition."""
+        assert depart.id is not None, "Un départ relu est persisté."
+        return self._engages.nb_engages_du_depart(depart.id)
 
     def _avancement_de(self, depart: Depart) -> AvancementDepart:
         """Lit l'avancement d'un créneau via le port étroit (placements · séries · forfaits)."""

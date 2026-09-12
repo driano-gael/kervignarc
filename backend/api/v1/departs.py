@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from application.departs import ServiceDeparts
+from application.departs import ServiceDeparts, SyntheseDepart
 from domain.cycle_depart import EtatDepart
 from domain.depart import Depart
 from infrastructure.db import WriteQueue
@@ -67,10 +67,11 @@ class DepartReponse(BaseModel):
     tarif_centimes: int
     quota: int | None
     etat: str
+    effectif: int
 
     @staticmethod
-    def de_agregat(depart: Depart, etat: EtatDepart) -> DepartReponse:
-        """Traduit un agrégat de domaine (persisté) et son état de cycle en DTO de réponse."""
+    def de_agregat(depart: Depart, etat: EtatDepart, effectif: int) -> DepartReponse:
+        """Traduit un agrégat de domaine (persisté), son état de cycle et son effectif en DTO."""
         assert depart.id is not None, "Un départ persisté a toujours un identifiant."
         return DepartReponse(
             id=depart.id,
@@ -80,6 +81,7 @@ class DepartReponse(BaseModel):
             tarif_centimes=depart.tarif_centimes,
             quota=depart.quota,
             etat=etat.value,
+            effectif=effectif,
         )
 
 
@@ -102,21 +104,23 @@ async def creer_depart(
             )
         )
     )
-    # Un créneau qui vient de naître n'a ni placement ni score : il est **ouvert** par construction
-    # (E12US008). Inutile de relire l'avancement pour l'apprendre.
-    return DepartReponse.de_agregat(depart, EtatDepart.OUVERT)
+    # Un créneau qui vient de naître n'a ni placement, ni score, ni inscrit : il est **ouvert** et
+    # vide par construction (E12US008). Inutile de relire l'avancement pour l'apprendre.
+    return DepartReponse.de_agregat(depart, EtatDepart.OUVERT, effectif=0)
 
 
 @router.get("", response_model=list[DepartReponse])
 async def lister_departs(tournoi_id: int, request: Request) -> list[DepartReponse]:
-    """Liste les départs d'un tournoi (triés par numéro), **avec leur état de cycle** (E12US008).
+    """Les départs d'un tournoi (triés par numéro), avec **état de cycle et effectif** par créneau.
 
-    Lecture directe hors boucle. L'état (ouvert / lancé / clos) est dérivé au vol par le service
-    (placements · séries · forfaits) — le front en fait un badge par créneau.
+    Lecture directe hors boucle. L'état (ouvert / lancé / clos, E12US008) et l'effectif (E16US021)
+    sont dérivés au vol par le service — le front en fait un badge et un chiffre par créneau.
+    ⚠️ **Un seul appel rend tous les créneaux**, et l'accueil en dépend : il les affiche côte à
+    côte, une route par créneau lui coûterait N allers-retours à chaque poll.
     """
     service: ServiceDeparts = request.app.state.service_departs
-    departs = await run_in_threadpool(service.lister_avec_etat, tournoi_id)
-    return [DepartReponse.de_agregat(depart, etat) for depart, etat in departs]
+    syntheses = await run_in_threadpool(service.lister_avec_synthese, tournoi_id)
+    return [DepartReponse.de_agregat(s.depart, s.etat, s.effectif) for s in syntheses]
 
 
 @router.put(
@@ -141,7 +145,7 @@ async def modifier_depart(
     service: ServiceDeparts = request.app.state.service_departs
     write_queue: WriteQueue = request.app.state.write_queue
 
-    def _modifier_et_lire_etat() -> tuple[Depart, EtatDepart]:
+    def _modifier_et_relire() -> SyntheseDepart:
         # Édition puis relecture de l'état dans **le même passage du writer** (règle 7) : l'état
         # renvoyé reflète l'écriture qu'on vient d'appliquer, sans course avec une autre tablette.
         depart = service.modifier(
@@ -153,10 +157,14 @@ async def modifier_depart(
             confirme_cycle=confirme_cycle,
         )
         assert depart.id is not None
-        return depart, service.etat(tournoi_id, depart.id)
+        # ⚠️ Relire **la liste** pour un seul créneau serait un balayage du tournoi : on ne relit
+        # que l'état, l'édition d'un tarif ou d'un horaire ne touchant aucune inscription.
+        return SyntheseDepart(
+            depart, service.etat(tournoi_id, depart.id), service.effectif(tournoi_id, depart.id)
+        )
 
-    depart, etat = await asyncio.wrap_future(write_queue.submit(_modifier_et_lire_etat))
-    return DepartReponse.de_agregat(depart, etat)
+    synthese = await asyncio.wrap_future(write_queue.submit(_modifier_et_relire))
+    return DepartReponse.de_agregat(synthese.depart, synthese.etat, synthese.effectif)
 
 
 @router.delete(

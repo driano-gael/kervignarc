@@ -11,7 +11,8 @@ routes imbriquées `/api/v1/tournois/{id}/departs`, et vérifie le mapping des e
 - tournoi inconnu → 404 ; départ d'un autre tournoi → 404 ;
 - garde admin : écriture sans session → 401 ;
 - cycle de vie (E12US008) : le DTO expose `etat`, `ouvert` sur un créneau sans score, et les
-  paramètres `confirme_cycle` sont acceptés (non-régression sur un créneau ouvert).
+  paramètres `confirme_cycle` sont acceptés (non-régression sur un créneau ouvert) ;
+- effectif par créneau (E16US021) : la liste chiffre chaque départ séparément, l'édition le relit.
 
 Le garde-fou de cycle **lancé/clos** (409 `depart_en_cours_non_confirme` + `details`) est couvert au
 niveau **service** (`test_service_departs.py`, faux lecteur d'avancement) : l'exercer ici imposerait
@@ -188,6 +189,47 @@ def test_le_depart_expose_son_etat_ouvert(
 
         liste = client.get(f"/api/v1/tournois/{tid}/departs").json()
         assert [d["etat"] for d in liste] == ["ouvert"]
+
+
+def test_la_liste_chiffre_l_effectif_de_chaque_creneau(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La liste porte l'**effectif de chaque créneau** (E16US021) — un seul appel, tout le tournoi.
+
+    C'est ce que l'accueil rend en blocs côte à côte : la traversée complète (DTO → service → port
+    `CompteurEngages` → repository → DB) est vérifiée ici, la définition de l'effectif l'étant au
+    service. On inscrit sur **un** des deux créneaux : un effectif calculé au tournoi (ADR-0075, le
+    défaut qui a coûté treize mois) rendrait 1 des deux côtés.
+    """
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        categorie_id = client.post(
+            f"/api/v1/tournois/{tid}/categories", json={"libelle": "Senior 1 H"}
+        ).json()["id"]
+        archer_id = client.post(
+            f"/api/v1/tournois/{tid}/archers",
+            json={"nom": "Martin", "prenom": "Alice", "categorie_id": categorie_id},
+        ).json()["id"]
+        matin = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "horaire": "09:00"}
+        ).json()
+        client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "horaire": "14:00"}
+        )
+        client.post(f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": matin["id"]})
+
+        # À la création, avant toute inscription : le créneau naît vide.
+        assert matin["effectif"] == 0
+        liste = client.get(f"/api/v1/tournois/{tid}/departs").json()
+        assert [(d["horaire"], d["effectif"]) for d in liste] == [("09:00", 1), ("14:00", 0)]
+
+        # Éditer l'horaire ne touche aucune inscription : l'effectif relu reste celui du créneau.
+        modifie = client.put(
+            f"/api/v1/tournois/{tid}/departs/{matin['id']}",
+            json={"tarif_centimes": 810, "horaire": "09:30"},
+        )
+        assert modifie.json()["effectif"] == 1
 
 
 def test_editer_et_supprimer_un_creneau_ouvert_ignorent_confirme_cycle(

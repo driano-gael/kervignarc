@@ -2335,6 +2335,10 @@ window.ATLAS.carte = {
      "nom": "ServiceDeparts"
     },
     {
+     "fichier": "backend/application/departs.py",
+     "nom": "SyntheseDepart"
+    },
+    {
      "fichier": "backend/application/pilotage_simulation.py",
      "nom": "ServicePilotageSimulation"
     },

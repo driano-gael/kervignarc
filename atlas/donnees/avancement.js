@@ -691,9 +691,7 @@ window.ATLAS.avancement = {
     "E16US012"
    ],
    "ouverte": true,
-   "resorption_us": [
-    "E16US021"
-   ],
+   "resorption_us": [],
    "severite": "mineur"
   },
   {
@@ -879,11 +877,8 @@ window.ATLAS.avancement = {
   }
  ],
  "entete": {
-  "adr_du_resume": [
-   "0109",
-   "0017"
-  ],
-  "derniere": "E16US019"
+  "adr_du_resume": [],
+  "derniere": "E16US021"
  },
  "epics": [
   {
@@ -4178,7 +4173,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US001",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Plan de salle : se mettre d'accord sur ce qu'est un pas de tir",
@@ -4201,7 +4196,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US002",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Phases : une bibliothèque de phases réglables, pas une séquence figée",
@@ -4223,7 +4218,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US003",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Complétude : ne plus mélanger le déroulé et la gestion administrative",
@@ -4245,7 +4240,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US004",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Le public suit plusieurs archers, de bout en bout",
@@ -4268,7 +4263,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US005",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Placement : la largeur d'un PC, et un puits de réserve",
@@ -4287,7 +4282,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US006",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "L'identité visuelle du tournoi : deux logos, deux couleurs",
@@ -4310,7 +4305,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US007",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Exports : choisir le format de chaque document",
@@ -4339,7 +4334,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US008",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Feu vert : agir depuis la ligne du duel qui bloque",
@@ -4363,7 +4358,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US009",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Écran de salle : régler ce qui défile, et défiler ce qui ne tient pas",
@@ -4391,7 +4386,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US010",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Chercher partout, et voir d'avance ce qui bloque un lancement",
@@ -4410,7 +4405,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US011",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Ce que trois questionnaires « validés » demandaient quand même",
@@ -4432,7 +4427,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US012",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "La famille des écrans « prêt à… »",
@@ -4451,7 +4446,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E16US013",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Le lancement d'un tour : automatique ou manuel",
@@ -4475,7 +4470,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US014",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Podiums configurables",
@@ -4496,7 +4491,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US015",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Un QR par scoreur",
@@ -4513,7 +4508,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E16US016",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Exports : les formats et documents qui restent dus",
@@ -4532,7 +4527,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US017",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Le classement des clubs entre eux",
@@ -4549,7 +4544,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US018",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Le panneau de routage rend la tablette tout seul",
@@ -4568,7 +4563,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US019",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Annuler une validation pour corriger",
@@ -4585,7 +4580,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E16US020",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Deux écritures, une même volée : le rôle tranche",
@@ -4594,19 +4589,17 @@ window.ATLAS.avancement = {
   {
    "adr": [],
    "dettes_introduites": [],
-   "dettes_resorbees": [
-    "082"
-   ],
+   "dettes_resorbees": [],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E16US021",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "L'accueil du tournoi parle par départ",
-   "titre_story": "L'accueil du tournoi parle par départ"
+   "titre_story": "L'accueil du tournoi parle par départ ✅"
   },
   {
    "adr": [
@@ -4769,7 +4762,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 138,
+  "livrees": 139,
   "vivantes": 177
  },
  "sections": [
@@ -5717,11 +5710,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    17,
+    18,
     21
    ],
    "compteur_ecrit": [
-    17,
+    18,
     21
    ],
    "lignes": [
@@ -5841,7 +5834,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E16US021",
      "titre": "L'accueil du tournoi parle par départ"
     },
@@ -5852,7 +5845,7 @@ window.ATLAS.avancement = {
      "titre": "La famille des écrans « prêt à… »"
     }
    ],
-   "titre": "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (17/21)**"
+   "titre": "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (18/21)**"
   },
   {
    "calcule": [

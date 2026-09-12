@@ -4030,6 +4030,71 @@ button:disabled {
   gap: 8px;
 }
 
+/* Blocs par départ, en tête de l'accueil (E16US021, CA A02) : « j'arrive et je vois ».
+   `auto-fit` + `minmax` — tous les créneaux côte à côte tant que la largeur le permet, repliés en
+   colonne sur tablette. Un tournoi en compte deux à quatre : pas de défilement à prévoir. */
+.departs-accueil {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.depart-accueil {
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-1);
+  padding: 12px;
+}
+
+/* Le liseré redit l'état déjà écrit en toutes lettres dans l'entête — il ne le porte jamais seul
+   (`DV-03` : la couleur renforce le mot, elle ne le remplace pas). ⚠️ `--success` et non l'ambre :
+   un créneau qui tire est un état **vivant**, pas un incident — même choix qu'`accueil-admin__marque`. */
+.depart-accueil--lance {
+  border-left-color: var(--success);
+}
+
+.depart-accueil--clos {
+  opacity: 0.72;
+}
+
+.depart-accueil__entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.depart-accueil__numero {
+  font-weight: 700;
+}
+
+.depart-accueil__horaire {
+  font-variant-numeric: tabular-nums;
+}
+
+.depart-accueil__etat {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.depart-accueil__effectif {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.depart-accueil__chiffre {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Chiffres-clés en bandeau. */
 .accueil__chiffres {
   display: flex;
