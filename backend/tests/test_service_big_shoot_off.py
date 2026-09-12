@@ -1025,3 +1025,30 @@ def test_la_projection_reste_lisible_pendant_la_pause() -> None:
 
     assert projection.paliers == (8, 6, 5)
     assert len(etat.tireurs) == 12
+
+
+def test_le_big_shoot_off_ignore_la_preseance_de_role() -> None:
+    """ADR-0107 §5 : la préséance est **inerte hors qualification** — épinglé, pas seulement décidé.
+
+    ⚠️ Ce format réécrit une volée non validée sans rien franchir, et c'est normal. Sans ce test,
+    descendre la comparaison de rang du service vers `Serie` ressemblerait à un nettoyage et
+    fermerait un format entier : la seconde écriture lèverait `EcritureDeRoleInferieur`, ici et au
+    barrage, sur un chemin qu'aucune suite n'exerce plus une fois la qualification verte.
+    """
+    monde = _Monde()
+    a, b = monde.inscrire(2)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
+    service = monde.service()
+    neuf = (ZoneScore("9"), ZoneScore("9"), ZoneScore("9"))
+    dix = (ZoneScore("10"), ZoneScore("10"), ZoneScore("10"))
+
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 1, neuf)
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 1, dix)  # ne lève pas : dernier gagne
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, b, 1, neuf)
+    service.valider_manche(monde.tournoi_id, monde.phase_id, a, "Scoreur")
+    service.valider_manche(monde.tournoi_id, monde.phase_id, b, "Scoreur")
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+    par_archer = {tireur.archer_id: tireur for tireur in etat.tireurs}
+    assert par_archer[a].en_lice is True, "la 2ᵉ écriture a bien gagné : 30 contre 27"
+    assert par_archer[b].en_lice is False

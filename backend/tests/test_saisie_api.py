@@ -1074,3 +1074,60 @@ def test_deux_postes_se_succedent_sans_conflit(
         assert reponse.status_code == 200, reponse.text
         (volee,) = reponse.json()["volees"]
         assert volee["valeurs"] == ["10", "10", "10"]
+
+
+# --- Le rang que la ROUTE pose : câblage, pas règle (E16US020, 3ᵉ passe de revue) ---------------
+
+
+def test_une_correction_de_scoreur_ne_passe_pas_par_dessus_une_ecriture_de_l_organisateur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Ce que prouve ce test : `POST /saisie/corrections` pose bien le rang **scoreur**.
+
+    ⚠️ Tous les autres tests de la préséance passent `role=` **eux-mêmes** au service : ils prouvent
+    la comparaison, jamais la valeur que la route choisit. Écrire `Role.ADMIN` à ce site laissait
+    la suite entière verte et donnait au scoreur la préséance de l'organisateur — l'élévation de
+    rang silencieuse que cette US existe pour fermer, déplacée d'un cran vers la frontière.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+        ressaisie = client.post("/api/v1/saisie/volees", json=_corps_volee(s, ["10", "10", "10"]))
+        assert ressaisie.status_code == 200, ressaisie.text
+
+        reponse = client.post(
+            "/api/v1/saisie/corrections",
+            json=_corps_volee(s, ["1", "1", "1"]),
+            headers=entete,
+        )
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "ecriture_de_role_inferieur"
+
+
+def test_corriger_est_reserve_au_scoreur_et_une_session_admin_n_y_suffit_pas(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Gèle la garde dont `role=Role.SCOREUR` tire son exactitude (`api/v1/saisie.py`).
+
+    ⚠️ Si ce test rougit, c'est que la route s'est élargie — `E16US019` l'a fait pour
+    `/annulations` — et le rang écrit en dur doit suivre, sans quoi une correction d'organisateur
+    s'inscrirait au rang du milieu, donc écrasable ensuite par un scoreur.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+
+        # La session admin de `_semer` est encore ouverte : elle ne doit pas suffire.
+        reponse = client.post("/api/v1/saisie/corrections", json=_corps_volee(s, ["9", "9", "9"]))
+
+        assert reponse.status_code == 401, reponse.text

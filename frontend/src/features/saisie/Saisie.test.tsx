@@ -37,7 +37,12 @@ vi.mock('./hooks', () => ({
   useSerie: () => ({ data: SERIE, isError: false, isSuccess: true, error: null }),
   useSeries: () => [{ data: SERIE, isSuccess: true }],
   useSaisirVolee: () => ({
-    mutate: vi.fn(),
+    // ⚠️ `mutate` **joue** le rappel d'échec : un `vi.fn()` nu prouvait que la chaîne est rendue,
+    // jamais qu'elle est vraie — c'est ce qui avait laissé passer le pavé qui affiche encore la
+    // frappe refusée sous « le score affiché fait foi » (relevé en revue).
+    mutate: (_corps: unknown, options?: { onError?: (e: Error) => void }) => {
+      if (erreurSaisie) options?.onError?.(erreurSaisie)
+    },
     isPending: false,
     isError: erreurSaisie !== null,
     error: erreurSaisie,
@@ -80,6 +85,22 @@ describe('Saisie — un refus de préséance est expliqué', () => {
     const alerte = await screen.findByRole('alert')
     expect(alerte).toHaveTextContent(/saisie par l’organisateur|saisie par l'organisateur/)
     expect(alerte).toHaveTextContent(/signalez l’erreur à l’organisateur/)
+  })
+
+  it('efface la frappe refusée : le pavé retombe sur la vérité du serveur', async () => {
+    erreurSaisie = new ErreurApi(409, 'ecriture_de_role_inferieur', 'Saisie par l’organisateur.')
+
+    const { container } = monter()
+    const grille = await screen.findByRole('list')
+    await userEvent.click(within(grille).getByRole('button'))
+    for (let i = 0; i < 3; i += 1) {
+      await userEvent.click(screen.getByRole('button', { name: '10' }))
+    }
+    expect(container.querySelector('.saisie__buffer')).toHaveTextContent('101010')
+
+    await userEvent.click(screen.getByRole('button', { name: /Enregistrer la volée/ }))
+
+    expect(container.querySelector('.saisie__buffer')).not.toHaveTextContent('10')
   })
 
   it('laisse les autres refus au message générique', async () => {

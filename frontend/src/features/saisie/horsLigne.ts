@@ -40,11 +40,11 @@ const CODES_DEFINITIFS = new Set(['ecriture_de_role_inferieur'])
 // Au **rejeu**, un refus est-il **définitif** (rejouer n'y changera rien → retrait de la file et
 // journalisation) ? Seuls les 4xx **métier** hors liste transitoire le sont ; tout le reste —
 // transitoires listés + 5xx — est **gardé en file** pour un rejeu ultérieur.
-// ⚠️ **Nom suffixé exprès.** Le jumeau `saisie-duels/horsLigne.ts` porte la même signature
-// `(statut, code)` avec une sémantique du 2ᵉ paramètre **inversée** (`CODES_TRANSITOIRES` force
-// `false`, ici `CODES_DEFINITIFS` force `true`). Les arités différaient, donc un import croisé
-// était une erreur de compilation ; depuis E16US020 elles sont identiques, seul le nom
-// discrimine — un import croisé inverserait le classement de la file.
+// ⚠️ **Les DEUX jumeaux sont suffixés** (`…Saisie` / `…Duel`), et c'est la seule chose qui les
+// sépare : même signature `(statut, code)`, sémantique du 2ᵉ paramètre **inversée**
+// (`CODES_TRANSITOIRES` force `false`, ici `CODES_DEFINITIFS` force `true`). Leurs arités
+// différaient, donc un import croisé ne compilait pas ; depuis E16US020 elles sont identiques.
+// Ne pas rendre l'un des deux noms générique : un import croisé inverserait le tri de la file.
 export function estRefusDefinitifSaisie(statut: number, code: string): boolean {
   // ⚠️ La fenêtre 4xx d'ABORD, la liste de codes ensuite — comme le jumeau des duels. Tester le
   // code en premier (1ʳᵉ rédaction) rendait « définitif » un **5xx** portant ce code : la volée

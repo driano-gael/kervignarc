@@ -13,6 +13,7 @@ from __future__ import annotations
 import datetime
 import logging
 from dataclasses import dataclass
+from typing import assert_never
 
 from application.erreurs import (
     ApplicationError,
@@ -137,37 +138,36 @@ def _auteur_de_saisie(contexte: ContexteSaisie | None) -> str:
     return f"Poste de cible {contexte.cible_index}"
 
 
-_LIBELLE_ROLE = {
-    Role.POSTE_DE_CIBLE: "un poste de cible",
-    Role.SCOREUR: "un scoreur",
-    Role.ADMIN: "l'organisateur",
-}
-"""De quoi nommer le rôle qui a écrit dans le refus : « saisie par… » sans jargon d'énumération."""
+def _libelle_role(role: Role) -> str:
+    """De quoi nommer le rôle qui a écrit dans le refus : « saisie par… » sans jargon d'énumération.
 
-
-def _role_de_saisie(contexte: ContexteSaisie | None) -> Role:
-    """Le rôle qui écrit, d'après la **garde** — jamais d'après le corps de requête (ADR-0107 §2).
-
-    ⚠️ **Vaut pour CETTE route seule** : `autoriser_saisie` n'admet que deux identités, donc `None`
-    y signifie admin. L'ouvrir au scoreur sans faire porter son rôle par `ContexteSaisie` lui
-    donnerait en silence la préséance de l'admin. Le scoreur, lui, écrit par `corriger_volee`, qui
-    reçoit son rang **en paramètre** — ne pas appeler cette fonction depuis là (E16US020).
+    ⚠️ `assert_never` plutôt qu'un `dict` indexé : un 4ᵉ membre de `Role` ferait lever un
+    `KeyError` **à l'intérieur du refus**, donc un 500 là où le produit doit rendre un 409 — et
+    mypy ne le verrait pas. Ici il casse la compilation (relevé en revue).
     """
-    return Role.ADMIN if contexte is None else Role.POSTE_DE_CIBLE
+    match role:
+        case Role.POSTE_DE_CIBLE:
+            return "un poste de cible"
+        case Role.SCOREUR:
+            return "un scoreur"
+        case Role.ADMIN:
+            return "l'organisateur"
+    assert_never(role)
 
 
 def _refuser_role_inferieur(existante: Volee | None, role: Role) -> None:
     """Refuse d'écraser la volée d'un rôle **supérieur** (ADR-0107 §1) ; l'égalité passe (§3).
 
-    ⚠️ **Le verrou prime la préséance** : une volée validée se refuse plus loin en
-    `VoleeVerrouillee`, qui nomme le bon recours — une correction habilitée. Intervertir les deux
-    enverrait l'écran chercher un organisateur là où il faut un scoreur.
-    """
+    ⚠️ **Le verrou prime la préséance — c'est une EXCEPTION à §1, pas un ordre de tests.** Sur une
+    volée verrouillée cette garde ne refuse rien : depuis `saisir_volee` le refus tombe plus loin en
+    `VoleeVerrouillee` ; depuis `corriger_volee` il ne tombe **pas du tout**, et un scoreur corrige
+    par-dessus l'organisateur — voulu, l'admin n'ayant aucune route de correction. Épinglé par
+    `test_corriger_une_volee_verrouillee_passe_meme_par_dessus_un_rang_superieur`."""
     if existante is None or existante.verrouillee or existante.role_de_saisie is None:
         return
     if role < existante.role_de_saisie:
         raise EcritureDeRoleInferieur(
-            f"Cette volée a été saisie par {_LIBELLE_ROLE[existante.role_de_saisie]} : "
+            f"Cette volée a été saisie par {_libelle_role(existante.role_de_saisie)} : "
             "seul un rôle au moins équivalent peut la modifier."
         )
 
@@ -484,14 +484,16 @@ class ServiceSaisie:
         valeurs: tuple[ZoneScore, ...],
         saisie_par: str | None = None,
         contexte: ContexteSaisie | None = None,
+        *,
+        role: Role,
     ) -> Serie:
         """Saisit ou réédite (avant validation) la volée `numero` de l'archer.
 
         Le pavé (zones admises) se déduit du **blason** de l'archer, le nombre de flèches du
         **barème** de la phase. Persiste sans trace — ⚠️ **sauf sur une volée en correction**, déjà
-        comptée au classement : la réécrire est tracée `CORRECTION_SCORE`, comme le chemin direct
-        qu'elle remplace (E16US019 ; sinon l'annulation **baisserait** la traçabilité).
-        `contexte` cloisonne la saisie à la cible/départ du poste (ADR-0033 §3) ; `None` = admin."""
+        comptée au classement : la réécrire est tracée `CORRECTION_SCORE` (E16US019 ; sinon
+        l'annulation **baisserait** la traçabilité). `contexte` cloisonne au poste (ADR-0033 §3) ;
+        `role` est **sans défaut** : il vient de la **garde**, jamais d'un `contexte` absent."""
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
@@ -499,7 +501,6 @@ class ServiceSaisie:
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
         existante = serie.volee(numero)
-        role = _role_de_saisie(contexte)
         _refuser_role_inferieur(existante, role)
         en_correction = existante is not None and existante.en_correction
         avant = _valeurs_lisibles(serie, numero) if en_correction else None
@@ -625,11 +626,12 @@ class ServiceSaisie:
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
-        # Corriger **est** une écriture : elle respecte la préséance autant qu'elle en pose une
-        # (ADR-0107 §1). Sans cette ligne, un scoreur écrasait une volée rouverte réécrite par
-        # l'organisateur, et le rang stocké **redescendait** — la garde sort tôt sur une volée
-        # verrouillée, donc le chemin nominal de correction est inchangé.
-        _refuser_role_inferieur(serie.volee(numero), role)
+        existante_avant = serie.volee(numero)
+        # ⚠️ `validee` d'abord : sur une volée jamais validée, le vrai motif est
+        # `VoleeNonVerrouillee`, levé plus bas — comparer les rangs ici rendrait un 409 exact au
+        # format et faux au fond.
+        if existante_avant is not None and existante_avant.validee:
+            _refuser_role_inferieur(existante_avant, role)
         avant = _valeurs_lisibles(serie, numero)
         serie = serie.corriger_volee(
             numero,

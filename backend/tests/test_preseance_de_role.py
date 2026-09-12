@@ -17,13 +17,19 @@ from __future__ import annotations
 
 import pytest
 
-from application.erreurs import EcritureDeRoleInferieur
-from application.saisie import _LIBELLE_ROLE, ContexteSaisie, _refuser_role_inferieur
+from application.erreurs import EcritureDeRoleInferieur, PhaseEnPause
+from application.saisie import ContexteSaisie, _libelle_role, _refuser_role_inferieur
 from domain.erreurs import VoleeNonVerrouillee, VoleeVerrouillee
 from domain.grain_validation import GrainValidation
 from domain.role import Role
 from domain.serie import Serie, Volee
-from tests.test_service_saisie import _DEPART, ZONES_SIMPLE, Montage, _v
+from tests.test_service_saisie import (
+    _DEPART,
+    ZONES_SIMPLE,
+    Montage,
+    _mettre_la_phase_en_pause,
+    _v,
+)
 
 _PHASE = 4
 """La phase où se tire la feuille (ADR-0082) — inerte ici, cf. `test_domain_serie.py`."""
@@ -131,11 +137,18 @@ def test_un_role_inferieur_est_refuse() -> None:
     """
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # admin
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN
+    )  # admin
 
     with pytest.raises(EcritureDeRoleInferieur):
         m.service.saisir_volee(
-            m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("6", "6", "6"),
+            contexte=_contexte_poste(),
+            role=Role.POSTE_DE_CIBLE,
         )
 
 
@@ -143,11 +156,16 @@ def test_le_refus_laisse_la_volee_intacte() -> None:
     """Un refus ne doit rien écrire : sinon l'écrasement refusé aurait lieu quand même."""
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
     with pytest.raises(EcritureDeRoleInferieur):
         m.service.saisir_volee(
-            m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("6", "6", "6"),
+            contexte=_contexte_poste(),
+            role=Role.POSTE_DE_CIBLE,
         )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
@@ -161,10 +179,15 @@ def test_un_role_superieur_ecrase() -> None:
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        contexte=_contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
@@ -179,7 +202,12 @@ def test_une_volee_neuve_n_oppose_aucune_preseance() -> None:
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
 
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        contexte=_contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
@@ -200,11 +228,21 @@ def test_a_roles_egaux_le_second_gagne_sans_conflit() -> None:
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        contexte=_contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
 
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), contexte=_contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("10", "10", "10"),
+        contexte=_contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
@@ -216,9 +254,9 @@ def test_a_roles_egaux_le_second_gagne_sans_conflit() -> None:
 def test_deux_ecritures_admin_ne_se_refusent_pas() -> None:
     """Même règle au sommet de l'ordre : l'égalité n'arbitre pas davantage chez l'admin."""
     m = Montage()
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), role=Role.ADMIN)
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), role=Role.ADMIN)
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
@@ -237,7 +275,9 @@ def test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin() -> None:
     """
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # admin
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN
+    )  # admin
 
     with pytest.raises(EcritureDeRoleInferieur):
         m.service.saisir_volee(
@@ -247,6 +287,7 @@ def test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin() -> None:
             _v("6", "6", "6"),
             "Administrateur",  # marqueur déclaratif, sans aucune autorité
             _contexte_poste(),
+            role=Role.POSTE_DE_CIBLE,
         )
 
 
@@ -256,7 +297,13 @@ def test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue() -> None:
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
 
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), "Administrateur", _contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        "Administrateur",
+        _contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
@@ -276,13 +323,18 @@ def test_une_volee_verrouillee_refuse_tout_le_monde_avant_la_preseance() -> None
     """
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 2, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 2, _v("10", "9", "8"), role=Role.ADMIN)
     m.service.valider(m.tournoi_id, m.archer_id, "MARTIN")
 
     with pytest.raises(VoleeVerrouillee):
         m.service.saisir_volee(
-            m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("6", "6", "6"),
+            contexte=_contexte_poste(),
+            role=Role.POSTE_DE_CIBLE,
         )
 
 
@@ -294,13 +346,18 @@ def test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit() -
     """
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 2, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 2, _v("10", "9", "8"), role=Role.ADMIN)
     m.service.valider(m.tournoi_id, m.archer_id, "MARTIN")
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
 
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), contexte=_contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        contexte=_contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
@@ -313,12 +370,14 @@ def test_la_preseance_se_reconstitue_apres_une_ressaisie_en_correction() -> None
     """Remise à zéro ≠ immunité permanente : la première écriture d'après repose une préséance."""
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 2, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 2, _v("10", "9", "8"), role=Role.ADMIN)
     m.service.valider(m.tournoi_id, m.archer_id, "MARTIN")
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"))  # admin reprend la main
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), role=Role.ADMIN
+    )  # admin reprend la main
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
@@ -372,7 +431,12 @@ def test_le_poste_ne_peut_plus_ecraser_une_correction_de_scoreur() -> None:
 
     with pytest.raises(EcritureDeRoleInferieur):
         m.service.saisir_volee(
-            m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), contexte=_contexte_poste()
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("1", "1", "1"),
+            contexte=_contexte_poste(),
+            role=Role.POSTE_DE_CIBLE,
         )
 
 
@@ -386,7 +450,7 @@ def test_l_admin_ecrase_une_correction_de_scoreur() -> None:
         m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="MARTIN", role=Role.SCOREUR
     )
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), role=Role.ADMIN)
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
@@ -404,7 +468,7 @@ def test_l_admin_ecrase_une_correction_de_scoreur() -> None:
 def test_le_refus_nomme_le_role_qui_a_ecrit(role_qui_a_ecrit: Role, attendu: str) -> None:
     """CA : « un refus muet serait pire que l'écrasement qu'il remplace ».
 
-    ⚠️ Sans cette assertion, `_LIBELLE_ROLE` n'est couvert par rien : remplacer le message par
+    ⚠️ Sans cette assertion, `_libelle_role` n'est couvert par rien : remplacer le message par
     « Écriture refusée. » laissait les suites vertes — l'écran affichait alors un refus anonyme,
     exactement ce que le CA écarte. Relevé en revue (axe B).
     """
@@ -419,10 +483,13 @@ def test_le_refus_nomme_le_role_qui_a_ecrit(role_qui_a_ecrit: Role, attendu: str
 def test_chaque_rang_sait_se_nommer_dans_un_refus() -> None:
     """Un rang ajouté sans libellé transformerait un 409 métier en 500 (axe A).
 
-    ⚠️ `mypy` ne vérifie pas l'exhaustivité d'un `dict[Role, str]` : l'écart se voit ici, pas en
-    salle.
+    ⚠️ Depuis la 3ᵉ passe, `_libelle_role` est un `match` clos par `assert_never` : l'oubli casse
+    **mypy**. Ce test garde le versant que le typage ne voit pas — un libellé vide ou en double
+    rendrait un refus anonyme, ce que le CA écarte.
     """
-    assert set(_LIBELLE_ROLE) == set(Role)
+    libelles = [_libelle_role(role) for role in Role]
+
+    assert all(libelles) and len(set(libelles)) == len(list(Role))
 
 
 # --- CA « le sens descendant » : quel est le VRAI recours (E16US020, 2ᵉ passe) ------------------
@@ -437,12 +504,16 @@ def test_le_recours_au_refus_vers_le_bas_est_la_ressaisie_par_l_organisateur() -
     """
     m = Montage()
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # admin, par erreur
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN
+    )  # admin, par erreur
 
     with pytest.raises(VoleeNonVerrouillee):
         m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"))  # il se corrige
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), role=Role.ADMIN
+    )  # il se corrige
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
@@ -465,7 +536,9 @@ def test_un_scoreur_ne_peut_pas_corriger_par_dessus_une_ecriture_de_l_organisate
     m.saisir_serie_complete()
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"))  # admin ressaisit
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), role=Role.ADMIN
+    )  # admin ressaisit
 
     with pytest.raises(EcritureDeRoleInferieur):
         m.service.corriger_volee(
@@ -473,11 +546,12 @@ def test_un_scoreur_ne_peut_pas_corriger_par_dessus_une_ecriture_de_l_organisate
         )
 
 
-def test_corriger_une_volee_verrouillee_reste_permis_a_tout_rang_habilite() -> None:
-    """Le chemin NOMINAL de correction est inchangé : la garde sort tôt sur une volée verrouillée.
+def test_corriger_une_volee_verrouillee_passe_meme_par_dessus_un_rang_superieur() -> None:
+    """L'**EXCEPTION** d'ADR-0107 §1 : sur une volée verrouillée, le verrou prime la préséance.
 
-    ⚠️ Sans ce jumeau, resserrer la garde d'un cran fermerait le seul chemin de réparation d'une
-    feuille signée — et rien ne le dirait.
+    ⚠️ Le rang stocké **redescend** ici (`ADMIN` → `SCOREUR`) et c'est voulu : l'admin n'a aucune
+    route de correction, refuser fermerait le seul chemin de réparation d'une feuille signée. Sans
+    l'assertion de rang, ce test ne disait pas ce qu'il autorise (relevé en revue, 3ᵉ passe).
     """
     m = Montage()
     m.saisir_serie_complete()  # saisie admin, donc rang ADMIN
@@ -491,6 +565,7 @@ def test_corriger_une_volee_verrouillee_reste_permis_a_tout_rang_habilite() -> N
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None and volee.valeurs == _v("9", "9", "9")
+    assert volee.role_de_saisie is Role.SCOREUR, "le verrou prime : le rang redescend, c'est voulu"
 
 
 def test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes() -> None:
@@ -513,7 +588,12 @@ def test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes() -> None:
     )
     with pytest.raises(EcritureDeRoleInferieur):
         m.service.saisir_volee(
-            m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), contexte=_contexte_poste()
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("1", "1", "1"),
+            contexte=_contexte_poste(),
+            role=Role.POSTE_DE_CIBLE,
         )
     with pytest.raises(VoleeNonVerrouillee):  # le geste de remise à zéro n'est pas disponible ICI
         m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
@@ -522,9 +602,57 @@ def test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes() -> None:
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
 
     m.service.saisir_volee(
-        m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), contexte=_contexte_poste()
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("1", "1", "1"),
+        contexte=_contexte_poste(),
+        role=Role.POSTE_DE_CIBLE,
     )
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None and volee.role_de_saisie is Role.POSTE_DE_CIBLE
+
+
+# --- Bornes que la doc revendique et que rien n'exerçait (3ᵉ passe de revue) ---------------------
+
+
+def test_une_volee_heritee_d_avant_la_migration_n_oppose_aucune_preseance() -> None:
+    """La migration `0055` promet « `NULL` ⇒ écrasable comme avant » — branche jamais exercée.
+
+    ⚠️ Le voisin `test_une_volee_neuve_n_oppose_aucune_preseance` passe par `existante is None`,
+    une **autre** branche : ici la volée **existe** et n'a pas de rang, l'état de toute feuille
+    d'avant `0055`. Sans ce cas, resserrer la garde rendrait muettes les séries déjà en base.
+    """
+    heritee = Volee(numero=1, valeurs=_v("10", "9", "8"), role_de_saisie=None)
+
+    _refuser_role_inferieur(heritee, Role.POSTE_DE_CIBLE)
+
+    assert heritee.role_de_saisie is None, "aucun rang revendiqué : rien à franchir"
+
+
+def test_pendant_une_pause_une_ecriture_d_admin_ferme_la_reparation_jusqu_a_la_reprise() -> None:
+    """Le 3ᵉ état de la conjonction pause x préséance, qu'ADR-0107 §4 décrit désormais.
+
+    ⚠️ `corriger_volee` était le **seul** chemin non gelé par une pause (E05US033, « la pause gèle
+    ce qui avance, jamais ce qui répare »). Depuis E16US020 il peut refuser — et les deux gestes de
+    sortie sont, eux, gelés. La volée attend donc la reprise : c'est assumé, pas un oubli.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), role=Role.ADMIN
+    )  # l'organisateur ressaisit : rang ADMIN sur une volée rouverte
+    _mettre_la_phase_en_pause(m)
+
+    with pytest.raises(EcritureDeRoleInferieur):
+        m.service.corriger_volee(
+            m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), auteur="MARTIN", role=Role.SCOREUR
+        )
+
+    with pytest.raises(PhaseEnPause):  # le geste de sortie est gelé : la reprise tranchera
+        m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="MARTIN")

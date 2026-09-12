@@ -471,6 +471,14 @@ function PaveArcher({
           onBrouillon(ligne.archer_id, numeroActif, null)
           setNumeroChoisi(voleeApresEnregistrement(volees, numeroActif))
         },
+        // ⚠️ Le brouillon s'efface AUSSI sur un refus de préséance, sans quoi le pavé continuait
+        // d'afficher les flèches refusées sous le message « le score affiché fait foi » — qui
+        // devenait faux à l'écran même qui l'affiche (relevé en revue). Le tampon retombe alors
+        // sur la valeur serveur, que l'invalidation d'`onError` vient de rafraîchir.
+        onError: (erreur: Error) => {
+          if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur')
+            onBrouillon(ligne.archer_id, numeroActif, null)
+        },
       },
     )
   }

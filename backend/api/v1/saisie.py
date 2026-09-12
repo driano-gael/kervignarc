@@ -297,6 +297,12 @@ async def saisir_volee(
         "volee", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id, requete.numero
     )
 
+    # Le rang se lit sur le verdict de la **garde**, ici et pas au service (règle 6, ADR-0107 §2).
+    # ⚠️ `autoriser_saisie` n'admet que deux identités. L'ouvrir à une troisième **oblige** à
+    # ajouter une branche ici : sans cela elle hériterait du rang de l'organisateur en silence
+    # (épinglé par `test_un_scoreur_n_est_pas_une_identite_de_saisie_de_qualification`).
+    role = Role.ADMIN if poste is None else Role.POSTE_DE_CIBLE
+
     def ecrire() -> Serie:
         return service_saisie.saisir_volee(
             requete.tournoi_id,
@@ -305,6 +311,7 @@ async def saisir_volee(
             valeurs,
             requete.saisie_par,
             contexte,
+            role=role,
         )
 
     # L'écriture SEULE est dédoublonnée (unité mémorisée) ; le « quand » se lit **après**, hors de
@@ -436,6 +443,10 @@ async def corriger_volee(
             scoreur.nom,
             # Le rang vient de la **garde** de cette route — `exiger_scoreur` — et non d'un contexte
             # (ADR-0107 §2). C'est le seul site où `Role.SCOREUR` s'inscrit en base.
+            # ⚠️ Constante littérale que seule la garde rend exacte : si `exiger_scoreur` s'élargit
+            # un jour (E16US019 l'a fait pour `/annulations`), ce rang doit suivre, sans quoi une
+            # correction d'admin s'inscrirait au rang 2. Épinglé par les deux tests de
+            # `test_saisie_api.py` qui nomment cette ligne.
             role=Role.SCOREUR,
         )
 

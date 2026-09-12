@@ -41,7 +41,7 @@ const CODES_TRANSITOIRES = new Set(['rencontre_introuvable', 'match_non_jouable'
 // journalise) ? Seuls les 4xx **métier** non rejouables le sont : 400 (valeur invalide), 403
 // (hors tournoi), 404 (blason introuvable), 422 (non traitable — ex. `duel_verrouille`,
 // `barrage_non_requis`). Le reste — transitoires listés + 5xx — est **gardé** pour un rejeu ultérieur.
-export function estRefusDefinitif(statut: number, code: string): boolean {
+export function estRefusDefinitifDuel(statut: number, code: string): boolean {
   return (
     statut >= 400 &&
     statut < 500 &&

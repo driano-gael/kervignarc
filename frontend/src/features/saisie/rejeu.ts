@@ -43,7 +43,8 @@ export async function rejouer(
       // une perte de score silencieuse, cf. ADR-0037) :
       //  - **refus définitif** (4xx métier : hors-cible, blason introuvable…) → rejouer n'y changera
       //    rien : on retire de la file et on journalise.
-      //  - **transitoire** (401 serveur redémarré / jeton perdu, 409 départ perdu, 429, **5xx**
+      //  - **transitoire** (401 serveur redémarré / jeton perdu, 409 départ perdu — mais **pas
+      //    tous les 409**, cf. `CODES_DEFINITIFS` dans `horsLigne.ts` —, 429, **5xx**
       //    saturation à la reconnexion de masse) → un rejeu ultérieur peut réussir : on **garde** en
       //    file et on s'arrête, exactement comme une panne réseau.
       if (erreur instanceof ErreurApi && !estRefusDefinitifSaisie(erreur.statut, erreur.code)) {

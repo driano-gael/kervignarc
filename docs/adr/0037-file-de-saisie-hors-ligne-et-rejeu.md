@@ -1,6 +1,13 @@
 # ADR-0037 — File de saisie hors-ligne côté front : mise en file sur panne, rejeu à la reconnexion
 
 - **Statut** : Accepté
+- **Amendé par** : [ADR-0107](0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md)
+  § Conséquences (12/09/2026, E16US020) — **la décision 4 se lit désormais « fenêtre 4xx d'abord,
+  liste de codes ensuite »**, et non plus « par le seul statut » : `ecriture_de_role_inferieur` est
+  le premier refus **définitif** au statut `409`. La priorité « ne rien perdre » reste la règle ;
+  cette exception est le seul cas où rejouer ne peut **jamais** aboutir, et où garder la volée
+  gèlerait la tête de file. *(Renvoi posé ici, et pas dans la Décision, pour ne pas rouvrir cet ADR
+  au sens d'ADR-0075 § « Portée de la règle ».)*
 - **Date** : 2026-07-20
 - **Décideurs** : Organisateur / Architecte
 - **Amende** : [`stories/E04-saisie-scores.md`](../../stories/E04-saisie-scores.md) (E04US009, CA

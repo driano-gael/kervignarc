@@ -13,6 +13,8 @@
   - [ADR-0102](0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) — la **forme** de cet
     ADR : décision prise, section « Porté dans le code par » qui dit franchement qu'elle ne porte
     rien encore
+  - [ADR-0037](0037-file-de-saisie-hors-ligne-et-rejeu.md) — la file hors-ligne et son tri des
+    refus, que cet ADR **amende** (cf. Conséquences)
 
 > **Portée de la règle « décision structurante ⇒ ADR »** : cet ADR est inscrit à la liste **hors
 > critère** d'[ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md), qui
@@ -57,6 +59,15 @@ Trois constats, tous vérifiés dans le code du 10/09/2026, cadrent la décision
 qui a déjà écrit **écrase**. Une écriture d'un rôle **inférieur** est **refusée** (`409`), et l'écran
 dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace.
 
+⚠️ **Une EXCEPTION, et elle n'est pas un détail : le verrou prime la préséance.** Sur une volée
+**verrouillée**, toute correction habilitée passe, quel que soit le rang inscrit — le rang stocké
+peut donc *redescendre*. C'est voulu : l'organisateur n'a **aucune** route de correction (`/volees`
+lève `VoleeVerrouillee`, `/corrections` est réservée au scoreur), et refuser fermerait le seul
+chemin de réparation d'une feuille signée. La préséance ne protège donc que la volée **non
+verrouillée**. *(Relevé en 3ᵉ passe de revue : le code portait cette exception, la décision
+l'énonçait « sans exception » et la garde affirmait un refus qui n'avait pas lieu. Épinglée par
+`test_corriger_une_volee_verrouillee_passe_meme_par_dessus_un_rang_superieur`.)*
+
 **2. Le rôle est celui de la garde, jamais celui du message.** `Volee.saisie_par` **existe** mais sa
 propre docstring le qualifie de **déclaratif** : c'est un nom libre, issu du corps de la requête.
 L'employer comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant
@@ -78,16 +89,23 @@ l'alternative écartée si un tournoi réel remonte **au moins une saisie perdue
 **4. La préséance ne survit pas au conflit — et une annulation de validation la remet à zéro.** Le
 rôle de la dernière écriture ne verrouille pas la volée pour toujours contre les rôles inférieurs.
 
+Sans cette borne, un admin — ou un scoreur, le cas majoritaire — qui annule une validation rendrait
+la volée inaccessible à ceux qui doivent la corriger, ce qui **contredirait** le CA d'annulation qui
+exige qu'elle reste écrivable par le poste de cible.
+
 ⚠️ **Mais le geste de remise à zéro n'est PAS toujours disponible là où le blocage se produit**, et
 c'est la nuance qui manquait *(relevée en 2ᵉ passe de revue, axe D, le 12/09/2026)*. Si un scoreur
 **corrige** une volée déjà rouverte, la tablette est refusée — et `annuler_validation` refuse à son
 tour, la volée étant *déjà en correction*. **La sortie tient alors en DEUX gestes**, tous deux
-offerts par l'écran du scoreur : **refermer** la correction, puis **annuler** la validation. Sans
-cette phrase, la garantie ci-dessus serait fausse dans le seul état où elle compte. Épinglée par
-`test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes`.
-Sans cette borne, un admin — ou un scoreur, le cas majoritaire — qui annule une validation rendrait
-la volée inaccessible à ceux qui doivent la corriger, ce qui **contredirait** le CA d'annulation qui
-exige qu'elle reste écrivable par le poste de cible.
+offerts par l'écran du scoreur : **refermer** la correction, puis **annuler** la validation. Épinglée
+par `test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes`.
+
+⚠️ **Et pendant une PAUSE de phase, il n'y a pas de sortie du tout** : les deux gestes sont gelés
+(E05US033) alors que `corriger_volee` ne l'est pas. Une écriture de rang supérieur sur une volée
+rouverte y ferme donc la ressaisie de la tablette **jusqu'à la reprise**. Assumé plutôt qu'ignoré :
+lever la garde rouvrirait le contournement par le choix de l'endpoint. Épinglé par
+`test_pendant_une_pause_une_ecriture_d_admin_ferme_la_reparation_jusqu_a_la_reprise`.
+*(Troisième état, relevé en 3ᵉ passe par C1 et D.)*
 
 **5. La règle ne vaut que pour la volée de QUALIFICATION.** *(Arbitrage du commanditaire, 12/09/2026,
 à la mise en œuvre.)* Duels, poules, système suisse, colline et Big Shoot Off gardent le **dernier
@@ -123,6 +141,20 @@ critère de réouverture est écrit à la décision 3.
   et inscrit au registre de dette). *(La 1ʳᵉ rédaction proposait de « dériver le rôle de la garde
   sans aucune colonne » : quatre axes de revue ont montré indépendamment que cette voie n'existe
   pas.)*
+- ⚠️ **Cet ADR AMENDE la décision 4 d'[ADR-0037](0037-file-de-saisie-hors-ligne-et-rejeu.md).**
+  Celle-ci discriminait les refus au rejeu **par le seul statut**, et rangeait **tout** `409` parmi
+  les transitoires « gardés en file ». `ecriture_de_role_inferieur` est le **premier refus définitif
+  au statut 409** du produit : la classification devient « fenêtre 4xx **d'abord**, liste de codes
+  **ensuite** ». Le renoncement est assumé — la volée du poste est **perdue**, avec le seul
+  `console.error` que personne ne lit sur tablette — parce que le rang du poste ne montera jamais et
+  que la garder **gèle la tête de file**, donc toutes les volées enfilées derrière.
+  *(Relevé en 3ᵉ passe de revue : la décision était prise dans le code et écrite nulle part, sur un
+  garde-fou de perte de score — le mode de panne d'ADR-0017.)*
+- **Critère de remède structurel, écrit pour ne pas être redécouvert.** La préséance est aujourd'hui
+  tenue par **deux** appels manuels à `_refuser_role_inferieur`, alors que la donnée et sa remise à
+  zéro vivent dans le domaine. On duplique sciemment (règle 16 : 2 sites, pas 3). **Au 3ᵉ chemin
+  d'écriture qui pose une préséance**, la comparaison descend dans `Serie` — l'agrégat devient
+  inviolable quel que soit l'appelant — et le service ne garde que la phrase du refus.
 - **La discrimination des trois rôles à la frontière n'est pas acquise sur la route concernée.** Sur
   `POST /saisie/volees`, seul `autoriser_saisie` est monté, et il ne distingue que deux états
   (admin = `None`, poste). Composer une troisième identité y suppose une dépendance neuve.
@@ -145,9 +177,11 @@ positifs portant son propre numéro, est pire que de ne rien écrire. Format à 
 - `backend/domain/role.py` — `Role`, l'ordre de la **décision 1** (`POSTE_DE_CIBLE < SCOREUR <
   ADMIN`). ⚠️ C'est un `IntEnum` : l'ordre **est** la donnée, et sa renumérotation ne réinterprète
   pas les lignes existantes parce que la persistance écrit le **nom**.
-- `backend/application/saisie.py` — `_refuser_role_inferieur` (la comparaison elle-même),
-  `_role_de_saisie` (**décision 2** : le rang vient de la garde) et `_LIBELLE_ROLE` (la phrase du
-  refus). ⚠️ La **décision 3** n'est portée par aucun code : c'est l'**absence** de branche, la
+- `backend/application/saisie.py` — `_refuser_role_inferieur` (la comparaison elle-même) et
+  `_libelle_role` (la phrase du refus). ⚠️ La **décision 2** n'est plus portée ici : le rang est un
+  paramètre **sans défaut** des deux chemins d'écriture, et se calcule dans `api/v1/saisie.py`, là
+  où la garde a parlé. *(3ᵉ passe de revue : le déduire de `contexte is None` accordait le rang le
+  plus haut par omission — un défaut `fail-open`. mypy tient désormais ce qu'un commentaire disait.)* ⚠️ La **décision 3** n'est portée par aucun code : c'est l'**absence** de branche, la
   comparaison étant `<` stricte. Elle ne se lit donc que dans son test négatif — c'est pour cela
   que la décision l'exigeait.
 - `backend/domain/serie.py` — `Serie.annuler_validation` remet `role_de_saisie` à `None` sur le lot
