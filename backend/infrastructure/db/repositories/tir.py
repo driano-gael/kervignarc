@@ -33,6 +33,7 @@ from domain.phase import (
     PhaseId,
 )
 from domain.ports import Horloge
+from domain.role import Role
 from domain.score import Score
 from domain.serie import Serie, SerieId, Volee
 from domain.tournoi import TournoiId
@@ -56,6 +57,20 @@ from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 
 
+def _vers_role(nom: str | None) -> Role | None:
+    """Relit le rôle qui a écrit la volée (E16US020) ; `NULL` = aucune préséance revendiquée.
+
+    Un nom hors `Role` est une **incohérence technique** au même titre qu'une zone illisible : le
+    repository est le seul rédacteur de cette colonne (ADR-0007).
+    """
+    if nom is None:
+        return None
+    try:
+        return Role[nom]
+    except KeyError as exc:
+        raise InfrastructureError("Rôle de saisie inconnu en base.") from exc
+
+
 def _vers_volee(ligne: VoleeORM) -> Volee:
     """Traduit une ligne ORM en value object de domaine `Volee` (E04US002).
 
@@ -76,6 +91,7 @@ def _vers_volee(ligne: VoleeORM) -> Volee:
         validee_par=ligne.validee_par,
         lot_validation=ligne.lot_validation,
         correction_ouverte_par=ligne.correction_ouverte_par,
+        role_de_saisie=_vers_role(ligne.role_de_saisie),
     )
 
 
@@ -386,6 +402,9 @@ class SerieRepositorySQL:
                 validee_par=volee.validee_par,
                 lot_validation=volee.lot_validation,
                 correction_ouverte_par=volee.correction_ouverte_par,
+                role_de_saisie=(
+                    volee.role_de_saisie.name if volee.role_de_saisie is not None else None
+                ),
                 created_at=horodatages.get(volee.numero, maintenant),
             )
             for volee in serie.volees

@@ -13,7 +13,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import type { PorteeAuth } from '../../shared/api/client'
+import { ErreurApi, type PorteeAuth } from '../../shared/api/client'
 import { useConnexionStore } from '../../shared/stores/connexionStore'
 import { useFileHorsLigneStore, type VoleeEnFile } from '../../shared/stores/fileHorsLigneStore'
 import { useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
@@ -153,6 +153,16 @@ export function useSaisirVolee(tournoiId: number, archerId: number) {
       void queryClient.invalidateQueries({ queryKey: cleSerie(tournoiId, archerId) })
       useFileHorsLigneStore.getState().retirerVolee(corps.tournoi_id, corps.archer_id, corps.numero)
       void draineLaFile(queryClient)
+    },
+    // ⚠️ Un refus de **préséance** (E16US020) laisserait sinon la tablette afficher les valeurs
+    // qu'elle vient de taper : le marqueur lirait son propre score refusé comme s'il était
+    // enregistré. On relit donc la vérité serveur — les autres refus, eux, n'ont rien changé en
+    // base, et une relecture y ferait retomber l'écran en erreur pour rien.
+    // ⚠️ DETTE-100 : aucun écran ne produit ce refus aujourd'hui (cf. `Saisie.tsx`).
+    onError: (erreur) => {
+      if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur') {
+        void queryClient.invalidateQueries({ queryKey: cleSerie(tournoiId, archerId) })
+      }
     },
   })
 }

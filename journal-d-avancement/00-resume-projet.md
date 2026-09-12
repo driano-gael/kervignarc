@@ -593,10 +593,19 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **138 US livrées** sur `main` (mergées, revues, CI verte) à la date du 11/09/2026 — dont **deux
+- **139 US livrées** sur `main` (mergées, revues, CI verte) à la date du 12/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E16US019` — **annuler une validation
+  autorité sur le compte —, la dernière **livraison** étant `E16US020` — **deux écritures, une même
+  volée : le rôle tranche**. La réponse au questionnaire S09 (« hiérarchie → archer < scoreur <
+  admin ») devient une règle du serveur : une volée **retient le rôle réel** de qui l'a écrite, et
+  une écriture d'un rang inférieur est **refusée**. ⚠️ **Deux renoncements assumés, dits avant la
+  décision** : entre **deux tablettes** — le cas le plus fréquent en salle — les rangs sont égaux,
+  donc rien n'est arbitré ; et le refus joue **aussi vers le bas** (l'organisateur qui saisit par
+  erreur bloque la cible, le recours étant d'annuler la validation, ce qui remet la préséance à
+  zéro). ⚠️ **Rien n'en est visible à l'écran aujourd'hui** : aucune surface d'administration ne
+  saisit de volée de qualification, donc le refus ne se déclenche que par un appel d'API —
+  `DETTE-100`. Avant elle, `E16US019` — **annuler une validation
   pour corriger** : le scoreur reçoit l'écran de validation de qualification annoncé par `E04US002`
   et jamais livré, et peut **rendre une volée à la tablette** qui l'a saisie. ⚠️ **Le score reste au
   classement pendant la correction** — les deux branches proposées (sortir la volée des totaux,
@@ -1160,6 +1169,6 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   à le lire en changeant d'écran. *(Livré juste avant : **E01US024**, composer, diagnostiquer et
   simuler un déroulé ; puis **E05US015**, le catalogue de types de phase.)*
 - Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md), qui **fait foi** — le reste d'`EPIC-16`
-  (`E16US019` annuler une validation, `E16US020` hiérarchie de rôles, `E16US021` accueil par départ,
-  `E16US016` reliquat d'exports), l'ordre entre elles restant libre. Le fil **équipes** est
+  (`E16US021` accueil par départ — **périmètre à borner avant de coder** —, `E16US016` reliquat
+  d'exports — **arbitrage `xlsx`**), l'ordre entre elles restant libre. Le fil **équipes** est
   débloqué (E13US002+).

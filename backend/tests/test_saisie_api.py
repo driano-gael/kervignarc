@@ -951,3 +951,91 @@ def test_refermer_une_correction_est_reserve_au_scoreur(
         )
 
         assert reponse.status_code == 401, reponse.text
+
+
+# --- Préséance de rôle (E16US020, ADR-0107) ---
+
+
+def _corps_volee(s: Scenario, valeurs: list[str]) -> dict[str, object]:
+    """Le corps d'une saisie de la volée 1 ; sans `identifiant_saisie`, donc sans déduplication."""
+    return {
+        "tournoi_id": s.tournoi_id,
+        "archer_id": s.archer_id,
+        "numero": 1,
+        "valeurs": valeurs,
+    }
+
+
+def test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E16US020 bout en bout : rôle inférieur → **409** `ecriture_de_role_inferieur`."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _fixer_depart(client, s)
+        premier = client.post("/api/v1/saisie/volees", json=_corps_volee(s, ["10", "9", "8"]))
+        assert premier.status_code == 200, premier.text  # l'admin écrit d'abord
+        client.headers.pop("Authorization", None)  # puis le poste tente d'écraser
+
+        reponse = client.post(
+            "/api/v1/saisie/volees",
+            json=_corps_volee(s, ["6", "6", "6"]),
+            headers=_entete(s.jeton),
+        )
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "ecriture_de_role_inferieur"
+
+
+def test_l_organisateur_ecrase_la_saisie_d_un_poste(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le sens montant passe : la hiérarchie **arbitre**, elle ne fige pas la volée."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _fixer_depart(client, s)
+        entete_admin = dict(client.headers)
+        client.headers.pop("Authorization", None)
+        poste = client.post(
+            "/api/v1/saisie/volees",
+            json=_corps_volee(s, ["6", "6", "6"]),
+            headers=_entete(s.jeton),
+        )
+        assert poste.status_code == 200, poste.text
+        client.headers["Authorization"] = entete_admin["authorization"]
+
+        reponse = client.post("/api/v1/saisie/volees", json=_corps_volee(s, ["10", "9", "8"]))
+
+        assert reponse.status_code == 200, reponse.text
+        (volee,) = reponse.json()["volees"]
+        assert volee["valeurs"] == ["10", "9", "8"]
+        # ⚠️ Sans cette 2ᵉ moitié le test serait un placebo : une restauration ratée de l'en-tête
+        # d'admin ferait réécrire le POSTE, à rôle égal, avec le même 200 et les mêmes valeurs.
+        client.headers.pop("Authorization", None)
+        refus = client.post(
+            "/api/v1/saisie/volees",
+            json=_corps_volee(s, ["1", "1", "1"]),
+            headers=_entete(s.jeton),
+        )
+        assert refus.status_code == 409, refus.text
+
+
+def test_un_scoreur_n_est_pas_une_identite_de_saisie_de_qualification(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Garde-fou du rang du MILIEU : `autoriser_saisie` n'admet que l'admin et le poste.
+
+    ⚠️ Ce test rougira le jour où cette route s'ouvrira au scoreur — et c'est son office :
+    `_role_de_saisie` lit `contexte is None` comme « admin », donc l'élargir sans faire porter le
+    rôle par `ContexteSaisie` donnerait au scoreur la préséance de l'organisateur (ADR-0107).
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        client.headers.pop("Authorization", None)
+
+        reponse = client.post(
+            "/api/v1/saisie/volees", json=_corps_volee(s, ["10", "9", "8"]), headers=entete
+        )
+
+        assert reponse.status_code == 401, reponse.text

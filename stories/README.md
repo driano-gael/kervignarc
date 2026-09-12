@@ -302,7 +302,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | ~~**E16US011**~~ | Ce que trois questionnaires « validés » demandaient quand même | J3 | ✅ **close le 10/09/2026 par découpage** — carte, remplacée par `E16US018` (routage) · `E16US019` (annuler une validation) · `E16US020` (rang et écriture concurrente) · `E16US021` (accueil par départ). ⚠️ Ses « 2 contradictions à arbitrer » **n'en étaient aucune** |
 | **E16US018** | Le panneau de routage rend la tablette tout seul | J3 | S06 · front seul, aucune migration |
 | **E16US019** | Annuler une validation pour corriger | J3 | S08 · rouvre `ADR-0035` |
-| **E16US020** | Deux écritures, une même volée : le rôle tranche | J3 | S09 · [`ADR-0107`](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-rang-de-qui-ecrit.md) |
+| **E16US020** | Deux écritures, une même volée : le rôle tranche | J3 | S09 · [`ADR-0107`](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md) |
 | **E16US021** | L'accueil du tournoi parle par départ | J3 | A02 · candidat à résorber `DETTE-082` |
 | **E16US012** | La famille des écrans « prêt à… » | J3 | née d'`E16US003` · **refonte de navigation, à instruire avant `E16US007`/`E16US008`** |
 

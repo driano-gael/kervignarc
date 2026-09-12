@@ -9661,13 +9661,19 @@ window.ATLAS.decisions = {
   {
    "amende_par": [],
    "date": "2026-09-10",
-   "date_brute": "2026-09-10",
+   "date_brute": "2026-09-10 *(décision)* · 2026-09-12 *(mise en œuvre)*",
    "extrait": "1. L'ordre est poste de cible \u003c scoreur \u003c admin. Une écriture d'un rôle supérieur à celui qui a déjà écrit écrase. Une écriture d'un rôle inférieur est refusée (409), et l'écran dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace. 2. Le rôle est celui de la garde, jamais celui du message. Volee.saisie_par existe mais sa propre docstring le qualifie de déclaratif : c'est un nom libre, issu du corps de la requête. L'employer comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant admin. Le rôle se lit sur l'identité résolue par la garde — jeton de poste, session scoreur, session admin. ⚠️ Ne pas lire « authentifiée » : le rôle le plus bas ne […]",
    "fichier": "docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md",
    "identifiant": "0107",
    "liens": [
     {
      "cible": "E16US011",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E16US020",
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
@@ -9691,13 +9697,126 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/erreurs.py",
+     "existe": true,
+     "symboles": [
+      "EcritureDeRoleInferieur",
+      "MessageErreurSaisie",
+      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     ],
+     "symboles_absents": [
+      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/erreurs/tir.py",
+     "existe": true,
+     "symboles": [
+      "EcritureDeRoleInferieur",
+      "MessageErreurSaisie",
+      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     ],
+     "symboles_absents": [
+      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie.py",
+     "existe": true,
+     "symboles": [
+      "Role",
+      "IntEnum",
+      "_refuser_role_inferieur",
+      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
+      "test_un_role_inferieur_est_refuse",
+      "test_un_role_superieur_ecrase",
+      "ContexteSaisie",
+      "autoriser_saisie",
+      "test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin",
+      "test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue"
+     ],
+     "symboles_absents": [
+      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
+      "test_un_role_inferieur_est_refuse",
+      "test_un_role_superieur_ecrase",
+      "test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin",
+      "test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/role.py",
+     "existe": true,
+     "symboles": [
+      "Role",
+      "IntEnum",
+      "_refuser_role_inferieur",
+      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
+      "test_un_role_inferieur_est_refuse",
+      "test_un_role_superieur_ecrase"
+     ],
+     "symboles_absents": [
+      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
+      "test_un_role_inferieur_est_refuse",
+      "test_un_role_superieur_ecrase"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/serie.py",
+     "existe": true,
+     "symboles": [
+      "Serie.annuler_validation",
+      "test_annuler_une_validation_efface_la_preseance_du_lot",
+      "test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit"
+     ],
+     "symboles_absents": [
+      "test_annuler_une_validation_efface_la_preseance_du_lot",
+      "test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/tir.py",
+     "existe": true,
+     "symboles": [
+      "Volee.role_de_saisie",
+      "volee.role_de_saisie",
+      "_vers_role",
+      "test_la_volee_retient_le_role_de_qui_l_a_ecrite",
+      "test_le_role_persiste_est_le_nom_jamais_le_numero"
+     ],
+     "symboles_absents": [
+      "test_la_volee_retient_le_role_de_qui_l_a_ecrite",
+      "test_le_role_persiste_est_le_nom_jamais_le_numero"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/Saisie.tsx",
+     "existe": true,
+     "symboles": [
+      "EcritureDeRoleInferieur",
+      "MessageErreurSaisie",
+      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     ],
+     "symboles_absents": [
+      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     ],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*",
+   "statut_brut": "Accepté *(et **porté** depuis le 12/09/2026 — cf. § « Porté dans le code par ». ⚠️ **Portée réelle : la volée de qualification seule** ; les autres formats gardent le *dernier écrit gagne*)*",
    "titre": "Une écriture concurrente est arbitrée par le rôle de qui écrit",
    "us": [
-    "E16US011"
+    "E16US011",
+    "E16US020"
    ]
   },
   {

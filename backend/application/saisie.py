@@ -19,6 +19,7 @@ from application.erreurs import (
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
+    EcritureDeRoleInferieur,
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
@@ -52,6 +53,7 @@ from domain.ports import (
     PlacementRepository,
     SerieRepository,
 )
+from domain.role import Role
 from domain.serie import Serie, Volee
 from domain.suivi_deroule import AvancementDePhase, avancement_de_qualification
 from domain.tournoi import TournoiId
@@ -133,6 +135,40 @@ def _auteur_de_saisie(contexte: ContexteSaisie | None) -> str:
     if contexte is None:
         return AUTEUR_ADMIN
     return f"Poste de cible {contexte.cible_index}"
+
+
+_LIBELLE_ROLE = {
+    Role.POSTE_DE_CIBLE: "un poste de cible",
+    Role.SCOREUR: "un scoreur",
+    Role.ADMIN: "l'organisateur",
+}
+"""De quoi nommer le rôle qui a écrit dans le refus : « saisie par… » sans jargon d'énumération."""
+
+
+def _role_de_saisie(contexte: ContexteSaisie | None) -> Role:
+    """Le rôle qui écrit, d'après la **garde** — jamais d'après le corps de requête (ADR-0107 §2).
+
+    ⚠️ **Exact tant qu'`autoriser_saisie` n'admet que deux identités** : `None` y signifie admin.
+    Ouvrir cette route au scoreur sans faire porter son rôle par `ContexteSaisie` lui donnerait en
+    silence la préséance de l'admin — le rang du milieu n'a aucune route de saisie (E16US020).
+    """
+    return Role.ADMIN if contexte is None else Role.POSTE_DE_CIBLE
+
+
+def _refuser_role_inferieur(existante: Volee | None, role: Role) -> None:
+    """Refuse d'écraser la volée d'un rôle **supérieur** (ADR-0107 §1) ; l'égalité passe (§3).
+
+    ⚠️ **Le verrou prime la préséance** : une volée validée se refuse plus loin en
+    `VoleeVerrouillee`, qui nomme le bon recours — une correction habilitée. Intervertir les deux
+    enverrait l'écran chercher un organisateur là où il faut un scoreur.
+    """
+    if existante is None or existante.verrouillee or existante.role_de_saisie is None:
+        return
+    if role < existante.role_de_saisie:
+        raise EcritureDeRoleInferieur(
+            f"Cette volée a été saisie par {_LIBELLE_ROLE[existante.role_de_saisie]} : "
+            "seul un rôle au moins équivalent peut la modifier."
+        )
 
 
 def _objet_de_ressaisie(numero: int, archer_id: ArcherId, volee: Volee | None) -> str:
@@ -462,6 +498,8 @@ class ServiceSaisie:
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
         existante = serie.volee(numero)
+        role = _role_de_saisie(contexte)
+        _refuser_role_inferieur(existante, role)
         en_correction = existante is not None and existante.en_correction
         avant = _valeurs_lisibles(serie, numero) if en_correction else None
         serie = serie.saisir_volee(
@@ -471,6 +509,7 @@ class ServiceSaisie:
             nb_fleches_par_volee=phase.bareme.nb_fleches_par_volee,
             nb_volees_bareme=phase.bareme.nb_volees,
             saisie_par=saisie_par,
+            role_de_saisie=role,
         )
         apres = _valeurs_lisibles(serie, numero)
         if not en_correction or avant == apres:

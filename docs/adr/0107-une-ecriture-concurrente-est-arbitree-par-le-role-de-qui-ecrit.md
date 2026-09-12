@@ -1,8 +1,8 @@
 # ADR-0107 — Une écriture concurrente est arbitrée par le rôle de qui écrit
 
-- **Statut** : Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*
-- **Date** : 2026-09-10
-- **US** : `E16US011` *(carte de découpage ; la mise en œuvre reviendra à l'US « le rôle tranche », non prise à ce jour)*
+- **Statut** : Accepté *(et **porté** depuis le 12/09/2026 — cf. § « Porté dans le code par ». ⚠️ **Portée réelle : la volée de qualification seule** ; les autres formats gardent le *dernier écrit gagne*)*
+- **Date** : 2026-09-10 *(décision)* · 2026-09-12 *(mise en œuvre)*
+- **US** : `E16US011` *(carte de découpage)* · **`E16US020`** *(mise en œuvre)*
 - **Décideurs** : Organisateur / Architecte
 - **S'appuie sur** :
   - [ADR-0030](0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md) — la saisie est autorisée
@@ -112,12 +112,42 @@ critère de réouverture est écrit à la décision 3.
 
 ## Porté dans le code par
 
-⚠️ **Rien à ce jour, et c'est écrit exprès.**
+*(Section remplie le 12/09/2026 par `E16US020`, **en relisant le code livré** et non en déduisant de
+la décision — l'avertissement de `CLAUDE.md` § « Décision structurante ⇒ ADR ». La rédaction
+précédente disait « rien à ce jour, et c'est écrit exprès » ; elle est reproduite sous la table, car
+c'est elle qui a évité le défaut d'ADR-0017.)*
 
-La décision est prise ; l'US qui la porte n'est pas prise. Nommer ici `backend/api/dependances.py` ou
-`backend/domain/serie.py` ferait exactement ce qu'ADR-0017 a fait pendant treize mois : désigner un
-module qui ne porte pas la décision, et rendre la vérification impossible en la faisant croire faite.
+| Décision | Portée par | Épinglée par |
+|---|---|---|
+| **1** — l'ordre `poste < scoreur < admin` | `backend/domain/role.py` (`Role`, `IntEnum`) ; la comparaison elle-même est dans `_refuser_role_inferieur`, `backend/application/saisie.py` | `test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin`, `test_un_role_inferieur_est_refuse`, `test_un_role_superieur_ecrase` |
+| **1** — le `409` et sa phrase | `EcritureDeRoleInferieur` (`backend/application/erreurs/tir.py`) → `else: status = 409` d'`backend/api/erreurs.py` ; l'écran par `MessageErreurSaisie` (`frontend/src/features/saisie/Saisie.tsx`) | `test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur` ; `Saisie.test.tsx` |
+| **2** — le rôle vient de la garde | `_role_de_saisie(contexte)`, `backend/application/saisie.py` — dérivé de `ContexteSaisie`, que seule `autoriser_saisie` construit | `test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin`, `test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue` |
+| **3** — à rôles égaux, rien n'est arbitré | **Aucun module** : c'est l'absence de branche dans `_refuser_role_inferieur` (`role < existante.role_de_saisie`, strict) | `test_a_roles_egaux_le_second_gagne_sans_conflit` — le test **négatif** exigé par la décision |
+| **4** — l'annulation remet la préséance à zéro | `Serie.annuler_validation`, `backend/domain/serie.py` (`role_de_saisie=None` sur le lot rouvert) | `test_annuler_une_validation_efface_la_preseance_du_lot`, `test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit` |
+| **L'état persisté** que les *Conséquences* déclaraient requis | `Volee.role_de_saisie` (domaine) ↔ colonne `volee.role_de_saisie` (migration `0055`), traduite par `_vers_role` dans `backend/infrastructure/db/repositories/tir.py` | `test_la_volee_retient_le_role_de_qui_l_a_ecrite`, `test_le_role_persiste_est_le_nom_jamais_le_numero` |
 
-À l'implémentation, cette section nommera les modules qui **comparent** effectivement deux rôles, le
-test qui prouve qu'une écriture de rôle inférieur est refusée, et le test **négatif** qui épingle la
-décision 3.
+⚠️ **Ce que cette section ne doit PAS laisser croire — la règle ne vaut que pour la volée de
+qualification.** Arbitré le 12/09/2026 : duels, poules, système suisse, colline et Big Shoot Off
+gardent le *dernier écrit gagne*. Ce n'est pas un cas particulier écrit dans le code — la préséance
+est portée par la **donnée**, et une surface qui ne revendique aucun rôle (`role_de_saisie` à `None`)
+n'oppose rien. Conséquence directe : les **sept sites de `DETTE-065`** annoncés au paragraphe
+précédent **ne sont pas touchés**, et cette ligne de dette n'est ni élargie ni résorbée par `E16US020`.
+
+⚠️ **La discrimination des trois rôles à la frontière n'a PAS été acquise, et le rang du milieu n'est
+porté par aucune route.** `_role_de_saisie` lit `contexte is None` comme « admin » parce
+qu'`autoriser_saisie` n'admet que deux identités ; aucun scoreur n'écrit de volée de qualification.
+L'ordre à trois rangs n'est donc prouvé que par les tests de domaine. Ouvrir cette route au scoreur
+**sans** faire porter son rôle par `ContexteSaisie` lui donnerait en silence la préséance de
+l'organisateur — `test_un_scoreur_n_est_pas_une_identite_de_saisie_de_qualification` rougira ce
+jour-là, et c'est son unique office.
+
+<details><summary>Rédaction d'origine (10/09/2026), conservée — c'est elle qui a évité le défaut d'ADR-0017</summary>
+
+> ⚠️ **Rien à ce jour, et c'est écrit exprès.**
+>
+> La décision est prise ; l'US qui la porte n'est pas prise. Nommer ici `backend/api/dependances.py`
+> ou `backend/domain/serie.py` ferait exactement ce qu'ADR-0017 a fait pendant treize mois : désigner
+> un module qui ne porte pas la décision, et rendre la vérification impossible en la faisant croire
+> faite.
+
+</details>

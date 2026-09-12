@@ -28,6 +28,7 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import PhaseId
+from domain.role import Role
 from domain.tournoi import TournoiId
 
 SerieId = int
@@ -46,7 +47,8 @@ class Volee:
 
     ⚠️ **`validee` et `verrouillee` ne sont plus le même état** (E16US019) : une validation
     **annulée** rouvre l'écriture *sans* retirer la volée des totaux. `points` somme les zones
-    (le manqué vaut 0)."""
+    (le manqué vaut 0). ⚠️ `saisie_par` est **déclaratif**, `role_de_saisie` vient de la **garde**,
+    et lui seul fait autorité — ADR-0107 §2."""
 
     numero: int
     valeurs: tuple[ZoneScore, ...]
@@ -54,6 +56,7 @@ class Volee:
     validee_par: str | None = None
     lot_validation: int | None = None
     correction_ouverte_par: str | None = None
+    role_de_saisie: Role | None = None
 
     def __post_init__(self) -> None:
         """Tient l'invariant « validée ⇔ lot » dont dépend `annuler_validation` (E16US019).
@@ -210,6 +213,7 @@ class Serie:
         nb_fleches_par_volee: int,
         nb_volees_bareme: int,
         saisie_par: str | None = None,
+        role_de_saisie: Role | None = None,
     ) -> Serie:
         """Saisit ou réédite (avant validation) la volée `numero`.
 
@@ -217,6 +221,7 @@ class Serie:
         le serveur est autoritaire, une volée hors barème gonflerait le cumul. Une volée déjà
         **verrouillée** ne se réécrit pas ici — passer par `corriger_volee`. En réédition, le
         marqueur précédent est gardé si aucun n'est fourni ; vide = « non déclaré » (`None`).
+        ⚠️ `role_de_saisie` est **retenu ici, arbitré au service** ; `None` ne revendique rien.
         """
         if not 1 <= numero <= nb_volees_bareme:
             raise NumeroVoleeInvalide(
@@ -238,9 +243,16 @@ class Serie:
         if existante is not None and existante.en_correction:
             # La volée garde sa validation : ressaisir corrige les valeurs, cela ne la fait pas
             # sortir des totaux (E16US019). Revalider est ce qui referme la correction.
-            volee = replace(existante, valeurs=valeurs, saisie_par=marqueur)
+            volee = replace(
+                existante, valeurs=valeurs, saisie_par=marqueur, role_de_saisie=role_de_saisie
+            )
         else:
-            volee = Volee(numero=numero, valeurs=valeurs, saisie_par=marqueur)
+            volee = Volee(
+                numero=numero,
+                valeurs=valeurs,
+                saisie_par=marqueur,
+                role_de_saisie=role_de_saisie,
+            )
         return replace(self, volees=_avec_volee(self.volees, volee))
 
     def valider(
@@ -350,7 +362,13 @@ class Serie:
         rouvertes = self.volees
         for volee in self.volees:
             if volee.lot_validation == lot:
-                rouvertes = _avec_volee(rouvertes, replace(volee, correction_ouverte_par=par))
+                # ⚠️ La préséance repart à ZÉRO (E16US020, ADR-0107 §4) : sans cela, qui annule
+                # devient le dernier écrivain et verrouille la volée contre ceux qui doivent la
+                # corriger — l'inverse du but de l'annulation.
+                rouvertes = _avec_volee(
+                    rouvertes,
+                    replace(volee, correction_ouverte_par=par, role_de_saisie=None),
+                )
         return replace(self, volees=rouvertes)
 
     def corriger_volee(
