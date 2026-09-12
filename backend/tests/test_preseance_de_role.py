@@ -448,3 +448,83 @@ def test_le_recours_au_refus_vers_le_bas_est_la_ressaisie_par_l_organisateur() -
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None and volee.valeurs == _v("6", "6", "6")
+
+
+# --- CORRIGER respecte la préséance autant qu'elle en pose une (2ᵉ passe de revue) --------------
+
+
+def test_un_scoreur_ne_peut_pas_corriger_par_dessus_une_ecriture_de_l_organisateur() -> None:
+    """ADR-0107 §1 vaut pour **les deux** chemins d'écriture, pas seulement pour la saisie.
+
+    ⚠️ **Défaut de la 2ᵉ passe** : `corriger_volee` *posait* un rang sans en *respecter* aucun. La
+    règle se contournait alors par le **choix de l'endpoint** — un rang 2 écrasait un rang 3, et le
+    rang stocké redescendait. Trois axes l'ont relevé indépendamment.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"))  # admin ressaisit
+
+    with pytest.raises(EcritureDeRoleInferieur):
+        m.service.corriger_volee(
+            m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), auteur="MARTIN", role=Role.SCOREUR
+        )
+
+
+def test_corriger_une_volee_verrouillee_reste_permis_a_tout_rang_habilite() -> None:
+    """Le chemin NOMINAL de correction est inchangé : la garde sort tôt sur une volée verrouillée.
+
+    ⚠️ Sans ce jumeau, resserrer la garde d'un cran fermerait le seul chemin de réparation d'une
+    feuille signée — et rien ne le dirait.
+    """
+    m = Montage()
+    m.saisir_serie_complete()  # saisie admin, donc rang ADMIN
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="MARTIN", role=Role.SCOREUR
+    )
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None and volee.valeurs == _v("9", "9", "9")
+
+
+def test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes() -> None:
+    """ADR-0107 §4 : la préséance ne verrouille **jamais** une volée pour toujours — la sortie.
+
+    ⚠️ **Trouvé en 2ᵉ passe de revue (axe D) et non couvert jusque-là.** Quand le scoreur corrige
+    une volée rouverte, la tablette est refusée — et `annuler_validation` refuse à son tour, la
+    volée étant *déjà en correction*. Le geste de remise à zéro est donc **indisponible depuis
+    l'état où le blocage se produit**. La sortie réelle tient en deux gestes, tous deux offerts par
+    l'écran du scoreur : **refermer** la correction, puis **annuler** la validation. Sans ce test,
+    la décision 4 serait fausse et rien ne le dirait.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="MARTIN", role=Role.SCOREUR
+    )
+    with pytest.raises(EcritureDeRoleInferieur):
+        m.service.saisir_volee(
+            m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), contexte=_contexte_poste()
+        )
+    with pytest.raises(VoleeNonVerrouillee):  # le geste de remise à zéro n'est pas disponible ICI
+        m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), contexte=_contexte_poste()
+    )
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None and volee.role_de_saisie is Role.POSTE_DE_CIBLE

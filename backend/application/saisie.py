@@ -614,17 +614,22 @@ class ServiceSaisie:
     ) -> Serie:
         """Corrige une volée **verrouillée** de l'archer, au nom de l'`auteur` (rôle habilité).
 
-        Chemin d'écriture unique sur une volée validée. Trace `CORRECTION_SCORE` avant/après dans la
-        même transaction (ADR-0035) ; le cumul se recalcule. `contexte` cloisonne au poste
-        (ADR-0033 §3) ; `None` = admin.
+        Chemin d'écriture unique sur une volée validée. Trace `CORRECTION_SCORE` avant/après dans
+        la même transaction (ADR-0035) ; `contexte` cloisonne au poste (ADR-0033 §3).
 
-        ⚠️ `role` ne se dérive PAS de `contexte` : ici il vaut toujours `None` (`exiger_scoreur`).
+        ⚠️ `contexte=None` ne vaut **pas** admin ici : l'appelant est `exiger_scoreur`, et le rang
+        vient de `role`, jamais du contexte.
         """
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
+        # Corriger **est** une écriture : elle respecte la préséance autant qu'elle en pose une
+        # (ADR-0107 §1). Sans cette ligne, un scoreur écrasait une volée rouverte réécrite par
+        # l'organisateur, et le rang stocké **redescendait** — la garde sort tôt sur une volée
+        # verrouillée, donc le chemin nominal de correction est inchangé.
+        _refuser_role_inferieur(serie.volee(numero), role)
         avant = _valeurs_lisibles(serie, numero)
         serie = serie.corriger_volee(
             numero,

@@ -617,7 +617,12 @@ def test_un_role_inconnu_en_base_ne_casse_pas_la_lecture(tmp_path: Path) -> None
         repo = _repo(db, HorlogeReglable(_QUAND))
         repo.enregistrer(_serie(tournoi_id, archer_id))
         with db.engine.begin() as cnx:
-            cnx.execute(sa.text("UPDATE volee SET role_de_saisie = 'JUGE_ARBITRE'"))
+            # ⚠️ `mro` autant qu'un nom franchement étranger : `getattr(Role, "mro")` rendait une
+            # **méthode liée** là où la signature promet un `Role` — trou que mypy ne voit pas.
+            cnx.execute(
+                sa.text("UPDATE volee SET role_de_saisie = 'JUGE_ARBITRE' WHERE numero = 1")
+            )
+            cnx.execute(sa.text("UPDATE volee SET role_de_saisie = 'mro' WHERE numero = 2"))
 
         relue = repo.par_archer(_PHASE_TEST, archer_id)
 

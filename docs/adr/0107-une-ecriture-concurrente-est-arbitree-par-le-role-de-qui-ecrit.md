@@ -64,9 +64,11 @@ admin. Le rôle se lit sur l'identité **résolue par la garde** — jeton de po
 session admin. ⚠️ **Ne pas lire « authentifiée »** : le rôle le plus bas ne l'est justement pas, il
 est identifié par le lieu (ADR-0030), et c'est ce qui rend l'ordre nécessaire.
 
-**3. À rôles égaux, la règle n'arbitre rien** — et c'est assumé. Deux tablettes de cibles
-différentes portent le **même** rôle : entre elles, le dernier écrit gagne, exactement comme
-aujourd'hui.
+**3. À rôles égaux, la règle n'arbitre rien** — et c'est assumé. Deux tablettes rattachées à la
+**même** cible portent le même rôle : entre elles, le dernier écrit gagne, exactement comme
+aujourd'hui. *(Rédaction corrigée le 12/09/2026 : « deux cibles **différentes** » décrivait un cas
+**impossible** — un poste qui écrit hors de sa cible est refusé en amont, `SaisieHorsCible`,
+ADR-0033 §3. Le CA disait la même chose et a été corrigé au même moment.)*
 
 ⚠️ **C'est un renoncement déclaré, pas déguisé, et il porte sur le cas le plus fréquent en salle.**
 Il se prouve par un test **négatif** (« deux postes écrivent successivement : le second gagne, `200`,
@@ -75,6 +77,14 @@ l'alternative écartée si un tournoi réel remonte **au moins une saisie perdue
 
 **4. La préséance ne survit pas au conflit — et une annulation de validation la remet à zéro.** Le
 rôle de la dernière écriture ne verrouille pas la volée pour toujours contre les rôles inférieurs.
+
+⚠️ **Mais le geste de remise à zéro n'est PAS toujours disponible là où le blocage se produit**, et
+c'est la nuance qui manquait *(relevée en 2ᵉ passe de revue, axe D, le 12/09/2026)*. Si un scoreur
+**corrige** une volée déjà rouverte, la tablette est refusée — et `annuler_validation` refuse à son
+tour, la volée étant *déjà en correction*. **La sortie tient alors en DEUX gestes**, tous deux
+offerts par l'écran du scoreur : **refermer** la correction, puis **annuler** la validation. Sans
+cette phrase, la garantie ci-dessus serait fausse dans le seul état où elle compte. Épinglée par
+`test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes`.
 Sans cette borne, un admin — ou un scoreur, le cas majoritaire — qui annule une validation rendrait
 la volée inaccessible à ceux qui doivent la corriger, ce qui **contredirait** le CA d'annulation qui
 exige qu'elle reste écrivable par le poste de cible.
@@ -170,9 +180,10 @@ bout, le `200` à rangs égaux, et le garde-fou du rang du milieu sur la route d
 `frontend/src/features/saisie/rejeu.test.ts`.
 
 ⚠️ **Ce que cette section ne doit PAS laisser croire.** La règle ne vaut que pour la volée de
-qualification (décision 5) : `DETTE-065` n'est pas touchée. Et **le refus vers le bas reste
-injoignable depuis les écrans** — aucune surface d'administration ne saisit de volée de
-qualification, `DETTE-100`.
+qualification (décision 5) : `DETTE-065` n'est pas touchée. Et **aucun des deux croisements n'est
+joignable depuis les écrans livrés** (`DETTE-100`) — ni admin → poste (pas d'écran d'administration
+qui saisisse), ni scoreur → poste (`POST /saisie/corrections` n'a aucun appelant front). Les deux
+routes sont gardées et testées ; c'est la surface qui manque, des deux côtés.
 
 <details><summary>Rédaction d'origine (10/09/2026), conservée — c'est elle qui a évité le défaut d'ADR-0017</summary>
 

@@ -59,6 +59,16 @@ from infrastructure.erreurs import InfrastructureError
 
 _logger = logging.getLogger(__name__)
 
+_PLAFOND_NOMS_SIGNALES = 8
+_roles_inconnus_signales: set[str] = set()
+"""Les noms déjà signalés — `_vers_role` est appelé **par volée**, donc par millier sur un
+classement.
+
+⚠️ **Borné**, comme le registre d'idempotence : un état module qui grandit au gré du contenu de la
+base est une fuite. Le cas visé (un membre de `Role` renommé) produit **un** nom distinct ; au-delà
+du plafond on reparle, ce qui est le bon défaut.
+"""
+
 
 def _vers_role(nom: str | None) -> Role | None:
     """Relit le rôle qui a écrit la volée (E16US020) ; `NULL` = aucune préséance revendiquée.
@@ -71,8 +81,13 @@ def _vers_role(nom: str | None) -> Role | None:
     """
     if nom is None:
         return None
-    role = getattr(Role, nom, None)
-    if role is None:
+    # ⚠️ `__members__`, pas `getattr` : `getattr(Role, "mro")` rend une **méthode liée**, que la
+    # signature typerait `Role` sans que mypy le voie.
+    role = Role.__members__.get(nom)
+    if role is None and nom not in _roles_inconnus_signales:
+        if len(_roles_inconnus_signales) >= _PLAFOND_NOMS_SIGNALES:
+            _roles_inconnus_signales.clear()
+        _roles_inconnus_signales.add(nom)
         _logger.warning("Rôle de saisie inconnu en base (%r) : préséance ignorée.", nom)
     return role
 

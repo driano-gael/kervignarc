@@ -856,7 +856,7 @@ def test_corriger_une_volee_pendant_la_pause_reste_possible() -> None:
     _mettre_la_phase_en_pause(montage)
 
     serie = montage.service.corriger_volee(
-        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "ADMIN", role=Role.SCOREUR
+        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "MARTIN", role=Role.SCOREUR
     )
 
     assert serie.volees[0].valeurs == _v("10", "10", "10")
@@ -1286,10 +1286,15 @@ def test_corriger_une_volee_rendue_pendant_la_pause_repare_quand_meme() -> None:
         m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE", role=Role.SCOREUR
     )
 
+    # ⚠️ Depuis E16US020, réparer **pose un rang** : à la reprise, la tablette est refusée sur
+    # cette volée, et la sortie tient en deux gestes — cf.
+    # `test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes`. Sans l'assertion de rang,
+    # l'ajout de `role=` changeait le sens du test sans qu'aucune assertion ne bouge.
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None
+    assert volee.role_de_saisie is Role.SCOREUR
     assert volee.valeurs == _v("10", "10", "10")
     assert volee.en_correction is True, "réparer ne referme pas la fenêtre — revalider est gelé"
 

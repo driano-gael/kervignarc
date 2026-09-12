@@ -602,10 +602,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   une écriture d'un rang inférieur est **refusée**. ⚠️ **Deux renoncements assumés, dits avant la
   décision** : entre **deux tablettes** — le cas le plus fréquent en salle — les rangs sont égaux,
   donc rien n'est arbitré ; et le refus joue **aussi vers le bas** (l'organisateur qui saisit par
-  erreur bloque la cible, le recours étant qu'il **ressaisisse lui-même**). ⚠️ **Le seul croisement
-  visible à l'écran est scoreur → tablette** — une correction du scoreur ne s'efface plus toute
-  seule, point **trouvé en revue** et sans lequel l'US ne tenait pas sa promesse. Le refus *vers le
-  bas*, lui, n'a pas de surface : aucun écran d'administration ne saisit de volée — `DETTE-100`. Avant elle, `E16US019` — **annuler une validation
+  erreur bloque la cible, le recours étant qu'il **ressaisisse lui-même**). ⚠️ **Une correction du scoreur ne s'efface plus toute seule** —
+  trouvé en revue, sans quoi la règle se contournait en changeant de chemin d'écriture. ⚠️ **Rien
+  n'en est encore visible à l'écran** : ni la saisie par l'organisateur, ni la correction de valeurs
+  par le scoreur n'ont de surface — `DETTE-100`. Avant elle, `E16US019` — **annuler une validation
   pour corriger** : le scoreur reçoit l'écran de validation de qualification annoncé par `E04US002`
   et jamais livré, et peut **rendre une volée à la tablette** qui l'a saisie. ⚠️ **Le score reste au
   classement pendant la correction** — les deux branches proposées (sortir la volée des totaux,

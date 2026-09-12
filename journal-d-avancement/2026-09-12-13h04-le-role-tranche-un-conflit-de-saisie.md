@@ -29,17 +29,17 @@ trente secondes plus tard.
   rien à annuler sur une volée que personne n'a validée.*
 - **Une correction du scoreur ne s'efface plus toute seule.** Quand le scoreur corrige lui-même au
   lieu de rendre la volée à la tablette, sa correction porte son rang : une tablette qui ressaisirait
-  derrière est refusée. ⚠️ *Ce point avait été **oublié** et a été trouvé en revue — c'est pourtant
-  le seul croisement visible depuis les écrans.*
+  derrière est refusée. ⚠️ *Trouvé en revue. Sans lui, la règle se contournait
+  simplement en passant par l'autre chemin d'écriture.*
 - **Cela ne concerne que la qualification.** Duels, poules, système suisse, colline et Big Shoot Off
   ne bougent pas.
 
 ## Ce qui n'est pas encore visible à l'écran
 
-⚠️ **Un seul cas reste hors de portée : celui de l'organisateur.** Aucun écran d'administration ne
-saisit de volée de qualification, et deux tablettes sont à rang égal — donc le refus *vers le bas*
-ne peut se produire que par un appel technique direct. Le croisement scoreur → tablette, lui, se
-voit depuis les écrans.
+⚠️ **Rien de tout cela ne se voit encore en manipulant l'application.** Aucun écran d'administration
+ne saisit de volée, et le seul geste qui ferait écrire un scoreur — corriger une valeur — n'est
+proposé par aucun écran non plus : le panneau du scoreur vous renvoie à la tablette. Les deux
+chemins existent côté serveur et sont vérifiés par des tests ; ce sont les écrans qui manquent.
 
 La règle est bien là, tenue par le serveur et vérifiée par des tests. L'écran de la tablette sait
 déjà afficher le refus, en ambre, avec le recours. Il attend la surface qui le déclenchera. C'est

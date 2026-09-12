@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { ErreurApi } from '../../shared/api/client'
-import { estDejaHorsLigne, estRefusDefinitif, estRefusServeur } from './horsLigne'
+import { estDejaHorsLigne, estRefusDefinitifSaisie, estRefusServeur } from './horsLigne'
 
 describe('estDejaHorsLigne', () => {
   it('lien tombé → on se sait hors-ligne (court-circuit, mise en file directe)', () => {
@@ -26,40 +26,40 @@ describe('estRefusServeur (à la saisie)', () => {
   })
 })
 
-describe('estRefusDefinitif (au rejeu)', () => {
+describe('estRefusDefinitifSaisie (au rejeu)', () => {
   it('les 4xx métier non rejouables sont définitifs → retrait de la file', () => {
-    expect(estRefusDefinitif(400, 'peu_importe')).toBe(true) // valeur invalide
-    expect(estRefusDefinitif(403, 'peu_importe')).toBe(true) // hors-cible
-    expect(estRefusDefinitif(404, 'peu_importe')).toBe(true) // blason/archer introuvable
-    expect(estRefusDefinitif(422, 'peu_importe')).toBe(true) // non traitable
+    expect(estRefusDefinitifSaisie(400, 'peu_importe')).toBe(true) // valeur invalide
+    expect(estRefusDefinitifSaisie(403, 'peu_importe')).toBe(true) // hors-cible
+    expect(estRefusDefinitifSaisie(404, 'peu_importe')).toBe(true) // blason/archer introuvable
+    expect(estRefusDefinitifSaisie(422, 'peu_importe')).toBe(true) // non traitable
   })
 
   it('401 / 408 / 409 / 429 sont TRANSITOIRES → gardés en file (ne rien perdre)', () => {
     // 401 : serveur redémarré, jeton de poste perdu → rejeu après re-rattachement.
-    expect(estRefusDefinitif(401, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(408, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(401, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(408, 'peu_importe')).toBe(false)
     // 409 : départ courant perdu au redémarrage → rejeu une fois re-fixé.
-    expect(estRefusDefinitif(409, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(429, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(409, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(429, 'peu_importe')).toBe(false)
   })
 
   it('tout 5xx est transitoire → gardé (serveur saturé : troupeau tonitruant à la reconnexion)', () => {
-    expect(estRefusDefinitif(500, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(502, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(503, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(500, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(502, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifSaisie(503, 'peu_importe')).toBe(false)
   })
 })
 
-describe('estRefusDefinitif — un 409 dont la cause n’est pas transitoire (E16US020)', () => {
+describe('estRefusDefinitifSaisie — un 409 dont la cause n’est pas transitoire (E16US020)', () => {
   it('classe `ecriture_de_role_inferieur` comme DÉFINITIF malgré son statut 409', () => {
     // ⚠️ Premier 409 définitif du produit : le rang du poste ne montera jamais. Le laisser
     // transitoire gardait la volée en file et **bloquait la tête**, donc toutes les suivantes.
-    expect(estRefusDefinitif(409, 'ecriture_de_role_inferieur')).toBe(true)
+    expect(estRefusDefinitifSaisie(409, 'ecriture_de_role_inferieur')).toBe(true)
   })
 
   it('laisse les autres 409 transitoires', () => {
     // Sans ce jumeau, marquer TOUT 409 définitif ferait perdre le cas d’origine de la liste —
     // départ courant perdu au redémarrage, re-fixé au rejeu suivant.
-    expect(estRefusDefinitif(409, 'depart_courant_non_defini')).toBe(false)
+    expect(estRefusDefinitifSaisie(409, 'depart_courant_non_defini')).toBe(false)
   })
 })

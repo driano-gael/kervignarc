@@ -8,7 +8,7 @@
 
 import { ErreurApi } from '../../shared/api/client'
 import type { VoleeEnFile } from '../../shared/stores/fileHorsLigneStore'
-import { estRefusDefinitif } from './horsLigne'
+import { estRefusDefinitifSaisie } from './horsLigne'
 
 export interface ResultatRejeu {
   // À retirer de la file : renvoyées avec succès **ou** refusées définitivement par le serveur.
@@ -46,7 +46,7 @@ export async function rejouer(
       //  - **transitoire** (401 serveur redémarré / jeton perdu, 409 départ perdu, 429, **5xx**
       //    saturation à la reconnexion de masse) → un rejeu ultérieur peut réussir : on **garde** en
       //    file et on s'arrête, exactement comme une panne réseau.
-      if (erreur instanceof ErreurApi && !estRefusDefinitif(erreur.statut, erreur.code)) {
+      if (erreur instanceof ErreurApi && !estRefusDefinitifSaisie(erreur.statut, erreur.code)) {
         return { traitees, refusees, interrompu: true }
       }
       if (erreur instanceof ErreurApi) {

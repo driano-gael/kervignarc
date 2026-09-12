@@ -47,9 +47,8 @@ class Volee:
 
     ⚠️ **`validee` et `verrouillee` ne sont plus le même état** (E16US019) : une validation
     **annulée** rouvre l'écriture *sans* retirer la volée des totaux. `points` somme les zones
-    (le manqué vaut 0).
-
-    ⚠️ `saisie_par` est **déclaratif** ; seul `role_de_saisie` fait autorité (ADR-0107 §2)."""
+    (le manqué vaut 0). `saisie_par` est **déclaratif** ; seul `role_de_saisie`, posé par la
+    **garde**, fait autorité (ADR-0107 §2)."""
 
     numero: int
     valeurs: tuple[ZoneScore, ...]
@@ -404,9 +403,7 @@ class Serie:
         # qui referment une correction sont gelés, celui-ci ne l'est pas (E05US033 : « la pause
         # gèle ce qui avance, jamais ce qui répare »). ⚠️ La correction **ne referme pas** la
         # fenêtre : `correction_ouverte_par` survit au `replace`, le scoreur revalide ensuite.
-        # ⚠️ La correction **repose** une préséance (E16US020) : une volée rouverte est écrivable
-        # par le poste, et sans cela sa ressaisie écraserait cette correction en silence — le
-        # défaut même qu'ADR-0107 ferme. Même règle que `saisir_volee` en correction.
+        # Elle repose une préséance et en respecte une, comme la saisie : ADR-0107 §1 et §4.
         corrigee = replace(
             existante, valeurs=nouvelles_valeurs, validee_par=par, role_de_saisie=role_de_saisie
         )
