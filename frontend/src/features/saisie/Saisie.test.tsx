@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ErreurApi } from '../../shared/api/client'
 import { Saisie } from './Saisie'
@@ -61,6 +61,13 @@ async function ouvrirLePave() {
 }
 
 describe('Saisie — un refus de préséance est expliqué', () => {
+  // ⚠️ Sans cette remise à zéro, un cas qui oublierait d'affecter `erreurSaisie` hériterait
+  // silencieusement de l'erreur du précédent et passerait pour la mauvaise raison : la suite
+  // serait verte par ordre d'exécution, pas par construction.
+  beforeEach(() => {
+    erreurSaisie = null
+  })
+
   it('dit QUI a écrit et QUEL est le recours', async () => {
     erreurSaisie = new ErreurApi(
       409,

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 from collections.abc import Sequence
 from typing import Any
 
@@ -56,19 +57,24 @@ from infrastructure.db.repositories._mapping import _vers_barrage
 from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 
+_logger = logging.getLogger(__name__)
+
 
 def _vers_role(nom: str | None) -> Role | None:
     """Relit le rôle qui a écrit la volée (E16US020) ; `NULL` = aucune préséance revendiquée.
 
-    Un nom hors `Role` est une **incohérence technique** au même titre qu'une zone illisible : le
-    repository est le seul rédacteur de cette colonne (ADR-0007).
+    ⚠️ **Dégrade, ne lève pas** : cette fonction est sur le chemin de lecture de `par_phase`, donc
+    du **classement entier** d'un départ. Lever sur un nom inconnu — ce que faisait la 1ʳᵉ passe —
+    rendait 500 le classement, la grille et chaque écriture le jour où un membre de `Role` est
+    **renommé** : mypy, ruff et toute la suite restent verts, seule une base existante casse. Le
+    repli sur `None` rend exactement le comportement d'avant la migration `0055`.
     """
     if nom is None:
         return None
-    try:
-        return Role[nom]
-    except KeyError as exc:
-        raise InfrastructureError("Rôle de saisie inconnu en base.") from exc
+    role = getattr(Role, nom, None)
+    if role is None:
+        _logger.warning("Rôle de saisie inconnu en base (%r) : préséance ignorée.", nom)
+    return role
 
 
 def _vers_volee(ligne: VoleeORM) -> Volee:

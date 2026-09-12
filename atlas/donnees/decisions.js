@@ -4038,7 +4038,8 @@ window.ATLAS.decisions = {
     "E16US014",
     "E16US015",
     "E16US017",
-    "E16US019"
+    "E16US019",
+    "E16US020"
    ]
   },
   {
@@ -9661,7 +9662,7 @@ window.ATLAS.decisions = {
   {
    "amende_par": [],
    "date": "2026-09-10",
-   "date_brute": "2026-09-10 *(décision)* · 2026-09-12 *(mise en œuvre)*",
+   "date_brute": "2026-09-10",
    "extrait": "1. L'ordre est poste de cible \u003c scoreur \u003c admin. Une écriture d'un rôle supérieur à celui qui a déjà écrit écrase. Une écriture d'un rôle inférieur est refusée (409), et l'écran dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace. 2. Le rôle est celui de la garde, jamais celui du message. Volee.saisie_par existe mais sa propre docstring le qualifie de déclaratif : c'est un nom libre, issu du corps de la requête. L'employer comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant admin. Le rôle se lit sur l'identité résolue par la garde — jeton de poste, session scoreur, session admin. ⚠️ Ne pas lire « authentifiée » : le rôle le plus bas ne […]",
    "fichier": "docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md",
    "identifiant": "0107",
@@ -9703,12 +9704,21 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "EcritureDeRoleInferieur",
-      "MessageErreurSaisie",
-      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+      "else"
      ],
-     "symboles_absents": [
-      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/saisie.py",
+     "existe": true,
+     "symboles": [
+      "autoriser_saisie",
+      "SCOREUR",
+      "exiger_scoreur",
+      "Role.SCOREUR"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9716,36 +9726,20 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "EcritureDeRoleInferieur",
-      "MessageErreurSaisie",
-      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+      "else"
      ],
-     "symboles_absents": [
-      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/application/saisie.py",
      "existe": true,
      "symboles": [
-      "Role",
-      "IntEnum",
       "_refuser_role_inferieur",
-      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
-      "test_un_role_inferieur_est_refuse",
-      "test_un_role_superieur_ecrase",
-      "ContexteSaisie",
-      "autoriser_saisie",
-      "test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin",
-      "test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue"
+      "_role_de_saisie",
+      "_LIBELLE_ROLE"
      ],
-     "symboles_absents": [
-      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
-      "test_un_role_inferieur_est_refuse",
-      "test_un_role_superieur_ecrase",
-      "test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin",
-      "test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9753,17 +9747,9 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "Role",
-      "IntEnum",
-      "_refuser_role_inferieur",
-      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
-      "test_un_role_inferieur_est_refuse",
-      "test_un_role_superieur_ecrase"
+      "IntEnum"
      ],
-     "symboles_absents": [
-      "test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin",
-      "test_un_role_inferieur_est_refuse",
-      "test_un_role_superieur_ecrase"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9771,42 +9757,79 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "Serie.annuler_validation",
-      "test_annuler_une_validation_efface_la_preseance_du_lot",
-      "test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit"
+      "role_de_saisie",
+      "None",
+      "Serie.saisir_volee",
+      "Serie.corriger_volee",
+      "corriger_volee"
      ],
-     "symboles_absents": [
-      "test_annuler_une_validation_efface_la_preseance_du_lot",
-      "test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.role_de_saisie",
+      "_vers_role",
+      "par_phase"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/repositories/tir.py",
      "existe": true,
      "symboles": [
-      "Volee.role_de_saisie",
-      "volee.role_de_saisie",
+      "VoleeORM.role_de_saisie",
       "_vers_role",
-      "test_la_volee_retient_le_role_de_qui_l_a_ecrite",
-      "test_le_role_persiste_est_le_nom_jamais_le_numero"
+      "par_phase"
      ],
-     "symboles_absents": [
-      "test_la_volee_retient_le_role_de_qui_l_a_ecrite",
-      "test_le_role_persiste_est_le_nom_jamais_le_numero"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0055_volee_role_de_saisie.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.role_de_saisie",
+      "_vers_role",
+      "par_phase"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/saisie/Saisie.tsx",
      "existe": true,
      "symboles": [
-      "EcritureDeRoleInferieur",
       "MessageErreurSaisie",
-      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+      "onError",
+      "CODES_DEFINITIFS"
      ],
-     "symboles_absents": [
-      "test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "MessageErreurSaisie",
+      "onError",
+      "CODES_DEFINITIFS"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/horsLigne.ts",
+     "existe": true,
+     "symboles": [
+      "MessageErreurSaisie",
+      "onError",
+      "CODES_DEFINITIFS"
+     ],
+     "symboles_absents": [],
      "verifiable": true
     }
    ],

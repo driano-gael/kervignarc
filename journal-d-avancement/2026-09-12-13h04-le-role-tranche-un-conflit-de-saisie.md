@@ -17,24 +17,29 @@ Avant, la dernière écriture gagnait toujours, en silence. Le cas visé est con
 une volée, et la tablette de la cible — qui n'a pas vu votre correction — renvoie l'ancienne valeur
 trente secondes plus tard.
 
-## Trois choses à savoir, décidées avec vous
+## Quatre choses à savoir, décidées avec vous
 
 - **Entre deux tablettes, rien ne change.** Elles ont le même rang, donc la règle ne les départage
   pas : le dernier écrit gagne, comme avant. C'est **le cas le plus fréquent en salle**, et c'est le
   renoncement le plus coûteux de cette livraison. La solution qui l'aurait couvert — refuser *tout*
   second écrivain et lui montrer la saisie de l'autre — a été écartée, pas oubliée.
 - **Le refus joue aussi vers le bas.** Si vous saisissez par erreur sur la cible 7, cette cible ne
-  peut plus se corriger toute seule. Le recours : vous annulez la validation, ce qui **remet la
-  préséance à zéro** et rend la volée à la tablette.
+  peut plus se corriger toute seule. Le recours : **vous ressaisissez vous-même la bonne valeur**.
+  ⚠️ *Ce n'est pas « annuler la validation » — une première rédaction l'affirmait, à tort : il n'y a
+  rien à annuler sur une volée que personne n'a validée.*
+- **Une correction du scoreur ne s'efface plus toute seule.** Quand le scoreur corrige lui-même au
+  lieu de rendre la volée à la tablette, sa correction porte son rang : une tablette qui ressaisirait
+  derrière est refusée. ⚠️ *Ce point avait été **oublié** et a été trouvé en revue — c'est pourtant
+  le seul croisement visible depuis les écrans.*
 - **Cela ne concerne que la qualification.** Duels, poules, système suisse, colline et Big Shoot Off
   ne bougent pas.
 
 ## Ce qui n'est pas encore visible à l'écran
 
-⚠️ **À dire franchement : vous ne verrez rien de tout cela en manipulant l'application aujourd'hui.**
-Aucun écran d'administration ne saisit de volée de qualification — le seul écran qui écrit une volée
-est la tablette, et deux tablettes sont à rang égal. Le refus ne peut donc se produire que par un
-appel technique direct.
+⚠️ **Un seul cas reste hors de portée : celui de l'organisateur.** Aucun écran d'administration ne
+saisit de volée de qualification, et deux tablettes sont à rang égal — donc le refus *vers le bas*
+ne peut se produire que par un appel technique direct. Le croisement scoreur → tablette, lui, se
+voit depuis les écrans.
 
 La règle est bien là, tenue par le serveur et vérifiée par des tests. L'écran de la tablette sait
 déjà afficher le refus, en ambre, avec le recours. Il attend la surface qui le déclenchera. C'est

@@ -323,7 +323,13 @@ ni la portée, ni le moteur sportif, ni une politique injectable au sens de la r
 ⚠️ **Inscrit en 2ᵉ passe de revue, et la série de quatre est rompue** : l'ADR argumentait son
 exclusion **chez lui** et l'énumération sautait de `0102` à rien — **6ᵉ** occurrence du mode de panne
 que ce paragraphe décrit, alors même que l'ADR revendiquait `0102` comme patron. Le patron avait été
-copié sur la forme, pas sur le geste) —
+copié sur la forme, pas sur le geste. ⚠️ **ROUVERT par `E16US020` le 12/09/2026** — au sens du
+point 2 ci-dessus : sa *Décision* gagne un §5 (la règle ne vaut que pour la volée de qualification)
+et sa *Conséquence* sur `DETTE-065` passe du conditionnel au tranché. **Il reste hors critère** : un
+ordre entre rôles n'est toujours ni portée, ni moteur, ni politique injectable. Sa section « Porté
+dans le code par » a été **réécrite** dans le même commit — la 1ʳᵉ rédaction, une table
+`décision | module | test`, produisait sept faux `portage-symbole-absent` en réclamant les noms de
+tests dans les modules de production) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

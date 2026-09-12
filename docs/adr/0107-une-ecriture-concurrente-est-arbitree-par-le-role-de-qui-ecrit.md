@@ -1,7 +1,7 @@
 # ADR-0107 — Une écriture concurrente est arbitrée par le rôle de qui écrit
 
 - **Statut** : Accepté *(et **porté** depuis le 12/09/2026 — cf. § « Porté dans le code par ». ⚠️ **Portée réelle : la volée de qualification seule** ; les autres formats gardent le *dernier écrit gagne*)*
-- **Date** : 2026-09-10 *(décision)* · 2026-09-12 *(mise en œuvre)*
+- **Date** : 2026-09-10
 - **US** : `E16US011` *(carte de découpage)* · **`E16US020`** *(mise en œuvre)*
 - **Décideurs** : Organisateur / Architecte
 - **S'appuie sur** :
@@ -79,6 +79,16 @@ Sans cette borne, un admin — ou un scoreur, le cas majoritaire — qui annule 
 la volée inaccessible à ceux qui doivent la corriger, ce qui **contredirait** le CA d'annulation qui
 exige qu'elle reste écrivable par le poste de cible.
 
+**5. La règle ne vaut que pour la volée de QUALIFICATION.** *(Arbitrage du commanditaire, 12/09/2026,
+à la mise en œuvre.)* Duels, poules, système suisse, colline et Big Shoot Off gardent le **dernier
+écrit gagne**. Ce n'est pas un cas particulier dans le code : la préséance est portée par la
+**donnée** (`Volee.role_de_saisie`), et une surface qui n'en revendique aucune (`None`) n'oppose
+rien — la règle y est **inerte par construction**.
+
+⚠️ **Conséquence directe sur la puce de `DETTE-065` ci-dessous** : la règle ne vit qu'au service de
+saisie, elle n'atterrit **pas** sur les sept routeurs d'écriture. La question revient si un autre
+format l'adopte — ce serait une US à part entière.
+
 ## Alternative écartée — le refus explicite symétrique
 
 Refuser **tout** second écrivain (`409` + rafraîchir, indépendamment du rôle) et lui montrer la
@@ -106,40 +116,63 @@ critère de réouverture est écrit à la décision 3.
 - **La discrimination des trois rôles à la frontière n'est pas acquise sur la route concernée.** Sur
   `POST /saisie/volees`, seul `autoriser_saisie` est monté, et il ne distingue que deux états
   (admin = `None`, poste). Composer une troisième identité y suppose une dépendance neuve.
-- Si la règle vaut pour tous les formats, elle atterrit sur les **sept sites** de `DETTE-065` (le
-  garde d'autorisation des routeurs d'écriture, recopié sept fois). Elle doit alors vivre en **un**
-  endroit — service ou domaine —, jamais recopiée dans chaque routeur.
+- ~~Si la règle vaut pour tous les formats, elle atterrit sur les **sept sites** de `DETTE-065`~~ →
+  **tranché à la décision 5 : elle n'y atterrit pas.** Elle ne vaut que pour la qualification et vit
+  en **un** endroit — le service de saisie. `DETTE-065` n'est ni élargie ni résorbée. Si un autre
+  format l'adopte un jour, c'est **alors** que la règle devra sortir du service, et jamais être
+  recopiée dans chaque routeur.
 
 ## Porté dans le code par
 
-*(Section remplie le 12/09/2026 par `E16US020`, **en relisant le code livré** et non en déduisant de
-la décision — l'avertissement de `CLAUDE.md` § « Décision structurante ⇒ ADR ». La rédaction
-précédente disait « rien à ce jour, et c'est écrit exprès » ; elle est reproduite sous la table, car
-c'est elle qui a évité le défaut d'ADR-0017.)*
+*(Section remplie le 12/09/2026 par `E16US020`, **en relisant le code livré**. ⚠️ **Et RÉÉCRITE en
+2ᵉ passe** : la 1ʳᵉ rédaction était une table `décision | module | test`, qui a produit **sept
+faux signaux `portage-symbole-absent`** — l'atlas rapporte tous les identifiants d'une ligne à
+chaque fichier de cette ligne, donc les noms de tests étaient réclamés dans les modules de
+production. Noyer le seul contrôle mécanique capable d'attraper un ADR-0017 bis, sous des faux
+positifs portant son propre numéro, est pire que de ne rien écrire. Format à puces, comme
+[ADR-0109](0109-une-volee-en-correction-reste-comptee.md), qui n'en produit aucun.)*
 
-| Décision | Portée par | Épinglée par |
-|---|---|---|
-| **1** — l'ordre `poste < scoreur < admin` | `backend/domain/role.py` (`Role`, `IntEnum`) ; la comparaison elle-même est dans `_refuser_role_inferieur`, `backend/application/saisie.py` | `test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin`, `test_un_role_inferieur_est_refuse`, `test_un_role_superieur_ecrase` |
-| **1** — le `409` et sa phrase | `EcritureDeRoleInferieur` (`backend/application/erreurs/tir.py`) → `else: status = 409` d'`backend/api/erreurs.py` ; l'écran par `MessageErreurSaisie` (`frontend/src/features/saisie/Saisie.tsx`) | `test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur` ; `Saisie.test.tsx` |
-| **2** — le rôle vient de la garde | `_role_de_saisie(contexte)`, `backend/application/saisie.py` — dérivé de `ContexteSaisie`, que seule `autoriser_saisie` construit | `test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin`, `test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue` |
-| **3** — à rôles égaux, rien n'est arbitré | **Aucun module** : c'est l'absence de branche dans `_refuser_role_inferieur` (`role < existante.role_de_saisie`, strict) | `test_a_roles_egaux_le_second_gagne_sans_conflit` — le test **négatif** exigé par la décision |
-| **4** — l'annulation remet la préséance à zéro | `Serie.annuler_validation`, `backend/domain/serie.py` (`role_de_saisie=None` sur le lot rouvert) | `test_annuler_une_validation_efface_la_preseance_du_lot`, `test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit` |
-| **L'état persisté** que les *Conséquences* déclaraient requis | `Volee.role_de_saisie` (domaine) ↔ colonne `volee.role_de_saisie` (migration `0055`), traduite par `_vers_role` dans `backend/infrastructure/db/repositories/tir.py` | `test_la_volee_retient_le_role_de_qui_l_a_ecrite`, `test_le_role_persiste_est_le_nom_jamais_le_numero` |
+- `backend/domain/role.py` — `Role`, l'ordre de la **décision 1** (`POSTE_DE_CIBLE < SCOREUR <
+  ADMIN`). ⚠️ C'est un `IntEnum` : l'ordre **est** la donnée, et sa renumérotation ne réinterprète
+  pas les lignes existantes parce que la persistance écrit le **nom**.
+- `backend/application/saisie.py` — `_refuser_role_inferieur` (la comparaison elle-même),
+  `_role_de_saisie` (**décision 2** : le rang vient de la garde) et `_LIBELLE_ROLE` (la phrase du
+  refus). ⚠️ La **décision 3** n'est portée par aucun code : c'est l'**absence** de branche, la
+  comparaison étant `<` stricte. Elle ne se lit donc que dans son test négatif — c'est pour cela
+  que la décision l'exigeait.
+- `backend/domain/serie.py` — `Serie.annuler_validation` remet `role_de_saisie` à `None` sur le lot
+  rouvert (**décision 4**) ; `Serie.saisir_volee` **et** `Serie.corriger_volee` reposent une
+  préséance. ⚠️ **`corriger_volee` manquait à la 1ʳᵉ rédaction**, et c'est exactement le défaut
+  d'ADR-0017 : le scoreur corrigeait sans revendiquer, la tablette écrasait en silence.
+- `backend/api/v1/saisie.py` — `POST /saisie/volees` (rang dérivé d'`autoriser_saisie`) et
+  `POST /saisie/corrections` (rang `SCOREUR`, dérivé d'`exiger_scoreur`). ⚠️ **Ce second est le seul
+  site où `Role.SCOREUR` s'inscrit en base** : la route de saisie n'admet que l'admin et le poste.
+- `backend/application/erreurs/tir.py` — `EcritureDeRoleInferieur` (`409`), mappée par le `else`
+  final d'`backend/api/erreurs.py` : 409 **est** la branche par défaut des conflits d'état, aucune
+  erreur 409 du dépôt n'ayant d'entrée nominative.
+- `backend/infrastructure/db/models.py` (`VoleeORM.role_de_saisie`),
+  `backend/migrations/versions/0055_volee_role_de_saisie.py` (la colonne, sans reprise) et
+  `backend/infrastructure/db/repositories/tir.py` (`_vers_role`, l'aller-retour par le **nom**).
+  ⚠️ `_vers_role` **dégrade** sur un nom inconnu au lieu de lever : il est sur le chemin de
+  `par_phase`, donc du classement entier d'un départ.
+- `frontend/src/features/saisie/Saisie.tsx` (`MessageErreurSaisie`, le refus expliqué),
+  `frontend/src/features/saisie/hooks.ts` (`onError`, qui relit la vérité serveur) et
+  `frontend/src/features/saisie/horsLigne.ts` (`CODES_DEFINITIFS` : ce `409` est le **premier refus
+  définitif du produit**, et le classer transitoire gelait la file du poste).
 
-⚠️ **Ce que cette section ne doit PAS laisser croire — la règle ne vaut que pour la volée de
-qualification.** Arbitré le 12/09/2026 : duels, poules, système suisse, colline et Big Shoot Off
-gardent le *dernier écrit gagne*. Ce n'est pas un cas particulier écrit dans le code — la préséance
-est portée par la **donnée**, et une surface qui ne revendique aucun rôle (`role_de_saisie` à `None`)
-n'oppose rien. Conséquence directe : les **sept sites de `DETTE-065`** annoncés au paragraphe
-précédent **ne sont pas touchés**, et cette ligne de dette n'est ni élargie ni résorbée par `E16US020`.
+**Épinglé par** — `backend/tests/test_preseance_de_role.py` (l'ordre, les deux sens du refus, le
+rang du milieu par sa route de correction, la remise à zéro, le marqueur déclaratif sans autorité,
+le libellé du refus, et le **test négatif** de la décision 3) ·
+`backend/tests/test_serie_repository.py` (l'aller-retour **réel** de la colonne sur base migrée, et
+la dégradation sur nom inconnu) · `backend/tests/test_saisie_api.py` (le `409` et sa phrase bout en
+bout, le `200` à rangs égaux, et le garde-fou du rang du milieu sur la route de saisie) ·
+`frontend/src/features/saisie/Saisie.test.tsx`, `frontend/src/features/saisie/hooks.test.tsx` et
+`frontend/src/features/saisie/rejeu.test.ts`.
 
-⚠️ **La discrimination des trois rôles à la frontière n'a PAS été acquise, et le rang du milieu n'est
-porté par aucune route.** `_role_de_saisie` lit `contexte is None` comme « admin » parce
-qu'`autoriser_saisie` n'admet que deux identités ; aucun scoreur n'écrit de volée de qualification.
-L'ordre à trois rangs n'est donc prouvé que par les tests de domaine. Ouvrir cette route au scoreur
-**sans** faire porter son rôle par `ContexteSaisie` lui donnerait en silence la préséance de
-l'organisateur — `test_un_scoreur_n_est_pas_une_identite_de_saisie_de_qualification` rougira ce
-jour-là, et c'est son unique office.
+⚠️ **Ce que cette section ne doit PAS laisser croire.** La règle ne vaut que pour la volée de
+qualification (décision 5) : `DETTE-065` n'est pas touchée. Et **le refus vers le bas reste
+injoignable depuis les écrans** — aucune surface d'administration ne saisit de volée de
+qualification, `DETTE-100`.
 
 <details><summary>Rédaction d'origine (10/09/2026), conservée — c'est elle qui a évité le défaut d'ADR-0017</summary>
 

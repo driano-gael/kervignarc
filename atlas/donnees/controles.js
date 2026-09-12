@@ -82,12 +82,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
-   "code": "date-non-canonique",
-   "message": "date « 2026-09-10 *(décision)* · 2026-09-12 *(mise en œuvre)* » hors du format ISO utilisé par le reste du registre (AAAA-MM-JJ).",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
    "code": "features-enchevetrees",
    "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
@@ -284,52 +278,10 @@ window.ATLAS.controles = {
    "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0106"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_annuler_une_validation_efface_la_preseance_du_lot, test_apres_annulation_le_poste_peut_ressaisir_ce_qu_un_admin_avait_ecrit dans « backend/domain/serie.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin, test_un_role_inferieur_est_refuse, test_un_role_superieur_ecrase dans « backend/domain/role.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin, test_un_role_inferieur_est_refuse, test_un_role_superieur_ecrase, test_un_poste_ne_gagne_aucune_autorite_en_se_declarant_admin, test_le_marqueur_declare_ne_confere_pas_la_preseance_retenue dans « backend/application/saisie.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_la_volee_retient_le_role_de_qui_l_a_ecrite, test_le_role_persiste_est_le_nom_jamais_le_numero dans « backend/infrastructure/db/repositories/tir.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur dans « backend/api/erreurs.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur dans « backend/application/erreurs/tir.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur dans « frontend/src/features/saisie/Saisie.tsx » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0107"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 54
+  "signaux": 46
  }
 };

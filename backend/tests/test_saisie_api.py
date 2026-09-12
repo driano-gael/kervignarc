@@ -985,6 +985,10 @@ def test_un_poste_ne_peut_pas_ecraser_la_saisie_de_l_organisateur(
 
         assert reponse.status_code == 409, reponse.text
         assert reponse.json()["code"] == "ecriture_de_role_inferieur"
+        # ⚠️ Le CA exige que le refus dise QUI a écrit. Sans cette ligne, remplacer le message par
+        # « Écriture refusée. » laissait tout vert et l'écran affichait un refus anonyme — le
+        # « refus muet » que le CA écarte. Relevé en revue (axe B).
+        assert "l'organisateur" in reponse.json()["message"], reponse.text
 
 
 def test_l_organisateur_ecrase_la_saisie_d_un_poste(
@@ -1039,3 +1043,34 @@ def test_un_scoreur_n_est_pas_une_identite_de_saisie_de_qualification(
         )
 
         assert reponse.status_code == 401, reponse.text
+
+
+def test_deux_postes_se_succedent_sans_conflit(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « à rôles ÉGAUX » au niveau HTTP : le second gagne, **200**, aucun 409.
+
+    ⚠️ Le CA écrit ce test en toutes lettres (« deux postes écrivent successivement : le second
+    gagne, `200`, aucun `409` »). Le renoncement est prouvé au service ; le `200` littéral, lui,
+    ne l'était nulle part — et c'est le cas le plus fréquent en salle.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _fixer_depart(client, s)
+        client.headers.pop("Authorization", None)
+        premier = client.post(
+            "/api/v1/saisie/volees",
+            json=_corps_volee(s, ["6", "6", "6"]),
+            headers=_entete(s.jeton),
+        )
+        assert premier.status_code == 200, premier.text
+
+        reponse = client.post(
+            "/api/v1/saisie/volees",
+            json=_corps_volee(s, ["10", "10", "10"]),
+            headers=_entete(s.jeton),
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        (volee,) = reponse.json()["volees"]
+        assert volee["valeurs"] == ["10", "10", "10"]

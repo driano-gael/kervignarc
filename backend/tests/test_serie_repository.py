@@ -28,6 +28,7 @@ from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.grain_validation import GrainValidation
 from domain.phase import Phase, TypePhase
 from domain.ports import Horloge
+from domain.role import Role
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
 from infrastructure.db import (
@@ -565,5 +566,62 @@ def test_deux_qualifications_donnent_deux_feuilles_distinctes(tmp_path: Path) ->
         assert [s.id for s in repo.par_phase(_PHASE_TEST)] == [premiere_feuille.id]
         assert [s.id for s in repo.par_phase(seconde.id)] == [seconde_feuille.id]
         assert len(repo.par_tournoi(tournoi_id)) == 2, "La vue d'ensemble les voit toutes deux."
+    finally:
+        db.engine.dispose()
+
+
+# --- Préséance de rôle (E16US020, ADR-0107) : aller-retour RÉEL de la colonne ------------------
+
+
+def test_le_role_de_saisie_est_stocke_par_son_nom_et_relu(tmp_path: Path) -> None:
+    """La colonne porte `Role.name`, jamais le rang — et l'aller-retour le prouve sur vraie base.
+
+    ⚠️ Ce test remplace deux tests **en mémoire** que la 1ʳᵉ passe présentait comme la preuve de
+    la persistance : ils n'exerçaient ni `SerieRepositorySQL`, ni `_vers_role`, ni la migration
+    `0055`. Remplacer `.name` par `.value` les laissait verts (relevé en revue, axe C2).
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        repo = _repo(db, HorlogeReglable(_QUAND))
+        serie = dataclasses.replace(
+            _serie(tournoi_id, archer_id),
+            volees=(
+                Volee(numero=1, valeurs=(ZoneScore.DIX,) * 3, role_de_saisie=Role.SCOREUR),
+                Volee(numero=2, valeurs=(ZoneScore.NEUF,) * 3, role_de_saisie=None),
+            ),
+        )
+        repo.enregistrer(serie)
+
+        with db.engine.connect() as cnx:
+            stockes = cnx.execute(
+                sa.text("SELECT numero, role_de_saisie FROM volee ORDER BY numero")
+            ).all()
+        assert [tuple(ligne) for ligne in stockes] == [(1, "SCOREUR"), (2, None)]
+
+        relue = repo.par_archer(_PHASE_TEST, archer_id)
+        assert relue is not None
+        assert [v.role_de_saisie for v in relue.volees] == [Role.SCOREUR, None]
+    finally:
+        db.engine.dispose()
+
+
+def test_un_role_inconnu_en_base_ne_casse_pas_la_lecture(tmp_path: Path) -> None:
+    """Un nom hors `Role` **dégrade** en « aucune préséance », il ne fait pas tomber la lecture.
+
+    ⚠️ `_vers_role` est sur le chemin de `par_phase`, donc du **classement entier** d'un départ :
+    lever aurait rendu 500 le classement, la grille et chaque écriture le jour où un membre de
+    `Role` est renommé — mypy et toute la suite restant verts. Relevé en revue (axe D).
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        repo = _repo(db, HorlogeReglable(_QUAND))
+        repo.enregistrer(_serie(tournoi_id, archer_id))
+        with db.engine.begin() as cnx:
+            cnx.execute(sa.text("UPDATE volee SET role_de_saisie = 'JUGE_ARBITRE'"))
+
+        relue = repo.par_archer(_PHASE_TEST, archer_id)
+
+        assert relue is not None
+        assert [v.role_de_saisie for v in relue.volees] == [None, None]
     finally:
         db.engine.dispose()

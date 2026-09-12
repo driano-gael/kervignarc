@@ -47,8 +47,9 @@ class Volee:
 
     ⚠️ **`validee` et `verrouillee` ne sont plus le même état** (E16US019) : une validation
     **annulée** rouvre l'écriture *sans* retirer la volée des totaux. `points` somme les zones
-    (le manqué vaut 0). ⚠️ `saisie_par` est **déclaratif**, `role_de_saisie` vient de la **garde**,
-    et lui seul fait autorité — ADR-0107 §2."""
+    (le manqué vaut 0).
+
+    ⚠️ `saisie_par` est **déclaratif** ; seul `role_de_saisie` fait autorité (ADR-0107 §2)."""
 
     numero: int
     valeurs: tuple[ZoneScore, ...]
@@ -379,12 +380,15 @@ class Serie:
         par: str,
         zones_admises: tuple[ZoneScore, ...],
         nb_fleches_par_volee: int,
+        role_de_saisie: Role | None,
     ) -> Serie:
         """Corrige une volée **verrouillée** (chemin habilité, tracé par le service, ex-012).
 
         La volée reste verrouillée, au nom du correcteur `par` ; le cumul se recalcule mécaniquement
         (il dérive des valeurs). `VoleeIntrouvable` si le numéro n'existe pas, `VoleeNonVerrouillee`
         si la volée n'est pas validée (une volée en cours se modifie par `saisir_volee`).
+        ⚠️ `role_de_saisie` est **sans défaut** : corriger est une écriture comme une autre, et
+        l'omettre laissait la volée sans préséance — E16US020 le tenait de `saisir_volee` seul.
         """
         par = _intervenant_valide(par)
         existante = self.volee(numero)
@@ -400,5 +404,10 @@ class Serie:
         # qui referment une correction sont gelés, celui-ci ne l'est pas (E05US033 : « la pause
         # gèle ce qui avance, jamais ce qui répare »). ⚠️ La correction **ne referme pas** la
         # fenêtre : `correction_ouverte_par` survit au `replace`, le scoreur revalide ensuite.
-        corrigee = replace(existante, valeurs=nouvelles_valeurs, validee_par=par)
+        # ⚠️ La correction **repose** une préséance (E16US020) : une volée rouverte est écrivable
+        # par le poste, et sans cela sa ressaisie écraserait cette correction en silence — le
+        # défaut même qu'ADR-0107 ferme. Même règle que `saisir_volee` en correction.
+        corrigee = replace(
+            existante, valeurs=nouvelles_valeurs, validee_par=par, role_de_saisie=role_de_saisie
+        )
         return replace(self, volees=_avec_volee(self.volees, corrigee))

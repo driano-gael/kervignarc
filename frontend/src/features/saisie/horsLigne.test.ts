@@ -28,24 +28,38 @@ describe('estRefusServeur (à la saisie)', () => {
 
 describe('estRefusDefinitif (au rejeu)', () => {
   it('les 4xx métier non rejouables sont définitifs → retrait de la file', () => {
-    expect(estRefusDefinitif(400)).toBe(true) // valeur invalide
-    expect(estRefusDefinitif(403)).toBe(true) // hors-cible
-    expect(estRefusDefinitif(404)).toBe(true) // blason/archer introuvable
-    expect(estRefusDefinitif(422)).toBe(true) // non traitable
+    expect(estRefusDefinitif(400, 'peu_importe')).toBe(true) // valeur invalide
+    expect(estRefusDefinitif(403, 'peu_importe')).toBe(true) // hors-cible
+    expect(estRefusDefinitif(404, 'peu_importe')).toBe(true) // blason/archer introuvable
+    expect(estRefusDefinitif(422, 'peu_importe')).toBe(true) // non traitable
   })
 
   it('401 / 408 / 409 / 429 sont TRANSITOIRES → gardés en file (ne rien perdre)', () => {
     // 401 : serveur redémarré, jeton de poste perdu → rejeu après re-rattachement.
-    expect(estRefusDefinitif(401)).toBe(false)
-    expect(estRefusDefinitif(408)).toBe(false)
+    expect(estRefusDefinitif(401, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitif(408, 'peu_importe')).toBe(false)
     // 409 : départ courant perdu au redémarrage → rejeu une fois re-fixé.
-    expect(estRefusDefinitif(409)).toBe(false)
-    expect(estRefusDefinitif(429)).toBe(false)
+    expect(estRefusDefinitif(409, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitif(429, 'peu_importe')).toBe(false)
   })
 
   it('tout 5xx est transitoire → gardé (serveur saturé : troupeau tonitruant à la reconnexion)', () => {
-    expect(estRefusDefinitif(500)).toBe(false)
-    expect(estRefusDefinitif(502)).toBe(false)
-    expect(estRefusDefinitif(503)).toBe(false)
+    expect(estRefusDefinitif(500, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitif(502, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitif(503, 'peu_importe')).toBe(false)
+  })
+})
+
+describe('estRefusDefinitif — un 409 dont la cause n’est pas transitoire (E16US020)', () => {
+  it('classe `ecriture_de_role_inferieur` comme DÉFINITIF malgré son statut 409', () => {
+    // ⚠️ Premier 409 définitif du produit : le rang du poste ne montera jamais. Le laisser
+    // transitoire gardait la volée en file et **bloquait la tête**, donc toutes les suivantes.
+    expect(estRefusDefinitif(409, 'ecriture_de_role_inferieur')).toBe(true)
+  })
+
+  it('laisse les autres 409 transitoires', () => {
+    // Sans ce jumeau, marquer TOUT 409 définitif ferait perdre le cas d’origine de la liste —
+    // départ courant perdu au redémarrage, re-fixé au rejeu suivant.
+    expect(estRefusDefinitif(409, 'depart_courant_non_defini')).toBe(false)
   })
 })

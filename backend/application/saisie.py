@@ -148,9 +148,10 @@ _LIBELLE_ROLE = {
 def _role_de_saisie(contexte: ContexteSaisie | None) -> Role:
     """Le rôle qui écrit, d'après la **garde** — jamais d'après le corps de requête (ADR-0107 §2).
 
-    ⚠️ **Exact tant qu'`autoriser_saisie` n'admet que deux identités** : `None` y signifie admin.
-    Ouvrir cette route au scoreur sans faire porter son rôle par `ContexteSaisie` lui donnerait en
-    silence la préséance de l'admin — le rang du milieu n'a aucune route de saisie (E16US020).
+    ⚠️ **Vaut pour CETTE route seule** : `autoriser_saisie` n'admet que deux identités, donc `None`
+    y signifie admin. L'ouvrir au scoreur sans faire porter son rôle par `ContexteSaisie` lui
+    donnerait en silence la préséance de l'admin. Le scoreur, lui, écrit par `corriger_volee`, qui
+    reçoit son rang **en paramètre** — ne pas appeler cette fonction depuis là (E16US020).
     """
     return Role.ADMIN if contexte is None else Role.POSTE_DE_CIBLE
 
@@ -608,12 +609,16 @@ class ServiceSaisie:
         nouvelles_valeurs: tuple[ZoneScore, ...],
         auteur: str,
         contexte: ContexteSaisie | None = None,
+        *,
+        role: Role,
     ) -> Serie:
         """Corrige une volée **verrouillée** de l'archer, au nom de l'`auteur` (rôle habilité).
 
-        Chemin d'écriture unique sur une volée validée. Laisse une trace `CORRECTION_SCORE` portant
-        l'**avant** et l'**après**, dans la même transaction que la réécriture (ADR-0035). Le cumul
-        se recalcule mécaniquement. `contexte` cloisonne au poste (ADR-0033 §3) ; `None` = admin.
+        Chemin d'écriture unique sur une volée validée. Trace `CORRECTION_SCORE` avant/après dans la
+        même transaction (ADR-0035) ; le cumul se recalcule. `contexte` cloisonne au poste
+        (ADR-0033 §3) ; `None` = admin.
+
+        ⚠️ `role` ne se dérive PAS de `contexte` : ici il vaut toujours `None` (`exiger_scoreur`).
         """
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
@@ -627,6 +632,7 @@ class ServiceSaisie:
             par=auteur,
             zones_admises=zones,
             nb_fleches_par_volee=phase.bareme.nb_fleches_par_volee,
+            role_de_saisie=role,
         )
         entree = EntreeAudit.creer(
             tournoi_id=tournoi_id,

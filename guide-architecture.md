@@ -124,6 +124,25 @@ kervignarc/
 - **pre-commit** (ruff, mypy, eslint, prettier, tests rapides).
 - **CI bloquante** : lint + typage + tests doivent passer avant tout merge.
 
+#### Ce que les hooks imposent au DÉCOUPAGE des commits
+
+`pre-commit` **remise (`stash`) tout ce qui n'est pas indexé** avant de lancer les hooks : chacun
+voit donc l'arbre tel que ce commit-ci le laissera, et rien de plus. Deux conséquences concrètes,
+qui se découvrent autrement en perdant une demi-heure sur une porte rouge incompréhensible :
+
+- **Le hook `mypy` tourne en `pass_filenames: false` sur tout `backend/`.** Le Python de production,
+  ses tests et la migration doivent donc **voyager dans le même commit** — un commit qui ajoute un
+  paramètre sans les appelants de test échoue, même si l'ensemble est cohérent dans l'arbre.
+- **Le hook `atlas-a-jour` vérifie sans régénérer**, et son motif couvre *à la fois* les sources de
+  doc (`docs/adr/`, `docs/dette.md`, `stories/`, `SUIVI-US.md`) et le code. Découper code et doc en
+  deux commits reste **possible**, mais oblige à **régénérer l'atlas dans chacun**, à l'état de ce
+  commit-là (`git stash` la moitié doc → `python -m atlas` → `git add atlas/donnees` → commit →
+  `git stash pop`). Sans ce geste, la porte rougit **dans les deux sens de découpage**.
+
+⚠️ **Ne pas écrire « le découpage est impossible »** — c'est la formule qu'`E16US020` a mise dans un
+corps de commit, et un relecteur l'a réfutée en lisant `.pre-commit-config.yaml`. Il est *fastidieux*,
+pas impossible ; et la contrainte réellement dure est celle de `mypy`, pas celle de l'atlas.
+
 ---
 
 ## 6. Frontière API & taxonomie d'erreurs

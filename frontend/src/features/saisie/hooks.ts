@@ -158,7 +158,10 @@ export function useSaisirVolee(tournoiId: number, archerId: number) {
     // qu'elle vient de taper : le marqueur lirait son propre score refusé comme s'il était
     // enregistré. On relit donc la vérité serveur — les autres refus, eux, n'ont rien changé en
     // base, et une relecture y ferait retomber l'écran en erreur pour rien.
-    // ⚠️ DETTE-100 : aucun écran ne produit ce refus aujourd'hui (cf. `Saisie.tsx`).
+    //
+    // ⚠️ DETTE-100 : aucun écran ne produit ce refus aujourd'hui (cf. `Saisie.tsx`). Le rejeu
+    // hors-ligne, lui, passe par `draineLaFile` et non par ce `onError` — il retire la volée et
+    // journalise sans rien dire au marqueur (ADR-0037).
     onError: (erreur) => {
       if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur') {
         void queryClient.invalidateQueries({ queryKey: cleSerie(tournoiId, archerId) })

@@ -31,6 +31,7 @@ from application.saisie import ArcherPositionne, ContexteSaisie, EtatSerie, Serv
 from domain.blason import ZoneScore
 from domain.depart import Depart
 from domain.poste import Poste
+from domain.role import Role
 from domain.scoreur import Scoreur
 from domain.serie import Serie
 from infrastructure.db import WriteQueue
@@ -428,7 +429,14 @@ async def corriger_volee(
 
     def ecrire() -> Serie:
         return service_saisie.corriger_volee(
-            requete.tournoi_id, requete.archer_id, requete.numero, valeurs, scoreur.nom
+            requete.tournoi_id,
+            requete.archer_id,
+            requete.numero,
+            valeurs,
+            scoreur.nom,
+            # Le rang vient de la **garde** de cette route — `exiger_scoreur` — et non d'un contexte
+            # (ADR-0107 §2). C'est le seul site où `Role.SCOREUR` s'inscrit en base.
+            role=Role.SCOREUR,
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))

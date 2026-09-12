@@ -28,10 +28,20 @@ export function estRefusServeur(erreur: unknown): boolean {
 // de masse). Un score gardé et rejoué plus tard vaut infiniment mieux qu'un score perdu en silence.
 const STATUTS_TRANSITOIRES = new Set([401, 408, 409, 429])
 
+// ⚠️ **Un refus au *statut* transitoire dont la *cause* ne l'est pas** — correctif de revue
+// E16US020, jumeau inversé de `CODES_TRANSITOIRES` côté duels.
+//
+// `ecriture_de_role_inferieur` est le **premier 409 définitif du produit** : le rang du poste ne
+// montera jamais, et l'écriture d'en face est durable. Le laisser transitoire gardait la volée en
+// file, et comme le rejeu **s'arrête au premier refus gardé**, toutes les volées enfilées derrière
+// ne partaient plus jamais — file persistée en `localStorage`, donc survivant au rechargement.
+const CODES_DEFINITIFS = new Set(['ecriture_de_role_inferieur'])
+
 // Au **rejeu**, un refus est-il **définitif** (rejouer n'y changera rien → on retire de la file et on
 // journalise) ? Seuls les 4xx **métier** non rejouables le sont : 400 (valeur invalide), 403
 // (hors-cible), 404 (blason/archer introuvable), 422 (non traitable). Tout le reste — transitoires
 // listés + 5xx — est **gardé en file** pour un rejeu ultérieur.
-export function estRefusDefinitif(statut: number): boolean {
+export function estRefusDefinitif(statut: number, code: string): boolean {
+  if (CODES_DEFINITIFS.has(code)) return true
   return statut >= 400 && statut < 500 && !STATUTS_TRANSITOIRES.has(statut)
 }

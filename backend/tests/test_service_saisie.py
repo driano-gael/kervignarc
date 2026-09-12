@@ -35,6 +35,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
 from domain.placement import Affectation
 from domain.qualification import DecoupageEnTours
+from domain.role import Role
 from domain.serie import Serie
 from domain.tournoi import TournoiId
 from tests.conftest import (
@@ -334,7 +335,9 @@ def test_corriger_trace_l_avant_et_l_apres() -> None:
     m = Montage()
     m.saisir_serie_complete()
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
-    m.service.corriger_volee(m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE", role=Role.SCOREUR
+    )
     trace = m.series.traces[-1]
     assert trace.action is ActionAuditee.CORRECTION_SCORE
     assert trace.auteur == "ARBITRE"
@@ -565,7 +568,13 @@ def test_corriger_est_aussi_cloisonnee_au_poste() -> None:
 
     with pytest.raises(SaisieHorsCible):
         m.service.corriger_volee(
-            m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE", contexte=contexte
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("9", "9", "9"),
+            auteur="ARBITRE",
+            contexte=contexte,
+            role=Role.SCOREUR,
         )
 
 
@@ -847,7 +856,7 @@ def test_corriger_une_volee_pendant_la_pause_reste_possible() -> None:
     _mettre_la_phase_en_pause(montage)
 
     serie = montage.service.corriger_volee(
-        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "ADMIN"
+        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "ADMIN", role=Role.SCOREUR
     )
 
     assert serie.volees[0].valeurs == _v("10", "10", "10")
@@ -1273,7 +1282,9 @@ def test_corriger_une_volee_rendue_pendant_la_pause_repare_quand_meme() -> None:
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
     _mettre_la_phase_en_pause(m)
 
-    m.service.corriger_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE", role=Role.SCOREUR
+    )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None

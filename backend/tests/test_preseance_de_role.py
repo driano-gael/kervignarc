@@ -5,9 +5,12 @@ Dérivés des **CA** d'E16US020 (`stories/E16-retours-maquettes.md`) et des déc
 égaux la règle n'arbitre rien, le rôle est celui de la **garde** et jamais du message, et une
 annulation de validation remet la préséance à zéro.
 
-⚠️ **L'ordre à trois rangs n'est exerçable qu'ici.** Aucune route ne fait écrire un scoreur sur une
-volée de qualification (cf. `test_saisie_api`) : sans les tests de domaine de ce fichier, le rang du
-milieu décidé par ADR-0107 §1 ne serait prouvé nulle part.
+⚠️ **Le rang du MILIEU s'écrit par `POST /corrections`, et par lui seul** — pas par la saisie, qui
+n'admet que l'admin et le poste. C'est son unique site d'inscription en base : les tests qui
+l'exercent (§ « Le rang du milieu ») sont donc les seuls à prouver l'ordre décidé par ADR-0107 §1
+ailleurs que dans l'énumération. *(Rédaction corrigée en 2ᵉ passe : la précédente affirmait
+qu'aucune route ne faisait écrire un scoreur — c'était faux, et c'est ce qui avait laissé
+`corriger_volee` sans préséance.)*
 """
 
 from __future__ import annotations
@@ -15,11 +18,11 @@ from __future__ import annotations
 import pytest
 
 from application.erreurs import EcritureDeRoleInferieur
-from application.saisie import ContexteSaisie
-from domain.erreurs import VoleeVerrouillee
+from application.saisie import _LIBELLE_ROLE, ContexteSaisie, _refuser_role_inferieur
+from domain.erreurs import VoleeNonVerrouillee, VoleeVerrouillee
 from domain.grain_validation import GrainValidation
 from domain.role import Role
-from domain.serie import Serie
+from domain.serie import Serie, Volee
 from tests.test_service_saisie import _DEPART, ZONES_SIMPLE, Montage, _v
 
 _PHASE = 4
@@ -53,16 +56,6 @@ def test_l_ordre_des_roles_est_poste_puis_scoreur_puis_admin() -> None:
     silencieuse de l'énumération, que rien d'autre ne verrait.
     """
     assert Role.POSTE_DE_CIBLE < Role.SCOREUR < Role.ADMIN
-
-
-def test_le_role_persiste_est_le_nom_jamais_le_numero() -> None:
-    """La colonne stocke `Role.name` : renuméroter l'ordre ne doit pas relire d'anciennes lignes.
-
-    ⚠️ Sans cette garantie, insérer un rang intermédiaire réinterpréterait toutes les volées déjà
-    écrites — un défaut muet, que seule la base d'un tournoi réel révélerait.
-    """
-    assert Role["POSTE_DE_CIBLE"] is Role.POSTE_DE_CIBLE
-    assert Role.ADMIN.name == "ADMIN"
 
 
 # --- Ce que le domaine retient : le rôle du dernier écrivain ---------------------------------
@@ -331,3 +324,127 @@ def test_la_preseance_se_reconstitue_apres_une_ressaisie_en_correction() -> None
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None and volee.role_de_saisie is Role.ADMIN
+
+
+# --- Le rang du MILIEU, par sa seule route d'écriture (E16US020, 2ᵉ passe) ----------------------
+#
+# ⚠️ Ces tests n'existaient pas en 1ʳᵉ passe, et quatre axes de revue ont trouvé le même trou :
+# `corriger_volee` n'apposait aucune préséance, donc `Role.SCOREUR` n'était jamais écrit et la
+# comparaison n'était exercée qu'avec le couple poste/admin. Remplacer la garde par
+# `role < existante.role_de_saisie and role is Role.POSTE_DE_CIBLE` laissait alors tout vert.
+
+
+def test_corriger_repose_une_preseance_de_scoreur() -> None:
+    """`POST /corrections` est une écriture de rang 2 : elle revendique, comme toute écriture.
+
+    ⚠️ C'est le **seul** site où `Role.SCOREUR` s'inscrit en base : sans lui, le rang du milieu
+    décidé par ADR-0107 §1 n'existerait que dans l'énumération.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="MARTIN", role=Role.SCOREUR
+    )
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None and volee.role_de_saisie is Role.SCOREUR
+
+
+def test_le_poste_ne_peut_plus_ecraser_une_correction_de_scoreur() -> None:
+    """Le croisement (scoreur, poste) — celui que le questionnaire S09 visait en premier.
+
+    ⚠️ **C'était le défaut de la 1ʳᵉ passe** : le scoreur corrigeait une volée rouverte, sa
+    correction ne revendiquait rien, et la tablette l'écrasait en silence — le défaut même que
+    l'US existe pour fermer, déplacé d'un endpoint à l'autre.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="MARTIN", role=Role.SCOREUR
+    )
+
+    with pytest.raises(EcritureDeRoleInferieur):
+        m.service.saisir_volee(
+            m.tournoi_id, m.archer_id, 1, _v("1", "1", "1"), contexte=_contexte_poste()
+        )
+
+
+def test_l_admin_ecrase_une_correction_de_scoreur() -> None:
+    """L'autre moitié du couple haut : le rang 3 passe par-dessus le rang 2."""
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="MARTIN", role=Role.SCOREUR
+    )
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"))
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None and volee.role_de_saisie is Role.ADMIN
+
+
+# --- CA « l'écran dit POURQUOI le refus tombe » : le message nomme le rôle ----------------------
+
+
+@pytest.mark.parametrize(
+    ("role_qui_a_ecrit", "attendu"),
+    [(Role.SCOREUR, "un scoreur"), (Role.ADMIN, "l'organisateur")],
+)
+def test_le_refus_nomme_le_role_qui_a_ecrit(role_qui_a_ecrit: Role, attendu: str) -> None:
+    """CA : « un refus muet serait pire que l'écrasement qu'il remplace ».
+
+    ⚠️ Sans cette assertion, `_LIBELLE_ROLE` n'est couvert par rien : remplacer le message par
+    « Écriture refusée. » laissait les suites vertes — l'écran affichait alors un refus anonyme,
+    exactement ce que le CA écarte. Relevé en revue (axe B).
+    """
+    volee = Volee(numero=1, valeurs=_v("10", "9", "8"), role_de_saisie=role_qui_a_ecrit)
+
+    with pytest.raises(EcritureDeRoleInferieur) as refus:
+        _refuser_role_inferieur(volee, Role.POSTE_DE_CIBLE)
+
+    assert attendu in str(refus.value)
+
+
+def test_chaque_rang_sait_se_nommer_dans_un_refus() -> None:
+    """Un rang ajouté sans libellé transformerait un 409 métier en 500 (axe A).
+
+    ⚠️ `mypy` ne vérifie pas l'exhaustivité d'un `dict[Role, str]` : l'écart se voit ici, pas en
+    salle.
+    """
+    assert set(_LIBELLE_ROLE) == set(Role)
+
+
+# --- CA « le sens descendant » : quel est le VRAI recours (E16US020, 2ᵉ passe) ------------------
+
+
+def test_le_recours_au_refus_vers_le_bas_est_la_ressaisie_par_l_organisateur() -> None:
+    """⚠️ **Le recours annoncé en 1ʳᵉ passe n'existait pas**, et cinq artefacts l'affirmaient.
+
+    « L'organisateur annule la validation » échoue dans les deux seuls états où le 409 tombe : une
+    volée non validée n'a **rien à annuler**. Le recours réel est qu'il ressaisisse lui-même — rang
+    égal, donc accepté. Ce test épingle les deux moitiés, sans quoi la doc redivergera.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # admin, par erreur
+
+    with pytest.raises(VoleeNonVerrouillee):
+        m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"))  # il se corrige
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None and volee.valeurs == _v("6", "6", "6")
