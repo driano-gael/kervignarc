@@ -566,7 +566,15 @@ class ServicePilotageSimulation:
         serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
         if serie is None:
             serie = Serie.vide(session.tournoi_id, archer_id, session.phase_qualif_id)
-        volee = Volee(numero=numero, valeurs=valeurs, saisie_par=auteur, validee_par=auteur)
+        # `lot_validation` : le harnais valide une volée par acte, donc un lot par volée — même
+        # convention que le backfill de la migration 0054 (ADR-0109).
+        volee = Volee(
+            numero=numero,
+            valeurs=valeurs,
+            saisie_par=auteur,
+            validee_par=auteur,
+            lot_validation=numero,
+        )
         autres = tuple(v for v in serie.volees if v.numero != numero)
         volees = tuple(sorted((*autres, volee), key=lambda v: v.numero))
         session.harnais.series.enregistrer(replace(serie, volees=volees))

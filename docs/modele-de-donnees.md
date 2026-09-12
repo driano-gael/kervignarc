@@ -498,12 +498,19 @@ imparfait et la migration différée.
 | numero | INTEGER | rang de la volée dans le barème (`1..N`) |
 | valeurs | TEXT (JSON) | zones de score, ex. `["10","9","M"]` |
 | saisie_par | TEXT | marqueur déclaratif de saisie, nullable |
-| validee_par | TEXT | scoreur ; **non NULL = verrou** (volée validée), nullable |
+| validee_par | TEXT | scoreur ; **non NULL = la volée COMPTE** (cumul, classement), nullable |
+| lot_validation | INTEGER | l'acte de validation qui a verrouillé la volée ; non NULL **ssi** `validee_par` l'est, nullable (E16US019) |
+| correction_ouverte_par | TEXT | qui a annulé la validation ; **non NULL = écriture rouverte**, la volée restant comptée, nullable (E16US019) |
 | created_at | TEXT (datetime) | le « quand » de la saisie (ex-017), NOT NULL |
 | — | — | **UNIQUE(serie_id, numero)** — un seul rang N par série |
 
-> Table **enfant** de `SERIE` (composant strict de l'agrégat). Le verrou n'est **pas** une colonne
-> dédiée : `validee_par` non NULL **est** le verrou. Le total n'est pas stocké (cumul recalculé).
+> Table **enfant** de `SERIE` (composant strict de l'agrégat). ⚠️ **Le verrou d'écriture et le
+> compte sont DEUX états** depuis [ADR-0109](adr/0109-une-volee-en-correction-reste-comptee.md) :
+> `validee_par` non NULL dit que la volée **compte**, le verrou exigeant en plus
+> `correction_ouverte_par IS NULL`. *(La rédaction précédente — « `validee_par` non NULL **est** le
+> verrou » — est devenue fausse le jour où une validation s'annule ; relevé en revue d'E16US019.)*
+> Annuler rouvre **tout le lot** (`lot_validation`), jamais une volée isolée : le lot n'est pas
+> recalculable, rien n'imposant de saisir dans l'ordre. Le total n'est pas stocké (cumul recalculé).
 > `serie_id` en **`ON DELETE CASCADE`** — **hors** DETTE-001, comme `PLACEMENT` (feuille auto-cascadée).
 > `created_at` est une **métadonnée de persistance** (comme l'`id`), **hors** de l'agrégat domaine
 > `Volee` : posée par le repository via le port `Horloge` (UTC) et **préservée par numéro** au

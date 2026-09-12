@@ -1161,3 +1161,232 @@ def test_l_avancement_d_une_phase_inconnue_est_muet() -> None:
     m = Montage()
 
     assert m.service.avancement_de_phase(m.tournoi_id, 999_999) is None
+
+
+# --- Annulation d'une validation (E16US019) -------------------------------------------------
+
+
+def test_annuler_une_validation_trace_une_entree_au_nom_de_qui_annule() -> None:
+    """CA « tracé à l'audit » : annuler est un acte sensible, il laisse sa propre trace."""
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
+
+    trace = m.series.traces[-1]
+    assert trace.action is ActionAuditee.ANNULATION_VALIDATION
+    assert trace.auteur == "ARBITRE"
+    assert trace.horodatage == _QUAND
+
+
+def test_annuler_une_validation_rouvre_la_saisie_par_le_poste() -> None:
+    """CA « elle rouvre la volée à l'écriture » : c'est la tablette qui ressaisit, pas le scoreur.
+
+    Le parcours complet du questionnaire S08 — *annuler, corriger, revalider* — passe par le poste
+    de cible : sans cette réouverture, l'annulation ne servirait à rien.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.valeurs == _v("6", "6", "6")
+
+
+def test_annuler_une_validation_ne_retire_pas_les_fleches_deja_tirees() -> None:
+    """CA « la volée rouverte RESTE COMPTÉE » — la preuve sur l'état **persisté**.
+
+    ⚠️ `nb_fleches_validees` n'alimente aucun total : c'est la mesure de « l'archer a déjà tiré »,
+    et **trois** décisions en dérivent — l'avertissement de changement de catégorie
+    (`application/archers.py`), l'impact d'une régénération de plan (`application/placement.py`) et
+    la clôture d'un créneau (`application/completude.py`). Les trois se désarmeraient d'un coup si
+    une correction en cours faisait sortir la volée du compte.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    avant = m.series.par_archer(m.phase_id, m.archer_id)
+    assert avant is not None
+
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    apres = m.series.par_archer(m.phase_id, m.archer_id)
+    assert apres is not None
+    assert apres.nb_fleches_validees == avant.nb_fleches_validees
+    assert apres.cumul == avant.cumul
+
+
+def test_annuler_est_aussi_cloisonnee_au_poste() -> None:
+    """La garde vaut pour **tout** chemin d'écriture, annulation comprise (ADR-0033 §3)."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=2, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.annuler_validation(
+            m.tournoi_id, m.archer_id, 1, auteur="ARBITRE", contexte=contexte
+        )
+
+
+def test_annuler_une_validation_pendant_la_pause_est_refuse() -> None:
+    """⚠️ **Inverse du réflexe** — correctif de revue, pas un choix d'origine.
+
+    La pause gèle ce qui *avance*, pas ce qui *répare* (E05US033), et la première rédaction en
+    déduisait que l'annulation restait ouverte. Mais les **deux** gestes qui **referment** une
+    correction sont gelés, eux : `saisir_volee` et `valider` portent `refuser_si_en_pause`. Annuler
+    pendant une pause ouvre donc une fenêtre que rien ne peut refermer avant la relance.
+    ⚠️ `corriger_volee`, lui, **répare** les valeurs sans être gelé (test jumeau ci-dessus, et
+    `test_corriger_une_volee_en_correction_reste_possible` au domaine) — mais il ne referme pas la
+    fenêtre, et aucun écran ne l'expose. *(Formulation reprise en 3ᵉ passe : la précédente invoquait
+    un refus de `corriger_volee` que le même diff avait supprimé.)*
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    _mettre_la_phase_en_pause(m)
+
+    with pytest.raises(PhaseEnPause):
+        m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="ARBITRE")
+
+
+def test_corriger_une_volee_rendue_pendant_la_pause_repare_quand_meme() -> None:
+    """⚠️ **L'oracle de non-garde du parcours réel** — c'est lui qui fonde le retournement du test
+    domaine `corriger_une_volee_en_correction_reste_possible`.
+
+    Le domaine ignore la pause : seul ce test de service prouve que `corriger_volee` reste ouvert
+    quand la phase est gelée. Sans lui, ajouter `refuser_si_en_pause` à `corriger_volee` laisserait
+    le test domaine **et** `test_corriger_une_volee_pendant_la_pause_reste_possible` tous deux
+    verts, et le seul recours ouvert pendant une pause disparaîtrait en silence.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    _mettre_la_phase_en_pause(m)
+
+    m.service.corriger_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE")
+
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
+    assert serie is not None
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.valeurs == _v("10", "10", "10")
+    assert volee.en_correction is True, "réparer ne referme pas la fenêtre — revalider est gelé"
+
+
+def test_la_ressaisie_d_une_volee_en_correction_est_tracee() -> None:
+    """Une volée rouverte est **déjà comptée** : la réécrire est un acte sensible, pas une saisie.
+
+    ⚠️ Sans cette trace, l'annulation **baisserait** la traçabilité — le seul chemin d'écriture qui
+    reste sur la volée est `saisir_volee`, ouvert au poste de cible et muet, là où `corriger_volee`
+    exigeait le scoreur et écrivait l'avant/après (relevé en revue).
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+
+    trace = m.series.traces[-1]
+    assert trace.action is ActionAuditee.CORRECTION_SCORE
+    assert (trace.avant, trace.apres) == ("10, 9, 8", "6, 6, 6")
+    # L'auteur vient de la **garde** (ici : pas de contexte ⇒ chemin admin), pas du corps de
+    # requête. Le marqueur déclaré est une donnée, rangée dans l'objet.
+    assert trace.auteur == "Administrateur"
+    assert trace.objet is not None and "marqueur d'origine DURAND" in trace.objet
+
+
+def test_la_trace_de_ressaisie_nomme_le_poste_et_non_le_marqueur_declare() -> None:
+    """⚠️ **Oracle de non-garde (sécurité)** — `saisie_par` ne doit JAMAIS devenir l'auteur.
+
+    C'est un champ libre du corps de requête : un poste pourrait s'y déclarer « Administrateur » et
+    déposer au registre une correction indiscernable d'une vraie — au seul endroit qu'on ouvre
+    quand un archer conteste un score. Le jeton de poste authentifie un **lieu** (ADR-0030), c'est
+    donc la cible qui signe. Relevé en revue : la première rédaction traçait le nom déclaré.
+    """
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    m.service.saisir_volee(
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("6", "6", "6"),
+        saisie_par="Administrateur",
+        contexte=contexte,
+    )
+
+    trace = m.series.traces[-1]
+    assert trace.auteur == "Poste de cible 1"
+
+
+def test_une_ressaisie_a_l_identique_ne_trace_rien() -> None:
+    """Le marqueur retape les mêmes flèches : ce n'est pas une correction.
+
+    Sans ce filtre, le registre se remplit d'entrées `avant == apres` qui noient les vraies.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    avant = len(m.series.traces)
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+
+    assert len(m.series.traces) == avant
+
+
+def test_une_saisie_ordinaire_ne_trace_toujours_rien() -> None:
+    """Oracle de non-garde : la trace ci-dessus ne doit pas déborder sur la saisie courante."""
+    m = Montage()
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+
+    assert m.series.traces == []
+
+
+def test_refermer_une_correction_pendant_la_pause_est_refuse() -> None:
+    """Refermer fait **avancer** le tour : gelé par la pause, comme valider.
+
+    ⚠️ C'est la garde que la recette promet en toutes lettres (« ni la tablette ni le scoreur ne
+    peuvent la refermer… on attend la relance ») et **le fondement du refus d'annuler en pause** :
+    si elle disparaissait, la suite resterait verte et la fiche deviendrait fausse.
+    """
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    _mettre_la_phase_en_pause(m)
+
+    with pytest.raises(PhaseEnPause):
+        m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="ROUX")
+
+
+def test_refermer_une_correction_trace_au_nom_du_scoreur() -> None:
+    """Refermer est un acte de signature : il entre au registre comme une validation."""
+    m = Montage()
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+
+    m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="ROUX")
+
+    trace = m.series.traces[-1]
+    assert trace.action is ActionAuditee.VALIDATION
+    assert trace.auteur == "ROUX"
+    assert trace.objet is not None and "volée 1" in trace.objet

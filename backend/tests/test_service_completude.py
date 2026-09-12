@@ -159,7 +159,12 @@ class FauxLecteurPaiements:
 
 
 def _serie(
-    archer_id: ArcherId, phase_id: int, *, volees_validees: int, nb_saisies: int | None = None
+    archer_id: ArcherId,
+    phase_id: int,
+    *,
+    volees_validees: int,
+    nb_saisies: int | None = None,
+    en_correction: bool = False,
 ) -> Serie:
     """Une série de `nb_saisies` volées (défaut `volees_validees`), dont `volees_validees` validées.
 
@@ -174,6 +179,9 @@ def _serie(
             numero=n,
             valeurs=(ZoneScore.DIX,),
             validee_par="MARTIN" if n <= volees_validees else None,
+            # E16US019 : rouverte à l'écriture, la volée reste **comptée** — la complétude du
+            # créneau ne doit pas régresser le temps d'une correction (ADR-0109).
+            correction_ouverte_par=("MARTIN" if en_correction and n <= volees_validees else None),
         )
         for n in range(1, total + 1)
     )
@@ -245,6 +253,7 @@ class Montage:
         *,
         volees_validees: int,
         nb_saisies: int | None = None,
+        en_correction: bool = False,
     ) -> None:
         """Pose la feuille de cet archer **dans la qualification de son créneau**.
 
@@ -258,6 +267,7 @@ class Montage:
                 self.qualif_de(depart_id),
                 volees_validees=volees_validees,
                 nb_saisies=nb_saisies,
+                en_correction=en_correction,
             )
         )
 
@@ -487,6 +497,23 @@ def test_la_basse_ne_bloque_pas_les_cibles_de_la_haute() -> None:
     ligne = m.qualification()
 
     assert ligne.fait == 1 and ligne.total == 1, "La cible est terminée : chacun a fini chez lui."
+
+
+def test_une_correction_en_cours_ne_rouvre_pas_une_cible_terminee() -> None:
+    """E16US019 — la clôture d'un créneau ne RÉGRESSE pas pendant une correction.
+
+    Troisième des trois décisions qu'ADR-0109 devait préserver. Sans elle, annuler une validation
+    faisait repasser « Prêt à terminer ? » au rouge et l'organisateur cherchait une cible qui
+    n'avait rien perdu : `nb_fleches_validees` compte les volées **validées**, correction comprise.
+    """
+    m = Montage(nb_volees_bareme=2)
+    depart = m.depart_id
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+    m.semer(depart, 10, volees_validees=2, en_correction=True)
+
+    ligne = m.qualification()
+
+    assert ligne.fait == 1 and ligne.total == 1
 
 
 def test_une_seconde_qualification_inachevee_retient_la_cible() -> None:

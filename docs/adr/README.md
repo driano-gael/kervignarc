@@ -10,7 +10,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 ## Index
 
 > ⛔ **CETTE TABLE N'EST PAS L'INDEX QUI FAIT AUTORITÉ, et elle est périmée.** Elle s'arrête à
-> `0098` : **neuf ADR y manquent** (`0099` → `0107`), le dernier commit l'ayant alimentée datant
+> `0098` : **onze ADR y manquent** (`0099` → `0109`), le dernier commit l'ayant alimentée datant
 > d'`E16US009`. L'index **complet et à jour** est celui que l'**atlas dérive** du répertoire —
 > `cd backend && python -m atlas`, puis `atlas/adr.html` — et qui, lui, ne peut pas se périmer
 > ([ADR-0086](0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md)).

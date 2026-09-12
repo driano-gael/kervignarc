@@ -228,14 +228,23 @@ papier et retapé » devenait fausse en silence), **`0106`** (E03US012, 05/09/20
 cible appartient à un **tour**, et le tour suivant se pose seul : le placement, donc le moteur
 sportif au sens du critère ci-dessus. ⚠️ **Numéroté 0106 et non 0105** : `0105` avait été pris la
 veille par E16US015, et la collision n'est apparue qu'en venant tenir cette liste — signe que la
-lire avant d'écrire un ADR neuf vaut mieux que compter sur `ls docs/adr/`). Et, par
+lire avant d'écrire un ADR neuf vaut mieux que compter sur `ls docs/adr/`), **`0109`** (E16US019,
+11/09/2026 — une volée **en correction** reste comptée : le verrou d'écriture cesse d'être le
+compte, donc la définition de ce qui entre au classement de qualification change. ⚠️ **Inscrit en
+revue, pas à la rédaction** : l'ADR portait bien sa section « Porté dans le code par », mais la
+liste nominative n'avait pas été tenue — le mode de panne que ce paragraphe décrit lui-même deux
+lignes plus bas). Et, par
 **réouverture**, **`0025`** (E16US015, 05/09/2026 — ADR-0105 amende sa *Décision 2* : le code
 n'est plus **seulement** « distribué sur papier et retapé », il devient **aussi** scannable ; section « Porté dans le
 code par » écrite à cette occasion), **`0103`** une seconde fois (E16US017, 04/09/2026 — sa *Décision 3* affirmait
 « `DETTE-029` n'a pas gagné de 5ᵉ site », ce que `0104` rend faux, et sa mention de la lecture
 conditionnelle du référentiel des clubs était périmée par la levée du bornage ; sa section
 « Porté dans le code par » a été re-vérifiée symbole par symbole à cette occasion — front compris,
-`etatPodium` n'étant pas un symbole Python). Et, par
+`etatPodium` n'étant pas un symbole Python), **`0039`** (E16US019, 11/09/2026 — sa *Décision 2*
+définissait le statut public par `not Volee.verrouillee`, formule devenue fausse dès qu'une
+validation s'annule : `0109` la redéfinit sur `Volee.validee`. ⚠️ **Défaut trouvé par la revue, pas
+par la rédaction** — `deroule.py` était le seul lecteur de `verrouillee` que l'US n'avait pas relu,
+et la réponse publique se contredisait elle-même). Et, par
 réouverture plutôt que par création : **`0067`** (E16US014, 31/08/2026 — sa Décision 5 figeait
 le podium « par catégorie, rangs 1-4 » ; elle est révisée par `0103`, et sa section « Porté dans
 le code par » a été re-vérifiée symbole par symbole à cette occasion), **`0048`** (E03US012,

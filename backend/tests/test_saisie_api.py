@@ -673,3 +673,281 @@ def test_meme_identifiant_deux_numeros_ecrit_les_deux(
 
         assert r2.status_code == 200, r2.text
         assert {v["numero"] for v in r2.json()["volees"]} == {1, 2}  # la volée 2 n'a pas été sautée
+
+
+# --- Annulation d'une validation (E16US019) -------------------------------------------------
+
+
+def _valider(client: TestClient, s: Scenario, entete: dict[str, str]) -> None:
+    """Valide la série complète au nom du scoreur — préalable à toute annulation."""
+    reponse = client.post(
+        "/api/v1/saisie/validations",
+        json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+        headers=entete,
+    )
+    assert reponse.status_code == 200, reponse.text
+
+
+def test_annuler_rouvre_la_volee_sans_toucher_au_cumul(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le scoreur annule : la volée se rouvre à l'écriture, le total reste au classement."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+
+        reponse = client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        corps = reponse.json()
+        assert corps["cumul"] == 54  # le score d'origine tient jusqu'à la ressaisie
+        assert all(not v["verrouillee"] for v in corps["volees"])  # lot de fin de série
+        assert all(v["en_correction"] for v in corps["volees"])
+        assert all(v["validee_par"] == "ROUX" for v in corps["volees"])
+
+
+def test_annuler_puis_ressaisir_au_poste_puis_revalider(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le parcours complet de S08 : *annuler → ressaisir sur la tablette → revalider*."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        # ⚠️ En-tête de poste **explicite**, et session admin retirée : sans cela c'est l'admin
+        # de `_semer` qui écrivait, et le test promettait une garde qu'il ne traversait pas
+        # (relevé en revue). Le chemin poste est celui qui passe par `ContexteSaisie` — et il
+        # exige que la tablette ait choisi son départ courant (ADR-0034), ce que la version admin
+        # du test contournait sans le dire.
+        client.headers.pop("Authorization", None)
+        depart = client.post(
+            "/api/v1/saisie/depart-courant",
+            json={"depart_id": s.depart_id},
+            headers=_entete(s.jeton),
+        )
+        assert depart.status_code == 200, depart.text
+        ressaisie = client.post(
+            "/api/v1/saisie/volees",
+            json={
+                "tournoi_id": s.tournoi_id,
+                "archer_id": s.archer_id,
+                "numero": 1,
+                "valeurs": ["6", "6", "6"],
+                "saisie_par": "DURAND",
+            },
+            headers=_entete(s.jeton),
+        )
+        revalidation = client.post(
+            "/api/v1/saisie/refermetures",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        assert ressaisie.status_code == 200, ressaisie.text
+        assert revalidation.status_code == 200, revalidation.text
+        corps = revalidation.json()
+        assert corps["cumul"] == 45  # (6+6+6) + (9+9+9)
+        assert all(v["verrouillee"] and not v["en_correction"] for v in corps["volees"])
+
+
+def test_annuler_est_ouvert_a_l_admin(app_saisie: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """CA S08 : *« oui, par admin et scoreur »* — élargi, pas doublé (pas de route parallèle)."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+
+        # Sans en-tête scoreur : la session admin ouverte par `_semer` suffit.
+        reponse = client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        assert _traces(app_saisie, s.tournoi_id, ActionAuditee.ANNULATION_VALIDATION) == 1
+
+
+def test_annuler_par_un_scoreur_d_un_autre_tournoi_rend_403(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le scoreur reste borné à **son** tournoi, y compris pour annuler."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        _valider(client, s, _connecter_scoreur(client, s.scoreur_code))
+        autre = TournoiRepositorySQL(app_saisie.state.database.session_factory).ajouter(
+            Tournoi.creer("Extérieur", _DATE)
+        )
+        assert autre.id is not None
+        code_autre = client.post(
+            f"/api/v1/tournois/{autre.id}/scoreurs", json={"nom": "PICARD"}
+        ).json()["code"]
+        # ⚠️ Sans cela, la session admin ouverte par `_semer` satisferait la garde AVANT même
+        # qu'elle regarde le jeton scoreur : le test passerait sans rien prouver.
+        client.headers.pop("Authorization", None)
+
+        reponse = client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=_connecter_scoreur(client, code_autre),
+        )
+
+        assert reponse.status_code == 403, reponse.text
+        assert reponse.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_annuler_deux_fois_le_meme_identifiant_ne_double_pas_la_trace(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un rejeu d'annulation n'empile pas deux traces (ADR-0036), comme validation et correction."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        corps = {
+            "tournoi_id": s.tournoi_id,
+            "archer_id": s.archer_id,
+            "numero": 1,
+            "identifiant_saisie": "ann-1",
+        }
+
+        premier = client.post("/api/v1/saisie/annulations", json=corps, headers=entete)
+        rejeu = client.post("/api/v1/saisie/annulations", json=corps, headers=entete)
+
+        assert premier.status_code == 200 and rejeu.status_code == 200
+        assert premier.json() == rejeu.json()
+        assert _traces(app_saisie, s.tournoi_id, ActionAuditee.ANNULATION_VALIDATION) == 1
+
+
+def test_le_scoreur_lit_la_feuille_de_son_tournoi(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E16US019 : l'écran qui valide doit pouvoir afficher la feuille qu'il agit."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        client.headers.pop("Authorization", None)  # sans quoi c'est l'admin qui serait testé
+
+        reponse = client.get(f"/api/v1/saisie/series/{s.tournoi_id}/{s.archer_id}", headers=entete)
+
+        assert reponse.status_code == 200, reponse.text
+        assert len(reponse.json()["volees"]) == 2
+
+
+def test_le_scoreur_ne_lit_pas_la_feuille_d_un_autre_tournoi(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Élargir n'est pas ouvrir : le scoreur reste borné à **son** tournoi, en lecture aussi."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        autre = TournoiRepositorySQL(app_saisie.state.database.session_factory).ajouter(
+            Tournoi.creer("Extérieur", _DATE)
+        )
+        assert autre.id is not None
+        code_autre = client.post(
+            f"/api/v1/tournois/{autre.id}/scoreurs", json={"nom": "PICARD"}
+        ).json()["code"]
+        entete = _connecter_scoreur(client, code_autre)
+        client.headers.pop("Authorization", None)
+
+        reponse = client.get(f"/api/v1/saisie/series/{s.tournoi_id}/{s.archer_id}", headers=entete)
+
+        assert reponse.status_code == 403, reponse.text
+        assert reponse.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_un_poste_de_cible_ne_peut_pas_annuler_une_validation(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Élargir n'est pas ouvrir : l'annulation reste fermée à la tablette.
+
+    ⚠️ **Oracle de non-garde** : la garde est `_admin_ou_scoreur`, qui ne regarde jamais le jeton
+    de poste — donc le refus est vrai *par construction* et rien ne l'épingle. Or le réflexe, sur
+    ce routeur, est de monter `autoriser_saisie` (la garde des routes voisines) : ce test est ce
+    qui rougirait si quelqu'un le faisait, ouvrant l'annulation à toute tablette de la salle.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        _valider(client, s, _connecter_scoreur(client, s.scoreur_code))
+        client.headers.pop("Authorization", None)
+
+        reponse = client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=_entete(s.jeton),
+        )
+
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_valider_refuse_de_deviner_quel_lot_refermer(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Oracle du bloquant de 3ᵉ passe** : `POST /validations` ne reçoit aucune cible.
+
+    Deux rédactions successives l'ont laissé deviner — « toutes les corrections », puis « la plus
+    ancienne » — et les deux re-signaient « valides » des volées que le scoreur n'avait jamais
+    relues, sous **son** nom, dans le registre qu'on ouvre en contestation. Refuser est la seule
+    réponse honnête : le lot se referme par `POST /refermetures`, qui le **nomme**.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            headers=entete,
+        )
+
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "correction_ouverte"
+
+
+def test_refermer_une_correction_est_reserve_au_scoreur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Refermer fait **avancer** le tour : même garde que valider, pas celle d'annuler."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        _valider(client, s, entete)
+        client.post(
+            "/api/v1/saisie/annulations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+            headers=entete,
+        )
+
+        # La session admin de `_semer` est encore ouverte : elle ne doit pas suffire.
+        reponse = client.post(
+            "/api/v1/saisie/refermetures",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "numero": 1},
+        )
+
+        assert reponse.status_code == 401, reponse.text

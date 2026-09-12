@@ -22,6 +22,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
+from application.forfaits import AUTEUR_ADMIN  # DETTE-017 : réemploi, pas un site de plus
 from application.gel_de_pause import (
     DeclencheurArrets,
     EvaluateurArrets,
@@ -51,7 +52,7 @@ from domain.ports import (
     PlacementRepository,
     SerieRepository,
 )
-from domain.serie import Serie
+from domain.serie import Serie, Volee
 from domain.suivi_deroule import AvancementDePhase, avancement_de_qualification
 from domain.tournoi import TournoiId
 
@@ -121,6 +122,31 @@ class AvancementCible:
     volee_courante: int
     nb_volees: int
     derniere_saisie: datetime.datetime | None
+
+
+def _auteur_de_saisie(contexte: ContexteSaisie | None) -> str:
+    """Qui a écrit, pour la trace — d'après la **garde**, jamais d'après le corps de requête.
+
+    Le jeton de poste authentifie un **lieu** (ADR-0030) : c'est donc la cible qu'on nomme. `None`
+    = chemin admin. ⚠️ Ne jamais y faire entrer `saisie_par` : il est déclaratif (E16US019).
+    """
+    if contexte is None:
+        return AUTEUR_ADMIN
+    return f"Poste de cible {contexte.cible_index}"
+
+
+def _objet_de_ressaisie(numero: int, archer_id: ArcherId, volee: Volee | None) -> str:
+    """L'objet tracé : la volée, le chemin emprunté, et le marqueur **déclaré** s'il y en a un.
+
+    Le chemin est nommé parce que `CORRECTION_SCORE` a désormais deux producteurs — la correction
+    directe du scoreur et la ressaisie après annulation — qui n'ont pas la même valeur probante.
+    """
+    marqueur = volee.saisie_par if volee is not None else None
+    # ⚠️ « d'origine » et non « déclaré » : sur le parcours réel, le front envoie `saisie_par:
+    # null` en ré-édition, donc le domaine **préserve** le marqueur de la première saisie. Écrire
+    # « déclaré » se lisait comme « qui a ressaisi » — faux (3ᵉ passe de revue).
+    signature = f", marqueur d'origine {marqueur}" if marqueur else ""
+    return f"volée {numero} de l'archer {archer_id} (ressaisie après annulation{signature})"
 
 
 def _valeurs_lisibles(serie: Serie, numero: int) -> str | None:
@@ -425,15 +451,19 @@ class ServiceSaisie:
         """Saisit ou réédite (avant validation) la volée `numero` de l'archer.
 
         Le pavé (zones admises) se déduit du **blason** de l'archer, le nombre de flèches du
-        **barème** de la phase. Persiste sans trace (une saisie ordinaire n'est pas un acte de fin).
-        `contexte` cloisonne la saisie à la cible/départ du poste (ADR-0033 §3) ; `None` = admin.
-        """
+        **barème** de la phase. Persiste sans trace — ⚠️ **sauf sur une volée en correction**, déjà
+        comptée au classement : la réécrire est tracée `CORRECTION_SCORE`, comme le chemin direct
+        qu'elle remplace (E16US019 ; sinon l'annulation **baisserait** la traçabilité).
+        `contexte` cloisonne la saisie à la cible/départ du poste (ADR-0033 §3) ; `None` = admin."""
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         refuser_si_en_pause(phase)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
+        existante = serie.volee(numero)
+        en_correction = existante is not None and existante.en_correction
+        avant = _valeurs_lisibles(serie, numero) if en_correction else None
         serie = serie.saisir_volee(
             numero,
             valeurs,
@@ -442,7 +472,26 @@ class ServiceSaisie:
             nb_volees_bareme=phase.bareme.nb_volees,
             saisie_par=saisie_par,
         )
-        return self._series.enregistrer(serie)
+        apres = _valeurs_lisibles(serie, numero)
+        if not en_correction or avant == apres:
+            # Une ressaisie à l'identique n'est pas une correction : la tracer noierait les vraies
+            # dans le registre qu'on ouvre quand un archer conteste un score.
+            return self._series.enregistrer(serie)
+        entree = EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.CORRECTION_SCORE,
+            # ⚠️ **L'auteur ne vient JAMAIS du corps de requête** : `saisie_par` est un marqueur
+            # **déclaratif**, qu'un poste pourrait signer « Administrateur ». Une trace falsifiable
+            # est pire que pas de trace — c'est ce registre qu'on ouvre en cas de contestation.
+            # L'identité tracée est donc celle que la garde a résolue (relevé en revue).
+            auteur=_auteur_de_saisie(contexte),
+            horodatage=self._horloge.maintenant(),
+            # Le nom déclaré reste **une donnée**, à côté de l'identité — jamais à sa place.
+            objet=_objet_de_ressaisie(numero, archer_id, serie.volee(numero)),
+            avant=avant,
+            apres=apres,
+        )
+        return self._series.enregistrer_avec_trace(serie, entree)
 
     def valider(
         self,
@@ -478,6 +527,37 @@ class ServiceSaisie:
         )
         enregistree = self._series.enregistrer_avec_trace(serie, entree)
         # Le résultat est **écrit** : c'est maintenant qu'un tour peut être achevé (E05US033).
+        self._arrets.signaler(phase.depart_id)
+        return enregistree
+
+    def refermer_correction(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        numero: int,
+        scoreur: str,
+        contexte: ContexteSaisie | None = None,
+    ) -> Serie:
+        """Revalide le lot rouvert qui contient la volée `numero`, au nom du `scoreur`.
+
+        Dernier temps du parcours *annuler → ressaisir → revalider*. ⚠️ **Geste distinct de
+        `valider`** : celui-ci ne reçoit aucune cible, donc il refuserait de deviner quel lot
+        refermer (`CorrectionOuverte`). Gelé par la pause comme `valider` — refermer fait avancer
+        le tour.
+        """
+        self._charger_archer(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        refuser_si_en_pause(phase)
+        serie = self._feuille(tournoi_id, archer_id, phase)
+        serie = serie.refermer_correction(numero, par=scoreur)
+        entree = EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.VALIDATION,
+            auteur=scoreur,
+            horodatage=self._horloge.maintenant(),
+            objet=f"correction refermée sur la volée {numero} de l'archer {archer_id}",
+        )
+        enregistree = self._series.enregistrer_avec_trace(serie, entree)
         self._arrets.signaler(phase.depart_id)
         return enregistree
 
@@ -517,6 +597,35 @@ class ServiceSaisie:
             objet=f"volée {numero} de l'archer {archer_id}",
             avant=avant,
             apres=_valeurs_lisibles(serie, numero),
+        )
+        return self._series.enregistrer_avec_trace(serie, entree)
+
+    def annuler_validation(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        numero: int,
+        auteur: str,
+        contexte: ContexteSaisie | None = None,
+    ) -> Serie:
+        """Rouvre à l'écriture le lot validé avec la volée `numero`, au nom de l'`auteur`.
+
+        Premier temps du parcours *annuler → ressaisir → revalider* : la volée redevient saisissable
+        par le poste de cible, **sans quitter les totaux** (E16US019). Trace `ANNULATION_VALIDATION`
+        dans la même transaction (ADR-0035). ⚠️ **Refusé pendant une pause** : les deux gestes qui
+        referment une correction — ressaisie et revalidation — y sont gelés, donc annuler laisserait
+        la volée ouverte sans recours. On y répare par `corriger_volee` (E05US033, revue)."""
+        self._charger_archer(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        refuser_si_en_pause(phase)
+        serie = self._feuille(tournoi_id, archer_id, phase)
+        serie = serie.annuler_validation(numero, par=auteur)
+        entree = EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.ANNULATION_VALIDATION,
+            auteur=auteur,
+            horodatage=self._horloge.maintenant(),
+            objet=f"volée {numero} de l'archer {archer_id}",
         )
         return self._series.enregistrer_avec_trace(serie, entree)
 

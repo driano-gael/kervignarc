@@ -2573,6 +2573,14 @@ button:disabled {
   color: var(--danger);
 }
 
+/* La volée que le scoreur vient de rendre à la cible (E16US019) : même registre d'alerte que
+   `.saisie__vide`, mais elle appelle une action au lieu de constater un refus. */
+.saisie__rendue {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .saisie__grain {
   margin: 4px 0 0;
   font-size: 13px;
@@ -3903,6 +3911,43 @@ button:disabled {
 .forfaits-liste__actions {
   display: flex;
   gap: 8px;
+}
+
+/* Liste des volées de la surface scoreur de qualification (E16US019) : même maille que
+   `.forfaits-liste`, dont elle partage la forme « une ligne, un état, une action ». */
+.validation-liste {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.validation-liste__ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.validation-liste__volee {
+  font-variant-numeric: tabular-nums;
+}
+
+.validation-liste__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* `--danger` est l'**ambre** de la charte, pas un rouge (`DV-03`) : c'est le registre d'alerte. */
+.validation-liste__badge {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 .duel__forfaits {

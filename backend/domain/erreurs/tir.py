@@ -132,6 +132,30 @@ class VoleeNonVerrouillee(DomainError):
     code = "volee_non_verrouillee"
 
 
+class CorrectionOuverte(DomainError):
+    """Valider une feuille dont une correction est encore ouverte (E16US019).
+
+    ⚠️ Refuser plutôt que deviner : `valider` ne reçoit ni numéro ni lot, donc il ne peut pas savoir
+    **quel** lot rouvert le scoreur vient de relire. Deux rédactions ont essayé de le deviner et
+    re-signaient des volées jamais relues. Le geste nommé est `Serie.refermer_correction`.
+    """
+
+    code = "correction_ouverte"
+
+
+class IncoherenceVolee(DomainError):
+    """Une volée se construit dans un état que ses invariants interdisent (E16US019).
+
+    Aujourd'hui : un lot de validation sans validateur, ou une correction sans validation —
+    l'incohérence inverse (validée sans lot) est **normalisée**, pas levée (`Volee.__post_init__`).
+    ⚠️ Elle signale un **producteur fautif**, pas une saisie fautive ; elle sort néanmoins en **422**
+    comme toute `DomainError`, faute de canal dédié. Un 422 de ce code en production se lit donc
+    comme un **bug**, jamais comme un refus adressé à l'utilisateur.
+    """
+
+    code = "incoherence_volee"
+
+
 class VoleeIntrouvable(DomainError):
     """Aucune volée de ce numéro dans la série (E04US002) — corriger n'est pas créer."""
 

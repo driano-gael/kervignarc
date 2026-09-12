@@ -54,8 +54,20 @@ vi.mock('../suisse/SaisieSuisse', () => ({ SaisieSuisse: panneau('suisse') }))
 // bien son propre sélecteur, volontairement indépendant (un forfait se prononce parfois sur un
 // archer d'un autre créneau), avec un défaut différent. Le doubler revenait à manufacturer le vert
 // du test censé garder `DETTE-056`. Seules ses données sont doublées.
-vi.mock('../competition/hooks', () => ({
+
+// ⚠️ **Mocks ÉTALÉS sur le module réel, pas énumérés.** Un mock partiel casse dès qu'un
+// consommateur importe un export imprévu — ce fichier est tombé **deux fois** ainsi, et le premier
+// rafistolage (recopier l'export manquant) reproduisait le piège. On ne double que le **réseau**.
+vi.mock('../competition/hooks', async (reel) => ({
+  ...(await reel<typeof import('../competition/hooks')>()),
   useClassement: () => ({ data: undefined, isPending: false, isError: false, error: null }),
+}))
+vi.mock('../validation-qualif/hooks', async (reel) => ({
+  ...(await reel<typeof import('../validation-qualif/hooks')>()),
+  useSerieScoreur: () => ({ data: undefined, isSuccess: false, error: null }),
+  useValiderSerie: () => MUTATION,
+  useAnnulerValidation: () => MUTATION,
+  useRefermerCorrection: () => MUTATION,
 }))
 vi.mock('../forfaits/hooks', () => ({
   useDeclarerForfaitQualif: () => MUTATION,
@@ -84,6 +96,11 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
     await screen.findByText('duels : 41')
 
     expect(screen.getAllByRole('combobox', { name: 'Départ' })).toHaveLength(1)
+    // ⚠️ Le matcher `name` est **plein** : il ne voit donc pas « Départ des forfaits » ni « Départ
+    // à valider ». L'invariant « un seul sélecteur pour les quatre panneaux de saisie » ne tient
+    // que grâce à ces libellés distincts — on énumère donc les créneaux indépendants attendus,
+    // pour qu'un cinquième fasse rougir au lieu de s'ajouter en silence (relevé en revue).
+    expect(screen.getAllByRole('combobox', { name: /Départ/ })).toHaveLength(3)
   })
 
   it('laisse aux FORFAITS leur propre sélecteur, nommé distinctement', async () => {

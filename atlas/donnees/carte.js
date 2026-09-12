@@ -54,15 +54,15 @@ window.ATLAS.carte = {
   ],
   "fan_in": [
    {
-    "clientes": 18,
+    "clientes": 19,
     "feature": "competition"
    },
    {
-    "clientes": 16,
+    "clientes": 17,
     "feature": "departs"
    },
    {
-    "clientes": 10,
+    "clientes": 11,
     "feature": "salle"
    },
    {
@@ -147,6 +147,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
+    "feature": "saisie"
+   },
+   {
+    "clientes": 3,
     "feature": "suivi"
    },
    {
@@ -172,10 +176,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "paiements"
-   },
-   {
-    "clientes": 2,
-    "feature": "saisie"
    },
    {
     "clientes": 2,
@@ -236,9 +236,13 @@ window.ATLAS.carte = {
    {
     "clientes": 1,
     "feature": "simulation"
+   },
+   {
+    "clientes": 1,
+    "feature": "validation-qualif"
    }
   ],
-  "features": 49
+  "features": 50
  },
  "matrice": [
   {
@@ -322,7 +326,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 75,
+   "occurrences": 76,
    "source": "api"
   },
   {
@@ -446,7 +450,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 61,
+   "occurrences": 62,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -3017,11 +3021,11 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 173,
+  "aretes_front": 178,
   "enchevetrements": 4,
-  "features": 49,
-  "imports": 947,
-  "imports_entre_couches": 801,
+  "features": 50,
+  "imports": 948,
+  "imports_entre_couches": 802,
   "plus_gros_noeud": 24,
   "ports": 69,
   "ports_hors_domaine": 26,

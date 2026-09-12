@@ -27,7 +27,8 @@ class VoleeDerouleReponse(BaseModel):
     """Une volée telle que **suivie par le public** : valeurs, total, statut, « quand ».
 
     Restriction (règle 6, ADR-0039) : ni `saisie_par` ni `validee_par` (identité du scoreur) — seul
-    le `statut` dérivé du verrou passe la frontière publique. `valeurs` liste les zones dans l'ordre
+    le `statut`, dérivé du **compte** (`Volee.validee` — ADR-0109 amendant ADR-0039 § Décision 2),
+    passe la frontière publique. `valeurs` liste les zones dans l'ordre
     de saisie (« 10 », « 9 », « M »…) ; `points` en est le total (le manqué vaut 0).
     """
 
@@ -43,7 +44,10 @@ class VoleeDerouleReponse(BaseModel):
             numero=volee.numero,
             valeurs=[zone.value for zone in volee.valeurs],
             points=volee.points,
-            statut="valide" if volee.verrouillee else "en_attente",
+            # ⚠️ `validee`, PAS `verrouillee` : une volée en correction est rouverte à l'écriture
+            # mais ses points restent dans le `cumul` rendu ci-dessous (ADR-0109). Publier
+            # `en_attente` ferait mentir la réponse sur elle-même.
+            statut="valide" if volee.validee else "en_attente",
             horodatage=horodatage,
         )
 

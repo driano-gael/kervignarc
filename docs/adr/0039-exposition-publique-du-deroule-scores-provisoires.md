@@ -46,7 +46,11 @@ renvoie un **déroulé vide en 200**, jamais un 404 : corollaire de la frontièr
 l'endpoint public ne **révèle pas** l'existence d'un couple, l'énumération ne distingue rien.
 
 **2. Le déroulé inclut les volées NON validées.** Chaque volée porte un **statut explicite**
-`en_attente` (= `not Volee.verrouillee`) ou `valide`. Le public voit donc des scores **provisoires**,
+`en_attente` ou `valide`. ⚠️ **Amendé le 11/09/2026 par [ADR-0109](0109-une-volee-en-correction-reste-comptee.md)**
+(E16US019) : la définition d'origine était `not Volee.verrouillee`, qui a cessé de vouloir dire
+« ce score ne compte pas » le jour où une validation est devenue **annulable**. Le statut dérive
+désormais de `Volee.validee` — sans quoi le public lisait « en attente » sur des volées dont les
+points étaient dans le `cumul` de la **même** réponse. Le public voit donc des scores **provisoires**,
 susceptibles de correction avant verrouillage. **Choix demandé et assumé par l'organisateur**
 (20/07/2026) : c'est un outil de suivi (« où en est mon archer »), pas un résultat officiel — le
 classement (validé seul) reste la source de vérité des scores.
@@ -89,3 +93,27 @@ introduirait le premier événement typé du projet — hors périmètre de cett
 - **−** Diffusion à **gros grain** (invalidation globale du cache front à chaque écriture) : acceptable
   en contexte mono-club, ~30 tablettes, réseau local (règle 12) ; un événement typé viendra **si** un
   besoin de finesse émerge, pas par anticipation.
+
+## Porté dans le code par
+
+*(Section écrite le 11/09/2026, à l'occasion de la réouverture par [ADR-0109](0109-une-volee-en-correction-reste-comptee.md).
+⚠️ **Son absence a coûté le bloquant d'E16US019** : la Décision 2 définissait le statut public par
+`not Volee.verrouillee`, cette formule a cessé d'être vraie, et personne ne savait quel module la
+portait — `deroule.py` est resté « le seul lecteur que l'US n'avait pas relu ». Chaque symbole
+ci-dessous a été vérifié dans le code du jour, pas déduit de l'ADR.)*
+
+- `backend/api/v1/deroule.py` — `VoleeDerouleReponse` porte la **restriction de champs** (ni
+  `saisie_par` ni `validee_par` ne franchissent la frontière, décision 3) ; `VoleeDerouleReponse.de_volee`
+  dérive le `statut` (décision 2, **désormais de `Volee.validee`**) ; `DerouleReponse.vide` rend le
+  déroulé vide en 200 plutôt qu'un 404 (décision 1) ; la route `consulter_deroule` est **sans garde**,
+  c'est l'ouverture publique elle-même.
+- `backend/tests/test_acces_public.py` — le garde-fou d'ensemble : cette route est **listée** parmi
+  les lectures publiques légitimes, et l'écriture reste fermée. C'est lui qui rougirait si quelqu'un
+  fermait l'ouverture par mégarde — ou l'élargissait à une écriture.
+- `backend/tests/test_deroule_api.py` — `test_deroule_ne_fuite_pas_l_identite_du_scoreur` (décision 3)
+  et `test_deroule_publie_comme_valide_une_volee_en_correction`, qui pose l'invariant
+  « cumul = somme des volées publiées *valide* » : la contradiction interne que la décision 2 a
+  laissé passer une fois ne peut plus se réinstaller en silence.
+- `frontend/src/features/suivi/VueSuivi.tsx` — le rendu du `statut` par volée (classes
+  `suivi-volee__statut--valide` / `--attente`) : c'est la surface où « provisoire » devient visible
+  pour le public, et la raison d'être de la décision 2.

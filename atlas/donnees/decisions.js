@@ -1638,7 +1638,50 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/deroule.py",
+     "existe": true,
+     "symboles": [
+      "VoleeDerouleReponse",
+      "saisie_par",
+      "validee_par",
+      "VoleeDerouleReponse.de_volee",
+      "statut",
+      "Volee.validee",
+      "DerouleReponse.vide",
+      "consulter_deroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_acces_public.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_deroule_api.py",
+     "existe": true,
+     "symboles": [
+      "test_deroule_ne_fuite_pas_l_identite_du_scoreur",
+      "test_deroule_publie_comme_valide_une_volee_en_correction"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi/VueSuivi.tsx",
+     "existe": true,
+     "symboles": [
+      "statut"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -1649,7 +1692,8 @@ window.ATLAS.decisions = {
     "E06US001",
     "E07US006",
     "E07US009",
-    "E10US001"
+    "E10US001",
+    "E16US019"
    ]
   },
   {
@@ -3993,7 +4037,8 @@ window.ATLAS.decisions = {
     "E16US011",
     "E16US014",
     "E16US015",
-    "E16US017"
+    "E16US017",
+    "E16US019"
    ]
   },
   {
@@ -9741,6 +9786,178 @@ window.ATLAS.decisions = {
    "us": [
     "E04US018",
     "E16US018"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-11",
+   "date_brute": "2026-09-11",
+   "extrait": "1. Le verrou d'écriture et le compte deviennent deux états distincts. Volee gagne correction_ouverte_par ; validee (« cette volée compte ») vaut validee_par is not None, et verrouillee (« on ne peut pas y écrire ») vaut validee and not en_correction. Les quatre lecteurs de totaux passent de verrouillee à validee : ils ne bougent pas quand une correction s'ouvre. 2. Annuler rouvre le LOT de validation, identifié en base. Volee gagne lot_validation, posé par Serie.valider. Le lot n'est pas recalculable : saisir_volee n'impose aucun ordre de saisie, alors que valider prend « les N premières non validées » — un lot réel peut donc être non contigu (volées 1 et 3 si la 2 n'était pas saisie), et […]",
+   "fichier": "docs/adr/0109-une-volee-en-correction-reste-comptee.md",
+   "identifiant": "0109",
+   "liens": [
+    {
+     "cible": "0035",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0036",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0039",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0107",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/dependances.py",
+     "existe": true,
+     "symboles": [
+      "autoriser_annulation_validation",
+      "autoriser_lecture_serie"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/deroule.py",
+     "existe": true,
+     "symboles": [
+      "VoleeDerouleReponse.de_volee",
+      "validee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/saisie.py",
+     "existe": true,
+     "symboles": [
+      "VoleeReponse.en_correction",
+      "lot_validation"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie.py",
+     "existe": true,
+     "symboles": [
+      "ServiceSaisie.annuler_validation",
+      "ANNULATION_VALIDATION",
+      "refuser_si_en_pause",
+      "ServiceSaisie.saisir_volee",
+      "CORRECTION_SCORE",
+      "_auteur_de_saisie"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/entree_audit.py",
+     "existe": true,
+     "symboles": [
+      "ActionAuditee.ANNULATION_VALIDATION"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/serie.py",
+     "existe": true,
+     "symboles": [
+      "Volee.validee",
+      "Volee.en_correction",
+      "Volee.verrouillee",
+      "Serie.annuler_validation",
+      "Serie.saisir_volee",
+      "Serie.valider",
+      "cumul",
+      "compter",
+      "nb_fleches_validees",
+      "est_complete",
+      "validee",
+      "verrouillee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.lot_validation",
+      "correction_ouverte_par"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/tir.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.lot_validation",
+      "correction_ouverte_par"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0054_volee_annulation_validation.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/Saisie.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/volees.ts",
+     "existe": true,
+     "symboles": [
+      "serieOptimiste",
+      "prochaineASaisir"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/validation-qualif/etat.ts",
+     "existe": true,
+     "symboles": [
+      "voleesQueLAnnulationRouvre",
+      "avertissementAnnulation"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une volée en correction reste comptée : le verrou d'écriture n'est pas le compte",
+   "us": [
+    "E02US003",
+    "E05US033",
+    "E16US019"
    ]
   }
  ]

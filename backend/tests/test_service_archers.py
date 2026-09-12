@@ -237,7 +237,28 @@ class Montage(NamedTuple):
         renseigné) est la seule qui compte comme un tir.
         """
         assert archer.id is not None
-        volee = Volee(numero=1, valeurs=(ZoneScore.NEUF,) * fleches, validee_par="Scoreur")
+        self._poser(archer, Volee(numero=1, valeurs=(ZoneScore.NEUF,) * fleches, validee_par="S"))
+
+    def faire_tirer_puis_rouvrir(self, archer: Archer, *, fleches: int = 1) -> None:
+        """Comme `faire_tirer`, mais la validation a été **annulée** (E16US019).
+
+        La volée reste **comptée** : `nb_fleches_validees` ne bouge pas, donc la garde ne doit pas
+        se relâcher le temps de la correction (ADR-0109).
+        """
+        assert archer.id is not None
+        self._poser(
+            archer,
+            Volee(
+                numero=1,
+                valeurs=(ZoneScore.NEUF,) * fleches,
+                validee_par="S",
+                correction_ouverte_par="S",
+            ),
+        )
+
+    def _poser(self, archer: Archer, volee: Volee) -> None:
+        """Écrit la feuille d'un archer dans la phase de test."""
+        assert archer.id is not None
         self.series.enregistrer(
             Serie(
                 tournoi_id=archer.tournoi_id,
@@ -754,6 +775,23 @@ def test_modifier_archer_signale_le_changement_de_categorie_d_un_archer_engage()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None and autre_categorie.id is not None
     m.faire_tirer(archer)
+    with pytest.raises(ChangementCategorieArcherEngage):
+        m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
+
+
+def test_modifier_categorie_pendant_une_correction_signale_toujours() -> None:
+    """E16US019 — la garde ne se relâche PAS pendant qu'une volée est en correction.
+
+    Première des **trois** décisions que l'arbitrage « la volée rouverte reste comptée » devait
+    préserver (ADR-0109). Elle dérive de `nb_fleches_validees` : ce test prouve le **chaînage**
+    jusqu'à la garde, là où le test de domaine ne prouve que la propriété.
+    """
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and autre_categorie.id is not None
+    m.faire_tirer_puis_rouvrir(archer)
+
     with pytest.raises(ChangementCategorieArcherEngage):
         m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
 

@@ -30,10 +30,12 @@ def test_actions_auditees_sont_l_ensemble_ferme_trace() -> None:
     vocabulaire courant (non-régression) : validation/correction/forfait (E10US005), replacement
     (régénération massive du plan), paiement (marquage d'un règlement, simple ou groupé), lancement
     (l'organisateur fait partir des duels prêts), remboursement (l'admin marque une somme encaissée
-    à rendre remboursée/reportée, E08US005)."""
+    à rendre remboursée/reportée, E08US005), annulation_validation (le scoreur rouvre une volée à
+    l'écriture, E16US019)."""
     assert {a.value for a in ActionAuditee} == {
         "validation",
         "correction_score",
+        "annulation_validation",
         "forfait",
         "replacement",
         "paiement",

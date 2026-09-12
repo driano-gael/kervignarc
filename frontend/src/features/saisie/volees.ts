@@ -26,7 +26,16 @@ export function totalVolee(valeurs: readonly string[]): number {
 // tard : le marqueur avance sans l'attendre. Si toutes sont saisies, on reste sur la **dernière**
 // (l'édition d'une volée déjà saisie passe par le navigateur de volées, tant qu'elle n'est pas
 // verrouillée — CA « édition avant validation »).
-export function prochaineASaisir(volees: readonly Volee[], nbVolees: number): number {
+export function prochaineASaisir(volees: readonly Volee[], nbVolees: number, apres = 0): number {
+  // ⚠️ **Une volée rendue par le scoreur passe devant** (E16US019). Sans cela, après une
+  // annulation toutes les volées sont saisies, donc le pavé s'ouvrait sur la **dernière** du
+  // barème — encore verrouillée — avec le message « sa correction relève du scoreur », c'est-à-dire
+  // l'exact contraire de ce que le scoreur venait d'afficher.
+  // ⚠️ `apres` est indispensable : `en_correction` ne tombe qu'à la **revalidation du scoreur**,
+  // pas à la ressaisie. Sans lui, le pavé rouvrait en boucle la volée qu'on venait d'enregistrer,
+  // et un lot de deux volées devenait infranchissable (relevé en revue).
+  const rendue = volees.find((v) => v.en_correction && v.numero > apres)
+  if (rendue !== undefined) return rendue.numero
   for (let numero = 1; numero <= nbVolees; numero += 1) {
     if (!volees.some((v) => v.numero === numero)) return numero
   }
@@ -51,12 +60,20 @@ export function serieOptimiste(serie: Serie | undefined, corps: SaisirVolee): Se
     cumul: 0,
     volees: [],
   }
+  // ⚠️ Une volée **en correction** (E16US019) garde sa validation à la ressaisie, exactement comme
+  // au serveur (`Serie.saisir_volee`) : la rendre « non validée » ici la ferait disparaître des
+  // volées comptées à l'écran le temps de la reconnexion, alors que son score tient toujours.
+  const remplacee = voleeExistante(base.volees, corps.numero)
+  const enCorrection = remplacee?.en_correction === true
   const voleeEnAttente: Volee = {
     numero: corps.numero,
     valeurs: corps.valeurs,
     saisie_par: corps.saisie_par,
-    validee_par: null,
+    validee_par: enCorrection ? remplacee.validee_par : null,
     verrouillee: false,
+    en_correction: enCorrection,
+    correction_ouverte_par: enCorrection ? remplacee.correction_ouverte_par : null,
+    lot_validation: enCorrection ? remplacee.lot_validation : null,
     saisie_le: null,
     en_attente: true,
   }
@@ -80,6 +97,23 @@ export function nouvelIdentifiant(): string {
   octets[8] = ((octets[8] ?? 0) & 0x3f) | 0x80 // variante RFC 4122
   const hex = Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+// Quelle volée viser **après** avoir enregistré `numeroActif` ? `null` = « rends la main au mode
+// prochaine-à-saisir ». Fonction pure exprès : ce choix a porté deux défauts de suite, et il vivait
+// dans un `onSuccess` que rien ne testait (revue).
+//
+// ⚠️ Deux pièges vécus : (a) une volée **rendue** reste `en_correction` jusqu'à la revalidation du
+// scoreur — le mode automatique la rouvrirait en boucle ; (b) le repli de `prochaineASaisir` rend
+// la **dernière du barème**, qui peut être verrouillée. On vise donc la suivante **encore en
+// correction**, tous lots confondus, et à défaut on reste sur place.
+export function voleeApresEnregistrement(
+  volees: readonly Volee[],
+  numeroActif: number,
+): number | null {
+  const active = volees.find((v) => v.numero === numeroActif)
+  if (active?.en_correction !== true) return null
+  return volees.find((v) => v.en_correction && v.numero > numeroActif)?.numero ?? numeroActif
 }
 
 // Le marqueur à envoyer avec une volée. Nouvelle volée : le marqueur actif la **signe**. Ré-édition

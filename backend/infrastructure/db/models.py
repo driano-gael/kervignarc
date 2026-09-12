@@ -552,11 +552,11 @@ class VoleeORM(Base):
     """Table `volee` — une volée d'une série (E04US002), table **enfant** de `serie`.
 
     Une ligne = une volée saisie : `numero`, `valeurs` (JSON, comme `BlasonORM.zones`), et les
-    marqueurs `saisie_par` / `validee_par` — ce dernier non `NULL` **est** le verrou. `created_at`
-    est une **métadonnée de persistance**, hors du domaine (arbitrage de revue), **préservée par
-    numéro** à travers le purge + réinsertion. ⚠️ `ON DELETE CASCADE` sur `serie_id`, à rebours de
-    DETTE-001 : une volée est un **composant strict** de son agrégat.
-    """
+    marqueurs `saisie_par` / `validee_par` — ce dernier non `NULL` dit que la volée **compte**, le
+    verrou d'écriture exigeant en plus `correction_ouverte_par IS NULL` (ADR-0109). `created_at` est
+    une **métadonnée de persistance**, hors du domaine, **préservée par numéro** à travers le purge
+    + réinsertion. ⚠️ `ON DELETE CASCADE` sur `serie_id`, à rebours de DETTE-001 : une volée est un
+    **composant strict** de son agrégat."""
 
     __tablename__ = "volee"
     # UNIQUE(serie_id, numero) : un seul rang N par série. Le domaine borne déjà `1..N` (barème) ;
@@ -571,6 +571,10 @@ class VoleeORM(Base):
     valeurs: Mapped[str] = mapped_column(nullable=False)
     saisie_par: Mapped[str | None] = mapped_column(nullable=True)
     validee_par: Mapped[str | None] = mapped_column(nullable=True)
+    # Non `NULL` si et seulement si `validee_par` l'est (migration 0054 : backfill des volées
+    # validées d'avant l'US) — `Serie.annuler_validation` s'appuie sur cet invariant.
+    lot_validation: Mapped[int | None] = mapped_column(nullable=True)
+    correction_ouverte_par: Mapped[str | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
