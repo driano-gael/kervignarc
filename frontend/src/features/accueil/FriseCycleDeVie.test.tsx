@@ -167,17 +167,21 @@ describe('renvoi vers la famille « prêt à… » (E16US021, DETTE-082)', () =>
     vi.mocked(getTransitions).mockResolvedValue([
       { nom: 'demarrer', libelle: 'Démarrer', vers: 'en_cours' },
     ])
-    const surJalon = vi.fn()
-    render(<FriseCycleDeVie tournoi={tournoi('pret')} surJalon={surJalon} />, {
-      wrapper: enveloppe(),
-    })
+    const aller = vi.fn()
+    render(
+      <FriseCycleDeVie
+        tournoi={tournoi('pret')}
+        jalons={{ demarrer: { libelle: 'Prêt à démarrer ?', aller } }}
+      />,
+      { wrapper: enveloppe() },
+    )
 
     // Le bouton porte le nom de **l'écran visé** — l'entrée que l'organisateur lit dans la barre
     // latérale —, et non plus « Démarrer » : c'est ce qui dit qu'on l'emmène voir ce qui manque.
     const bouton = await screen.findByRole('button', { name: 'Prêt à démarrer ?' })
     expect(screen.queryByRole('button', { name: 'Démarrer' })).toBeNull()
     bouton.click()
-    expect(surJalon).toHaveBeenCalledWith('demarrer')
+    expect(aller).toHaveBeenCalled()
     // Le renvoi ne déclenche **aucune** transition : l'action appartient désormais au jalon.
     expect(vi.mocked(transitionnerTournoi)).not.toHaveBeenCalled()
   })
@@ -187,9 +191,13 @@ describe('renvoi vers la famille « prêt à… » (E16US021, DETTE-082)', () =>
       { nom: 'annuler', libelle: 'Annuler le tournoi', vers: 'annule' },
       { nom: 'archiver', libelle: 'Archiver', vers: 'archive' },
     ])
-    render(<FriseCycleDeVie tournoi={tournoi('termine')} surJalon={vi.fn()} />, {
-      wrapper: enveloppe(),
-    })
+    render(
+      <FriseCycleDeVie
+        tournoi={tournoi('termine')}
+        jalons={{ demarrer: { libelle: 'Prêt à démarrer ?', aller: vi.fn() } }}
+      />,
+      { wrapper: enveloppe() },
+    )
 
     // ⚠️ `archiver` en particulier : son jalon répond `404 jalon_non_instruit` (E16US012), donc
     // l'y renvoyer mènerait à un écran vide. Le geste reste ici tant que le membre n'existe pas.

@@ -94,10 +94,11 @@ class ServiceDeparts:
         # déjà engagées des autres créneaux.
         self._deroules = deroule_repository
         self._phases = phase_repository
-        # ⚠️ **L'effectif d'un créneau a déjà une définition, et ce port est la seule** (E16US021) :
-        # des archers *distincts*, pas des lignes d'inscription. `ServiceSuiviDeroule` dimensionne
-        # le déroulé avec, `ServiceTournois` y juge l'exigence d'effectif ; un `len()` local ici
-        # ferait diverger l'accueil du reste de l'application sur les doubles inscriptions.
+        # ⚠️ **L'effectif d'un créneau a déjà une définition, et ce port la porte** (E16US021) :
+        # `ServiceSuiviDeroule` dimensionne le déroulé avec, `ServiceTournois` y juge l'exigence
+        # d'effectif. Un `len()` local rendrait le **même chiffre** aujourd'hui (`UNIQUE(archer_id,
+        # depart_id)` interdit la double inscription) — et c'est ce qui le rendrait durablement
+        # faux : une 2ᵉ définition qu'aucun test ne confronte, jusqu'au jour où l'une bouge.
         self._engages = compteur_engages
 
     def creer(
@@ -143,11 +144,11 @@ class ServiceDeparts:
     def lister_avec_synthese(self, tournoi_id: TournoiId) -> list[SyntheseDepart]:
         """Les départs du tournoi, chacun avec son **état de cycle** (E12US008) et son **effectif**.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas. Lecture seule : les deux sont
-        **calculés** (jamais stockés) au vol — le front en fait un badge et un chiffre par créneau.
-        Simplicité assumée (règle 12) : deux lectures par départ ; les créneaux d'un tournoi se
-        comptent sur les doigts, la relecture n'est pas un goulot — et l'accueil les affiche côte à
-        côte, donc l'alternative serait un aller-retour HTTP *par créneau*, bien plus cher.
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas. Les deux sont **calculés** au vol,
+        jamais stockés. ⚠️ **Deux lectures par départ, pas une** : l'avancement (pour l'état) **et**
+        les inscriptions (pour l'effectif) — E16US021 en **ajoute** une, elle ne récupère pas un
+        calcul déjà fait. Coût assumé (règle 12) ; l'alternative, un aller-retour HTTP par créneau
+        sur un écran qui polle, coûtait plus cher.
         """
         self._verifier_tournoi(tournoi_id)
         departs = self._departs.par_tournoi(tournoi_id)
@@ -305,11 +306,21 @@ class ServiceDeparts:
         return self._etat_de(self._depart_du_tournoi(tournoi_id, depart_id))
 
     def effectif(self, tournoi_id: TournoiId, depart_id: DepartId) -> int:
-        """Effectif d'un créneau donné (E16US021), pour le rafraîchir après édition.
+        """Effectif d'un créneau donné (E16US021).
 
         Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi.
         """
         return self._effectif_de(self._depart_du_tournoi(tournoi_id, depart_id))
+
+    def synthese(self, tournoi_id: TournoiId, depart_id: DepartId) -> SyntheseDepart:
+        """La synthèse d'un seul créneau, pour la rafraîchir après édition (E16US021).
+
+        ⚠️ **Le départ est résolu UNE fois.** Assembler la synthèse côté API demandait `etat()` puis
+        `effectif()`, donc deux relectures de plus — dans le passage du writer, que la règle 7 veut
+        court. Et « ce qu'est une synthèse » cesse de vivre à deux endroits.
+        """
+        depart = self._depart_du_tournoi(tournoi_id, depart_id)
+        return SyntheseDepart(depart, self._etat_de(depart), self._effectif_de(depart))
 
     def _etat_de(self, depart: Depart) -> EtatDepart:
         """État de cycle dérivé d'un créneau (pour l'affichage : liste, badge)."""

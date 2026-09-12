@@ -118,3 +118,51 @@ it('garde les créneaux lisibles quand la lecture des pauses échoue', async () 
   expect(await screen.findByText('34')).toBeInTheDocument()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
+
+it('porte l’état de chaque créneau en toutes lettres', async () => {
+  vi.mocked(getDeparts).mockResolvedValue([
+    depart({ id: 1, numero: 1, etat: 'ouvert' }),
+    depart({ id: 2, numero: 2, horaire: '14:00', etat: 'lance' }),
+    depart({ id: 3, numero: 3, horaire: '17:30', etat: 'clos' }),
+  ])
+  render(<BlocsParDepart tournoiId={1} />, { wrapper: enveloppe() })
+
+  // `DV-03` — le mot porte le sens, le liseré ne fait que le renforcer. L'état est l'une des cinq
+  // données de l'énumération CA, et la plus facile à perdre en silence : un `<span>` retiré, ou un
+  // `EtatDepart` renommé côté serveur, ne casserait aucun autre test.
+  expect(await screen.findByText('à lancer')).toBeInTheDocument()
+  expect(screen.getByText('en cours')).toBeInTheDocument()
+  expect(screen.getByText('clos')).toBeInTheDocument()
+})
+
+it('signale un effectif au-delà du quota, sans se contenter d’une couleur', async () => {
+  // Un quota abaissé sous les inscriptions déjà prises est atteignable : `ServiceDeparts.modifier`
+  // ne les confronte pas. Le CA dit « se compare au quota » sans trancher le débordement — il se
+  // signale donc, et par un MOT (`DV-03`), pas par la seule teinte.
+  vi.mocked(getDeparts).mockResolvedValue([depart({ effectif: 45, quota: 40 })])
+  render(<BlocsParDepart tournoiId={1} />, { wrapper: enveloppe() })
+
+  expect(await screen.findByText('45/40')).toBeInTheDocument()
+  expect(screen.getByText(/au-delà du quota/)).toBeInTheDocument()
+})
+
+it('garde les blocs affichés quand un rafraîchissement échoue', async () => {
+  // `P-3` — une query qui a réussi puis dont un refetch échoue passe `isError` **en gardant
+  // `data`**. Sur l'écran que l'organisateur laisse ouvert toute la journée, un hoquet du wifi de
+  // salle ne doit pas effacer horaire, état, effectif et pause au profit d'un bandeau rouge.
+  vi.mocked(getDeparts)
+    .mockResolvedValueOnce([depart({ effectif: 34 })])
+    .mockRejectedValue(new Error('réseau'))
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const Enveloppe = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
+  render(<BlocsParDepart tournoiId={1} />, { wrapper: Enveloppe })
+  expect(await screen.findByText('34')).toBeInTheDocument()
+
+  await client.refetchQueries({ queryKey: ['departs', 1] })
+
+  expect(client.getQueryState(['departs', 1])?.status).toBe('error')
+  expect(screen.getByText('34')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})

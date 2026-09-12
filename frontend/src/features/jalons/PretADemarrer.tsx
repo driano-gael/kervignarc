@@ -4,8 +4,8 @@
 // rend que le **premier** manquement ; cet écran les **énumère** avant le clic (ADR-0096).
 // **L'action se lit du serveur** via `useTransitions`, source unique de la topologie (ADR-0026 §2)
 // : on propose la transition qu'il offre, jamais une déduite du statut. ⚠️ **Le bouton n'est jamais
-// grisé**, même quand `pret` est faux (`D-15`) : le refus appartient au serveur. `DETTE-082` — la
-// frise du cycle de vie porte le même geste en action **nue**.
+// grisé**, même quand `pret` est faux (`D-15`) : le refus appartient au serveur. `DETTE-082` — depuis
+// l'accueil la frise **renvoie ici** (E16US021) ; son bouton nu ne subsiste que sur « Tournoi ».
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'

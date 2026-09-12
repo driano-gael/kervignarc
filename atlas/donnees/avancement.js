@@ -4587,7 +4587,9 @@ window.ATLAS.avancement = {
    "titre_story": "Deux écritures, une même volée : le rôle tranche"
   },
   {
-   "adr": [],
+   "adr": [
+    "0096"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",

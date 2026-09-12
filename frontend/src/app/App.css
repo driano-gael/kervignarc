@@ -4032,7 +4032,8 @@ button:disabled {
 
 /* Blocs par départ, en tête de l'accueil (E16US021, CA A02) : « j'arrive et je vois ».
    `auto-fit` + `minmax` — tous les créneaux côte à côte tant que la largeur le permet, repliés en
-   colonne sur tablette. Un tournoi en compte deux à quatre : pas de défilement à prévoir. */
+   colonne sinon ; rien ne plafonne le nombre de départs, c'est `auto-fit` qui encaisse.
+   DETTE-086 — grille et chiffre **calculés, jamais mesurés** : cet écran n'est pas affichable ici. */
 .departs-accueil {
   list-style: none;
   padding: 0;
@@ -4057,7 +4058,14 @@ button:disabled {
   border-left-color: var(--success);
 }
 
+/* ⚠️ **L'atténuation ne touche pas le mot d'état.** `opacity` sur le bloc entier composait
+   `--text-muted` (4,88:1) à 0,72, soit ≈ 2,95:1 — sous le seuil AA — précisément sur le texte que
+   `DV-03` charge de porter le sens. On atténue le liseré et le chiffre, jamais le libellé. */
 .depart-accueil--clos {
+  border-left-color: var(--border-subtle);
+}
+
+.depart-accueil--clos .depart-accueil__chiffre {
   opacity: 0.72;
 }
 

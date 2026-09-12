@@ -30,4 +30,8 @@ des informations du tournoi entier, qu'aucun créneau ne porte.
 rafraîchissement — un coût que l'écran d'atterrissage ne peut pas payer plusieurs fois par minute.
 Elle reste sur « Suivi du déroulé », où elle est déjà.
 
+Les chiffres se rafraîchissent **tout seuls**, toutes les dix secondes : une inscription prise au
+bureau apparaît sur l'accueil sans que personne recharge quoi que ce soit. Et si le wifi hoquette,
+les cadres **restent affichés** avec leurs dernières valeurs au lieu de disparaître.
+
 Scénario de recette : [`docs/fonctionnel/E16US021.md`](../docs/fonctionnel/E16US021.md).

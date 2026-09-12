@@ -116,7 +116,8 @@ async def lister_departs(tournoi_id: int, request: Request) -> list[DepartRepons
     Lecture directe hors boucle. L'état (ouvert / lancé / clos, E12US008) et l'effectif (E16US021)
     sont dérivés au vol par le service — le front en fait un badge et un chiffre par créneau.
     ⚠️ **Un seul appel rend tous les créneaux**, et l'accueil en dépend : il les affiche côte à
-    côte, une route par créneau lui coûterait N allers-retours à chaque poll.
+    côte et **polle cette route** (E16US021), donc une route par créneau lui coûterait N
+    allers-retours par tick au lieu d'un.
     """
     service: ServiceDeparts = request.app.state.service_departs
     syntheses = await run_in_threadpool(service.lister_avec_synthese, tournoi_id)
@@ -146,8 +147,8 @@ async def modifier_depart(
     write_queue: WriteQueue = request.app.state.write_queue
 
     def _modifier_et_relire() -> SyntheseDepart:
-        # Édition puis relecture de l'état dans **le même passage du writer** (règle 7) : l'état
-        # renvoyé reflète l'écriture qu'on vient d'appliquer, sans course avec une autre tablette.
+        # Édition puis relecture dans **le même passage du writer** (règle 7) : ce qui est renvoyé
+        # reflète l'écriture qu'on vient d'appliquer, sans course avec une autre tablette.
         depart = service.modifier(
             tournoi_id,
             depart_id,
@@ -157,11 +158,9 @@ async def modifier_depart(
             confirme_cycle=confirme_cycle,
         )
         assert depart.id is not None
-        # ⚠️ Relire **la liste** pour un seul créneau serait un balayage du tournoi : on ne relit
-        # que l'état, l'édition d'un tarif ou d'un horaire ne touchant aucune inscription.
-        return SyntheseDepart(
-            depart, service.etat(tournoi_id, depart.id), service.effectif(tournoi_id, depart.id)
-        )
+        # ⚠️ `synthese()` et non `etat()` + `effectif()` : ces deux-là re-résolvent le départ chacun
+        # de leur côté, soit deux lectures de plus **dans la section critique** (règle 7).
+        return service.synthese(tournoi_id, depart.id)
 
     synthese = await asyncio.wrap_future(write_queue.submit(_modifier_et_relire))
     return DepartReponse.de_agregat(synthese.depart, synthese.etat, synthese.effectif)

@@ -93,8 +93,8 @@ vi.mock('../identite/api', async (importOriginal) => ({
 // ⚠️ **Décor typé sans `as unknown as`** (correctif de revue, axe B). La première rédaction cassait
 // le type, et la fixture était objectivement fausse : sans `etat`, `departDeSalle` tombait dans son
 // **dernier recours** (« le dernier de la liste ») au lieu du chemin nominal `etat === 'lance'` — le
-// test empruntait donc une branche dégradée sans le dire. `etat: 'lance', effectif: 0` est ce que l'écran voit
-// un jour de tournoi.
+// test empruntait donc une branche dégradée sans le dire. `etat: 'lance'` est ce que l'écran voit un
+// jour de tournoi ; `effectif` est du décor de type, aucun code de cet écran ne le lit.
 const CRENEAU: Depart = {
   id: 3,
   tournoi_id: 1,

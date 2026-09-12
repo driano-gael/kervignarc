@@ -9,6 +9,7 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
+import type { RenvoiJalon } from '../accueil/FriseCycleDeVie'
 import { Archers } from '../archers/Archers'
 import { FicheArcherPilotage } from '../archers/FicheArcherPilotage'
 import { Archive } from '../archive/Archive'
@@ -216,15 +217,7 @@ function Coquille() {
       // Le renvoi de la frise vers la famille « prêt à… » (E16US021, DETTE-082) : la navigation
       // reste ici, une feature ne construit pas de chemin d'administration — même patron que
       // `FeuVert`/`surPlanDeDuels` plus bas.
-      rendu: () =>
-        courant && (
-          <Accueil
-            tournoi={courant}
-            surJalon={(transition) =>
-              allerA('pilotage', transition === 'demarrer' ? 'pret-demarrer' : 'completude')
-            }
-          />
-        ),
+      rendu: () => courant && <Accueil tournoi={courant} jalons={jalonsDeLaFrise} />,
     },
     {
       id: 'formats',
@@ -519,6 +512,22 @@ function Coquille() {
       rendu: () => courant && <Archive tournoiId={courant.id} />,
     },
   ]
+
+  // Les transitions que la frise **renvoie** vers leur écran « prêt à… » (E16US021, DETTE-082).
+  //
+  // ⚠️ **Le libellé est LU dans `destinations`, jamais recopié** : c'est l'entrée que l'organisateur
+  // voit dans la barre latérale, et la renommer là-haut doit suivre ici sans geste. ⚠️ Ajouter un
+  // membre (`archiver`) impose de nommer sa destination, que `tsc` valide contre
+  // `DestinationAdminId` — le jalon d'`archiver` répondant encore `404 jalon_non_instruit`, c'est
+  // exactement la porte qu'on veut : pas de renvoi vers un écran vide.
+  const ecranDuJalon = (id: Exclude<DestinationAdminId, 'tournoi'>): RenvoiJalon => ({
+    libelle: destinations.find((d) => d.id === id)?.libelle ?? '',
+    aller: () => allerA(AXE_PAR_DESTINATION[id], id),
+  })
+  const jalonsDeLaFrise: Record<string, RenvoiJalon> = {
+    demarrer: ecranDuJalon('pret-demarrer'),
+    terminer: ecranDuJalon('completude'),
+  }
 
   // Accueil de l'admin : aucun axe ouvert. Il porte le choix de l'axe **et** l'assemblage (la liste
   // des tournois, leur création, leur cycle de vie) — l'ancienne destination « Tournoi », qui

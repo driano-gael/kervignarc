@@ -17,7 +17,12 @@ import { getArretsEnAttente } from '../suivi-deroule/api'
 import { INTERVALLE_POLL_MS, RACINE_ARRETS } from '../suivi-deroule/hooks'
 
 export function BlocsParDepart({ tournoiId }: { tournoiId: number }) {
-  const departs = useDeparts(tournoiId)
+  // ⚠️ **Le poll n'est pas un confort, c'est ce qui rend ce bloc vrai.** `useDeparts` ne pollait
+  // pas : sa fraîcheur venait de `useRealtime`, qui n'invalide que **sur événement** et ignore le
+  // message de reconnexion — et les inscriptions n'émettent aucun `LiveEvent`. Sans poll, l'effectif
+  // du matin restait figé pendant que le bureau des inscriptions travaillait, et un `etat` changé
+  // pendant une coupure wifi ne revenait jamais. Même cadence que les arrêts lus juste en dessous.
+  const departs = useDeparts(tournoiId, true, INTERVALLE_POLL_MS)
   const creneaux = departs.data ?? []
   // Battement à la minute — le grain affiché du « depuis x min ». Cf. `useMaintenant` : lire
   // l'horloge pendant le rendu est une impureté, et le compteur resterait figé tant que le serveur
@@ -37,7 +42,12 @@ export function BlocsParDepart({ tournoiId }: { tournoiId: number }) {
     })),
   })
 
-  if (departs.isError) {
+  // ⚠️ **On ne bascule en erreur que si l'on n'a RIEN à montrer** (`P-3`). Une query qui a réussi
+  // puis dont un refetch échoue passe `isError` **en gardant `data`** : tester `isError` seul
+  // effaçait tous les blocs — horaire, état, effectif, pause — sur un hoquet du wifi de salle, sur
+  // l'écran que l'organisateur laisse ouvert. C'est le raisonnement que ce fichier applique déjà,
+  // vingt lignes plus bas, à la donnée la plus **accessoire** du bloc.
+  if (departs.isError && creneaux.length === 0) {
     return (
       <p className="carte__etat carte__etat--erreur" role="alert">
         Créneaux injoignables — {texteErreur(departs.error)}
@@ -48,7 +58,7 @@ export function BlocsParDepart({ tournoiId }: { tournoiId: number }) {
   // lit comme un incident sur un écran qui se rafraîchit tout seul.
   if (departs.isLoading) return null
   if (creneaux.length === 0) {
-    return <p className="carte__etat">Aucun créneau : ce tournoi n’a pas encore de départ.</p>
+    return <p className="carte__etat">Ce tournoi n’a pas encore de départ.</p>
   }
 
   return (
@@ -74,6 +84,10 @@ function BlocDepart({
   depart: Depart
   resume: ReturnType<typeof resumeDeRelance>
 }) {
+  // ⚠️ **Un quota se dépasse** : `ServiceDeparts.modifier` accepte un plafond abaissé sans le
+  // confronter aux inscriptions déjà prises (une cible cassée le matin). « 45/40 » en gris se
+  // lisait comme un chiffre ordinaire ; `DV-03` exige que le **mot** porte le sens, pas la couleur.
+  const auDela = depart.quota !== null && depart.effectif > depart.quota
   return (
     <li className={`depart-accueil depart-accueil--${depart.etat}`}>
       <p className="depart-accueil__entete">
@@ -82,12 +96,12 @@ function BlocDepart({
         {/* `DV-03` — le mot porte le sens, la couleur ne fait que le renforcer. */}
         <span className="depart-accueil__etat">{libelleEtatDepart(depart)}</span>
       </p>
-      <p className="depart-accueil__effectif">
+      <p className={`depart-accueil__effectif${auDela ? ' carte__etat--alerte' : ''}`}>
         <span className="depart-accueil__chiffre">
           {depart.quota === null ? depart.effectif : `${depart.effectif}/${depart.quota}`}
         </span>{' '}
         inscrit{depart.effectif > 1 ? 's' : ''}
-        {depart.quota !== null && ' (quota)'}
+        {depart.quota !== null && (auDela ? ' — au-delà du quota' : ' (quota)')}
       </p>
       {resume !== null && (
         <p className="carte__etat carte__etat--alerte" role="status">

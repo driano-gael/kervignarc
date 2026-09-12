@@ -6876,6 +6876,17 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/accueil/BlocsParDepart.test.tsx",
+     "existe": true,
+     "symboles": [
+      "BlocDepart",
+      "useQueries",
+      "useMaintenant"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/accueil/BlocsParDepart.tsx",
      "existe": true,
      "symboles": [
@@ -6985,7 +6996,10 @@ window.ATLAS.decisions = {
      "symboles": [
       "ArretFranchiReponse.arrete_depuis",
       "resumeDeRelance",
-      "phraseDeRelance"
+      "phraseDeRelance",
+      "BlocDepart",
+      "useQueries",
+      "useMaintenant"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -8007,6 +8021,51 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/accueil/FriseCycleDeVie.test.tsx",
+     "existe": true,
+     "symboles": [
+      "RenvoiJalon",
+      "jalons",
+      "ecranDuJalon",
+      "jalonsDeLaFrise",
+      "destinations",
+      "AXE_PAR_DESTINATION",
+      "archiver"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/accueil/FriseCycleDeVie.tsx",
+     "existe": true,
+     "symboles": [
+      "RenvoiJalon",
+      "jalons",
+      "ecranDuJalon",
+      "jalonsDeLaFrise",
+      "destinations",
+      "AXE_PAR_DESTINATION",
+      "archiver"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/CoquilleAdmin.tsx",
+     "existe": true,
+     "symboles": [
+      "RenvoiJalon",
+      "jalons",
+      "ecranDuJalon",
+      "jalonsDeLaFrise",
+      "destinations",
+      "AXE_PAR_DESTINATION",
+      "archiver"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/admin/axes.ts",
      "existe": true,
      "symboles": [
@@ -8094,6 +8153,21 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [],
      "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tournois/Tournois.tsx",
+     "existe": true,
+     "symboles": [
+      "RenvoiJalon",
+      "jalons",
+      "ecranDuJalon",
+      "jalonsDeLaFrise",
+      "destinations",
+      "AXE_PAR_DESTINATION",
+      "archiver"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -8109,7 +8183,8 @@ window.ATLAS.decisions = {
     "E16US007",
     "E16US008",
     "E16US010",
-    "E16US012"
+    "E16US012",
+    "E16US021"
    ]
   },
   {

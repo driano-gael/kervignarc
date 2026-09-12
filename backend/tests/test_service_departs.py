@@ -697,23 +697,46 @@ def test_lister_avec_synthese_chiffre_l_effectif_de_chaque_creneau() -> None:
     assert effectifs == {matin.id: 3, apres_midi.id: 1}
 
 
-def test_l_effectif_d_un_creneau_compte_les_archers_pas_les_inscriptions() -> None:
-    """CA E16US021 — « l'accueil **lit**, il ne recalcule pas » : c'est ce test qui le tient.
+def test_l_effectif_passe_par_le_port_qui_en_porte_la_definition() -> None:
+    """CA E16US021 — « l'accueil lit, il ne recalcule pas » : ce test garde le **choix de port**.
 
-    ⚠️ **Le piège est un `len()` de trop.** L'effectif d'un créneau est défini par
-    `CompteurEngages` — des archers **distincts** —, et c'est lui qui dimensionne déjà le déroulé
-    (`ServiceSuiviDeroule`) et l'exigence d'effectif (`ServiceTournois`). Compter les lignes
-    d'inscription à la place donnerait le même résultat partout **sauf** ici, et l'accueil
-    annoncerait un effectif que le reste de l'application dément.
+    ⚠️ **Ce test ne garde PAS une divergence de données** — il n'y en a pas aujourd'hui :
+    `UNIQUE(archer_id, depart_id)` et la garde `DejaInscrit` rendent la double inscription
+    inatteignable, donc `len(inscriptions)` et « archers distincts » coïncident en production. Il
+    garde que l'effectif vient de `CompteurEngages`, **seule définition existante** (partagée avec
+    `ServiceSuiviDeroule` et l'exigence d'effectif) : une seconde définition serait numériquement
+    juste aujourd'hui et fausse le jour où l'une des deux bouge, sans rien pour la confronter.
     """
     m = _monter()
     creneau = m.service.creer(m.tournoi_id, 810, "09:00")
     assert creneau.id is not None
+    # État volontairement hors-production (le faux repository n'a pas la garde d'unicité) : c'est
+    # le seul moyen de distinguer les deux définitions, qui coïncident partout ailleurs.
     m.inscriptions.ajouter(Inscription.creer(ArcherId(7), creneau.id))
     m.inscriptions.ajouter(Inscription.creer(ArcherId(7), creneau.id))
 
     (synthese,) = m.service.lister_avec_synthese(m.tournoi_id)
     assert synthese.effectif == 1
+
+
+def test_la_synthese_d_un_creneau_refuse_un_depart_d_un_autre_tournoi() -> None:
+    """`synthese` (relecture après édition) isole les tournois comme `modifier` et `supprimer`.
+
+    C'est la méthode neuve qu'appelle le PUT : sans ce test, la seule garde d'isolation du chemin
+    d'édition serait celle de `modifier`, en amont — et un refactor pourrait la perdre en silence.
+    """
+    tournois = FauxTournoiRepository()
+    departs = FauxDepartRepository()
+    a = tournois.ajouter(Tournoi.creer("A", _DATE))
+    b = tournois.ajouter(Tournoi.creer("B", _DATE))
+    assert a.id is not None and b.id is not None
+    service = _service_sur(tournois, departs)
+    depart = service.creer(a.id, 810, "09:00")
+    assert depart.id is not None
+
+    assert service.synthese(a.id, depart.id).effectif == 0
+    with pytest.raises(DepartIntrouvable):
+        service.synthese(b.id, depart.id)
 
 
 def test_supprimer_creneau_lance_ne_se_contourne_pas_par_inscriptions() -> None:

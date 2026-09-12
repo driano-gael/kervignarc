@@ -1,7 +1,7 @@
 // Accueil-tableau de bord contextualisé par tournoi (E14US001, `D-20` ; E16US021).
 //
 // « Où j'en suis, quoi faire ensuite », sans parcourir ~21 écrans. Il **agrège** des sources déjà
-// livrées et ne recalcule **aucune** règle métier. Les lectures pollent : écran **live** (ADR-0075).
+// livrées et ne recalcule **aucune** règle métier. Toutes ses lectures pollent — écran **live**.
 
 // ⚠️ **Trois surfaces, pas quatre** (E16US021) : les blocs par départ ont retiré la pastille de
 // relance (absorbée dans le bloc du créneau) et le chiffre « Inscrits » (que la somme des effectifs
@@ -18,24 +18,26 @@ import type { Supervision } from '../supervision/api'
 import { useSupervision } from '../supervision/hooks'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { BlocsParDepart } from './BlocsParDepart'
-import { FriseCycleDeVie } from './FriseCycleDeVie'
+import { FriseCycleDeVie, type RenvoiJalon } from './FriseCycleDeVie'
 
 export function Accueil({
   tournoi,
-  surJalon,
+  jalons,
 }: {
   tournoi: Tournoi
-  /** Renvoi vers un écran « prêt à… » depuis la frise (E16US021) — la coquille tient le chemin. */
-  surJalon?: (transition: 'demarrer' | 'terminer') => void
+  /** Renvois de la frise vers les écrans « prêt à… » (E16US021) — la coquille tient libellé et chemin. */
+  jalons?: Readonly<Record<string, RenvoiJalon>>
 }) {
   const completude = useCompletude(tournoi.id)
   const supervision = useSupervision(tournoi.id)
   const paiements = usePaiementsArchers(tournoi.id)
 
-  // Une seule source pour inscrits & réglés : le registre de paiements a une ligne par archer
-  // inscrit. ⚠️ `inscrits` n'est plus **affiché** seul (E16US021 — l'effectif se lit par créneau) ;
-  // il reste le dénominateur de « Réglés », qui est bien une proportion du tournoi entier.
-  const inscrits = paiements.data?.length ?? null
+  // ⚠️ **Ce chiffre compte les ARCHERS DU TOURNOI, pas des engagements** : `lister_par_archer`
+  // rend une ligne par archer saisi, inscrit ou non. Il n'est donc **pas** la somme des effectifs
+  // des blocs (qui, eux, comptent un archer une fois par créneau) — d'où le libellé explicite
+  // ci-dessous, et d'où son retrait comme chiffre autonome par E16US021 : affiché seul à côté des
+  // blocs, il se lisait comme un total qu'aucune addition ne retrouvait.
+  const archersDuTournoi = paiements.data?.length ?? null
   const regles = paiements.data?.filter((a) => a.recap.reste_centimes <= 0).length ?? null
   const postesEnLigne = supervision.data?.nb_en_ligne ?? null
   const postesTotal = supervision.data?.nb_total ?? null
@@ -62,12 +64,14 @@ export function Accueil({
           checklist de dix lignes reviendrait à ne pas la mettre. */}
       <BlocsParDepart tournoiId={tournoi.id} />
 
-      <FriseCycleDeVie tournoi={tournoi} surJalon={surJalon} />
+      <FriseCycleDeVie tournoi={tournoi} jalons={jalons} />
 
       <div className="accueil__chiffres">
         <Chiffre
-          libelle="Réglés"
-          valeur={inscrits === null || regles === null ? '—' : `${regles}/${inscrits}`}
+          libelle="Réglés (archers du tournoi)"
+          valeur={
+            archersDuTournoi === null || regles === null ? '—' : `${regles}/${archersDuTournoi}`
+          }
         />
         <Chiffre
           libelle="Postes en ligne"
