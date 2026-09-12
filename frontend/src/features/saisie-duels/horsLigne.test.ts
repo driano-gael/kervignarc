@@ -6,7 +6,7 @@ import { ErreurApi } from '../../shared/api/client'
 import {
   estConditionDeRencontre,
   estDejaHorsLigne,
-  estRefusDefinitif,
+  estRefusDefinitifDuel,
   estRefusServeur,
 } from './horsLigne'
 
@@ -24,21 +24,21 @@ describe('estRefusServeur', () => {
   })
 })
 
-describe('estRefusDefinitif', () => {
+describe('estRefusDefinitifDuel', () => {
   it('définitif : 4xx métier (400, 403, 404, 422)', () => {
-    expect(estRefusDefinitif(400, 'peu_importe')).toBe(true)
-    expect(estRefusDefinitif(403, 'peu_importe')).toBe(true)
-    expect(estRefusDefinitif(404, 'peu_importe')).toBe(true)
-    expect(estRefusDefinitif(422, 'peu_importe')).toBe(true)
+    expect(estRefusDefinitifDuel(400, 'peu_importe')).toBe(true)
+    expect(estRefusDefinitifDuel(403, 'peu_importe')).toBe(true)
+    expect(estRefusDefinitifDuel(404, 'peu_importe')).toBe(true)
+    expect(estRefusDefinitifDuel(422, 'peu_importe')).toBe(true)
   })
 
   it('transitoire (à garder en file) : 401, 408, 409, 429 et tout 5xx', () => {
-    expect(estRefusDefinitif(401, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(408, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(409, 'peu_importe')).toBe(false) // duel_desynchronise le temps d'un re-seed
-    expect(estRefusDefinitif(429, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(500, 'peu_importe')).toBe(false)
-    expect(estRefusDefinitif(503, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifDuel(401, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifDuel(408, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifDuel(409, 'peu_importe')).toBe(false) // duel_desynchronise le temps d'un re-seed
+    expect(estRefusDefinitifDuel(429, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifDuel(500, 'peu_importe')).toBe(false)
+    expect(estRefusDefinitifDuel(503, 'peu_importe')).toBe(false)
   })
 })
 
@@ -50,16 +50,16 @@ describe('les refus réversibles d’une recomposition de poule', () => {
   // rencontres à 6, et les actes des rencontres 7 à 12 redésigneront leur rencontre dès que la
   // population sera rétablie.
   it('garde en file un acte dont la rencontre a disparu (404 rencontre_introuvable)', () => {
-    expect(estRefusDefinitif(404, 'rencontre_introuvable')).toBe(false)
+    expect(estRefusDefinitifDuel(404, 'rencontre_introuvable')).toBe(false)
   })
 
   it('garde en file un acte dont les adversaires ne sont plus résolus (422 match_non_jouable)', () => {
-    expect(estRefusDefinitif(422, 'match_non_jouable')).toBe(false)
+    expect(estRefusDefinitifDuel(422, 'match_non_jouable')).toBe(false)
   })
 
   it('ne relâche pas les autres 404 / 422, qui restent définitifs', () => {
-    expect(estRefusDefinitif(404, 'blason_introuvable')).toBe(true)
-    expect(estRefusDefinitif(422, 'duel_verrouille')).toBe(true)
+    expect(estRefusDefinitifDuel(404, 'blason_introuvable')).toBe(true)
+    expect(estRefusDefinitifDuel(422, 'duel_verrouille')).toBe(true)
   })
 })
 

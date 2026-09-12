@@ -471,6 +471,14 @@ function PaveArcher({
           onBrouillon(ligne.archer_id, numeroActif, null)
           setNumeroChoisi(voleeApresEnregistrement(volees, numeroActif))
         },
+        // ⚠️ Le brouillon s'efface AUSSI sur un refus de préséance, sans quoi le pavé continuait
+        // d'afficher les flèches refusées sous le message « le score affiché fait foi » — qui
+        // devenait faux à l'écran même qui l'affiche (relevé en revue). Le tampon retombe alors
+        // sur la valeur serveur, que l'invalidation d'`onError` vient de rafraîchir.
+        onError: (erreur: Error) => {
+          if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur')
+            onBrouillon(ligne.archer_id, numeroActif, null)
+        },
       },
     )
   }
@@ -573,9 +581,27 @@ function PaveArcher({
         </button>
       </div>
 
-      <MessageErreur erreur={saisir.error} />
+      <MessageErreurSaisie erreur={saisir.error} />
     </div>
   )
+}
+
+// Message d'erreur d'une saisie de volée. Un `409 ecriture_de_role_inferieur` (E16US020) n'est pas
+// un incident dur mais un **arbitrage** : ton ambre (DV-03), non bloquant. Le serveur nomme déjà le
+// rôle qui a écrit ; l'écran ajoute le recours, sans quoi le marqueur ne sait pas quoi faire de ce
+// refus. Le reste passe par `MessageErreur`.
+// ⚠️ DETTE-100 : ce rendu n'est atteignable par AUCUN écran — la tablette est le seul appelant de
+// `saisirVolee`, et deux postes sont à rôle égal (ADR-0107 §3). Il sert le jour où l'admin saisit.
+function MessageErreurSaisie({ erreur }: { erreur: Error | null }) {
+  if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur') {
+    return (
+      <p className="placement__alerte" role="alert">
+        {erreur.message} Le score affiché est celui qui fait foi : signalez l’erreur à
+        l’organisateur.
+      </p>
+    )
+  }
+  return <MessageErreur erreur={erreur} />
 }
 
 // Navigateur de volées : une pastille par volée du barème. Saisie = pleine, verrouillée = cadenassée,

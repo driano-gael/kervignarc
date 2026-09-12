@@ -1529,13 +1529,28 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0075",
+    "0107"
+   ],
    "date": "2026-07-20",
    "date_brute": "2026-07-20",
    "extrait": "1. Détecter le hors-ligne par la nature de l'échec, pas par navigator.onLine. Le client HTTP (fetchJson) rejette avec une TypeError quand le fetch échoue au niveau réseau (serveur injoignable), et lève une ErreurApi quand le serveur a répondu un refus (403 hors-cible, 404 blason introuvable…). On met en file seulement le premier cas ; une ErreurApi est une vraie erreur, propagée à l'UI. navigator.onLine est écarté : sur un LAN sans internet il vaut souvent true alors que le serveur est injoignable — il mentirait. 2. Ranger la file dans un store Zustand persisté (localStorage). Nouveau shared/stores/fileHorsLigneStore (à côté de sessionPosteStore, même patron persist) : une liste FIFO de […]",
    "fichier": "docs/adr/0037-file-de-saisie-hors-ligne-et-rejeu.md",
    "identifiant": "0037",
    "liens": [
+    {
+     "cible": "0107",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
+    {
+     "cible": "0075",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
     {
      "cible": "0005",
      "libelle": "Amende",
@@ -1575,7 +1590,8 @@ window.ATLAS.decisions = {
    "us": [
     "E00US008",
     "E00US010",
-    "E04US009"
+    "E04US009",
+    "E16US020"
    ]
   },
   {
@@ -4038,7 +4054,8 @@ window.ATLAS.decisions = {
     "E16US014",
     "E16US015",
     "E16US017",
-    "E16US019"
+    "E16US019",
+    "E16US020"
    ]
   },
   {
@@ -9739,12 +9756,18 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-09-10",
    "date_brute": "2026-09-10",
-   "extrait": "1. L'ordre est poste de cible \u003c scoreur \u003c admin. Une écriture d'un rôle supérieur à celui qui a déjà écrit écrase. Une écriture d'un rôle inférieur est refusée (409), et l'écran dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace. 2. Le rôle est celui de la garde, jamais celui du message. Volee.saisie_par existe mais sa propre docstring le qualifie de déclaratif : c'est un nom libre, issu du corps de la requête. L'employer comme source d'autorité livrerait une hiérarchie qu'un poste contourne en se déclarant admin. Le rôle se lit sur l'identité résolue par la garde — jeton de poste, session scoreur, session admin. ⚠️ Ne pas lire « authentifiée » : le rôle le plus bas ne […]",
+   "extrait": "1. L'ordre est poste de cible \u003c scoreur \u003c admin. Une écriture d'un rôle supérieur à celui qui a déjà écrit écrase. Une écriture d'un rôle inférieur est refusée (409), et l'écran dit pourquoi — un refus muet serait pire que l'écrasement qu'il remplace. ⚠️ Une EXCEPTION, et elle n'est pas un détail : le verrou prime la préséance. Sur une volée verrouillée, toute correction habilitée passe, quel que soit le rang inscrit — le rang stocké peut donc redescendre. C'est voulu : l'organisateur n'a aucune route de correction (/volees lève VoleeVerrouillee, /corrections est réservée au scoreur), et refuser fermerait le seul chemin de réparation d'une feuille signée. La préséance ne protège donc que la […]",
    "fichier": "docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md",
    "identifiant": "0107",
    "liens": [
     {
      "cible": "E16US011",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E16US020",
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
@@ -9766,15 +9789,156 @@ window.ATLAS.decisions = {
      "libelle": "S'appuie sur",
      "sens": "sortant",
      "type": "socle"
+    },
+    {
+     "cible": "0037",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/erreurs.py",
+     "existe": true,
+     "symboles": [
+      "EcritureDeRoleInferieur",
+      "else"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/saisie.py",
+     "existe": true,
+     "symboles": [
+      "autoriser_saisie",
+      "SCOREUR",
+      "exiger_scoreur",
+      "Role.SCOREUR"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/erreurs/tir.py",
+     "existe": true,
+     "symboles": [
+      "EcritureDeRoleInferieur",
+      "else"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie.py",
+     "existe": true,
+     "symboles": [
+      "_refuser_role_inferieur",
+      "_libelle_role"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/role.py",
+     "existe": true,
+     "symboles": [
+      "Role",
+      "IntEnum"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/serie.py",
+     "existe": true,
+     "symboles": [
+      "Serie.annuler_validation",
+      "role_de_saisie",
+      "None",
+      "Serie.saisir_volee",
+      "Serie.corriger_volee",
+      "corriger_volee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.role_de_saisie",
+      "_vers_role",
+      "par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/tir.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.role_de_saisie",
+      "_vers_role",
+      "par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0055_volee_role_de_saisie.py",
+     "existe": true,
+     "symboles": [
+      "VoleeORM.role_de_saisie",
+      "_vers_role",
+      "par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/Saisie.tsx",
+     "existe": true,
+     "symboles": [
+      "MessageErreurSaisie",
+      "onError",
+      "CODES_DEFINITIFS"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "MessageErreurSaisie",
+      "onError",
+      "CODES_DEFINITIFS"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/horsLigne.ts",
+     "existe": true,
+     "symboles": [
+      "MessageErreurSaisie",
+      "onError",
+      "CODES_DEFINITIFS"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*",
+   "statut_brut": "Accepté *(et **porté** depuis le 12/09/2026 — cf. § « Porté dans le code par ». ⚠️ **Portée réelle : la volée de qualification seule** ; les autres formats gardent le *dernier écrit gagne*)*",
    "titre": "Une écriture concurrente est arbitrée par le rôle de qui écrit",
    "us": [
-    "E16US011"
+    "E05US033",
+    "E16US011",
+    "E16US020"
    ]
   },
   {

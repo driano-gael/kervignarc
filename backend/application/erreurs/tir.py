@@ -97,6 +97,18 @@ class DuelDesynchronise(ApplicationError):
     code = "duel_desynchronise"
 
 
+class EcritureDeRoleInferieur(ApplicationError):
+    """Un rôle **inférieur** à celui qui a déjà écrit la volée tente de l'écraser (E16US020) → 409.
+
+    Conflit d'état, pas défaut de droit : le même geste redevient licite dès que la préséance
+    retombe (annulation de validation), d'où 409 et non 403 — même lecture que `PhaseEnPause`.
+    ⚠️ **À rôles ÉGAUX rien n'est refusé** (ADR-0107 §3) : cette erreur ne couvre pas le cas le
+    plus fréquent en salle, deux postes de cible qui se croisent.
+    """
+
+    code = "ecriture_de_role_inferieur"
+
+
 class ScoreurHorsTournoi(ApplicationError):
     """Un scoreur agit (valide/corrige) sur une série d'un **autre tournoi** que le sien. → 403.
 

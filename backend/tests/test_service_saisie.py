@@ -35,6 +35,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
 from domain.placement import Affectation
 from domain.qualification import DecoupageEnTours
+from domain.role import Role
 from domain.serie import Serie
 from domain.tournoi import TournoiId
 from tests.conftest import (
@@ -268,8 +269,12 @@ class Montage:
 
     def saisir_serie_complete(self) -> None:
         """Saisit les deux volées du barème (préalable à une validation de fin de série)."""
-        self.service.saisir_volee(self.tournoi_id, self.archer_id, 1, _v("10", "9", "8"), "DURAND")
-        self.service.saisir_volee(self.tournoi_id, self.archer_id, 2, _v("9", "9", "9"), "DURAND")
+        self.service.saisir_volee(
+            self.tournoi_id, self.archer_id, 1, _v("10", "9", "8"), "DURAND", role=Role.ADMIN
+        )
+        self.service.saisir_volee(
+            self.tournoi_id, self.archer_id, 2, _v("9", "9", "9"), "DURAND", role=Role.ADMIN
+        )
 
     def nouvel_archer(self, nom: str) -> ArcherId:
         """Ajoute un second archer (même catégorie/blason) et renvoie son id (grille à N)."""
@@ -297,7 +302,9 @@ class Montage:
 def test_saisir_volee_persiste_avec_le_marqueur() -> None:
     """ex-005/017 : la volée saisie est persistée, avec le nom du marqueur."""
     m = Montage()
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND", role=Role.ADMIN
+    )
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
     volee = serie.volee(1)
@@ -310,7 +317,7 @@ def test_le_pave_vient_du_blason_de_l_archer() -> None:
     """ex-003 : les zones admises se déduisent du blason — un « 5 » sur un triple 40 est refusé."""
     m = Montage(zones=ZONES_TRIPLE)
     with pytest.raises(ValeurHorsBlason):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "5"))
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "5"), role=Role.ADMIN)
 
 
 def test_valider_trace_une_entree_au_nom_du_scoreur() -> None:
@@ -334,7 +341,9 @@ def test_corriger_trace_l_avant_et_l_apres() -> None:
     m = Montage()
     m.saisir_serie_complete()
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
-    m.service.corriger_volee(m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE", role=Role.SCOREUR
+    )
     trace = m.series.traces[-1]
     assert trace.action is ActionAuditee.CORRECTION_SCORE
     assert trace.auteur == "ARBITRE"
@@ -346,35 +355,35 @@ def test_saisir_pour_un_archer_inconnu_est_refuse() -> None:
     """Un archer inconnu rend `ArcherIntrouvable` (traduit en 404)."""
     m = Montage()
     with pytest.raises(ArcherIntrouvable):
-        m.service.saisir_volee(m.tournoi_id, 999, 1, _v("10", "9", "8"))
+        m.service.saisir_volee(m.tournoi_id, 999, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
 
 def test_saisir_pour_un_archer_d_un_autre_tournoi_est_refuse() -> None:
     """Un archer d'un autre tournoi n'existe pas pour ce tournoi (`ArcherIntrouvable`)."""
     m = Montage()
     with pytest.raises(ArcherIntrouvable):
-        m.service.saisir_volee(2, m.archer_id, 1, _v("10", "9", "8"))
+        m.service.saisir_volee(2, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
 
 def test_saisir_sans_phase_de_qualification_est_refuse() -> None:
     """Sans phase de qualification configurée, la saisie rend `PhaseQualificationAbsente`."""
     m = Montage(avec_phase=False)
     with pytest.raises(PhaseQualificationAbsente):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
 
 def test_saisir_pour_un_archer_sans_blason_est_refuse() -> None:
     """Sans blason par défaut, le pavé est indéterminable : `BlasonIntrouvable`."""
     m = Montage(avec_blason=False)
     with pytest.raises(BlasonIntrouvable):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
 
 def test_le_service_borne_le_rang_de_volee_par_le_bareme_de_la_phase() -> None:
     """Le service passe `nb_volees` de la phase au domaine : un rang hors barème est refusé."""
     m = Montage()  # barème de la phase : 2 volées de 3 flèches
     with pytest.raises(NumeroVoleeInvalide):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 3, _v("10", "9", "8"))
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 3, _v("10", "9", "8"), role=Role.ADMIN)
 
 
 # --- Source des archers & garde « SA cible / SON départ » (ADR-0033) ---
@@ -499,7 +508,14 @@ def test_saisir_pour_un_archer_de_sa_cible_est_autorise() -> None:
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+    m.service.saisir_volee(
+        m.tournoi_id,
+        m.archer_id,
+        1,
+        _v("10", "9", "8"),
+        contexte=contexte,
+        role=Role.POSTE_DE_CIBLE,
+    )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None and serie.volee(1) is not None
@@ -512,7 +528,14 @@ def test_saisir_pour_un_archer_d_une_autre_cible_est_refuse() -> None:
     contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
 
     with pytest.raises(SaisieHorsCible):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+        m.service.saisir_volee(
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("10", "9", "8"),
+            contexte=contexte,
+            role=Role.POSTE_DE_CIBLE,
+        )
 
 
 def test_saisir_pour_un_archer_d_un_autre_depart_est_refuse() -> None:
@@ -522,7 +545,14 @@ def test_saisir_pour_un_archer_d_un_autre_depart_est_refuse() -> None:
     contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
 
     with pytest.raises(SaisieHorsCible):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+        m.service.saisir_volee(
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("10", "9", "8"),
+            contexte=contexte,
+            role=Role.POSTE_DE_CIBLE,
+        )
 
 
 def test_saisir_pour_un_archer_en_reserve_est_refuse() -> None:
@@ -532,14 +562,23 @@ def test_saisir_pour_un_archer_en_reserve_est_refuse() -> None:
     contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
 
     with pytest.raises(SaisieHorsCible):
-        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+        m.service.saisir_volee(
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("10", "9", "8"),
+            contexte=contexte,
+            role=Role.POSTE_DE_CIBLE,
+        )
 
 
 def test_saisir_sans_contexte_reste_ouvert_a_l_admin() -> None:
     """`contexte=None` = saisie **admin**, sans contrainte de cible (E10US001) : sans placement."""
     m = Montage()  # archer ni inscrit ni placé
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # contexte par défaut
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN
+    )  # contexte par défaut
 
     assert m.series.par_archer(m.phase_id, m.archer_id) is not None
 
@@ -565,7 +604,13 @@ def test_corriger_est_aussi_cloisonnee_au_poste() -> None:
 
     with pytest.raises(SaisieHorsCible):
         m.service.corriger_volee(
-            m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE", contexte=contexte
+            m.tournoi_id,
+            m.archer_id,
+            1,
+            _v("9", "9", "9"),
+            auteur="ARBITRE",
+            contexte=contexte,
+            role=Role.SCOREUR,
         )
 
 
@@ -581,7 +626,9 @@ def test_corriger_est_aussi_cloisonnee_au_poste() -> None:
 def _saisir_volees(m: Montage, archer_id: ArcherId, combien: int) -> None:
     """Saisit `combien` volées pleines (numéros 1..combien) pour un archer — chacune complète."""
     for numero in range(1, combien + 1):
-        m.service.saisir_volee(m.tournoi_id, archer_id, numero, _v("10", "9", "8"), "DURAND")
+        m.service.saisir_volee(
+            m.tournoi_id, archer_id, numero, _v("10", "9", "8"), "DURAND", role=Role.ADMIN
+        )
 
 
 def test_avancement_cible_volee_courante_est_celle_du_plus_lent() -> None:
@@ -722,8 +769,8 @@ def test_la_fourche_ecrit_chaque_archer_dans_sa_propre_qualification() -> None:
     m = Montage()
     haute, basse, autre = _monter_la_fourche(m)
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
-    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"), role=Role.ADMIN)
 
     feuille_haute = m.series.par_archer(haute, m.archer_id)
     feuille_basse = m.series.par_archer(basse, autre)
@@ -743,7 +790,7 @@ def test_la_fourche_relit_chaque_archer_dans_sa_propre_qualification() -> None:
     """
     m = Montage()
     _haute, _basse, autre = _monter_la_fourche(m)
-    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"))
+    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"), role=Role.ADMIN)
 
     etat = m.service.etat_serie(m.tournoi_id, autre)
 
@@ -754,7 +801,7 @@ def test_la_fourche_relit_chaque_archer_dans_sa_propre_qualification() -> None:
 def test_la_lecture_retrouve_la_feuille_sur_un_deroule_ordinaire() -> None:
     """Non-régression du bloquant, hors fourche : `tournoi_id` (1) ≠ `phase_id` suffit à le voir."""
     m = Montage()
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
 
     etat = m.service.etat_serie(m.tournoi_id, m.archer_id)
 
@@ -781,8 +828,8 @@ def test_la_fourche_ne_retombe_pas_dans_le_premier_tour_reste_ouvert() -> None:
     assert tete.id is not None
     m.phases.enregistrer(tete.demarrer())  # le premier tour reste ouvert
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
-    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"))
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"), role=Role.ADMIN)
 
     assert m.series.par_archer(haute, m.archer_id) is not None
     assert m.series.par_archer(basse, autre) is not None
@@ -814,7 +861,7 @@ def test_saisir_une_volee_pendant_la_pause_est_refuse() -> None:
 
     with pytest.raises(PhaseEnPause):
         montage.service.saisir_volee(
-            montage.tournoi_id, montage.archer_id, 1, _v("10", "9", "8"), "DURAND"
+            montage.tournoi_id, montage.archer_id, 1, _v("10", "9", "8"), "DURAND", role=Role.ADMIN
         )
 
 
@@ -847,7 +894,7 @@ def test_corriger_une_volee_pendant_la_pause_reste_possible() -> None:
     _mettre_la_phase_en_pause(montage)
 
     serie = montage.service.corriger_volee(
-        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "ADMIN"
+        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "MARTIN", role=Role.SCOREUR
     )
 
     assert serie.volees[0].valeurs == _v("10", "10", "10")
@@ -1036,6 +1083,7 @@ def test_un_forfait_declare_par_le_geste_reel_ne_retient_pas_le_tour() -> None:
             _v("10", "9", "8"),
             "DURAND",
             contexte=ContexteSaisie(cible_index=1, depart_id=soir.id),
+            role=Role.POSTE_DE_CIBLE,
         )
     # Le geste réel : le forfait atterrit sur la qualification du **premier** créneau (DETTE-047).
     m.forfaits.semer(
@@ -1105,6 +1153,7 @@ def test_un_archer_double_engage_forfait_sur_un_creneau_sort_de_l_autre_plateau(
                 _v("10", "9", "8"),
                 "DURAND",
                 contexte=ContexteSaisie(cible_index=1, depart_id=soir.id),
+                role=Role.POSTE_DE_CIBLE,
             )
     # Forfait déclaré sur le créneau du MATIN (la phase du montage) — le geste réel range tout là.
     m.forfaits.semer(
@@ -1141,7 +1190,9 @@ def test_une_volee_saisie_hors_ordre_ne_fait_pas_franchir_le_tour() -> None:
     _decouper(m, nb_tours=2)
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     _saisir_volees(m, m.archer_id, 9)
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 20, _v("10", "9", "8"), "DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 20, _v("10", "9", "8"), "DURAND", role=Role.ADMIN
+    )
 
     avancement = m.service.avancement_de_phase(m.tournoi_id, m.phase_id)
 
@@ -1191,7 +1242,9 @@ def test_annuler_une_validation_rouvre_la_saisie_par_le_poste() -> None:
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND", role=Role.ADMIN
+    )
 
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
@@ -1273,12 +1326,19 @@ def test_corriger_une_volee_rendue_pendant_la_pause_repare_quand_meme() -> None:
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
     _mettre_la_phase_en_pause(m)
 
-    m.service.corriger_volee(m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE")
+    m.service.corriger_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "10", "10"), auteur="ARBITRE", role=Role.SCOREUR
+    )
 
+    # ⚠️ Depuis E16US020, réparer **pose un rang** : à la reprise, la tablette est refusée sur
+    # cette volée, et la sortie tient en deux gestes — cf.
+    # `test_la_sortie_du_blocage_existe_et_tient_en_deux_gestes`. Sans l'assertion de rang,
+    # l'ajout de `role=` changeait le sens du test sans qu'aucune assertion ne bouge.
     serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None
+    assert volee.role_de_saisie is Role.SCOREUR
     assert volee.valeurs == _v("10", "10", "10")
     assert volee.en_correction is True, "réparer ne referme pas la fenêtre — revalider est gelé"
 
@@ -1295,7 +1355,9 @@ def test_la_ressaisie_d_une_volee_en_correction_est_tracee() -> None:
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND", role=Role.ADMIN
+    )
 
     trace = m.series.traces[-1]
     assert trace.action is ActionAuditee.CORRECTION_SCORE
@@ -1328,6 +1390,7 @@ def test_la_trace_de_ressaisie_nomme_le_poste_et_non_le_marqueur_declare() -> No
         _v("6", "6", "6"),
         saisie_par="Administrateur",
         contexte=contexte,
+        role=Role.POSTE_DE_CIBLE,
     )
 
     trace = m.series.traces[-1]
@@ -1345,7 +1408,9 @@ def test_une_ressaisie_a_l_identique_ne_trace_rien() -> None:
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
     avant = len(m.series.traces)
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND", role=Role.ADMIN
+    )
 
     assert len(m.series.traces) == avant
 
@@ -1354,7 +1419,9 @@ def test_une_saisie_ordinaire_ne_trace_toujours_rien() -> None:
     """Oracle de non-garde : la trace ci-dessus ne doit pas déborder sur la saisie courante."""
     m = Montage()
 
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND", role=Role.ADMIN
+    )
 
     assert m.series.traces == []
 
@@ -1382,7 +1449,9 @@ def test_refermer_une_correction_trace_au_nom_du_scoreur() -> None:
     m.saisir_serie_complete()
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
     m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, auteur="MARTIN")
-    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND")
+    m.service.saisir_volee(
+        m.tournoi_id, m.archer_id, 1, _v("6", "6", "6"), saisie_par="DURAND", role=Role.ADMIN
+    )
 
     m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, scoreur="ROUX")
 

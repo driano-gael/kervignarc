@@ -2159,7 +2159,10 @@ button:disabled {
 }
 
 /* Refus de déplacement (409) : une **alerte** ambre (DV-03, `--danger`), pas une erreur rouge — le
-   geste était légitime, seulement pas applicable ici. */
+   geste était légitime, seulement pas applicable ici.
+   ⚠️ Classe **globale** malgré son préfixe BEM : consommée par `placement/Placement.tsx`,
+   `duels/Duels.tsx`, `saisie-duels/SaisieDuels.tsx` et `saisie/Saisie.tsx`. La renommer demande un
+   grep — le préfixe ne dit plus qui s'en sert. */
 .placement__alerte {
   margin: 4px 0;
   color: var(--danger);

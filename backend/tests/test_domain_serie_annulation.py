@@ -20,6 +20,7 @@ from domain.erreurs import (
     VoleeNonVerrouillee,
 )
 from domain.grain_validation import GrainValidation
+from domain.role import Role
 from domain.serie import Serie, Volee
 
 ZONES_SIMPLE = tuple(ZoneScore)
@@ -247,6 +248,7 @@ def test_corriger_une_volee_validee_reste_possible() -> None:
         par="DURAND",
         zones_admises=ZONES_SIMPLE,
         nb_fleches_par_volee=3,
+        role_de_saisie=Role.SCOREUR,
     )
 
     volee = serie.volee(1)
@@ -279,6 +281,7 @@ def test_corriger_une_volee_en_correction_reste_possible() -> None:
         par="DURAND",
         zones_admises=ZONES_SIMPLE,
         nb_fleches_par_volee=3,
+        role_de_saisie=Role.SCOREUR,
     )
 
     volee = serie.volee(1)
@@ -299,6 +302,7 @@ def test_corriger_une_volee_jamais_validee_reste_refuse() -> None:
             par="DURAND",
             zones_admises=ZONES_SIMPLE,
             nb_fleches_par_volee=3,
+            role_de_saisie=Role.SCOREUR,
         )
 
 

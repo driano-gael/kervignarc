@@ -137,6 +137,8 @@ export function getSerie(tournoiId: number, archerId: number): Promise<Serie> {
   return fetchJson<Serie>(`/api/v1/saisie/series/${tournoiId}/${archerId}`, undefined, 'poste')
 }
 
+// ⚠️ DETTE-100 : la portée est `'poste'` **en dur**, et c'est ce qui rend le refus de préséance
+// (E16US020) injoignable — aucun écran d'administration n'écrit de volée de qualification.
 export function saisirVolee(corps: SaisirVolee): Promise<Serie> {
   return fetchJson<Serie>(
     '/api/v1/saisie/volees',

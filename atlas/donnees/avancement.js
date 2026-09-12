@@ -4,6 +4,15 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "100",
+   "introduite_par": [
+    "E16US020"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "075",
    "introduite_par": [
     "E05US034"
@@ -753,9 +762,7 @@ window.ATLAS.avancement = {
     "E05US027"
    ],
    "ouverte": true,
-   "resorption_us": [
-    "E16US020"
-   ],
+   "resorption_us": [],
    "severite": "majeur"
   },
   {
@@ -3130,6 +3137,7 @@ window.ATLAS.avancement = {
     "0091",
     "0092",
     "0093",
+    "0107",
     "0109"
    ],
    "dettes_introduites": [
@@ -4570,11 +4578,15 @@ window.ATLAS.avancement = {
    "titre_story": "Annuler une validation pour corriger"
   },
   {
-   "adr": [],
-   "dettes_introduites": [],
-   "dettes_resorbees": [
-    "065"
+   "adr": [
+    "0037",
+    "0075",
+    "0107"
    ],
+   "dettes_introduites": [
+    "100"
+   ],
+   "dettes_resorbees": [],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "✅",

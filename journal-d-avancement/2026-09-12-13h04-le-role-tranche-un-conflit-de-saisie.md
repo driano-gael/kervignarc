@@ -1,0 +1,48 @@
+# 12 septembre 2026 — Quand deux personnes saisissent la même volée, le rôle tranche
+
+`E16US020` répond à une question que vous aviez posée au questionnaire sur les maquettes : *« deux
+personnes modifient la même volée : qui doit trancher ? »*. Votre réponse était **la hiérarchie**.
+Elle est maintenant dans le serveur.
+
+## Ce qui change
+
+Une volée **retient le rôle réel** de qui l'a écrite — pas le nom tapé dans « saisi par », qui est
+une étiquette libre, mais la façon dont on s'est connecté : le QR d'une cible, le code d'un scoreur,
+la session de l'organisateur. Une écriture venue d'un rang **moins élevé** que celui qui a déjà
+saisi est **refusée**, avec une phrase qui dit pourquoi.
+
+L'ordre est : **poste de cible → scoreur → organisateur**.
+
+Avant, la dernière écriture gagnait toujours, en silence. Le cas visé est concret : vous corrigez
+une volée, et la tablette de la cible — qui n'a pas vu votre correction — renvoie l'ancienne valeur
+trente secondes plus tard.
+
+## Quatre choses à savoir, décidées avec vous
+
+- **Entre deux tablettes, rien ne change.** Elles ont le même rang, donc la règle ne les départage
+  pas : le dernier écrit gagne, comme avant. C'est **le cas le plus fréquent en salle**, et c'est le
+  renoncement le plus coûteux de cette livraison. La solution qui l'aurait couvert — refuser *tout*
+  second écrivain et lui montrer la saisie de l'autre — a été écartée, pas oubliée.
+- **Le refus joue aussi vers le bas.** Si vous saisissez par erreur sur la cible 7, cette cible ne
+  peut plus se corriger toute seule. Le recours : **vous ressaisissez vous-même la bonne valeur**.
+  ⚠️ *Ce n'est pas « annuler la validation » — une première rédaction l'affirmait, à tort : il n'y a
+  rien à annuler sur une volée que personne n'a validée.*
+- **Une correction du scoreur ne s'efface plus toute seule.** Quand le scoreur corrige lui-même au
+  lieu de rendre la volée à la tablette, sa correction porte son rang : une tablette qui ressaisirait
+  derrière est refusée. ⚠️ *Trouvé en revue. Sans lui, la règle se contournait
+  simplement en passant par l'autre chemin d'écriture.*
+- **Cela ne concerne que la qualification.** Duels, poules, système suisse, colline et Big Shoot Off
+  ne bougent pas.
+
+## Ce qui n'est pas encore visible à l'écran
+
+⚠️ **Rien de tout cela ne se voit encore en manipulant l'application.** Aucun écran d'administration
+ne saisit de volée, et le seul geste qui ferait écrire un scoreur — corriger une valeur — n'est
+proposé par aucun écran non plus : le panneau du scoreur vous renvoie à la tablette. Les deux
+chemins existent côté serveur et sont vérifiés par des tests ; ce sont les écrans qui manquent.
+
+La règle est bien là, tenue par le serveur et vérifiée par des tests. L'écran de la tablette sait
+déjà afficher le refus, en ambre, avec le recours. Il attend la surface qui le déclenchera. C'est
+inscrit au registre (`DETTE-100`) plutôt que passé sous silence.
+
+Le scénario de recette détaillé est dans [`docs/fonctionnel/E16US020.md`](../docs/fonctionnel/E16US020.md).

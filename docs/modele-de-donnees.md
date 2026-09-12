@@ -501,6 +501,7 @@ imparfait et la migration différée.
 | validee_par | TEXT | scoreur ; **non NULL = la volée COMPTE** (cumul, classement), nullable |
 | lot_validation | INTEGER | l'acte de validation qui a verrouillé la volée ; non NULL **ssi** `validee_par` l'est, nullable (E16US019) |
 | correction_ouverte_par | TEXT | qui a annulé la validation ; **non NULL = écriture rouverte**, la volée restant comptée, nullable (E16US019) |
+| role_de_saisie | TEXT | le **rôle** qui **revendique la préséance** sur la volée, posé par les chemins d'écriture (saisie *et* correction) — `Role.name`, jamais le numéro ; `NULL` = aucune préséance revendiquée, nullable (E16US020) |
 | created_at | TEXT (datetime) | le « quand » de la saisie (ex-017), NOT NULL |
 | — | — | **UNIQUE(serie_id, numero)** — un seul rang N par série |
 
@@ -510,7 +511,14 @@ imparfait et la migration différée.
 > `correction_ouverte_par IS NULL`. *(La rédaction précédente — « `validee_par` non NULL **est** le
 > verrou » — est devenue fausse le jour où une validation s'annule ; relevé en revue d'E16US019.)*
 > Annuler rouvre **tout le lot** (`lot_validation`), jamais une volée isolée : le lot n'est pas
-> recalculable, rien n'imposant de saisir dans l'ordre. Le total n'est pas stocké (cumul recalculé).
+> recalculable, rien n'imposant de saisir dans l'ordre. ⚠️ **Et l'annulation remet `role_de_saisie` à
+> `NULL`** sur le lot rouvert ([ADR-0107](adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md) §4) :
+> sans quoi celui qui annule deviendrait le dernier écrivain et verrouillerait la volée contre la
+> tablette qui doit la corriger. ⚠️ **`role_de_saisie` n'est ni `saisie_par` ni une trace d'audit** : le
+> premier vient de la garde et fait autorité, le second est un nom libre venu du corps de requête, et
+> « qui a fait quoi, quand » se lit dans `EntreeAudit` — pas ici. *(Le mot **rang** a été retiré de cette
+> ligne en revue : le glossaire le réserve à la **position finale d'un archer**.)* Aucune reprise à la
+> migration `0055` — les volées d'avant restent à `NULL`, donc écrasables comme elles l'étaient. Le total n'est pas stocké (cumul recalculé).
 > `serie_id` en **`ON DELETE CASCADE`** — **hors** DETTE-001, comme `PLACEMENT` (feuille auto-cascadée).
 > `created_at` est une **métadonnée de persistance** (comme l'`id`), **hors** de l'agrégat domaine
 > `Volee` : posée par le repository via le port `Horloge` (UTC) et **préservée par numéro** au

@@ -9,7 +9,7 @@
 
 import { ErreurApi } from '../../shared/api/client'
 import type { ActeDuelEnFile } from '../../shared/stores/fileDuelsHorsLigneStore'
-import { estConditionDeRencontre, estRefusDefinitif } from './horsLigne'
+import { estConditionDeRencontre, estRefusDefinitifDuel } from './horsLigne'
 
 export interface ResultatRejeuDuels {
   // À retirer de la file : renvoyés avec succès **ou** refusés définitivement par le serveur.
@@ -59,7 +59,7 @@ export async function rejouerActes(
       // `ErreurApi` = le serveur a **répondu**. Refus **définitif** (4xx métier) → on retire et on
       // journalise ; **transitoire** (401/409/429/5xx) → on **garde** en file. (Mélanger les deux
       // serait une perte de score silencieuse, ADR-0037.)
-      if (erreur instanceof ErreurApi && !estRefusDefinitif(erreur.statut, erreur.code)) {
+      if (erreur instanceof ErreurApi && !estRefusDefinitifDuel(erreur.statut, erreur.code)) {
         // Refus propre à **cette** rencontre → on la bloque et on continue. Condition **globale**
         // (session perdue, débit, panne serveur) → on s'arrête, comme avant : les rencontres
         // suivantes échoueraient toutes.

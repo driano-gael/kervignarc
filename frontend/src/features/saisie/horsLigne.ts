@@ -28,10 +28,29 @@ export function estRefusServeur(erreur: unknown): boolean {
 // de masse). Un score gardé et rejoué plus tard vaut infiniment mieux qu'un score perdu en silence.
 const STATUTS_TRANSITOIRES = new Set([401, 408, 409, 429])
 
-// Au **rejeu**, un refus est-il **définitif** (rejouer n'y changera rien → on retire de la file et on
-// journalise) ? Seuls les 4xx **métier** non rejouables le sont : 400 (valeur invalide), 403
-// (hors-cible), 404 (blason/archer introuvable), 422 (non traitable). Tout le reste — transitoires
-// listés + 5xx — est **gardé en file** pour un rejeu ultérieur.
-export function estRefusDefinitif(statut: number): boolean {
-  return statut >= 400 && statut < 500 && !STATUTS_TRANSITOIRES.has(statut)
+// ⚠️ **Un refus au *statut* transitoire dont la *cause* ne l'est pas** — correctif de revue
+// E16US020, jumeau inversé de `CODES_TRANSITOIRES` côté duels.
+//
+// `ecriture_de_role_inferieur` est le **premier 409 définitif du produit** : le rang du poste ne
+// montera jamais, et l'écriture d'en face est durable. Le laisser transitoire gardait la volée en
+// file, et comme le rejeu **s'arrête au premier refus gardé**, toutes les volées enfilées derrière
+// ne partaient plus jamais — file persistée en `localStorage`, donc survivant au rechargement.
+const CODES_DEFINITIFS = new Set(['ecriture_de_role_inferieur'])
+
+// Au **rejeu**, un refus est-il **définitif** (rejouer n'y changera rien → retrait de la file et
+// journalisation) ? Seuls les 4xx **métier** hors liste transitoire le sont ; tout le reste —
+// transitoires listés + 5xx — est **gardé en file** pour un rejeu ultérieur.
+// ⚠️ **Les DEUX jumeaux sont suffixés** (`…Saisie` / `…Duel`), et c'est la seule chose qui les
+// sépare : même signature `(statut, code)`, sémantique du 2ᵉ paramètre **inversée**
+// (`CODES_TRANSITOIRES` force `false`, ici `CODES_DEFINITIFS` force `true`). Leurs arités
+// différaient, donc un import croisé ne compilait pas ; depuis E16US020 elles sont identiques.
+// Ne pas rendre l'un des deux noms générique : un import croisé inverserait le tri de la file.
+export function estRefusDefinitifSaisie(statut: number, code: string): boolean {
+  // ⚠️ La fenêtre 4xx d'ABORD, la liste de codes ensuite — comme le jumeau des duels. Tester le
+  // code en premier (1ʳᵉ rédaction) rendait « définitif » un **5xx** portant ce code : la volée
+  // était jetée alors que tout 5xx est rejouable, et « ne rien perdre » cessait d'être vrai par
+  // construction (ADR-0037). Aucun chemin ne produit ce couple aujourd'hui ; c'est la borne qui
+  // compte, pas le cas.
+  if (statut < 400 || statut >= 500) return false
+  return CODES_DEFINITIFS.has(code) || !STATUTS_TRANSITOIRES.has(statut)
 }
