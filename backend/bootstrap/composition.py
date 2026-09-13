@@ -1294,6 +1294,9 @@ def create_app(
         # sans ces deux ports, il naissait sans aucune phase, donc impilotable.
         deroule_repository,
         phase_repository,
+        # ⚠️ **Le même compteur que le suivi du déroulé et l'exigence d'effectif**, pas un second :
+        # l'accueil affiche cet effectif par créneau (E16US021), il doit dire le même chiffre.
+        compteur_engages,
     )
 
     # Jeu d'essai — générateur d'inscrits + scénarios rejouables (E15US001) : outil admin de démo/QA

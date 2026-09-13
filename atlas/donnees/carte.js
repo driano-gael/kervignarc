@@ -272,7 +272,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 365,
+   "occurrences": 366,
    "source": "application"
   },
   {
@@ -296,7 +296,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 90,
+   "occurrences": 91,
    "source": "infrastructure"
   },
   {
@@ -320,7 +320,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 98,
+   "occurrences": 99,
    "source": "api"
   },
   {
@@ -548,7 +548,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 94,
+   "occurrences": 95,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -762,7 +762,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 350,
+   "occurrences": 351,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1084,7 +1084,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 54,
+   "occurrences": 55,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/exploitation.py",
@@ -2335,6 +2335,10 @@ window.ATLAS.carte = {
      "nom": "ServiceDeparts"
     },
     {
+     "fichier": "backend/application/departs.py",
+     "nom": "SyntheseDepart"
+    },
+    {
      "fichier": "backend/application/pilotage_simulation.py",
      "nom": "ServicePilotageSimulation"
     },
@@ -3024,8 +3028,8 @@ window.ATLAS.carte = {
   "aretes_front": 178,
   "enchevetrements": 4,
   "features": 50,
-  "imports": 948,
-  "imports_entre_couches": 802,
+  "imports": 951,
+  "imports_entre_couches": 805,
   "plus_gros_noeud": 24,
   "ports": 69,
   "ports_hors_domaine": 26,

@@ -21,11 +21,17 @@ const cleDeparts = (tournoiId: number) => ['departs', tournoiId] as const
 // `enabled` (défaut `true`) : la recherche de la sidebar admin (E12US006), montée sur tout écran, ne
 // charge les départs que lorsqu'on cherche — les écrans existants ne passent rien et gardent leur
 // comportement.
-export function useDeparts(tournoiId: number, enabled = true) {
+//
+// ⚠️ **`refetchInterval` est OPTIONNEL et le reste** (E16US021). Cette liste est montée par ~25
+// écrans et jusqu'à ~30 tablettes : la poller partout serait une charge gratuite. Seul l'appelant
+// qui en fait une donnée **de pilotage** le demande — React Query retient le plus petit intervalle
+// parmi les observateurs d'une clé, donc le poll ne vit que tant que cet écran-là est monté.
+export function useDeparts(tournoiId: number, enabled = true, refetchInterval?: number) {
   return useQuery({
     queryKey: cleDeparts(tournoiId),
     queryFn: () => getDeparts(tournoiId),
     enabled,
+    refetchInterval,
   })
 }
 

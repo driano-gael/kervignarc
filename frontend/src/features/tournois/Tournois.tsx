@@ -127,6 +127,8 @@ export function GestionTournois({
           <h3 className="carte__soustitre">
             {courant.nom} <BadgeStatut statut={courant.statut} />
           </h3>
+          {/* DETTE-082 — frise montée **sans** `jalons` : « Démarrer »/« Terminer » restent des
+              boutons nus ici. C'est le seul site où le doublon d'affordance subsiste. */}
           <FriseCycleDeVie tournoi={courant} />
         </div>
       )}

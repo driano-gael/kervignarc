@@ -6,10 +6,10 @@
 // de la topologie — la frise ne décide rien, règle 1). Les transitions qui **figent** ou sont
 // terminales sont confirmées ; `terminer` réutilise le message chiffré de la complétude (E12US005).
 
-// DETTE-082 — ⚠️ cette frise porte les boutons « Démarrer » / « Terminer » **nus**, pendant que la
-// famille « prêt à… » (E16US012) porte les mêmes actions **expliquées** par ce qui manque. Deux
-// endroits pour le même geste : à instruire quand `ARCHIVER` rejoindra la famille, la frise portant
-// aussi ce bouton. Ne pas ajouter un 3ᵉ chemin d'action sans trancher celui-ci.
+// DETTE-082 — ⚠️ **résorbée là où `jalons` est fourni, ouverte ailleurs.** Les boutons
+// « Démarrer » / « Terminer » **nus** deviennent alors un renvoi vers la famille « prêt à… »
+// (E16US012), qui porte la même action **expliquée** par ce qui manque. Sans la prop, la frise
+// garde les boutons nus — c'est encore le cas sur la destination « Tournoi ».
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
@@ -76,7 +76,28 @@ function AvertissementEffectif({ exigence }: { exigence: ExigenceEffectif }) {
   )
 }
 
-export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
+/** Un écran « prêt à… » vers lequel une transition renvoie au lieu d'agir (E16US012, ADR-0096). */
+export interface RenvoiJalon {
+  /** Le nom de l'écran visé, **fourni par la coquille** — jamais recopié ici. */
+  libelle: string
+  aller: () => void
+}
+
+export function FriseCycleDeVie({
+  tournoi,
+  jalons,
+}: {
+  tournoi: Tournoi
+  /** Les transitions qui **renvoient** vers leur jalon au lieu d'agir, par nom (E16US021).
+   *
+   * ⚠️ **La coquille fournit le couple libellé + navigation**, la frise n'en connaît aucun des
+   * deux. C'est ce qui empêche trois défauts d'un coup : pas de cast de `t.nom` vers une union
+   * (un membre ajouté sans destination ne compile pas côté coquille), pas de libellé recopié qui
+   * dériverait de la barre latérale, et pas d'import `accueil → admin` — le cycle de `DETTE-083`,
+   * `admin → accueil` existant déjà. Omis, la frise se comporte comme avant : c'est ce qui laisse
+   * la destination « Tournoi » intacte. */
+  jalons?: Readonly<Record<string, RenvoiJalon>>
+}) {
   const transitions = useTransitions(tournoi.id)
   const transitionner = useTransitionnerTournoi(tournoi.id)
   const exigence = useExigenceEffectif(tournoi.id)
@@ -199,23 +220,45 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
           (transitions.data ?? []).length === 0 && (
             <p className="carte__etat">Aucune action disponible à ce stade.</p>
           )}
-        {(transitions.data ?? []).map((t) => (
-          <button
-            key={t.nom}
-            type="button"
-            className={
-              t.nom === 'annuler'
-                ? 'bouton--danger'
-                : t.nom === 'revenir-brouillon'
-                  ? 'bouton--discret'
-                  : undefined
-            }
-            disabled={transitionner.isPending}
-            onClick={() => void declencher(t.nom)}
-          >
-            {t.libelle}
-          </button>
-        ))}
+        {(transitions.data ?? []).map((t) => {
+          // ⚠️ Le renvoi porte le **libellé de l'écran visé**, pas celui de la transition : c'est
+          // l'entrée que l'organisateur lit dans la barre latérale, donc ce qui lui fait
+          // comprendre qu'on l'emmène quelque part au lieu d'agir tout de suite.
+          const renvoi = jalons?.[t.nom]
+          if (renvoi !== undefined) {
+            return (
+              <button
+                // ⚠️ Pas de `bouton--discret` : « Prêt à démarrer ? » **est** l'action nominale de
+                // la journée ; la griser la rangerait avec « Revenir en brouillon ». ⚠️ `disabled`
+                // comme les autres — sans lui, on quitte l'écran pendant qu'une transition est en
+                // vol et son erreur s'affiche dans la frise qu'on vient de quitter.
+                key={t.nom}
+                type="button"
+                disabled={transitionner.isPending}
+                onClick={renvoi.aller}
+              >
+                {renvoi.libelle}
+              </button>
+            )
+          }
+          return (
+            <button
+              key={t.nom}
+              type="button"
+              className={
+                t.nom === 'annuler'
+                  ? 'bouton--danger'
+                  : t.nom === 'revenir-brouillon'
+                    ? 'bouton--discret'
+                    : undefined
+              }
+              disabled={transitionner.isPending}
+              onClick={() => void declencher(t.nom)}
+            >
+              {t.libelle}
+            </button>
+          )
+        })}
       </div>
       <MessageErreur erreur={transitionner.error} />
 

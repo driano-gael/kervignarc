@@ -61,6 +61,7 @@ const DEPART: Depart = {
   tarif_centimes: 0,
   quota: null,
   etat: 'ouvert',
+  effectif: 0,
 }
 
 function archer(over: Partial<Archer> = {}): Archer {

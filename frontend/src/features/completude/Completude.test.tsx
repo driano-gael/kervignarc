@@ -475,7 +475,10 @@ describe('CA E16US003 — le tableau de bord d’accueil ne mélange plus non pl
 
     await waitFor(() => expect(screen.getByText('Qualification')).toBeInTheDocument())
     const chiffres = container.querySelector('.accueil__chiffres')!
-    expect(within(chiffres as HTMLElement).getByText('Réglés')).toBeInTheDocument()
+    // ⚠️ **Préfixe et non égalité** : le CA porte sur la PRÉSENCE du repère dans l'entête, pas sur
+    // son libellé exact. E16US021 l'a précisé en « Réglés (archers du tournoi) » — son dénominateur
+    // n'est pas la somme des effectifs par créneau désormais affichés juste au-dessus.
+    expect(within(chiffres as HTMLElement).getByText(/^Réglés/)).toBeInTheDocument()
     expect(within(chiffres as HTMLElement).getByText('113/120')).toBeInTheDocument()
   })
 

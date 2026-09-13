@@ -7,7 +7,8 @@
 // identique. ⚠️ Le bouton « Terminer » n'est **jamais bloqué** (`D-15`) et sa confirmation
 // **chiffre les impayés** — le seul moment où les deux mondes doivent se croiser (E16US003, A14).
 
-// DETTE-082 — deux endroits portent le même geste : la frise du cycle de vie garde son bouton nu.
+// DETTE-082 — depuis l'accueil, la frise **renvoie ici** (E16US021) ; elle garde son bouton nu
+// sur la destination « Tournoi », seul site où le doublon subsiste.
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { texteErreur } from '../../shared/ui/texteErreur'

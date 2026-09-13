@@ -204,13 +204,16 @@ lancement sous couvert d'une US de navigation. Le test
 `test_un_deroule_vide_ne_bloque_ni_le_jalon_ni_la_garde` **tombera** si la garde durcit un jour —
 c'est voulu, la décision doit être prise, pas subie.
 
-**Angle mort assumé.** La frise du cycle de vie (E14US001) porte toujours ses propres boutons
-« Démarrer » / « Terminer » sur l'accueil admin. Elle n'est pas en contradiction — elle lit la même
-topologie serveur — mais l'organisateur dispose désormais de **deux** endroits pour démarrer un
-tournoi : la frise (action nue) et le jalon (action expliquée). Les fondre relèverait de la refonte
-de navigation complète que la fiche annonçait ; ce n'est pas fait ici, et c'est à instruire quand
-`ARCHIVER` rejoindra la famille — c'est là que la question se posera pour de bon, la frise portant
-aussi ce bouton. ⚠️ **Inscrit au registre en revue** (`DETTE-082`) : un angle mort qui ne vit que
+**Angle mort assumé — ✅ refermé sur l'accueil le 12/09/2026 (E16US021), encore ouvert ailleurs.**
+À la livraison, la frise du cycle de vie (E14US001) portait ses propres boutons « Démarrer » /
+« Terminer » : l'organisateur disposait de **deux** endroits pour démarrer un tournoi, la frise
+(action nue) et le jalon (action expliquée). Depuis E16US021, la frise accepte une table `jalons`
+fournie par la coquille : là où elle l'est — l'**accueil**, destination d'ouverture de l'axe
+pilotage —, ces deux transitions **renvoient** vers leur écran « prêt à… » au lieu d'agir. Il reste
+deux sites ouverts, délibérément : la destination « Tournoi », qui monte la frise sans cette table,
+et **`archiver`**, qu'on n'y ajoute pas tant que son jalon répond `404 jalon_non_instruit` — l'y
+renvoyer mènerait à un écran vide, pire que le bouton nu. ⚠️ **L'instruction n'a donc pas attendu
+`ARCHIVER`**, contrairement à ce que cette section prévoyait. ⚠️ **Inscrit au registre en revue** (`DETTE-082`) : un angle mort qui ne vit que
 dans une section *Conséquences* n'apparaît à aucun tri de dette, donc n'est jamais repris. La règle
 du projet demande la ligne **plus** le marqueur à l'endroit du raccourci ; ils y sont désormais.
 
@@ -234,6 +237,7 @@ constat et le remède.
 | §1 — le sens **inverse** (jalon optimiste ↔ serveur qui refuse) est gardé lui aussi | `backend/tests/test_service_jalons.py` (`test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer`) | oui — c'est le sens qui coûte le plus cher s'il casse |
 | §2 — un membre et une question uniques, **deux** rendus | `backend/api/v1/jalons.py` — `GET /api/v1/tournois/{id}/jalons/{jalon}` (préparation, `PreparationJalonReponse`) **et** `GET /api/v1/jalons/{jalon}/apercus` (collection, `ApercuJalonReponse`, E16US010) ; `jalon: Jalon` en segment dans les deux. Côté front, **deux** surfaces : `frontend/src/features/jalons/PretA.tsx` (l'écran) et `frontend/src/features/jalons/PastillePreparation.tsx` (la liste), cette dernière portant la **seule** table de libellés du front (`frontend/src/features/jalons/presentation.ts`, `pastille`) — exception bornée à un membre, cf. l'encadré du §2. ⚠️ **Chemins complets obligatoires** : en nom de fichier nu, l'atlas rattachait ces symboles au dernier chemin vu (`PretA.tsx`) et publiait un portage **faux** | oui — ⚠️ **amendé le 29/08/2026** : la ligne disait « une route unique paramétrée » et est restée vraie **un jour de trop**, E16US010 ayant ajouté le second contrat sans rouvrir cet ADR (relevé par l'axe A). ⚠️ **Ré-amendé en 2ᵉ passe** : le 1ᵉʳ amendement n'avait corrigé que la route et laissait debout « un seul type de réponse », « une seule coquille front » et l'invariant « aucune table de libellés » — que `pastille()` casse |
 | §2 — la question se dérive du membre, côté serveur **et le front la consomme** | `frontend/src/features/jalons/PretADemarrer.tsx` (`question={preparation.data?.question ?? …}`) · `backend/domain/jalon.py` (`question`, `_VERBE`) · `backend/api/v1/jalons.py` (`PreparationJalonReponse.question`) — gardé par `backend/tests/test_domain_jalon.py` (`test_chaque_membre_pose_sa_question_sous_la_meme_forme`) ⚠️ **une réserve** : `Completude.tsx` garde son libellé en dur, parce qu'il lit `/completude` et non `/jalons/terminer` (cf. § Conséquences) — la dérivation vaut donc pour tout membre qui consomme la route | oui |
+| § Conséquences — l'angle mort « deux endroits pour le même geste » est refermé **là où la coquille fournit les renvois** | `frontend/src/features/accueil/FriseCycleDeVie.tsx` (l'interface `RenvoiJalon` et la prop `jalons` ; sans elle, boutons nus) · `frontend/src/features/admin/CoquilleAdmin.tsx` (`ecranDuJalon` / `jalonsDeLaFrise`, qui lit le libellé **dans** `destinations` et la destination via `AXE_PAR_DESTINATION`) · `frontend/src/features/tournois/Tournois.tsx` (montage **sans** `jalons` — le site encore ouvert, marqueur `DETTE-082`) | oui — `frontend/src/features/accueil/FriseCycleDeVie.test.tsx`, section « renvoi vers la famille "prêt à…" » : trois cas, dont **les boutons nus en l'absence de `jalons`**, pour que la fermeture du site restant soit un geste voulu et non un effet de bord. ⚠️ `archiver` **absent** de la table tant que son jalon répond `404` |
 | §2 — une coquille front unique, montée par les **deux** membres livrés | `frontend/src/features/jalons/PretA.tsx`, montée par `frontend/src/features/jalons/PretADemarrer.tsx` **et** `frontend/src/features/completude/Completude.tsx` | oui — deux occurrences réelles, pas une abstraction sur pari |
 | §2 — le DTO de ligne est **réutilisé**, pas recopié | `backend/api/v1/jalons.py` importe `LigneCompletudeReponse` de `api/v1/completude.py` | oui |
 | §3 — `pret` ≠ « toutes les lignes vertes » | `backend/domain/jalon.py` (`evaluer_demarrer` : `pret=` ne retient que le statut, les créneaux et l'effectif — jamais le déroulé) — gardé par `test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart` (`backend/tests/test_domain_jalon.py`) | oui |

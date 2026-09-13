@@ -427,15 +427,19 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   écran ensuite. Le spectateur ne peut plus accéder par mégarde au mot de passe admin ou au code
   scoreur ; on change de rôle par un lien discret. Détail dans
   [`2026-07-21-22h10-choisir-son-role-au-lancement.md`](2026-07-21-22h10-choisir-son-role-au-lancement.md).
-- Un **accueil-tableau de bord par tournoi** (dernier fait marquant, 28/07) qui « raconte l'histoire »
-  du tournoi : une **frise des 7 étapes** de sa vie (brouillon → prêt → en cours → terminé → archivé,
-  plus en pause / annulé) avec le statut courant surligné et les **boutons d'action** du moment
-  (marquer prêt, démarrer, mettre en pause, terminer, archiver, annuler) ; dessous, des **chiffres-clés**
-  (inscrits, réglés, postes en ligne), une **checklist « à faire »** et les **alertes**. Il ne fait
-  qu'**assembler** des informations déjà là (complétude, supervision, paiements). Au passage, un bug est
-  corrigé : le pilotage ne connaissait que 3 états et se **bloquait** dès « prêt »/« en pause » — la
-  frise couvre désormais les 7 partout. Détail dans
-  [`2026-07-28-11h04-accueil-tableau-de-bord.md`](2026-07-28-11h04-accueil-tableau-de-bord.md).
+- Un **accueil-tableau de bord par tournoi** qui « raconte l'histoire » du tournoi. Depuis le
+  12/09/2026, il s'ouvre sur **un cadre par départ**, tous côte à côte : horaire, état du créneau
+  (*à lancer* / *en cours* / *clos*), **effectif inscrit sur ce créneau** comparé à son quota, et la
+  **pause affichée sur le départ qu'elle arrête** — là où un message général disait seulement qu'une
+  phase attendait. Dessous, la **frise des 7 étapes** de la vie du tournoi (brouillon → prêt → en
+  cours → terminé → archivé, plus en pause / annulé), les **chiffres-clés** (réglés, postes en
+  ligne), une **checklist « à faire »** et les **alertes**. Il ne fait qu'**assembler** des
+  informations déjà là (complétude, supervision, paiements, créneaux). Les boutons « Démarrer » et
+  « Terminer » de la frise **renvoient désormais** vers les écrans « Prêt à démarrer ? » / « Prêt à
+  terminer ? », qui listent d'abord ce qui manque : on avait deux portes pour le même geste, c'est
+  celle qui explique qui l'emporte. Détail dans
+  [`2026-07-28-11h04-accueil-tableau-de-bord.md`](2026-07-28-11h04-accueil-tableau-de-bord.md) et
+  [`2026-09-12-18h47-l-accueil-parle-par-depart.md`](2026-09-12-18h47-l-accueil-parle-par-depart.md).
 - Une **aide contextuelle sur chaque écran** (dernier fait marquant, 28/07) : en tête de tout écran
   d'administration, un bouton **« ⓘ Aide »** discret, replié par défaut, qui **se déplie au toucher**
   pour expliquer, en langage d'organisateur, **ce qui se saisit là et à quoi ça sert** ensuite. Pensé
@@ -593,10 +597,23 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **138 US livrées** sur `main` (mergées, revues, CI verte) à la date du 11/09/2026 — dont **deux
+- **140 US livrées** (mergées, revues, CI verte) à la date du 12/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E16US019` — **annuler une validation
+  autorité sur le compte —, la dernière **livraison** étant `E16US021` — **l'accueil du tournoi
+  parle par départ** : l'écran d'atterrissage s'ouvre sur un cadre par créneau (horaire, état,
+  effectif du créneau, pause) au lieu des seuls totaux du tournoi, et les boutons « Démarrer » /
+  « Terminer » de la frise renvoient vers les écrans qui listent ce qui manque. ⚠️ **Le cadrage était
+  la moitié de l'US** : la fiche exigeait de borner « toutes les informations utiles au déroulé »
+  avant de coder, et **deux réponses du commanditaire se contredisaient** — elles auraient effacé de
+  l'accueil l'annonce des pauses et perdu deux chiffres qu'aucun créneau ne porte.
+  Avant elle, `E16US020` — **deux écritures, une même volée : le rôle tranche** : une volée retient
+  le **rôle réel** de qui l'a écrite, et une écriture d'un rang inférieur est **refusée**
+  (`poste de cible < scoreur < admin`). ⚠️ **Deux renoncements assumés, dits avant la décision** :
+  entre **deux tablettes** — le cas le plus fréquent en salle — les rangs sont égaux, donc rien n'est
+  arbitré ; et le refus joue **aussi vers le bas**. ⚠️ **Rien n'en est encore visible à l'écran**
+  (`DETTE-100`). Avant elle,
+  `E16US019` — **annuler une validation
   pour corriger** : le scoreur reçoit l'écran de validation de qualification annoncé par `E04US002`
   et jamais livré, et peut **rendre une volée à la tablette** qui l'a saisie. ⚠️ **Le score reste au
   classement pendant la correction** — les deux branches proposées (sortir la volée des totaux,

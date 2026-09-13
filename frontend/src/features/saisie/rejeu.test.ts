@@ -111,3 +111,29 @@ describe('rejouer', () => {
     expect(res.interrompu).toBe(false)
   })
 })
+
+describe('rejouer — un refus de préséance ne gèle pas la file (E16US020)', () => {
+  it('retire la volée refusée et CONTINUE avec les suivantes', async () => {
+    // ⚠️ Le défaut corrigé : `409` étant réputé transitoire, `rejouer` rendait `interrompu` et
+    // gardait la volée. Les volées 2 et 3 — d’autres archers de la même cible — ne partaient
+    // jamais, et la file étant persistée en `localStorage`, le blocage survivait au rechargement.
+    const envoyees: number[] = []
+    const envoyer = vi.fn((c: VoleeEnFile) => {
+      if (c.numero === 1) {
+        return Promise.reject(
+          new ErreurApi(409, 'ecriture_de_role_inferieur', 'Saisie par l’organisateur.'),
+        )
+      }
+      envoyees.push(c.numero)
+      return Promise.resolve()
+    })
+
+    const res = await rejouer([corps(1), corps(2), corps(3)], envoyer)
+
+    expect(res.interrompu).toBe(false)
+    expect(envoyees).toEqual([2, 3])
+    expect(res.refusees.map((c) => c.numero)).toEqual([1])
+    // Retirée de la file : `refusees` ⊂ `traitees`, et c’est ce qui déclenche la relecture serveur.
+    expect(res.traitees.map((c) => c.numero)).toEqual([1, 2, 3])
+  })
+})

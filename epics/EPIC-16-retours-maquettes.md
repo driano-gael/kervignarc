@@ -92,7 +92,16 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
       ⚠️ **Coupée en deux au cadrage** : classer les clubs entre eux part en `E16US017`.
 - [x] Le classement des clubs entre eux (E16US017) — **tranche B d'E16US014**, livrée le
       04/09/2026, ADR-0104. Décompte de médailles inter-clubs ; la portée *club* en est exclue.
-- [ ] Un QR par scoreur (E16US015) — **sortie d'E16US007** le 30/08/2026.
+- [x] Un QR par scoreur (E16US015) — **sortie d'E16US007** le 30/08/2026, livrée (PR #177).
+      ⚠️ Case restée décochée à la livraison, corrigée par `E16US020` — **3ᵉ fois** que ce défaut se
+      produit dans ce seul fichier (cf. `E16US010` et `E16US014` ci-dessus). Le geste manquant n'est
+      pas la vigilance : c'est que `SUIVI-US.md` fait autorité et que **rien ne relie les deux
+      fichiers**. Une divergence de plus ⇒ cette liste devient un renvoi au tracker.
+- [x] Deux écritures, une même volée : le rôle tranche (E16US020) — **sortie d'E16US011** le
+      10/09/2026, livrée le 12/09/2026 ([ADR-0107](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md),
+      migration `0055`). Périmètre arbitré : **la qualification seule**. ⚠️ **`DETTE-100`** : la règle
+      est tenue par le serveur mais **aucun écran ne la déclenche** — aucune surface d'administration
+      ne saisit de volée de qualification.
 - [ ] Exports : les formats et documents qui restent dus (E16US016) — reliquat d'`E16US007`,
       30/08/2026 : palmarès en tableur (renommage d'une route publique à arbitrer), export du
       journal d'audit, format `xlsx` (dépendance, règle 11).

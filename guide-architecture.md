@@ -124,6 +124,33 @@ kervignarc/
 - **pre-commit** (ruff, mypy, eslint, prettier, tests rapides).
 - **CI bloquante** : lint + typage + tests doivent passer avant tout merge.
 
+#### Ce que les hooks imposent au DÉCOUPAGE des commits
+
+`pre-commit` **remise (`stash`) tout ce qui n'est pas indexé** avant de lancer les hooks : chacun
+voit donc l'arbre tel que ce commit-ci le laissera, et rien de plus. Deux conséquences concrètes,
+qui se découvrent autrement en perdant une demi-heure sur une porte rouge incompréhensible :
+
+- **Le hook `mypy` tourne en `pass_filenames: false` sur tout `backend/`.** Le Python de production
+  **et ses tests** doivent donc **voyager dans le même commit** — un commit qui ajoute un paramètre
+  sans les appelants de test échoue, même si l'ensemble est cohérent dans l'arbre. ⚠️ **La migration, elle, échappe à `mypy`**
+  (`backend/pyproject.toml` : `exclude = '(^|/)migrations/'`, donc **en CI aussi**) et au motif
+  d'`atlas-a-jour` — mais **`ruff` la couvre bel et bien**, lint *et* format. Elle n'est donc pas
+  forcée dans le même commit que le code qu'elle accompagne ; seule la CI, qui joue les tests sur base
+  migrée, l'impose à l'échelle de la **PR**.
+
+  ⚠️ **Cette phrase a été fausse deux fois avant d'être juste** (revue d'E16US020). Écrire une
+  contrainte d'outillage sans l'avoir **sondée** — `ruff check migrations/`, `grep exclude` — produit
+  une fausse certitude qui se lit comme une preuve : c'est le mode de panne que la règle 13 décrit.
+- **Le hook `atlas-a-jour` vérifie sans régénérer**, et son motif couvre *à la fois* les sources de
+  doc (`docs/adr/`, `docs/dette.md`, `stories/`, `SUIVI-US.md`) et le code. Découper code et doc en
+  deux commits reste **possible**, mais oblige à **régénérer l'atlas dans chacun**, à l'état de ce
+  commit-là (`git stash` la moitié doc → `python -m atlas` → `git add atlas/donnees` → commit →
+  `git stash pop`). Sans ce geste, la porte rougit **dans les deux sens de découpage**.
+
+⚠️ **Ne pas écrire « le découpage est impossible »** — c'est la formule qu'`E16US020` a mise dans un
+corps de commit, et un relecteur l'a réfutée en lisant `.pre-commit-config.yaml`. Il est *fastidieux*,
+pas impossible ; et la contrainte réellement dure est celle de `mypy`, pas celle de l'atlas.
+
 ---
 
 ## 6. Frontière API & taxonomie d'erreurs

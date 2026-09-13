@@ -12,7 +12,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StatutTournoi, Tournoi } from '../competition/api'
-import { getExigenceEffectif, getTransitions, type ExigenceEffectif } from './api'
+import {
+  getExigenceEffectif,
+  getTransitions,
+  transitionnerTournoi,
+  type ExigenceEffectif,
+} from './api'
 import { FriseCycleDeVie } from './FriseCycleDeVie'
 
 vi.mock('./api', async (importOriginal) => ({
@@ -150,5 +155,64 @@ describe('AvertissementEffectif', () => {
     vi.mocked(getExigenceEffectif).mockRejectedValue(new Error('injoignable'))
 
     expect(await pasDEncart('pret')).toBeNull()
+  })
+})
+
+describe('renvoi vers la famille « prêt à… » (E16US021, DETTE-082)', () => {
+  beforeEach(() => {
+    vi.mocked(getExigenceEffectif).mockResolvedValue(exigence({ suffisant: true }))
+  })
+
+  it('renvoie au lieu d’agir pour les transitions qui ont un écran « prêt à… »', async () => {
+    vi.mocked(getTransitions).mockResolvedValue([
+      { nom: 'demarrer', libelle: 'Démarrer', vers: 'en_cours' },
+    ])
+    const aller = vi.fn()
+    render(
+      <FriseCycleDeVie
+        tournoi={tournoi('pret')}
+        jalons={{ demarrer: { libelle: 'Prêt à démarrer ?', aller } }}
+      />,
+      { wrapper: enveloppe() },
+    )
+
+    // Le bouton porte le nom de **l'écran visé** — l'entrée que l'organisateur lit dans la barre
+    // latérale —, et non plus « Démarrer » : c'est ce qui dit qu'on l'emmène voir ce qui manque.
+    const bouton = await screen.findByRole('button', { name: 'Prêt à démarrer ?' })
+    expect(screen.queryByRole('button', { name: 'Démarrer' })).toBeNull()
+    bouton.click()
+    expect(aller).toHaveBeenCalled()
+    // Le renvoi ne déclenche **aucune** transition : l'action appartient désormais au jalon.
+    expect(vi.mocked(transitionnerTournoi)).not.toHaveBeenCalled()
+  })
+
+  it('garde son bouton aux transitions qu’aucun jalon n’explique', async () => {
+    vi.mocked(getTransitions).mockResolvedValue([
+      { nom: 'annuler', libelle: 'Annuler le tournoi', vers: 'annule' },
+      { nom: 'archiver', libelle: 'Archiver', vers: 'archive' },
+    ])
+    render(
+      <FriseCycleDeVie
+        tournoi={tournoi('termine')}
+        jalons={{ demarrer: { libelle: 'Prêt à démarrer ?', aller: vi.fn() } }}
+      />,
+      { wrapper: enveloppe() },
+    )
+
+    // ⚠️ `archiver` en particulier : son jalon répond `404 jalon_non_instruit` (E16US012), donc
+    // l'y renvoyer mènerait à un écran vide. Le geste reste ici tant que le membre n'existe pas.
+    expect(await screen.findByRole('button', { name: 'Archiver' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Annuler le tournoi' })).toBeInTheDocument()
+  })
+
+  it('garde les boutons nus là où aucun renvoi n’est fourni', async () => {
+    vi.mocked(getTransitions).mockResolvedValue([
+      { nom: 'demarrer', libelle: 'Démarrer', vers: 'en_cours' },
+    ])
+    render(<FriseCycleDeVie tournoi={tournoi('pret')} />, { wrapper: enveloppe() })
+
+    // La destination « Tournoi » monte la frise sans `surJalon` : son comportement est inchangé.
+    // DETTE-082 y reste ouverte, et ce test est ce qui l'empêche de se refermer par accident.
+    expect(await screen.findByRole('button', { name: 'Démarrer' })).toBeInTheDocument()
   })
 })

@@ -276,7 +276,12 @@ def test_corriger_une_volee_verrouillee_remplace_les_valeurs_et_recalcule_le_cum
     )
     assert serie.cumul == 54
     serie = serie.corriger_volee(
-        1, _v("5", "5", "5"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        1,
+        _v("5", "5", "5"),
+        par="ARBITRE",
+        zones_admises=ZONES_SIMPLE,
+        nb_fleches_par_volee=3,
+        role_de_saisie=None,
     )
     assert serie.volee(1).valeurs == _v("5", "5", "5")  # type: ignore[union-attr]
     assert serie.volee(1).verrouillee  # type: ignore[union-attr]
@@ -288,7 +293,12 @@ def test_corriger_une_volee_non_verrouillee_est_refuse() -> None:
     serie = _serie_pleine(1, _v("10", "9", "8"))  # non validée
     with pytest.raises(VoleeNonVerrouillee):
         serie.corriger_volee(
-            1, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+            1,
+            _v("9", "9", "9"),
+            par="ARBITRE",
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            role_de_saisie=None,
         )
 
 
@@ -299,7 +309,12 @@ def test_corriger_une_volee_inexistante_est_refuse() -> None:
     )
     with pytest.raises(VoleeIntrouvable):
         serie.corriger_volee(
-            9, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+            9,
+            _v("9", "9", "9"),
+            par="ARBITRE",
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            role_de_saisie=None,
         )
 
 
@@ -337,7 +352,12 @@ def test_corriger_refuse_un_correcteur_vide() -> None:
     )
     with pytest.raises(NomIntervenantInvalide):
         serie.corriger_volee(
-            1, _v("9", "9", "9"), par="", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+            1,
+            _v("9", "9", "9"),
+            par="",
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            role_de_saisie=None,
         )
 
 

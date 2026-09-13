@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from sqlalchemy import delete, select, update
@@ -33,6 +35,7 @@ from domain.phase import (
     PhaseId,
 )
 from domain.ports import Horloge
+from domain.role import Role
 from domain.score import Score
 from domain.serie import Serie, SerieId, Volee
 from domain.tournoi import TournoiId
@@ -55,6 +58,38 @@ from infrastructure.db.repositories._mapping import _vers_barrage
 from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 
+_logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=8)
+def _signaler_role_inconnu(nom: str) -> None:
+    """Journalise **une fois par nom** : `_vers_role` est appelé par volée, donc par millier.
+
+    ⚠️ `lru_cache` tient lieu de registre **borné et thread-safe** — un `set` de module grandissait
+    au gré du contenu de la base (fuite) et survivait d'un test à l'autre (relevé en revue, axe A).
+    `_signaler_role_inconnu.cache_clear()` le remet à zéro si un test doit asserter l'avertissement.
+    """
+    _logger.warning("Rôle de saisie inconnu en base (%r) : préséance ignorée.", nom)
+
+
+def _vers_role(nom: str | None) -> Role | None:
+    """Relit le rôle qui a écrit la volée (E16US020) ; `NULL` = aucune préséance revendiquée.
+
+    ⚠️ **Dégrade, ne lève pas** : cette fonction est sur le chemin de lecture de `par_phase`, donc
+    du **classement entier** d'un départ. Lever sur un nom inconnu — ce que faisait la 1ʳᵉ passe —
+    rendait 500 le classement, la grille et chaque écriture le jour où un membre de `Role` est
+    **renommé** : mypy, ruff et toute la suite restent verts, seule une base existante casse. Le
+    repli sur `None` rend exactement le comportement d'avant la migration `0055`.
+    """
+    if nom is None:
+        return None
+    # ⚠️ `__members__`, pas `getattr` : `getattr(Role, "mro")` rend une **méthode liée**, que la
+    # signature typerait `Role` sans que mypy le voie.
+    role = Role.__members__.get(nom)
+    if role is None:
+        _signaler_role_inconnu(nom)
+    return role
+
 
 def _vers_volee(ligne: VoleeORM) -> Volee:
     """Traduit une ligne ORM en value object de domaine `Volee` (E04US002).
@@ -76,6 +111,7 @@ def _vers_volee(ligne: VoleeORM) -> Volee:
         validee_par=ligne.validee_par,
         lot_validation=ligne.lot_validation,
         correction_ouverte_par=ligne.correction_ouverte_par,
+        role_de_saisie=_vers_role(ligne.role_de_saisie),
     )
 
 
@@ -386,6 +422,9 @@ class SerieRepositorySQL:
                 validee_par=volee.validee_par,
                 lot_validation=volee.lot_validation,
                 correction_ouverte_par=volee.correction_ouverte_par,
+                role_de_saisie=(
+                    volee.role_de_saisie.name if volee.role_de_saisie is not None else None
+                ),
                 created_at=horodatages.get(volee.numero, maintenant),
             )
             for volee in serie.volees

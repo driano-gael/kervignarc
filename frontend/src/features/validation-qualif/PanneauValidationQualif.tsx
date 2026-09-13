@@ -1,10 +1,13 @@
 // Surface scoreur de la **qualification** (E16US019) — valider une feuille, annuler une validation.
 // C'est la surface annoncée par E04US002 (« validation/correction, §7.3 ») et jamais livrée : le
 // backend l'exposait depuis juillet, aucun écran ne l'appelait.
-//
-// ⚠️ **La correction ne se fait pas ici** : annuler rouvre la volée sur la **tablette de la cible**,
-// qui la ressaisit, puis le scoreur revalide — c'est le parcours du questionnaire S08. Le score
-// reste au classement pendant toute cette fenêtre (ADR-0109).
+
+// ⚠️ **La correction ne se fait pas ici** : annuler rouvre la volée sur la **tablette de la
+// cible**, qui la ressaisit, puis le scoreur revalide — c'est le parcours du questionnaire S08.
+// Le score reste au classement pendant toute cette fenêtre (ADR-0109).
+
+// ⚠️ DETTE-100 : `POST /saisie/corrections` existe côté serveur et pose le rang **scoreur**
+// (E16US020), mais aucun écran ne l'appelle — c'est ici qu'on le chercherait.
 
 import { useState } from 'react'
 import { useClassement } from '../competition/hooks'

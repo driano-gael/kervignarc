@@ -7,6 +7,7 @@ numéro. Sans effet : inscriptions et placement référencent l'`id` technique, 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from application.erreurs import (
@@ -16,6 +17,7 @@ from application.erreurs import (
     DernierDepartNonSupprimable,
     TournoiIntrouvable,
 )
+from application.suivi_deroule import CompteurEngages
 from domain.cycle_depart import AvancementDepart, EtatDepart
 from domain.depart import Depart, DepartId
 from domain.ports import (
@@ -49,6 +51,20 @@ class LecteurAvancementDepart(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class SyntheseDepart:
+    """Un créneau **et ce qui se lit sur lui** — la ligne que l'accueil rend par départ (E16US021).
+
+    ⚠️ **Une photo, pas un agrégat** : `etat` et `effectif` sont dérivés au moment du calcul et ne
+    sont jamais persistés — `Depart` reste sans colonne de statut (cf. `domain/cycle_depart.py`).
+    `effectif` compte des **archers distincts**, la définition de `CompteurEngages`.
+    """
+
+    depart: Depart
+    etat: EtatDepart
+    effectif: int
+
+
 class ServiceDeparts:
     """Cas d'usage des départs d'un tournoi : créer, lister, éditer, supprimer."""
 
@@ -62,6 +78,7 @@ class ServiceDeparts:
         horloge: Horloge,
         deroule_repository: DerouleRepository,
         phase_repository: PhaseRepository,
+        compteur_engages: CompteurEngages,
     ) -> None:
         self._departs = depart_repository
         self._tournois = tournoi_repository
@@ -77,6 +94,12 @@ class ServiceDeparts:
         # déjà engagées des autres créneaux.
         self._deroules = deroule_repository
         self._phases = phase_repository
+        # ⚠️ **L'effectif d'un créneau a déjà une définition, et ce port la porte** (E16US021) :
+        # `ServiceSuiviDeroule` dimensionne le déroulé avec, `ServiceTournois` y juge l'exigence
+        # d'effectif. Un `len()` local rendrait le **même chiffre** aujourd'hui (`UNIQUE(archer_id,
+        # depart_id)` interdit la double inscription) — et c'est ce qui le rendrait durablement
+        # faux : une 2ᵉ définition qu'aucun test ne confronte, jusqu'au jour où l'une bouge.
+        self._engages = compteur_engages
 
     def creer(
         self,
@@ -118,17 +141,21 @@ class ServiceDeparts:
         self._verifier_tournoi(tournoi_id)
         return self._departs.par_tournoi(tournoi_id)
 
-    def lister_avec_etat(self, tournoi_id: TournoiId) -> list[tuple[Depart, EtatDepart]]:
-        """Les départs du tournoi, chacun avec son **état de cycle de vie** dérivé (E12US008).
+    def lister_avec_synthese(self, tournoi_id: TournoiId) -> list[SyntheseDepart]:
+        """Les départs du tournoi, chacun avec son **état de cycle** (E12US008) et son **effectif**.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas. Lecture seule : l'état est **calculé**
-        (jamais stocké) à partir de l'avancement lu au vol — le front en fait un badge par créneau.
-        Simplicité assumée (règle 12) : un appel d'avancement par départ ; les créneaux d'un tournoi
-        se comptent sur les doigts, la relecture n'est pas un goulot.
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas. Les deux sont **calculés** au vol,
+        jamais stockés. ⚠️ **Deux lectures par départ, pas une** : l'avancement (pour l'état) **et**
+        les inscriptions (pour l'effectif) — E16US021 en **ajoute** une, elle ne récupère pas un
+        calcul déjà fait. Coût assumé (règle 12) ; l'alternative, un aller-retour HTTP par créneau
+        sur un écran qui polle, coûtait plus cher.
         """
         self._verifier_tournoi(tournoi_id)
         departs = self._departs.par_tournoi(tournoi_id)
-        return [(depart, self._etat_de(depart)) for depart in departs]
+        return [
+            SyntheseDepart(depart, self._etat_de(depart), self._effectif_de(depart))
+            for depart in departs
+        ]
 
     def modifier(
         self,
@@ -278,9 +305,31 @@ class ServiceDeparts:
         """
         return self._etat_de(self._depart_du_tournoi(tournoi_id, depart_id))
 
+    def effectif(self, tournoi_id: TournoiId, depart_id: DepartId) -> int:
+        """Effectif d'un créneau donné (E16US021).
+
+        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi.
+        """
+        return self._effectif_de(self._depart_du_tournoi(tournoi_id, depart_id))
+
+    def synthese(self, tournoi_id: TournoiId, depart_id: DepartId) -> SyntheseDepart:
+        """La synthèse d'un seul créneau, pour la rafraîchir après édition (E16US021).
+
+        ⚠️ **Le départ est résolu UNE fois.** Assembler la synthèse côté API demandait `etat()` puis
+        `effectif()`, donc deux relectures de plus — dans le passage du writer, que la règle 7 veut
+        court. Et « ce qu'est une synthèse » cesse de vivre à deux endroits.
+        """
+        depart = self._depart_du_tournoi(tournoi_id, depart_id)
+        return SyntheseDepart(depart, self._etat_de(depart), self._effectif_de(depart))
+
     def _etat_de(self, depart: Depart) -> EtatDepart:
         """État de cycle dérivé d'un créneau (pour l'affichage : liste, badge)."""
         return self._avancement_de(depart).etat
+
+    def _effectif_de(self, depart: Depart) -> int:
+        """Archers distincts inscrits sur ce créneau, via le port qui en porte la définition."""
+        assert depart.id is not None, "Un départ relu est persisté."
+        return self._engages.nb_engages_du_depart(depart.id)
 
     def _avancement_de(self, depart: Depart) -> AvancementDepart:
         """Lit l'avancement d'un créneau via le port étroit (placements · séries · forfaits)."""

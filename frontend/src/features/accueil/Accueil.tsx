@@ -1,14 +1,14 @@
-// Accueil-tableau de bord contextualisé par tournoi (E14US001, `D-20`).
+// Accueil-tableau de bord contextualisé par tournoi (E14US001, `D-20` ; E16US021).
 //
 // « Où j'en suis, quoi faire ensuite », sans parcourir ~21 écrans. Il **agrège** des sources déjà
-// livrées et ne recalcule **aucune** règle métier : frise du cycle de vie, chiffres-clés
-// (paiements, supervision), checklist et alertes dérivées de la complétude. Couverture : deux tests
-// de rendu gardent le fait que la checklist ne porte **que** le sportif ; le reste se vérifie à
-// l'œil. Les lectures pollent — l'accueil est un écran **live** (ADR-0075).
+// livrées et ne recalcule **aucune** règle métier. Toutes ses lectures pollent — écran **live**.
+
+// ⚠️ **Trois surfaces, pas quatre** (E16US021) : les blocs par départ ont retiré la pastille de
+// relance (absorbée dans le bloc du créneau) et le chiffre « Inscrits » (que la somme des effectifs
+// redit). Ne pas en empiler une de plus sans dire laquelle elle remplace — c'est `DETTE-082`.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'
-import { useMaintenant } from '../../shared/ui/useMaintenant'
 import type { LigneCompletude } from '../completude/api'
 import { useCompletude } from '../completude/hooks'
 import { afficheEtat, detailLigne } from '../completude/presentation'
@@ -17,20 +17,27 @@ import { usePaiementsArchers } from '../paiements/hooks'
 import type { Supervision } from '../supervision/api'
 import { useSupervision } from '../supervision/hooks'
 import { BadgeStatut } from '../competition/BadgeStatut'
-import { useQueries } from '@tanstack/react-query'
-import { phraseDeRelance, resumeDeRelance } from '../../shared/phases/relance'
-import { useDeparts } from '../departs/hooks'
-import { getArretsEnAttente } from '../suivi-deroule/api'
-import { INTERVALLE_POLL_MS, RACINE_ARRETS } from '../suivi-deroule/hooks'
-import { FriseCycleDeVie } from './FriseCycleDeVie'
+import { BlocsParDepart } from './BlocsParDepart'
+import { FriseCycleDeVie, type RenvoiJalon } from './FriseCycleDeVie'
 
-export function Accueil({ tournoi }: { tournoi: Tournoi }) {
+export function Accueil({
+  tournoi,
+  jalons,
+}: {
+  tournoi: Tournoi
+  /** Renvois de la frise vers les écrans « prêt à… » (E16US021) — la coquille tient libellé et chemin. */
+  jalons?: Readonly<Record<string, RenvoiJalon>>
+}) {
   const completude = useCompletude(tournoi.id)
   const supervision = useSupervision(tournoi.id)
   const paiements = usePaiementsArchers(tournoi.id)
 
-  // Une seule source pour inscrits & réglés : le registre de paiements a une ligne par archer inscrit.
-  const inscrits = paiements.data?.length ?? null
+  // ⚠️ **Ce chiffre compte les ARCHERS DU TOURNOI, pas des engagements** : `lister_par_archer`
+  // rend une ligne par archer saisi, inscrit ou non. Il n'est donc **pas** la somme des effectifs
+  // des blocs (qui, eux, comptent un archer une fois par créneau) — d'où le libellé explicite
+  // ci-dessous, et d'où son retrait comme chiffre autonome par E16US021 : affiché seul à côté des
+  // blocs, il se lisait comme un total qu'aucune addition ne retrouvait.
+  const archersDuTournoi = paiements.data?.length ?? null
   const regles = paiements.data?.filter((a) => a.recap.reste_centimes <= 0).length ?? null
   const postesEnLigne = supervision.data?.nb_en_ligne ?? null
   const postesTotal = supervision.data?.nb_total ?? null
@@ -52,17 +59,19 @@ export function Accueil({ tournoi }: { tournoi: Tournoi }) {
         <BadgeStatut statut={tournoi.statut} />
       </div>
 
-      {/* E05US034 — **avant** la frise et les chiffres : quand la salle attend, c'est le seul fait
-          qui compte, et le mettre sous une checklist de dix lignes revient à ne pas le mettre. */}
-      <PastilleDeRelance tournoiId={tournoi.id} />
+      {/* CA A02 — **en tête**, avant la frise et les chiffres : c'est « j'arrive et je vois », et
+          la pause d'un créneau (E05US034) s'y lit sur le bloc qu'elle concerne. La mettre sous une
+          checklist de dix lignes reviendrait à ne pas la mettre. */}
+      <BlocsParDepart tournoiId={tournoi.id} />
 
-      <FriseCycleDeVie tournoi={tournoi} />
+      <FriseCycleDeVie tournoi={tournoi} jalons={jalons} />
 
       <div className="accueil__chiffres">
-        <Chiffre libelle="Inscrits" valeur={inscrits === null ? '—' : String(inscrits)} />
         <Chiffre
-          libelle="Réglés"
-          valeur={inscrits === null || regles === null ? '—' : `${regles}/${inscrits}`}
+          libelle="Réglés (archers du tournoi)"
+          valeur={
+            archersDuTournoi === null || regles === null ? '—' : `${regles}/${archersDuTournoi}`
+          }
         />
         <Chiffre
           libelle="Postes en ligne"
@@ -155,40 +164,4 @@ function construireAlertes(lignes: LigneCompletude[], supervision?: Supervision)
     })
   }
   return alertes
-}
-
-/** La **pastille de rappel** : « 2 phases attendent votre relance depuis 14 min » (CA E05US034).
- *
- * ⚠️ **C'est le filet de sécurité de la capacité livrée par E05US033.** Une pause programmée
- * éteint une phase toute seule, à la faveur d'une validation faite ailleurs : sans ce rappel,
- * l'organisateur n'apprend qu'une salle attend qu'en ouvrant le pilotage — un **mode de panne
- * neuf**. ⚠️ **Une lecture par créneau, et aucune route neuve** : `useQueries` sur la route que le
- * pilotage polle déjà partage son cache. Ne rend rien quand il n'y a rien à relancer.
- */
-function PastilleDeRelance({ tournoiId }: { tournoiId: number }) {
-  const departs = useDeparts(tournoiId)
-  // Battement à la minute — le grain affiché. Cf. `useMaintenant` : lire l'horloge pendant le rendu
-  // est une impureté, et le compteur resterait figé tant que le serveur renvoie la même réponse.
-  const maintenant = useMaintenant(60000)
-  const parCreneau = useQueries({
-    queries: (departs.data ?? []).map((depart) => ({
-      queryKey: [...RACINE_ARRETS, depart.id] as const,
-      queryFn: () => getArretsEnAttente(depart.id),
-      // Même cadence que `useArretsEnAttente`, dont on partage la clé de cache : recopier la
-      // valeur à la main les aurait fait diverger au premier ajustement (revue E05US034).
-      refetchInterval: INTERVALLE_POLL_MS,
-      staleTime: 0,
-    })),
-  })
-
-  const arrets = parCreneau.flatMap((resultat) => resultat.data ?? [])
-  const resume = resumeDeRelance(arrets, maintenant)
-  if (resume === null) return null
-
-  return (
-    <p className="carte__etat carte__etat--alerte" role="status">
-      <strong>{phraseDeRelance(resume)}</strong> Le tir est suspendu&nbsp;: relancez depuis
-      «&nbsp;Suivi du déroulé&nbsp;».
-    </p>
-  )
 }

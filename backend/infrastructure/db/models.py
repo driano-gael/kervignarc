@@ -575,6 +575,10 @@ class VoleeORM(Base):
     # validées d'avant l'US) — `Serie.annuler_validation` s'appuie sur cet invariant.
     lot_validation: Mapped[int | None] = mapped_column(nullable=True)
     correction_ouverte_par: Mapped[str | None] = mapped_column(nullable=True)
+    # Le **nom** du rôle (`Role.name`), jamais son rang : renuméroter l'ordre d'ADR-0107 ne doit
+    # pas réinterpréter les volées déjà écrites. `NULL` = aucune préséance revendiquée — le cas
+    # de toute volée d'avant E16US020 et de toute surface mono-rôle.
+    role_de_saisie: Mapped[str | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )

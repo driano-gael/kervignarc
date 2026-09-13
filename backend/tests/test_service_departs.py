@@ -23,6 +23,7 @@ from application.erreurs import (
     DernierDepartNonSupprimable,
     TournoiIntrouvable,
 )
+from application.suivi_deroule import CompteurEngagesRepository
 from domain.archer import Archer, ArcherId
 from domain.cycle_depart import AvancementDepart, EtatDepart
 from domain.depart import DepartId
@@ -111,6 +112,26 @@ class Montage(NamedTuple):
     tournoi_id: TournoiId
 
 
+def _service_sur(tournois: FauxTournoiRepository, departs: FauxDepartRepository) -> ServiceDeparts:
+    """Service câblé sur deux repos donnés, les autres neufs — pour les tests **à deux tournois**.
+
+    Distinct de `_monter`, qui crée le tournoi et **rend** les repos au test : ici on n'a besoin que
+    du service, et l'isolation entre tournois est précisément ce qui est éprouvé.
+    """
+    inscriptions = FauxInscriptionRepository()
+    return ServiceDeparts(
+        departs,
+        tournois,
+        inscriptions,
+        FauxLecteurAvancement(),
+        FauxArcherRepository(),
+        HorlogeFigee(_QUAND),
+        FauxDerouleRepository(),
+        FauxPhaseRepository(departs),
+        CompteurEngagesRepository(departs, inscriptions),
+    )
+
+
 def _monter() -> Montage:
     """Fabrique un service câblé sur des repos factices et un tournoi (brouillon) déjà créé."""
     tournois = FauxTournoiRepository()
@@ -130,6 +151,10 @@ def _monter() -> Montage:
             HorlogeFigee(_QUAND),
             FauxDerouleRepository(),
             FauxPhaseRepository(),
+            # ⚠️ La **vraie** réalisation du port, pas un faux : c'est justement la définition de
+            # l'effectif (archers distincts) que le service ne doit pas redéfinir — la remplacer
+            # ici rendrait le test aveugle au défaut qu'il existe pour attraper.
+            CompteurEngagesRepository(departs, inscriptions),
         ),
         departs,
         inscriptions,
@@ -224,16 +249,7 @@ def test_lister_trie_par_numero_et_isole_le_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(
-        departs,
-        tournois,
-        FauxInscriptionRepository(),
-        FauxLecteurAvancement(),
-        FauxArcherRepository(),
-        HorlogeFigee(_QUAND),
-        FauxDerouleRepository(),
-        FauxPhaseRepository(departs),
-    )
+    service = _service_sur(tournois, departs)
     service.creer(a.id, 810, "09:00")
     service.creer(a.id, 810, "09:00")
     service.creer(b.id, 810, "09:00")
@@ -276,16 +292,7 @@ def test_modifier_leve_si_depart_d_un_autre_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(
-        departs,
-        tournois,
-        FauxInscriptionRepository(),
-        FauxLecteurAvancement(),
-        FauxArcherRepository(),
-        HorlogeFigee(_QUAND),
-        FauxDerouleRepository(),
-        FauxPhaseRepository(departs),
-    )
+    service = _service_sur(tournois, departs)
     depart = service.creer(a.id, 810, "09:00")
     assert depart.id is not None
 
@@ -313,16 +320,7 @@ def test_supprimer_leve_si_depart_d_un_autre_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(
-        departs,
-        tournois,
-        FauxInscriptionRepository(),
-        FauxLecteurAvancement(),
-        FauxArcherRepository(),
-        HorlogeFigee(_QUAND),
-        FauxDerouleRepository(),
-        FauxPhaseRepository(departs),
-    )
+    service = _service_sur(tournois, departs)
     depart = service.creer(a.id, 810, "09:00")
     assert depart.id is not None
 
@@ -661,8 +659,8 @@ def test_supprimer_creneau_lance_exige_la_confirmation_de_cycle() -> None:
     assert [d.id for d in m.service.lister(m.tournoi_id)] == [depart.id]
 
 
-def test_lister_avec_etat_expose_l_etat_derive_par_creneau() -> None:
-    """`lister_avec_etat` propage l'état dérivé de chaque créneau — c'est le badge du CA.
+def test_lister_avec_synthese_expose_l_etat_derive_par_creneau() -> None:
+    """`lister_avec_synthese` propage l'état dérivé de chaque créneau — c'est le badge du CA.
 
     La dérivation LANCE/CLOS est prouvée au domaine (`AvancementDepart.etat`) ; ici on verrouille
     la **propagation** service → liste (le livrable visible), qui repose sur le port d'avancement.
@@ -673,11 +671,72 @@ def test_lister_avec_etat_expose_l_etat_derive_par_creneau() -> None:
     assert ouvert.id is not None and lance.id is not None
     m.avancements.poser(lance.id, _lance())
 
-    etats = {depart.id: etat for depart, etat in m.service.lister_avec_etat(m.tournoi_id)}
+    etats = {s.depart.id: s.etat for s in m.service.lister_avec_synthese(m.tournoi_id)}
     assert etats[ouvert.id] is EtatDepart.OUVERT
     assert etats[lance.id] is EtatDepart.LANCE
     # L'accès unitaire (utilisé après édition) donne le même verdict.
     assert m.service.etat(m.tournoi_id, lance.id) is EtatDepart.LANCE
+
+
+def test_lister_avec_synthese_chiffre_l_effectif_de_chaque_creneau() -> None:
+    """CA E16US021 — chaque bloc de l'accueil porte l'**effectif de son créneau**, pas du tournoi.
+
+    C'est le chiffre que l'organisateur lit départ par départ. La liste doit donc le rendre pour
+    **tous** les créneaux en un seul passage : l'accueil les affiche côte à côte, il ne peut pas
+    interroger un créneau à la fois.
+    """
+    m = _monter()
+    matin = m.service.creer(m.tournoi_id, 810, "09:00")
+    apres_midi = m.service.creer(m.tournoi_id, 810, "14:00")
+    assert matin.id is not None and apres_midi.id is not None
+    for archer_id in (1, 2, 3):
+        m.inscriptions.ajouter(Inscription.creer(ArcherId(archer_id), matin.id))
+    m.inscriptions.ajouter(Inscription.creer(ArcherId(4), apres_midi.id))
+
+    effectifs = {s.depart.id: s.effectif for s in m.service.lister_avec_synthese(m.tournoi_id)}
+    assert effectifs == {matin.id: 3, apres_midi.id: 1}
+
+
+def test_l_effectif_passe_par_le_port_qui_en_porte_la_definition() -> None:
+    """CA E16US021 — « l'accueil lit, il ne recalcule pas » : ce test garde le **choix de port**.
+
+    ⚠️ **Ce test ne garde PAS une divergence de données** — il n'y en a pas aujourd'hui :
+    `UNIQUE(archer_id, depart_id)` et la garde `DejaInscrit` rendent la double inscription
+    inatteignable, donc `len(inscriptions)` et « archers distincts » coïncident en production. Il
+    garde que l'effectif vient de `CompteurEngages`, **seule définition existante** (partagée avec
+    `ServiceSuiviDeroule` et l'exigence d'effectif) : une seconde définition serait numériquement
+    juste aujourd'hui et fausse le jour où l'une des deux bouge, sans rien pour la confronter.
+    """
+    m = _monter()
+    creneau = m.service.creer(m.tournoi_id, 810, "09:00")
+    assert creneau.id is not None
+    # État volontairement hors-production (le faux repository n'a pas la garde d'unicité) : c'est
+    # le seul moyen de distinguer les deux définitions, qui coïncident partout ailleurs.
+    m.inscriptions.ajouter(Inscription.creer(ArcherId(7), creneau.id))
+    m.inscriptions.ajouter(Inscription.creer(ArcherId(7), creneau.id))
+
+    (synthese,) = m.service.lister_avec_synthese(m.tournoi_id)
+    assert synthese.effectif == 1
+
+
+def test_la_synthese_d_un_creneau_refuse_un_depart_d_un_autre_tournoi() -> None:
+    """`synthese` (relecture après édition) isole les tournois comme `modifier` et `supprimer`.
+
+    C'est la méthode neuve qu'appelle le PUT : sans ce test, la seule garde d'isolation du chemin
+    d'édition serait celle de `modifier`, en amont — et un refactor pourrait la perdre en silence.
+    """
+    tournois = FauxTournoiRepository()
+    departs = FauxDepartRepository()
+    a = tournois.ajouter(Tournoi.creer("A", _DATE))
+    b = tournois.ajouter(Tournoi.creer("B", _DATE))
+    assert a.id is not None and b.id is not None
+    service = _service_sur(tournois, departs)
+    depart = service.creer(a.id, 810, "09:00")
+    assert depart.id is not None
+
+    assert service.synthese(a.id, depart.id).effectif == 0
+    with pytest.raises(DepartIntrouvable):
+        service.synthese(b.id, depart.id)
 
 
 def test_supprimer_creneau_lance_ne_se_contourne_pas_par_inscriptions() -> None:

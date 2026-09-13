@@ -28,6 +28,9 @@ export interface Depart {
   // État de cycle de vie dérivé (E12US008) : sert de badge et prévient qu'une édition/suppression
   // d'un créneau non `ouvert` sera signalée (confirmable).
   etat: EtatDepart
+  // Archers **distincts** inscrits sur ce créneau (E16US021), dérivé côté serveur. Se compare au
+  // `quota` ci-dessus — jamais au total du tournoi, qui compte tous les créneaux (ADR-0075).
+  effectif: number
 }
 
 export interface NouveauDepart {

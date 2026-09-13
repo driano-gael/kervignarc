@@ -15,6 +15,7 @@ function depart(numero: number, etat: EtatDepart): Depart {
     tarif_centimes: 0,
     quota: null,
     etat,
+    effectif: 0,
   }
 }
 

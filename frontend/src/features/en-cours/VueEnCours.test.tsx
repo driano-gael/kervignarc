@@ -59,6 +59,7 @@ const CRENEAU: Depart = {
   tarif_centimes: 800,
   quota: null,
   etat: 'ouvert',
+  effectif: 0,
 }
 
 function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'statut'>): Phase {
