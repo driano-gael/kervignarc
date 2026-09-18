@@ -26,6 +26,7 @@ class FormatExport(Enum):
 
     PDF = "pdf"
     CSV = "csv"
+    XLSX = "xlsx"
 
 
 # Le mot que le client affiche pour un format. ⚠️ Le **type MIME n'est pas ici** : c'est une
@@ -36,6 +37,7 @@ class FormatExport(Enum):
 LIBELLES_FORMAT: Mapping[FormatExport, str] = {
     FormatExport.PDF: "PDF",
     FormatExport.CSV: "Tableur (CSV)",
+    FormatExport.XLSX: "Tableur (Excel)",
 }
 
 
@@ -109,7 +111,10 @@ class CatalogueExports:
 # DETTE-095 : les identifiants ci-dessous doivent exister dans la table `documents` de
 # `Exports.tsx` ; rien ne rapproche les deux listes, elles sont dans deux langages.
 def construire_catalogue(
-    formats_listes: tuple[FormatExport, ...], formats_feuille: tuple[FormatExport, ...]
+    formats_listes: tuple[FormatExport, ...],
+    formats_feuille: tuple[FormatExport, ...],
+    formats_palmares: tuple[FormatExport, ...],
+    formats_audit: tuple[FormatExport, ...],
 ) -> CatalogueExports:
     """Compose le catalogue des exports de l'écran, à partir des formats **réellement câblés**."""
     return CatalogueExports(
@@ -117,5 +122,7 @@ def construire_catalogue(
             EntreeCatalogueExport(identifiant="placement", formats=formats_listes),
             EntreeCatalogueExport(identifiant="club-paiement", formats=formats_listes),
             EntreeCatalogueExport(identifiant="feuille-de-marque", formats=formats_feuille),
+            EntreeCatalogueExport(identifiant="palmares", formats=formats_palmares),
+            EntreeCatalogueExport(identifiant="audit", formats=formats_audit),
         )
     )

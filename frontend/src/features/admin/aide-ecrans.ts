@@ -46,8 +46,11 @@ export type DestinationAdminId =
   | 'simulation'
   | 'feu-vert'
   | 'archer'
+  | 'audit'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
+  audit:
+    'Le journal de ce qui a été fait sur ce tournoi : validations, corrections, forfaits, paiements — avec qui, quand, et l’ancienne valeur. C’est la pièce qui règle une contestation ; il se consulte pendant le tournoi, pas seulement après, et s’exporte au tableur.',
   tournoi:
     'Créez ou choisissez le tournoi sur lequel vous travaillez. Tout ce que vous réglez ensuite — ' +
     'catégories, départs, inscriptions… — appartient au tournoi sélectionné ici.',

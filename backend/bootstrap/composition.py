@@ -76,7 +76,7 @@ from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.archive import ServiceArchive
 from application.arrets_programmes import LecteurAvancementDuDepart, ServiceArretsProgrammes
-from application.audit import ServiceAudit
+from application.audit import ServiceAudit, ServiceExportAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
 from application.barrages import ServiceBarrage
@@ -222,7 +222,13 @@ from infrastructure.postes import (
 )
 from infrastructure.realtime import Broadcaster, DiffusionSimulationBroadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
-from infrastructure.tableur import GenerateurListesImpressionCsv
+from infrastructure.tableur import (
+    GenerateurJournalAuditTableur,
+    GenerateurListesImpressionTableur,
+    GenerateurPalmaresTableur,
+    rendre_csv,
+    rendre_xlsx,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -904,24 +910,11 @@ def create_app(
         RegistreDeFormats(
             {
                 FormatExport.PDF: GenerateurListesImpressionPdf(),
-                FormatExport.CSV: GenerateurListesImpressionCsv(),
+                FormatExport.CSV: GenerateurListesImpressionTableur(rendre_csv),
+                FormatExport.XLSX: GenerateurListesImpressionTableur(rendre_xlsx),
             }
         ),
     )
-    # Catalogue d'exports (E16US007, ADR-0101) : ce que l'écran « Exports & impressions » propose.
-    # ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici — une liste tenue à la main
-    # finirait par annoncer un format que rien ne sait produire. La composition est déportée dans
-    # `construire_catalogue`, fonction pure, pour que cette dérivation soit **testable** : elle ne
-    # l'était pas tant qu'elle vivait ici (relevé en revue). DETTE-095 : l'identifiant de chaque
-    # entrée doit exister dans la table `documents` de `Exports.tsx`, rien ne le vérifie.
-    # ⚠️ Variables **annotées** : `app.state.*` rend `Any` (même parade que `rencontres_a_router`).
-    formats_listes: tuple[FormatExport, ...] = (
-        app.state.service_listes_impression.formats_disponibles
-    )
-    formats_feuille: tuple[FormatExport, ...] = (
-        app.state.service_feuille_de_marque.formats_disponibles
-    )
-    app.state.catalogue_exports = construire_catalogue(formats_listes, formats_feuille)
     # Palmarès (E06US004, ADR-0067) : le **classement final** du tournoi — rangs des tableaux
     # fusionnés avec ceux de la qualification, par catégorie, plus l'export PDF. Réutilise
     # `service_saisie_duels` pour reconstruire chaque tableau : recoder la reconstruction la ferait
@@ -941,7 +934,15 @@ def create_app(
         app.state.service_classement,
         app.state.service_saisie_duels,
         duel_repository,
-        GenerateurPalmaresPdf(),
+        # E16US016 : le palmarès rejoint le mécanisme d'ADR-0101 — il était le seul document câblé
+        # sur un générateur unique, et sa route nommait son format (`/palmares.pdf`).
+        RegistreDeFormats(
+            {
+                FormatExport.PDF: GenerateurPalmaresPdf(),
+                FormatExport.CSV: GenerateurPalmaresTableur(rendre_csv),
+                FormatExport.XLSX: GenerateurPalmaresTableur(rendre_xlsx),
+            }
+        ),
         depart_repository,
         # E16US014/E16US017 : de quoi **nommer** les podiums de club et le classement des clubs
         # (ADR-0104) — le PDF doit les titrer, et il n'a pas d'écran pour résoudre les identifiants
@@ -1036,6 +1037,38 @@ def create_app(
     # `application/audit.py`. La consultation admin (`GET .../audit`) est livrée. L'horodatage passe
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
+    # E16US016 : l'**export** du journal est un service distinct, branché sur `ServiceAudit` par le
+    # port étroit `LecteurJournalAudit` — le socle d'écriture de la trace ne dépend pas de
+    # l'outillage qui la relit. ⚠️ Pas de PDF câblé : un journal se dépouille au tableur.
+    app.state.service_export_audit = ServiceExportAudit(
+        app.state.service_audit,
+        tournoi_repository,
+        RegistreDeFormats(
+            {
+                FormatExport.CSV: GenerateurJournalAuditTableur(rendre_csv),
+                FormatExport.XLSX: GenerateurJournalAuditTableur(rendre_xlsx),
+            }
+        ),
+    )
+    # Catalogue d'exports (E16US007, ADR-0101 §3) : ce que l'écran « Exports & impressions »
+    # propose. ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici. La composition
+    # vit dans `construire_catalogue`, fonction pure, pour rester **testable**.
+    # ⚠️ DETTE-095 : l'identifiant de chaque entrée doit exister dans la table `documents` de
+    # `Exports.tsx`, et rien ne le vérifie.
+    # ⚠️ **Placé ici** (E16US016) : le catalogue dérive de quatre services, dont deux câblés
+    # plus bas.
+    # ⚠️ Variables **annotées** : `app.state.*` rend `Any` (même parade que `rencontres_a_router`).
+    formats_listes: tuple[FormatExport, ...] = (
+        app.state.service_listes_impression.formats_disponibles
+    )
+    formats_feuille: tuple[FormatExport, ...] = (
+        app.state.service_feuille_de_marque.formats_disponibles
+    )
+    formats_palmares: tuple[FormatExport, ...] = app.state.service_palmares.formats_disponibles
+    formats_audit: tuple[FormatExport, ...] = app.state.service_export_audit.formats_disponibles
+    app.state.catalogue_exports = construire_catalogue(
+        formats_listes, formats_feuille, formats_palmares, formats_audit
+    )
 
     # --- Pilotage d'un tour (E12US002, ADR-0056) : feu vert + lancement. Compose les services de
     # duels **déjà câblés** — `service_saisie_duels` (reconstruction de l'arbre + noms),

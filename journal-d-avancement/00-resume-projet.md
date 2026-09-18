@@ -27,7 +27,10 @@ organisateur — et deux couleurs, dont l'application dérive seule les nuances 
 salle et l'appli du public (jamais sur l'outil des bénévoles). L'**écran projeté dans le gymnase** se règle enfin sans passer par un
 développeur — vitesse de défilement et nombre de noms par page, **écran par écran** — et son
 classement ne s'arrête plus aux trois premiers : ils restent affichés en haut pendant que tous les
-autres archers défilent page après page en dessous. Le **tableau à élimination directe** se conduit
+autres archers défilent page après page en dessous. Et tout ce que l'organisateur produit **sort au format de son choix** — PDF, CSV ou **Excel** —,
+tandis que le **journal des actes** (qui a validé, qui a corrigé quoi, et quelle était la valeur
+d'avant) se **consulte enfin à l'écran**, pendant le tournoi comme après, alors qu'il n'était
+jusqu'ici accessible nulle part. Le **tableau à élimination directe** se conduit
 enfin jusqu'au bout depuis l'application : chaque tour reçoit ses cibles dès qu'il est déterminé, si
 bien que le feu vert et l'écran de routage restent utiles après le premier tour au lieu de s'éteindre.
 Et la tablette **se rend toute seule** : l'écran « où tire-t-on ensuite ? », qui restait ouvert
@@ -597,10 +600,19 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **140 US livrées** (mergées, revues, CI verte) à la date du 12/09/2026 — dont **deux
+- **141 US livrées** (mergées, revues, CI verte) à la date du 18/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E16US021` — **l'accueil du tournoi
+  autorité sur le compte —, la dernière **livraison** étant `E16US016` — **le journal d'audit se
+  consulte, et tout sort au tableur** : la trace de qui a fait quoi existait depuis des mois et
+  **aucun écran ne la montrait** ; elle a désormais le sien, avec recherche et filtre des
+  corrections, et le détail « avant / après » se déplie sur la ligne. Le **format Excel** arrive
+  partout où il a du sens, et le **palmarès** rejoint le catalogue d'exports — un montant y est un
+  vrai nombre, donc une colonne se somme. ⚠️ **Dernière US d'`EPIC-16`** : les retours du
+  questionnaire de maquettes sont soldés. ⚠️ Deux arbitrages du commanditaire ont façonné l'US :
+  l'ajout de la dépendance `openpyxl` (règle 11), et le **renommage franc** de l'adresse publique
+  du palmarès, sans adresse de compatibilité — nous sommes avant le premier tournoi réel.
+  Avant elle, `E16US021` — **l'accueil du tournoi
   parle par départ** : l'écran d'atterrissage s'ouvre sur un cadre par créneau (horaire, état,
   effectif du créneau, pause) au lieu des seuls totaux du tournoi, et les boutons « Démarrer » /
   « Terminer » de la frise renvoient vers les écrans qui listent ce qui manque. ⚠️ **Le cadrage était

@@ -21,6 +21,9 @@ from application.exports import FormatExport
 MEDIA_TYPES: Mapping[FormatExport, str] = {
     FormatExport.PDF: "application/pdf",
     FormatExport.CSV: "text/csv",
+    # Type officiel OOXML. ⚠️ Pas `application/vnd.ms-excel`, qui désigne l'ancien `.xls` binaire :
+    # certains navigateurs renomment alors le fichier en `.xls` et Excel proteste à l'ouverture.
+    FormatExport.XLSX: ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
 }
 
 
@@ -39,16 +42,22 @@ def reponses_document(*formats: FormatExport) -> dict[int | str, dict[str, Any]]
     }
 
 
-def reponse_document(contenu: bytes, format_: FormatExport, nom_sans_extension: str) -> Response:
+def reponse_document(
+    contenu: bytes,
+    format_: FormatExport,
+    nom_sans_extension: str,
+    disposition: str = "attachment",
+) -> Response:
     """Sert un document — type de contenu **et** extension dérivés du même format.
 
     ⚠️ Point unique : sans lui, chaque route recopierait la paire (type MIME, extension) et un
-    format ajouté se téléchargerait en `.pdf` contenant du CSV — un fichier qu'aucun outil n'ouvre
-    et dont rien, côté serveur, ne dirait qu'il est faux.
+    format ajouté se téléchargerait en `.pdf` contenant du CSV.
+    ⚠️ `disposition` n'est pas un confort : le palmarès sert `inline` — « ouvrir, vérifier,
+    imprimer au mur » (E06US004) —, et le navigateur télécharge ce qu'il ne sait pas afficher.
     """
     nom_fichier = f"{nom_sans_extension}.{format_.value}"
     return Response(
         content=contenu,
         media_type=MEDIA_TYPES[format_],
-        headers={"Content-Disposition": f'attachment; filename="{nom_fichier}"'},
+        headers={"Content-Disposition": f'{disposition}; filename="{nom_fichier}"'},
     )

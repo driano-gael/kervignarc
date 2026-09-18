@@ -15,9 +15,10 @@ import datetime
 
 import pytest
 
-from application.audit import ServiceAudit
-from application.erreurs import TournoiIntrouvable
-from domain.entree_audit import ActionAuditee, EntreeAudit
+from application.audit import ServiceAudit, ServiceExportAudit
+from application.erreurs import FormatExportIndisponible, TournoiIntrouvable
+from application.exports import FormatExport, RegistreDeFormats
+from domain.entree_audit import ActionAuditee, EntreeAudit, JournalAudit
 from domain.erreurs import AuteurAuditInvalide
 from domain.tournoi import Tournoi, TournoiId
 
@@ -159,3 +160,147 @@ def test_lister_refuse_un_tournoi_inexistant() -> None:
     m = Montage()
     with pytest.raises(TournoiIntrouvable):
         m.service.lister(404)
+
+
+# --- E16US016 : « le journal d'audit se consulte, PUIS s'exporte » -------------------------------
+#
+# Tests écrits **depuis le CA, avant implémentation** (règle 9). Le CA d'E16US016 tient en deux
+# temps : on consulte (écran, testé côté front), et on exporte. Ce qui se vérifie ici est le
+# **second** temps, côté service — la composition du document et la résolution du format.
+#
+# ⚠️ Pourquoi un service à part et non une méthode de plus sur `ServiceAudit` : `ServiceAudit` est
+# le **socle d'écriture** de la trace, appelé par huit chemins de production. Lui injecter un
+# registre de formats de fichier ferait dépendre l'écriture d'une trace de l'outillage
+# d'exploitation qui la relit. Le service d'export lit le journal par un **port étroit**
+# (`LecteurJournalAudit`), même discipline de ségrégation d'interface que `LecteurRecapClub`
+# (`application.listes_impression`) : un faux lecteur suffit en test, et l'export n'écrit rien.
+
+
+class _FauxGenerateurJournal:
+    """Générateur sentinelle : retient le document reçu, rend des octets reconnaissables."""
+
+    def __init__(self, marque: str) -> None:
+        self.marque = marque
+        self.recu: JournalAudit | None = None
+
+    def journal(self, journal: JournalAudit) -> bytes:
+        self.recu = journal
+        return f"<{self.marque}>".encode()
+
+
+class _LecteurFige:
+    """Réalise `LecteurJournalAudit` : rend un journal figé, ou lève sur tournoi inconnu."""
+
+    def __init__(self, entrees: list[EntreeAudit], tournoi_connu: TournoiId) -> None:
+        self._entrees = entrees
+        self._tournoi_connu = tournoi_connu
+
+    def lister(self, tournoi_id: TournoiId) -> list[EntreeAudit]:
+        if tournoi_id != self._tournoi_connu:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        return list(self._entrees)
+
+
+def _montage_export(
+    formats: dict[FormatExport, _FauxGenerateurJournal] | None = None,
+) -> tuple[Montage, ServiceExportAudit, dict[FormatExport, _FauxGenerateurJournal]]:
+    m = Montage()
+    m.service.consigner(m.tournoi_id, ActionAuditee.VALIDATION, "DURAND Jean", "Série 1")
+    m.service.consigner(
+        m.tournoi_id, ActionAuditee.CORRECTION_SCORE, "ROUX Ana", "Série 1, f2", "8", "9"
+    )
+    generateurs = formats or {
+        FormatExport.CSV: _FauxGenerateurJournal("csv"),
+        FormatExport.XLSX: _FauxGenerateurJournal("xlsx"),
+    }
+    export = ServiceExportAudit(
+        _LecteurFige(m.service.lister(m.tournoi_id), m.tournoi_id),
+        m.tournois,
+        RegistreDeFormats(generateurs),
+    )
+    return m, export, generateurs
+
+
+def test_l_export_rend_les_octets_du_format_demande() -> None:
+    """CA « au format de mon choix » : le format **résout un adapter**, il ne branche rien."""
+    m, export, _ = _montage_export()
+
+    assert export.exporter(m.tournoi_id, FormatExport.CSV) == b"<csv>"
+    assert export.exporter(m.tournoi_id, FormatExport.XLSX) == b"<xlsx>"
+
+
+def test_le_document_porte_le_nom_du_tournoi_et_ses_entrees_chronologiques() -> None:
+    """Le document se suffit à lui-même : un fichier détaché de l'écran doit dire de quoi il parle.
+
+    L'ordre est celui du journal — un journal d'audit qui réordonnerait ses lignes cesserait de
+    servir à ce pour quoi il existe (prouver l'enchaînement des actes).
+    """
+    m, export, generateurs = _montage_export()
+
+    export.exporter(m.tournoi_id, FormatExport.CSV)
+
+    document = generateurs[FormatExport.CSV].recu
+    assert document is not None
+    assert document.tournoi == "Salle 18m"
+    assert [entree.objet for entree in document.entrees] == ["Série 1", "Série 1, f2"]
+    assert document.entrees[1].avant == "8"
+    assert document.entrees[1].apres == "9"
+
+
+def test_le_contenu_compose_ne_depend_pas_du_format() -> None:
+    """Garde-fou jumeau de celui des listes (ADR-0101) : le format n'agit **qu'au rendu**.
+
+    ⚠️ Sans lui, une divergence de *données* entre le CSV et le tableur passerait pour une
+    divergence de *présentation*, qui est voulue — et personne ne saurait lequel des deux fichiers
+    fait foi dans un litige, c'est-à-dire le seul usage de ce document.
+    """
+    m, export, generateurs = _montage_export()
+
+    export.exporter(m.tournoi_id, FormatExport.CSV)
+    export.exporter(m.tournoi_id, FormatExport.XLSX)
+
+    assert generateurs[FormatExport.CSV].recu == generateurs[FormatExport.XLSX].recu
+
+
+def test_un_format_non_cable_est_refuse() -> None:
+    """Le PDF n'est pas câblé pour ce document : le refus est explicite (→ 400), pas un PDF vide."""
+    m, export, _ = _montage_export()
+
+    with pytest.raises(FormatExportIndisponible):
+        export.exporter(m.tournoi_id, FormatExport.PDF)
+
+
+def test_l_export_refuse_un_tournoi_inexistant() -> None:
+    m, export, _ = _montage_export()
+
+    with pytest.raises(TournoiIntrouvable):
+        export.exporter(404, FormatExport.CSV)
+
+
+def test_les_formats_disponibles_derivent_du_cablage() -> None:
+    """ADR-0101 §3 : ce que le catalogue publie pour ce document vient du registre, pas d'une liste.
+
+    Le décor **mono-format** est délibéré : une liste écrite à la main en annoncerait deux.
+    """
+    _, export, _ = _montage_export({FormatExport.CSV: _FauxGenerateurJournal("csv")})
+
+    assert export.formats_disponibles == (FormatExport.CSV,)
+
+
+def test_un_journal_vide_s_exporte_quand_meme() -> None:
+    """Un tournoi sans acte tracé rend un document **vide mais valide**, pas une erreur.
+
+    ⚠️ L'inverse serait lu comme une panne par l'organisateur, alors que « rien ne s'est passé »
+    est une réponse d'audit parfaitement légitime — et c'est l'état d'un tournoi le matin.
+    """
+    m = Montage()
+    generateur = _FauxGenerateurJournal("csv")
+    export = ServiceExportAudit(
+        _LecteurFige([], m.tournoi_id),
+        m.tournois,
+        RegistreDeFormats({FormatExport.CSV: generateur}),
+    )
+
+    assert export.exporter(m.tournoi_id, FormatExport.CSV) == b"<csv>"
+    assert generateur.recu is not None
+    assert generateur.recu.entrees == ()

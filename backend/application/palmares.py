@@ -22,6 +22,7 @@ from application.erreurs import (
     TournoiIntrouvable,
     TournoiSansDepart,
 )
+from application.exports import FormatExport, RegistreDeFormats
 from application.prelevement import tranche
 from application.routage import LecteurRencontresARouter
 from application.saisie_duels import ServiceSaisieDuels
@@ -122,7 +123,7 @@ class ServicePalmares:
         classements: ServiceClassement,
         saisie_duels: ServiceSaisieDuels,
         duels: DuelRepository,
-        generateur: GenerateurPalmares,
+        generateurs: RegistreDeFormats[GenerateurPalmares],
         departs: DepartRepository,
         clubs: ClubRepository,
         aggregation: Aggregation | None = None,
@@ -142,7 +143,7 @@ class ServicePalmares:
         # tableau reconstruit ne sait pas le dire — un match peut y porter un vainqueur sans
         # qu'une flèche ait été tirée (bye, walkover de forfait).
         self._duels = duels
-        self._generateur = generateur
+        self._generateurs = generateurs
         # Politique de **départage des sortis au même tour** (ADR-0067), injectée par la
         # composition root — un format de tournoi est de la configuration (règle 2). Elle n'est pas
         # encore *réglable* par l'organisateur : `Phase` ne persiste aucune `config.policies`
@@ -299,17 +300,27 @@ class ServicePalmares:
         enregistre = self._tournois.enregistrer(tournoi.definir_reglage_podiums(reglage))
         return enregistre.reglage_podiums
 
-    def imprimer(self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None) -> bytes:
-        """Rend le palmarès en **PDF** (CA « affiché et exportable »).
+    @property
+    def formats_disponibles(self) -> tuple[FormatExport, ...]:
+        """Formats que ce service sait produire — ce que le catalogue publie (ADR-0101 §3)."""
+        return self._generateurs.formats
+
+    def imprimer(
+        self,
+        tournoi_id: TournoiId,
+        categorie_id: CategorieId | None = None,
+        format_: FormatExport = FormatExport.PDF,
+    ) -> bytes:
+        """Rend le palmarès dans le format demandé (CA « affiché et exportable », E16US016).
 
         Même calcul que `pour_tournoi` — un document qui divergerait de l'écran serait pire que
-        pas de document du tout : c'est celui-là qu'on affiche au mur. Le rendu part au port
-        `GenerateurPalmares` ; le service ne connaît ni ReportLab ni HTTP.
+        pas de document du tout : c'est celui-là qu'on affiche au mur.
+        ⚠️ `format_` retombe sur le PDF : les appelants d'avant E16US016 n'en passent aucun.
         """
         # ⚠️ Les blocs se composent sur `complet`, jamais sur la restriction : sinon le mur du
         # gymnase porte un podium amputé sans que rien ne le dise (bloquant de revue).
         rendu = self.rendu(tournoi_id, categorie_id)
-        return self._generateur.palmares(
+        return self._generateurs.pour(format_).palmares(
             rendu.nom_tournoi,
             complet=rendu.complet,
             affiche=rendu.affiche,

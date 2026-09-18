@@ -9,8 +9,10 @@ import { type ReactNode, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useDeparts } from '../departs/hooks'
 import {
+  cheminAudit,
   cheminClubPaiement,
   cheminFeuilleDeMarque,
+  cheminPalmares,
   cheminPlacement,
   type EntreeCatalogueExport,
   type TriPlacement,
@@ -158,6 +160,22 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
           </select>
         </label>
       ),
+    },
+    {
+      identifiant: 'palmares',
+      libelle: 'Palmarès',
+      description:
+        'Le classement final : rang scratch, rang de catégorie et rang de club — pour le site du club et la presse.',
+      chemin: cheminPalmares(tournoiId),
+      nomSansExtension: `palmares-${tournoiId}`,
+    },
+    {
+      identifiant: 'audit',
+      libelle: 'Journal d’audit',
+      description:
+        'Qui a fait quoi, quand, et ce qui a changé — la trace qui règle une contestation. Aucun format PDF : le journal se dépouille au tableur.',
+      chemin: cheminAudit(tournoiId),
+      nomSansExtension: `audit-${tournoiId}`,
     },
   ]
 

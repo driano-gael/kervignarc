@@ -28,6 +28,7 @@ import { VuePalmares } from '../palmares/VuePalmares'
 import { Departs } from '../departs/Departs'
 import { Duels } from '../duels/Duels'
 import { Ecrans } from '../ecrans/Ecrans'
+import { Audit } from '../audit/Audit'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
 import { Identite } from '../identite/Identite'
@@ -503,6 +504,13 @@ function Coquille() {
       // Listes imprimables du jour J (E09US003) : placement (accueil) et club & paiement (admin).
       // Destination prévue au §7.1, désormais matérialisée sur le socle PDF (E09US001).
       rendu: () => courant && <Exports tournoiId={courant.id} />,
+    },
+    {
+      id: 'audit',
+      libelle: 'Journal d’audit',
+      // E16US016 : la route existait depuis E10US005 et **aucun écran ne l'appelait** — le journal
+      // n'était donc consultable à aucun moment, ni pendant le tournoi ni après (CA A18).
+      rendu: () => courant && <Audit tournoiId={courant.id} />,
     },
     {
       id: 'archive',

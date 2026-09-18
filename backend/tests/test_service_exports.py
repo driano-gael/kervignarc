@@ -180,6 +180,7 @@ def test_l_extension_de_fichier_est_le_code_du_format() -> None:
     """Le nom de fichier proposé au client dérive du format — pas d'une table de plus."""
     assert FormatExport.PDF.value == "pdf"
     assert FormatExport.CSV.value == "csv"
+    assert FormatExport.XLSX.value == "xlsx"
 
 
 # --- La fabrique du catalogue (là où la dérivation peut casser) ---------------------------------
@@ -192,7 +193,10 @@ def test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne() -> None:
     donne aux listes **un seul** format : une liste écrite en dur en annoncerait deux.
     """
     catalogue = construire_catalogue(
-        formats_listes=(FormatExport.PDF,), formats_feuille=(FormatExport.PDF,)
+        formats_listes=(FormatExport.PDF,),
+        formats_feuille=(FormatExport.PDF,),
+        formats_palmares=(FormatExport.PDF,),
+        formats_audit=(FormatExport.PDF,),
     )
 
     formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
@@ -201,15 +205,40 @@ def test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne() -> None:
         "placement": (FormatExport.PDF,),
         "club-paiement": (FormatExport.PDF,),
         "feuille-de-marque": (FormatExport.PDF,),
+        "palmares": (FormatExport.PDF,),
+        "audit": (FormatExport.PDF,),
     }
 
 
 def test_le_catalogue_construit_distingue_les_listes_de_la_feuille_de_marque() -> None:
     catalogue = construire_catalogue(
-        formats_listes=(FormatExport.PDF, FormatExport.CSV), formats_feuille=(FormatExport.PDF,)
+        formats_listes=(FormatExport.PDF, FormatExport.CSV),
+        formats_feuille=(FormatExport.PDF,),
+        formats_palmares=(FormatExport.PDF, FormatExport.CSV),
+        formats_audit=(FormatExport.CSV,),
     )
 
     formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
 
     assert formats["placement"] == (FormatExport.PDF, FormatExport.CSV)
     assert formats["feuille-de-marque"] == (FormatExport.PDF,)
+
+
+def test_un_export_peut_n_offrir_aucun_pdf() -> None:
+    """CA « que les formats qui ont un sens », versant que le catalogue ne prouvait pas encore.
+
+    ⚠️ Jusqu'à E16US016, **tous** les documents offraient le PDF : rien ne montrait que le PDF
+    n'était pas un plancher implicite. Le journal d'audit est le premier document qui n'en a pas —
+    un journal de plus d'un millier de lignes se dépouille au tableur, jamais sur une page A4.
+    """
+    catalogue = construire_catalogue(
+        formats_listes=(FormatExport.PDF,),
+        formats_feuille=(FormatExport.PDF,),
+        formats_palmares=(FormatExport.PDF,),
+        formats_audit=(FormatExport.CSV, FormatExport.XLSX),
+    )
+
+    formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
+
+    assert formats["audit"] == (FormatExport.CSV, FormatExport.XLSX)
+    assert FormatExport.PDF not in formats["audit"]

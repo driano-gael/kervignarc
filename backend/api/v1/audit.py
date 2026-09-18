@@ -8,13 +8,16 @@ public.
 from __future__ import annotations
 
 import datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from application.audit import ServiceAudit
+from api.documents import reponse_document, reponses_document
+from application.audit import ServiceAudit, ServiceExportAudit
+from application.exports import FormatExport
 from domain.entree_audit import EntreeAudit
 
 router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}/audit", tags=["audit"])
@@ -62,3 +65,24 @@ async def lister_audit(tournoi_id: int, request: Request) -> list[EntreeAuditRep
     service: ServiceAudit = request.app.state.service_audit
     entrees = await run_in_threadpool(service.lister, tournoi_id)
     return [EntreeAuditReponse.de_agregat(entree) for entree in entrees]
+
+
+@router.get(
+    "/document",
+    response_class=Response,
+    dependencies=[Depends(exiger_admin)],
+    responses=reponses_document(FormatExport.CSV, FormatExport.XLSX),
+)
+async def exporter_audit(
+    tournoi_id: int,
+    request: Request,
+    format_: Annotated[FormatExport, Query(alias="format")] = FormatExport.CSV,
+) -> Response:
+    """Sort le journal d'audit en document téléchargeable (E16US016) — **admin**, comme la lecture.
+
+    ⚠️ Le défaut est le **CSV** et non le PDF : ce document n'a pas de rendu PDF, un défaut aligné
+    sur les autres exports répondrait 400 à qui ne passe aucun format.
+    """
+    service: ServiceExportAudit = request.app.state.service_export_audit
+    document = await run_in_threadpool(service.exporter, tournoi_id, format_)
+    return reponse_document(document, format_, f"audit-{tournoi_id}")

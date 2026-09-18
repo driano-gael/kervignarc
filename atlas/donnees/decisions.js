@@ -8835,13 +8835,19 @@ window.ATLAS.decisions = {
   {
    "amende_par": [],
    "date": "2026-08-30",
-   "date_brute": "2026-08-30",
+   "date_brute": "2026-08-30 devenues caduques)",
    "extrait": "### §1 — Le catalogue porte les formats, et rien d'autre GET /api/v1/exports énumère les documents proposés par l'écran « Exports & impressions » et, pour chacun, les formats que ce serveur sait produire. Il ne porte ni URL, ni verbe HTTP, ni paramètres : chaque document garde sa route et ses options d'IHM. La propriété obtenue est donc exactement celle du CA, ni plus ni moins : | Geste | L'écran change-t-il ? | |---|---| | Ajouter un format à un document existant | non — un adapter, une ligne au composition root | | Ajouter un document au catalogue | oui — il lui faut ses commandes (quel départ, quel tri) | C'est assumé : le CA demande le premier. Promettre le second aurait coûté le […]",
    "fichier": "docs/adr/0101-le-catalogue-d-exports-porte-les-formats-pas-les-url.md",
    "identifiant": "0101",
    "liens": [
     {
      "cible": "E16US007",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E16US016",
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
@@ -8884,6 +8890,20 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/api/v1/audit.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/api/v1/exports.py",
      "existe": true,
      "symboles": [
@@ -8914,6 +8934,31 @@ window.ATLAS.decisions = {
      "symboles": [
       "tri",
       "depart_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/palmares.py",
+     "existe": true,
+     "symboles": [
+      "formats_disponibles",
+      "if",
+      "RegistreDeFormats"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/audit.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -8973,13 +9018,27 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "formats_disponibles",
+      "if",
+      "RegistreDeFormats"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/bootstrap/composition.py",
      "existe": true,
      "symboles": [
       "construire_catalogue",
       "RegistreDeFormats.formats",
       "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne",
-      "FormatExportIndisponible"
+      "FormatExportIndisponible",
+      "if",
+      "formats_disponibles",
+      "RegistreDeFormats"
      ],
      "symboles_absents": [
       "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
@@ -8987,23 +9046,88 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/infrastructure/tableur/audit.py",
+     "existe": true,
+     "symboles": [
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/infrastructure/tableur/listes_impression.py",
      "existe": true,
      "symboles": [
-      "GenerateurListesImpressionCsv",
+      "GenerateurListesImpressionTableur",
       "GenerateurListesImpression",
-      "_montant",
+      "_cellule_csv",
+      "Montant",
       "_ENTETE_CLUB_PAIEMENT",
       "Club",
-      "_neutraliser",
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/palmares.py",
+     "existe": true,
+     "symboles": [
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/tableau.py",
+     "existe": true,
+     "symboles": [
+      "_cellule_csv",
+      "Montant",
+      "_ENTETE_CLUB_PAIEMENT",
+      "Club",
       "_AMORCES_DE_FORMULE",
+      "_ecrire_ligne_xlsx",
       "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
-      "test_les_montants_ne_sont_jamais_neutralises"
+      "test_les_montants_ne_sont_jamais_neutralises",
+      "Tableau",
+      "Cellule",
+      "RenduTableur",
+      "rendre_csv",
+      "rendre_xlsx"
      ],
      "symboles_absents": [
       "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
       "test_les_montants_ne_sont_jamais_neutralises"
      ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_audit.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_exports.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
+     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {

@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1", tags=["listes-impression"])
 @router.get(
     "/tournois/{tournoi_id}/listes/placement",
     dependencies=[Depends(exiger_admin)],
-    responses=reponses_document(FormatExport.PDF, FormatExport.CSV),
+    responses=reponses_document(FormatExport.PDF, FormatExport.CSV, FormatExport.XLSX),
 )
 async def liste_placement(
     tournoi_id: int,
@@ -45,7 +45,7 @@ async def liste_placement(
 @router.get(
     "/tournois/{tournoi_id}/listes/club-paiement",
     dependencies=[Depends(exiger_admin)],
-    responses=reponses_document(FormatExport.PDF, FormatExport.CSV),
+    responses=reponses_document(FormatExport.PDF, FormatExport.CSV, FormatExport.XLSX),
 )
 async def liste_club_paiement(
     tournoi_id: int,

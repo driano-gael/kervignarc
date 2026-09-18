@@ -9,9 +9,12 @@ lorsqu'il n'y a **aucun agrégat** à écrire (le lancement d'un tour, ADR-0056)
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from application.erreurs import TournoiIntrouvable
-from domain.entree_audit import ActionAuditee, EntreeAudit
-from domain.ports import AuditRepository, Horloge, TournoiRepository
+from application.exports import FormatExport, RegistreDeFormats
+from domain.entree_audit import ActionAuditee, EntreeAudit, JournalAudit
+from domain.ports import AuditRepository, GenerateurJournalAudit, Horloge, TournoiRepository
 from domain.tournoi import TournoiId
 
 
@@ -64,3 +67,55 @@ class ServiceAudit:
     def _verifier_tournoi(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+
+
+class LecteurJournalAudit(Protocol):
+    """Port étroit : **lire** le journal d'un tournoi (réalisé par `ServiceAudit`).
+
+    Même discipline de ségrégation d'interface que `LecteurRecapClub`
+    (`application.listes_impression`) : l'export ne dépend pas de tout `ServiceAudit` — surtout pas
+    de `consigner` —, juste de la consultation. Un faux lecteur suffit donc en test, et le service
+    d'export ne peut structurellement **rien écrire** dans le journal qu'il rend.
+    """
+
+    def lister(self, tournoi_id: TournoiId) -> list[EntreeAudit]:
+        """Entrées du tournoi, chronologiques ; lève `TournoiIntrouvable` s'il n'existe pas."""
+        ...
+
+
+class ServiceExportAudit:
+    """Cas d'usage : sortir le journal d'audit en document téléchargeable (E16US016).
+
+    ⚠️ **Séparé de `ServiceAudit` à dessein** : celui-ci est le socle d'**écriture** de la trace,
+    appelé par huit chemins de production. Lui injecter un registre de formats de fichier ferait
+    dépendre l'écriture d'une trace de l'outillage d'exploitation qui la relit.
+    """
+
+    def __init__(
+        self,
+        journal: LecteurJournalAudit,
+        tournois: TournoiRepository,
+        generateurs: RegistreDeFormats[GenerateurJournalAudit],
+    ) -> None:
+        self._journal = journal
+        self._tournois = tournois
+        self._generateurs = generateurs
+
+    @property
+    def formats_disponibles(self) -> tuple[FormatExport, ...]:
+        """Formats que ce service sait produire — ce que le catalogue publie (ADR-0101 §3)."""
+        return self._generateurs.formats
+
+    def exporter(self, tournoi_id: TournoiId, format_: FormatExport = FormatExport.CSV) -> bytes:
+        """Rend le journal d'audit du tournoi dans le format demandé.
+
+        Lève `TournoiIntrouvable` (via le lecteur) si le tournoi n'existe pas,
+        `FormatExportIndisponible` si le format n'est pas câblé pour ce document.
+        ⚠️ Le défaut est le **CSV** et non le PDF, contrairement aux autres exports : ce document
+        n'a pas de rendu PDF (`GenerateurJournalAudit`), un défaut aligné lèverait donc à vide.
+        """
+        entrees = self._journal.lister(tournoi_id)
+        tournoi = self._tournois.par_id(tournoi_id)
+        assert tournoi is not None, "Le lecteur a déjà validé l'existence du tournoi."
+        document = JournalAudit(tournoi=tournoi.nom, entrees=tuple(entrees))
+        return self._generateurs.pour(format_).journal(document)

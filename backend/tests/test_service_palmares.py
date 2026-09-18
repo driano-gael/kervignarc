@@ -27,7 +27,8 @@ import datetime
 
 import pytest
 
-from application.erreurs import TournoiIntrouvable
+from application.erreurs import FormatExportIndisponible, TournoiIntrouvable
+from application.exports import FormatExport, RegistreDeFormats
 from application.palmares import ServicePalmares
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -130,7 +131,8 @@ class _FauxGenerateurPalmares:
     vérifie que **ce que le service lui donne** — c'est la seule chose dont il soit responsable.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, marque: str = "PDF") -> None:
+        self.marque = marque
         self.appels: list[tuple[str, Palmares]] = []
         self.reglages: list[ReglagePodiums] = []
         # Le palmarès **complet** reçu à part : c'est lui qui porte les podiums.
@@ -147,7 +149,7 @@ class _FauxGenerateurPalmares:
         self.appels.append((tournoi, affiche))
         self.podiums.append(complet)
         self.reglages.append(reglage)
-        return b"%PDF-faux"
+        return f"<{self.marque}>".encode()
 
 
 def _service(
@@ -161,7 +163,7 @@ def _service(
         monde._classement(),
         monde.saisie,
         monde.duels,
-        generateur or _FauxGenerateurPalmares(),
+        RegistreDeFormats({FormatExport.PDF: generateur or _FauxGenerateurPalmares()}),
         monde.departs,
         FauxClubRepository(),
         aggregation,
@@ -393,7 +395,7 @@ def test_l_export_pdf_recoit_exactement_le_palmares_affiche() -> None:
 
     document = _service(monde, generateur).imprimer(monde.tournoi_id)
 
-    assert document == b"%PDF-faux"
+    assert document == b"<PDF>"
     ((tournoi, palmares),) = generateur.appels
     attendu = monde.tournois.par_id(monde.tournoi_id)
     assert attendu is not None
@@ -703,7 +705,7 @@ def test_un_podium_de_club_porte_le_nom_du_club_lu_au_referentiel() -> None:
         monde._classement(),
         monde.saisie,
         monde.duels,
-        _FauxGenerateurPalmares(),
+        RegistreDeFormats({FormatExport.PDF: _FauxGenerateurPalmares()}),
         monde.departs,
         clubs,
     )
@@ -737,7 +739,7 @@ def test_le_referentiel_des_clubs_n_est_pas_lu_quand_le_tournoi_ne_recompense_ri
         monde._classement(),
         monde.saisie,
         monde.duels,
-        _FauxGenerateurPalmares(),
+        RegistreDeFormats({FormatExport.PDF: _FauxGenerateurPalmares()}),
         monde.departs,
         clubs,
     )
@@ -856,7 +858,7 @@ def test_le_classement_des_clubs_nomme_ses_clubs_sans_la_portee_club() -> None:
         monde._classement(),
         monde.saisie,
         monde.duels,
-        _FauxGenerateurPalmares(),
+        RegistreDeFormats({FormatExport.PDF: _FauxGenerateurPalmares()}),
         monde.departs,
         clubs,
     )
@@ -866,3 +868,103 @@ def test_le_classement_des_clubs_nomme_ses_clubs_sans_la_portee_club() -> None:
 
     assert classement.portees_comptees == (PorteePodium.CATEGORIE,), "le défaut d'ADR-0103"
     assert [ligne.club_libelle for ligne in classement.lignes] == ["Compagnie de Kervignarc"]
+
+
+# --- E16US016 : « le palmarès sort aussi en tableur » -------------------------------------------
+#
+# Tests écrits **depuis le CA, avant implémentation** (règle 9). Le CA dit « le classement final
+# s'exporte dans les formats du catalogue, pas seulement en PDF ». Ce qui se prouve ici est que le
+# palmarès rejoint le mécanisme d'ADR-0101 : le format **résout un adapter** (§2), et ce que le
+# catalogue publiera **dérive du câblage** (§3). Le rendu lui-même appartient aux adapters.
+
+
+def _service_multi_format(
+    monde: _Monde, generateurs: dict[FormatExport, _FauxGenerateurPalmares]
+) -> ServicePalmares:
+    return ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        monde._classement(),
+        monde.saisie,
+        monde.duels,
+        RegistreDeFormats(generateurs),
+        monde.departs,
+        FauxClubRepository(),
+    )
+
+
+def test_imprimer_rend_le_document_du_format_demande() -> None:
+    monde, _ = _monde_de_quatre()
+    generateurs = {
+        FormatExport.PDF: _FauxGenerateurPalmares("PDF"),
+        FormatExport.CSV: _FauxGenerateurPalmares("CSV"),
+    }
+    service = _service_multi_format(monde, generateurs)
+
+    assert service.imprimer(monde.tournoi_id, format_=FormatExport.PDF) == b"<PDF>"
+    assert service.imprimer(monde.tournoi_id, format_=FormatExport.CSV) == b"<CSV>"
+
+
+def test_imprimer_sans_format_reste_le_pdf() -> None:
+    """⚠️ Compatibilité : les appelants d'avant E16US016 n'en passent aucun.
+
+    Même parti qu'`E16US007` pour les listes (ADR-0101, dernière conséquence). Retirer ce défaut
+    ferait changer de format, **en silence**, tout appelant qui s'en remet à la signature.
+    """
+    monde, _ = _monde_de_quatre()
+    generateurs = {
+        FormatExport.PDF: _FauxGenerateurPalmares("PDF"),
+        FormatExport.CSV: _FauxGenerateurPalmares("CSV"),
+    }
+    service = _service_multi_format(monde, generateurs)
+
+    assert service.imprimer(monde.tournoi_id) == b"<PDF>"
+
+
+def test_le_contenu_du_palmares_ne_depend_pas_du_format() -> None:
+    """Garde-fou jumeau de celui des listes (ADR-0101 §4) : le format n'agit qu'au **rendu**.
+
+    ⚠️ Le palmarès est le document affiché au mur *et* celui repris au tableur : deux contenus
+    différents sous le même nom seraient un litige de podium, pas une gêne d'affichage.
+    """
+    monde, _ = _monde_de_quatre()
+    pdf, csv = _FauxGenerateurPalmares("PDF"), _FauxGenerateurPalmares("CSV")
+    service = _service_multi_format(monde, {FormatExport.PDF: pdf, FormatExport.CSV: csv})
+
+    service.imprimer(monde.tournoi_id)
+    service.imprimer(monde.tournoi_id, format_=FormatExport.CSV)
+
+    assert pdf.appels == csv.appels
+    assert pdf.podiums == csv.podiums
+    assert pdf.reglages == csv.reglages
+
+
+def test_un_format_non_cable_pour_le_palmares_est_refuse() -> None:
+    monde, _ = _monde_de_quatre()
+    service = _service_multi_format(monde, {FormatExport.PDF: _FauxGenerateurPalmares("PDF")})
+
+    with pytest.raises(FormatExportIndisponible):
+        service.imprimer(monde.tournoi_id, format_=FormatExport.CSV)
+
+
+def test_les_formats_du_palmares_derivent_du_cablage() -> None:
+    """ADR-0101 §3 — décor **mono-format** exprès : une liste écrite à la main en dirait deux."""
+    monde, _ = _monde_de_quatre()
+    service = _service_multi_format(monde, {FormatExport.PDF: _FauxGenerateurPalmares("PDF")})
+
+    assert service.formats_disponibles == (FormatExport.PDF,)
+
+
+def test_la_restriction_par_categorie_vaut_pour_tous_les_formats() -> None:
+    """⚠️ `categorie_id` est une option de **composition**, pas de rendu : elle ne doit pas se
+    perdre en route quand un second format arrive. Le piège est réel — c'est exactement ce qu'un
+    ajout de paramètre en fin de signature fait sauter sans que rien ne rougisse.
+    """
+    monde, _ = _monde_de_quatre()
+    pdf, csv = _FauxGenerateurPalmares("PDF"), _FauxGenerateurPalmares("CSV")
+    service = _service_multi_format(monde, {FormatExport.PDF: pdf, FormatExport.CSV: csv})
+
+    service.imprimer(monde.tournoi_id, categorie_id=monde.categorie_id)
+    service.imprimer(monde.tournoi_id, categorie_id=monde.categorie_id, format_=FormatExport.CSV)
+
+    assert pdf.appels == csv.appels

@@ -2,7 +2,9 @@
 
 - **Statut** : Accepté
 - **Date** : 2026-08-30
-- **US** : E16US007
+  devenues caduques)
+- **US** : E16US007, E16US016 *(rouvert le 18/09/2026 : §6 ajouté, deux conséquences
+  devenues caduques)*
 - **Décideurs** : Organisateur / Architecte
 - **S'appuie sur** :
   - [ADR-0031](0031-bibliotheque-pdf-reportlab.md) — ReportLab comme unique moteur de rendu PDF ;
@@ -129,6 +131,31 @@ catalogue dont toutes les entrées offriraient les mêmes formats ne prouverait 
 Sa route accepte tout de même `?format=` : le refus devient une **400 explicite** au lieu d'un
 paramètre ignoré en silence, qui rendrait un PDF à qui a demandé du CSV.
 
+### §6 — Un rendu tableur est **injecté**, pas recopié (E16US016, 18/09/2026)
+
+Le §2 dit qu'un format est un adapter. Appliqué à la lettre avec trois documents en tableur
+(listes, palmarès, audit) et deux formats (CSV, xlsx), il demandait **six classes** — dont trois
+auraient recopié, mot pour mot, la composition des colonnes de leur jumelle pour ne changer que
+l'écriture du fichier. C'est le mode de panne que `DETTE-085` documente : deux jumeaux qui
+divergent au premier ajout de colonne, sans que `tsc` ni `mypy` ne voient rien.
+
+La composition et le rendu sont donc séparés. Un document compose un `Tableau` — en-têtes et
+cellules **typées** (`str`, `int`, `Montant`) —, et le rendu (`rendre_csv`, `rendre_xlsx`) est
+passé au constructeur de l'adapter : `GenerateurPalmaresTableur(rendre_csv)` et
+`GenerateurPalmaresTableur(rendre_xlsx)` sont **deux instances d'une seule classe**. Il n'y a
+toujours aucun `if format == …` (§2 tenu), et la colonne d'un document est écrite une seule fois.
+
+⚠️ **Ce qui ne peut PAS être partagé : la neutralisation des formules.** Le CSV préfixe une
+apostrophe (§4 bis) ; en xlsx l'apostrophe **s'afficherait dans la case**, et le remède est un
+autre : forcer `data_type = "s"` sur la cellule. openpyxl interprète par défaut toute chaîne
+commençant par `=` comme une formule — le risque du §4 bis est donc **plus grand** ici, pas
+moindre : un `.xlsx` porte le calcul dans le fichier, là où le CSV dépend du tableur qui l'ouvre.
+La neutralisation vit par conséquent dans chaque rendu, jamais dans la composition.
+
+Le typage des cellules a une seconde raison, absente du CSV : un `Montant` devient un **nombre**
+dans le classeur, donc une colonne sommable — ce que §4 exigeait déjà sans pouvoir l'obtenir en
+texte.
+
 ## Conséquences
 
 - **Un point unique** compose la réponse binaire (`api/documents.reponse_document`) : type de
@@ -155,12 +182,20 @@ paramètre ignoré en silence, qui rendrait un PDF à qui a demandé du CSV.
   client, donc il fait partie du contrat » : circulaire, relevé en 2ᵉ passe.)* *(Corrigé en revue, axe A.)*
 - **Le paquet d'infra s'appelle `tableur/`, pas `csv/`** : il porterait le nom du module stdlib que
   ses propres modules importent.
-- **Aucune dépendance ajoutée** (règle 11) : ReportLab était déjà là, `csv` est stdlib. `xlsx`
-  reste dû et demande un arbitrage — `E16US016`.
-- **Le palmarès reste dehors.** Sa route s'appelle littéralement `/palmares.pdf` et elle est
-  **publique** : lui ajouter un format est un renommage d'API publique, pas une entrée de registre.
-  `DETTE-031` y ajoute un coût — chaque lecture reconstruit toutes les phases à tableau, et un
-  format de plus multiplie ce recalcul sur une route non authentifiée. À trancher en `E16US016`.
+- ~~**Aucune dépendance ajoutée**~~ — vrai à la livraison d'E16US007, **caduc depuis
+  E16US016** (18/09/2026) : le commanditaire a tranché l'ajout d'`openpyxl` (MIT, pur Python),
+  et `xlsx` est désormais le troisième membre de `FormatExport`. `csv` reste stdlib et ReportLab
+  était déjà là. Cf. `docs/dependances.md`.
+- ~~**Le palmarès reste dehors.**~~ **Caduc depuis E16US016** : le renommage a été tranché par
+  le commanditaire, **franchement et sans alias** — `/palmares.pdf` n'existe plus, la route est
+  `…/palmares/document?format=…`. Nous étions avant le jour J, aucune URL n'était diffusée, et
+  deux chemins pour un même document auraient inauguré une dette pour un risque nul. Le palmarès
+  est donc au catalogue comme les autres. ⚠️ `DETTE-031` reste en vis-à-vis : chaque lecture
+  reconstruit toutes les phases à tableau, sur une route **non authentifiée**.
+- **Le journal d'audit entre au catalogue, et il n'a pas de PDF** (E16US016). C'est le premier
+  document du catalogue à n'en pas offrir : jusque-là, rien ne montrait que le PDF n'était pas un
+  plancher implicite. Un journal dépasse couramment le millier de lignes — il se dépouille au
+  tableur, jamais sur une page A4 (§5 appliqué).
 - **Les documents de salle restent dans leur écran** (étiquettes QR, cartes scoreur, archive) :
   ADR-0058 veut l'activité là où elle se fait. Ils ne sont pas au catalogue.
 - ⚠️ **La compatibilité repose sur un défaut de paramètre.** `format_` retombe sur `PDF` dans les
@@ -177,12 +212,18 @@ paramètre ignoré en silence, qui rendrait un PDF à qui a demandé du CSV.
 | §1 — le catalogue ne porte que des formats | `backend/api/v1/exports.py` (`EntreeCatalogueReponse` : `identifiant`, `libelle`, `description`, `formats` — **aucun** champ d'URL) · `backend/application/exports.py` (`CatalogueExports`, `EntreeCatalogueExport`) | oui |
 | §1 — chaque document garde sa route et ses options | `backend/api/v1/listes_impression.py` (`tri`, `depart_id` **inchangés**) · `backend/api/v1/feuille_de_marque.py` (`depart_id` en chemin) | oui — aucune option déplacée |
 | §2 — le format est un adapter, jamais une branche | `backend/application/exports.py` (`RegistreDeFormats.pour`) · `backend/application/listes_impression.py` et `backend/application/feuille_de_marque.py` (`self._generateurs.pour(format_)`, **zéro** `if`) | oui |
-| §2 — l'adapter CSV réalise le **même** port que le PDF | `backend/infrastructure/tableur/listes_impression.py` (`GenerateurListesImpressionCsv`, port `GenerateurListesImpression`) | oui |
+| §2 — l'adapter tableur réalise le **même** port que le PDF | `backend/infrastructure/tableur/listes_impression.py` (`GenerateurListesImpressionTableur`, port `GenerateurListesImpression`) — ⚠️ **renommé en E16US016** : la classe ne rend plus un seul format, elle en reçoit un (§6) | oui |
 | §3 — les formats dérivent du câblage | `backend/application/exports.py` (`construire_catalogue`, fonction **pure**) · `backend/bootstrap/composition.py` (`construire_catalogue(formats_listes, formats_feuille)`) · `RegistreDeFormats.formats` — gardé par `test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne` (décor **mono-format** : une liste écrite en dur en annoncerait deux) | oui — ⚠️ **corrigé en revue (axe B)** : la 1ʳᵉ livraison composait le catalogue **dans** `bootstrap/`, donc hors de portée des tests ; la cellule « gardé » promettait plus que la preuve, exactement le défaut qu'ADR-0075 documente |
 | §3 — registre vide refusé, ordre stable | `RegistreDeFormats.__init__` (`ValueError`) et `.formats` (itère `FormatExport`) — gardés par `test_un_registre_vide_est_refuse_a_la_construction` et `test_les_formats_sortent_dans_l_ordre_du_catalogue_pas_du_cablage` | oui |
-| §4 — BOM, séparateur, montants, pas de totaux | `backend/infrastructure/tableur/listes_impression.py` (`utf-8-sig`, `_SEPARATEUR = ";"`, `_montant`, `_ENTETE_CLUB_PAIEMENT` avec `Club` en colonne) | oui |
-| §4 bis — une cellule de texte ne devient pas une formule | `backend/infrastructure/tableur/listes_impression.py` (`_neutraliser`, `_AMORCES_DE_FORMULE`) — appliqué aux **colonnes de texte seulement**, jamais aux montants (un `-5,00` préfixé cesserait d'être sommable) ; gardé par `test_un_club_nomme_comme_une_formule_n_est_pas_execute` et `test_les_montants_ne_sont_jamais_neutralises` | oui — ⚠️ **ajouté en revue** : relevé par les **cinq** axes (CWE-1236), le chemin étant complet (import FFTA → CSV → tableur de la trésorière) |
+| §4 — BOM, séparateur, montants, pas de totaux | `backend/infrastructure/tableur/tableau.py` (`utf-8-sig`, `_SEPARATEUR = ";"`, `_cellule_csv`, `Montant`) · `backend/infrastructure/tableur/listes_impression.py` (`_ENTETE_CLUB_PAIEMENT`, avec `Club` en colonne) — ⚠️ **les trois premiers ont déménagé en E16US016** : ils appartiennent au rendu, pas au document |
+| §4 bis — une cellule de texte ne devient pas une formule | `backend/infrastructure/tableur/tableau.py` (`_cellule_csv`, `_AMORCES_DE_FORMULE` ; **et** `_ecrire_ligne_xlsx` depuis E16US016, cf. §6) — appliqué aux **colonnes de texte seulement**, jamais aux montants (un `-5,00` préfixé cesserait d'être sommable) ; gardé par `test_un_club_nomme_comme_une_formule_n_est_pas_execute` et `test_les_montants_ne_sont_jamais_neutralises` | oui — ⚠️ **ajouté en revue** : relevé par les **cinq** axes (CWE-1236), le chemin étant complet (import FFTA → CSV → tableur de la trésorière) |
 | §4 — le contenu ne dépend pas du format | `backend/application/listes_impression.py` — le contenu est composé **avant** `.pour(format_)` ; gardé par `test_le_contenu_compose_ne_depend_pas_du_format` | oui |
 | §5 — un export mono-format, et le refus explicite | `backend/bootstrap/composition.py` (`RegistreDeFormats({FormatExport.PDF: GenerateurFeuilleDeMarquePdf()})`) · `backend/application/erreurs/exploitation.py` (`FormatExportIndisponible`) · `backend/api/erreurs.py` (→ 400) | oui |
 | §5 / §1 — l'écran ne tient aucune liste de formats | `frontend/src/features/exports/Exports.tsx` et `api.ts` — les boutons sont produits depuis le catalogue reçu | oui |
+| §6 — composition et rendu séparés | `backend/infrastructure/tableur/tableau.py` (`Tableau`, `Cellule`, `Montant`, `RenduTableur`, `rendre_csv`, `rendre_xlsx`) | oui |
+| §6 — une classe, deux instances (zéro `if` sur le format) | `backend/bootstrap/composition.py` (`GenerateurListesImpressionTableur(rendre_csv)` **et** `(rendre_xlsx)`, idem palmarès et audit) · `backend/infrastructure/tableur/{listes_impression,palmares,audit}.py` (trois compositeurs, **aucun** ne connaît de format) | oui |
+| §6 — la neutralisation appartient au rendu, pas à la composition | `tableau.py` (`_cellule_csv` préfixe ; `_ecrire_ligne_xlsx` force `data_type = "s"`) — gardé par `test_un_nom_qui_commence_par_egal_reste_du_texte` et `test_le_texte_neutralise_n_est_pas_defigure`, **vérifiés par sabotage** | oui |
+| §6 — un montant est un nombre dans le classeur | `tableau.py` (`Montant`, `_FORMAT_MONTANT_XLSX`) — gardé par `test_un_montant_est_un_nombre_sommable` | oui |
+| Conséquence — le palmarès est au catalogue | `backend/application/palmares.py` (`formats_disponibles`, `imprimer(…, format_)`, **aucun** `if`) · `backend/api/v1/palmares.py` (`/tournois/{id}/palmares/document`, `?format=`) · `backend/bootstrap/composition.py` (`RegistreDeFormats` à trois entrées) | oui |
+| Conséquence — le journal d'audit est au catalogue, sans PDF | `backend/application/audit.py` (`ServiceExportAudit`, port étroit `LecteurJournalAudit`) · `backend/api/v1/audit.py` (`/audit/document`, `exiger_admin`) · `composition.py` (registre **sans** `FormatExport.PDF`) — gardé par `test_un_export_peut_n_offrir_aucun_pdf` (`backend/tests/test_service_exports.py`) et `test_un_format_non_cable_est_refuse` (`backend/tests/test_service_audit.py`) | oui |
 | Conséquence — point unique de réponse binaire | `backend/api/documents.py` (`reponse_document`, `reponses_document`, `MEDIA_TYPES`) — module d'API **sans routeur**, appelé par `listes_impression.py` et `feuille_de_marque.py` ; exhaustivité gardée par `test_chaque_format_porte_un_media_type_distinct` | oui — ⚠️ **corrigé en revue (axes A, C2)** : il vivait dans le routeur du catalogue, et le dictionnaire OpenAPI réénumérait les types MIME **à la main**, dans le module même qui importe le registre |

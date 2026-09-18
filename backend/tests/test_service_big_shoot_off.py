@@ -29,6 +29,7 @@ from application.erreurs import (
     PhasePasReglee,
     PhasePasUnBigShootOff,
 )
+from application.exports import FormatExport, RegistreDeFormats
 from application.palmares import ServicePalmares
 from application.placement_duels import ServicePlacementDuels
 from application.routage import IssueRoutage, ServiceRoutage
@@ -664,7 +665,7 @@ def test_le_palmares_consomme_les_rangs_du_big_shoot_off() -> None:
         service._classements,
         service._saisie_duels,
         monde.duels,
-        _FauxGenerateurPalmares(),
+        RegistreDeFormats({FormatExport.PDF: _FauxGenerateurPalmares()}),
         monde.departs,
         FauxClubRepository(),
         None,
@@ -700,7 +701,7 @@ def test_un_big_shoot_off_sans_elimination_n_entre_pas_au_palmares() -> None:
         service._classements,
         service._saisie_duels,
         monde.duels,
-        _FauxGenerateurPalmares(),
+        RegistreDeFormats({FormatExport.PDF: _FauxGenerateurPalmares()}),
         monde.departs,
         FauxClubRepository(),
         None,
