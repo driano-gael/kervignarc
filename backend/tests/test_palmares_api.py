@@ -487,6 +487,10 @@ def test_l_export_csv_du_palmares_rend_un_tableau(
     assert reponse.status_code == 200, reponse.text
     assert reponse.headers["content-type"].startswith("text/csv")
     assert ".csv" in reponse.headers["content-disposition"]
+    # ⚠️ `attachment` et non `inline` : un tableur ne s'affiche pas dans un navigateur, et
+    # `inline` n'y élargirait que la surface de sniffing (2ᵉ passe de revue).
+    assert "attachment" in reponse.headers["content-disposition"]
+    assert reponse.headers["x-content-type-options"] == "nosniff"
     entete = reponse.content.decode("utf-8-sig").splitlines()[0]
     assert entete == "Rang;Nom;Prénom;Catégorie;Rang catégorie;Club;Rang club;Statut"
 
@@ -502,6 +506,7 @@ def test_l_export_xlsx_du_palmares_rend_un_classeur(
 
     assert reponse.status_code == 200, reponse.text
     assert ".xlsx" in reponse.headers["content-disposition"]
+    assert "attachment" in reponse.headers["content-disposition"]
     # Un `.xlsx` est un ZIP : les deux premiers octets le disent sans ouvrir openpyxl.
     assert reponse.content[:2] == b"PK"
 

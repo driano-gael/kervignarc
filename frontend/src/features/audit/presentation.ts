@@ -53,10 +53,15 @@ export function actionsPresentes(entrees: EntreeAudit[]): string[] {
   )
 }
 
+// ⚠️ `\p{Mn}` (marques **non-espaçantes**) et non `\p{Diacritic}` : mesuré en 2ᵉ passe de
+// revue, `Diacritic` retire 551 points de code de plus — dont `^` et `` ` ``, si bien qu'une
+// recherche sur `^` matcherait toutes les lignes — et en laisse 19 que la décomposition NFD
+// produit. `Mn` est l'intention réelle : ce que NFD détache d'une lettre accentuée.
+// `DETTE-103` : 3ᵉ repli casse/accents du front, et les trois divergent.
 function replier(texte: string): string {
   return texte
     .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
+    .replace(/\p{Mn}/gu, '')
     .toLocaleLowerCase('fr')
 }
 

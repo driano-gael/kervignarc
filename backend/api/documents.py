@@ -52,8 +52,8 @@ def reponse_document(
 
     ⚠️ Point unique : sans lui, chaque route recopierait la paire (type MIME, extension) et un
     format ajouté se téléchargerait en `.pdf` contenant du CSV.
-    ⚠️ `disposition` n'est pas un confort : le palmarès sert `inline` — « ouvrir, vérifier,
-    imprimer au mur » (E06US004) —, et le navigateur télécharge ce qu'il ne sait pas afficher.
+    ⚠️ `disposition` est décidée par l'appelant : seul le **PDF** du palmarès est servi `inline`
+    (« ouvrir, vérifier, imprimer au mur », E06US004) ; les tableurs partent en `attachment`.
     """
     nom_fichier = f"{nom_sans_extension}.{format_.value}"
     return Response(

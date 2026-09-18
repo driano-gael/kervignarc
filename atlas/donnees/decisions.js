@@ -8874,6 +8874,8 @@ window.ATLAS.decisions = {
       "reponse_document",
       "reponses_document",
       "MEDIA_TYPES",
+      "inline",
+      "attachment",
       "test_chaque_format_porte_un_media_type_distinct"
      ],
      "symboles_absents": [

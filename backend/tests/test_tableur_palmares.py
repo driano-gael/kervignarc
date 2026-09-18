@@ -16,9 +16,9 @@ from domain.classement import StatutClassement
 from domain.entree_audit import ActionAuditee, EntreeAudit, JournalAudit
 from domain.palmares import LignePalmares, Palmares
 from domain.podium import ReglagePodiums
-from infrastructure.tableur.audit import GenerateurJournalAuditTableur
+from infrastructure.tableur.audit import _LIBELLES_ACTION, GenerateurJournalAuditTableur
 from infrastructure.tableur.grille import rendre_csv
-from infrastructure.tableur.palmares import GenerateurPalmaresTableur
+from infrastructure.tableur.palmares import _LIBELLES_STATUT, GenerateurPalmaresTableur
 
 
 def _ligne(**surcharges: object) -> LignePalmares:
@@ -172,3 +172,21 @@ def test_l_horodatage_du_journal_exporte_porte_son_fuseau() -> None:
     assert ligne.split(";")[0] == "2026-09-18 08:12:04 UTC"
     # Et l'acte est en clair, comme à l'écran — pas le slug `correction_score` (règle 3).
     assert ligne.split(";")[2] == "Correction"
+
+
+# --- Registres jumeaux : exhaustivité prouvée, pas seulement repliée (2ᵉ passe de revue) --------
+#
+# ⚠️ Les deux tables de libellés doublent des énumérations du domaine, et leur repli `.get(…, value)`
+# **éteint le signal** : un membre ajouté demain sortirait en slug dans l'export pendant que l'écran
+# écrirait le libellé — soit exactement la divergence que cette US a corrigée. Trois axes l'ont
+# relevé : ici les deux listes sont en Python dans le même processus, l'argument « deux langages »
+# du jumeau front ne vaut pas. Même patron que `MEDIA_TYPES` ↔ `FormatExport` (`api/documents.py`).
+
+
+def test_chaque_acte_du_domaine_a_son_libelle_a_l_export() -> None:
+    assert set(_LIBELLES_ACTION) == set(ActionAuditee)
+
+
+def test_chaque_statut_de_forfait_a_son_libelle_a_l_export() -> None:
+    """`EN_LICE` est à part : il n'a pas de libellé de forfait, il se résout sur l'avancement."""
+    assert set(_LIBELLES_STATUT) == set(StatutClassement) - {StatutClassement.EN_LICE}

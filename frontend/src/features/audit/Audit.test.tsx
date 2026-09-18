@@ -50,8 +50,13 @@ describe('Audit — le journal se consulte', () => {
 
   it('montre les actes les plus récents en premier', async () => {
     // Le journal sert à retrouver ce qui vient de se passer : ouvrir sur le début de matinée
-    // obligeait à pagniner 25 fois sur un tournoi réel (planche A18 : 1 284 entrées).
-    journal = [entree({ id: 1, auteur: 'PREMIER ACTE' }), entree({ id: 2, auteur: 'DERNIER ACTE' })]
+    // obligeait à paginer 25 fois sur un tournoi réel (planche A18 : 1 284 entrées).
+    // ⚠️ Deux horodatages **distincts** : avec le même, le test ne prouvait que « l'écran
+    // retourne l'ordre d'arrivée », pas « antichronologique » (relevé en 2ᵉ passe).
+    journal = [
+      entree({ id: 1, auteur: 'PREMIER ACTE', horodatage: '2026-09-18T08:12:04Z' }),
+      entree({ id: 2, auteur: 'DERNIER ACTE', horodatage: '2026-09-18T11:47:30Z' }),
+    ]
 
     monter()
     await screen.findByText('DERNIER ACTE')

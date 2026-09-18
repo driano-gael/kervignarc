@@ -332,8 +332,7 @@ async def imprimer_palmares(
     ⚠️ **Le chemin ne nomme plus le format** (E16US016). Il s'appelait `/palmares.pdf` : y ajouter
     un format aurait demandé une route par extension, là où le reste du catalogue passe `?format=`
     (ADR-0101 §1). Route **publique**, comme le palmarès qu'elle rend.
-    `inline` plutôt que `attachment` : le geste réel est « ouvrir, vérifier, imprimer », et un
-    téléchargement forcé ajoute un aller-retour par le gestionnaire de fichiers.
+    `inline` pour le **PDF seul** — cf. le commentaire du corps.
     """
     service: ServicePalmares = request.app.state.service_palmares
     document = await run_in_threadpool(service.imprimer, tournoi_id, categorie_id, format_)

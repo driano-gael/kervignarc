@@ -150,6 +150,8 @@ def test_l_export_rend_un_csv_lisible_par_un_tableur(
 
         assert reponse.status_code == 200, reponse.text
         assert reponse.headers["content-type"].startswith(_CSV)
+        # ⚠️ `nosniff` **et** le type qu'il verrouille : l'en-tête seul ne veut rien dire.
+        assert reponse.headers["x-content-type-options"] == "nosniff"
         assert 'filename="audit-' in reponse.headers["content-disposition"]
         texte = reponse.content.decode("utf-8-sig")
         assert "Horodatage;Auteur;Action;Objet;Avant;Après" in texte

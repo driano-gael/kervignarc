@@ -71,9 +71,10 @@ def _rang(borne_min: int | None, borne_max: int | None) -> str:
     return str(borne_min) if borne_min == borne_max else f"{borne_min}-{borne_max}"
 
 
-# Les mots du PDF du même palmarès (`infrastructure/pdf/palmares.py`) : le document du mur et
-# celui de la presse nomment le même archer pareil (règle 3). ⚠️ Registre jumeau de
-# `StatutClassement` — un membre ajouté sans son libellé tombe sur le repli, pas sur une case vide.
+# Les **deux statuts de forfait** reprennent les mots du PDF (`infrastructure/pdf/palmares.py`) :
+# le document du mur et celui de la presse nomment le même archer pareil (règle 3). « En cours » et
+# « Acquis » sont propres au tableur — le PDF n'affiche rien pour un archer en lice.
+# ⚠️ Registre jumeau de `StatutClassement`, gardé par `test_tableur_palmares.py`.
 _LIBELLES_STATUT = {
     StatutClassement.ABANDON: "Abandon",
     StatutClassement.DISQUALIFIE: "Disqualifié",

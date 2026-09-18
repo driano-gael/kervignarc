@@ -14,7 +14,6 @@ import pytest
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from infrastructure.erreurs import InfrastructureError
 from infrastructure.tableur.grille import Grille, Montant, rendre_csv, rendre_xlsx
 
 
@@ -80,7 +79,7 @@ def test_l_entete_est_fige() -> None:
     assert _feuille(rendre_xlsx(Grille(("Nom",), (("MARTIN",),)))).freeze_panes == "A2"
 
 
-def test_un_tableau_sans_ligne_produit_un_classeur_valide() -> None:
+def test_une_grille_sans_ligne_produit_un_classeur_valide() -> None:
     """Un tournoi sans acte tracé rend un document **vide mais ouvrable**, pas un fichier cassé."""
     feuille = _feuille(rendre_xlsx(Grille(("Horodatage", "Auteur"), ())))
 
@@ -88,11 +87,11 @@ def test_un_tableau_sans_ligne_produit_un_classeur_valide() -> None:
     assert feuille.max_row == 1
 
 
-def test_les_deux_rendus_partent_du_meme_tableau() -> None:
+def test_les_deux_rendus_partent_de_la_meme_grille() -> None:
     """Le format n'agit qu'au **rendu** : mêmes données, deux mises en forme (ADR-0101 §4).
 
     On ne compare pas les octets — ils n'ont aucune raison de se ressembler — mais le fait que le
-    même `Tableau` alimente les deux — la propriété qu'une seule classe compositrice tient.
+    même `Grille` alimente les deux — la propriété qu'une seule classe compositrice tient.
     """
     grille = Grille(("Nom", "Dû"), (("MARTIN", Montant(850)),))
 
@@ -130,12 +129,31 @@ def test_la_feuille_porte_le_titre_du_document() -> None:
     assert _feuille(rendre_xlsx(Grille(("Nom",), (), titre="Palmarès"))).title == "Palmarès"
 
 
-def test_un_caractere_de_controle_devient_une_erreur_d_infrastructure() -> None:
+def test_un_caractere_de_controle_est_retire_au_lieu_de_faire_tomber_l_export() -> None:
     """⚠️ openpyxl **refuse** ce que Python accepte dans une `str` (`IllegalCharacterError`).
 
-    Un seul caractère de contrôle au milieu d'un nom d'archer fait tomber tout l'export xlsx, alors
-    que le CSV du même document réussit. On épingle la traduction en erreur typée (→ 500 générique,
-    règle 5) plutôt que de laisser remonter une exception tierce.
+    La 1ʳᵉ rédaction épinglait l'échec comme attendu : un seul caractère invisible dans un nom
+    importé de la FFTA faisait tomber **tout** l'export xlsx du tournoi, quand le CSV du même
+    document passait. On assainit plutôt — un onglet ou un nom nettoyé coûte moins qu'un export
+    perdu le jour J (relevé en 2ᵉ passe, axes C1 et adversarial).
     """
-    with pytest.raises(InfrastructureError):
-        rendre_xlsx(Grille(("Nom",), ((f"bon{chr(11)}jour",),)))
+    feuille = _feuille(rendre_xlsx(Grille(("Nom",), ((f"bon{chr(11)}jour",),))))
+
+    assert feuille.cell(row=2, column=1).value == "bonjour"
+
+
+def test_un_titre_interdit_par_excel_est_assaini_au_lieu_de_lever() -> None:
+    """⚠️ Trois modes de panne **mesurés** par l'axe adversarial, tous fermés ici.
+
+    Un `/` (libellé « Senior H / Arc classique ») levait `ValueError` → 500 sur tout l'export ;
+    au-delà de 31 caractères openpyxl ne rend qu'un avertissement et Excel peut refuser le
+    fichier ; un caractère de contrôle produisait un `workbook.xml` **mal formé**, donc un
+    classeur illisible servi en 200 — pire que l'échec, parce qu'invisible.
+    """
+    assert (
+        _feuille(rendre_xlsx(Grille(("Nom",), (), titre="Senior H / Arc"))).title
+        == "Senior H   Arc"
+    )
+    assert len(_feuille(rendre_xlsx(Grille(("Nom",), (), titre="T" * 40))).title) == 31
+    assert _feuille(rendre_xlsx(Grille(("Nom",), (), titre=f"a{chr(11)}b"))).title == "ab"
+    assert _feuille(rendre_xlsx(Grille(("Nom",), (), titre="///"))).title == "Export"

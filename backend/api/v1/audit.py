@@ -19,6 +19,7 @@ from api.documents import reponse_document, reponses_document
 from application.audit import ServiceAudit, ServiceExportAudit
 from application.exports import FormatExport
 from domain.entree_audit import EntreeAudit
+from infrastructure.erreurs import InfrastructureError
 
 router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}/audit", tags=["audit"])
 
@@ -43,7 +44,8 @@ class EntreeAuditReponse(BaseModel):
     @staticmethod
     def de_agregat(entree: EntreeAudit) -> EntreeAuditReponse:
         """Traduit un agrégat de domaine (persisté) en DTO de réponse."""
-        assert entree.id is not None, "Une entrée d'audit persistée a toujours un identifiant."
+        if entree.id is None:  # pragma: no cover - une entrée relue est toujours persistée
+            raise InfrastructureError("Une entrée d'audit relue sans identifiant.")
         return EntreeAuditReponse(
             id=entree.id,
             tournoi_id=entree.tournoi_id,

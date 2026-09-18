@@ -336,7 +336,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "infrastructure",
-   "occurrences": 43,
+   "occurrences": 44,
    "source": "api"
   },
   {
@@ -634,8 +634,9 @@ window.ATLAS.carte = {
    "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "api",
-   "occurrences": 7,
+   "occurrences": 8,
    "origines": [
+    "backend/api/v1/audit.py",
     "backend/api/v1/big_shoot_off.py",
     "backend/api/v1/colline.py",
     "backend/api/v1/forfaits.py",
@@ -3159,8 +3160,8 @@ window.ATLAS.carte = {
   "aretes_front": 179,
   "enchevetrements": 4,
   "features": 51,
-  "imports": 959,
-  "imports_entre_couches": 811,
+  "imports": 960,
+  "imports_entre_couches": 812,
   "plus_gros_noeud": 24,
   "ports": 72,
   "ports_hors_domaine": 28,

@@ -29,13 +29,20 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
         "sqlalchemy",
         "alembic",
         "httpx",
-        # Rendu de documents : le domaine décrit le contenu, l'infrastructure le rend (ADR-0031,
-        # ADR-0101). ⚠️ Ajoutées en E16US016 avec `openpyxl` : les trois y manquaient depuis leur
-        # introduction, donc un `import reportlab` dans `domain/` passait hook, CI et revue.
+        # Rendu de documents (ADR-0031, ADR-0101) : le domaine décrit le contenu, l'infrastructure
+        # le rend. ⚠️ Ajoutées en E16US016 : aucune n'y figurait depuis son introduction.
         "reportlab",
         "openpyxl",
         "et_xmlfile",
+        "PIL",
+        # Réseau et concurrence. ⚠️ `anyio` et `websockets` portent le sens même de la règle 1 —
+        # « pur et **synchrone** » : un `from anyio import to_thread` dans `domain/` passait
+        # jusqu'ici hook, CI et revue (relevé en 2ᵉ passe, axes C1 et adversarial).
+        "anyio",
+        "websockets",
+        "greenlet",
         "zeroconf",
+        "ifaddr",
         # Autres couches (le domaine ne dépend d'aucune couche externe)
         "application",
         "infrastructure",
@@ -57,9 +64,19 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
 
 
 def test_les_paquets_hors_couches_sont_dans_la_denylist() -> None:
-    """Ancre les quatre ajouts : sans eux, `domain/` pouvait les importer en silence."""
+    """Ancre les entrées de la denylist : sans assertion, les en retirer ne fait rougir personne.
+
+    ⚠️ C'est le trou d'un cran au-dessus de celui que la denylist ferme : une liste tenue à la main
+    dont rien ne garde le contenu. Relevé en 2ᵉ passe par trois axes — les libs de rendu ajoutées
+    par E16US016 n'étaient ancrées par rien.
+    """
     assert _forbidden_imports("import atlas") == {"atlas"}
     assert _forbidden_imports("from release.chemins import x") == {"release"}
+    assert _forbidden_imports("import openpyxl") == {"openpyxl"}
+    assert _forbidden_imports("from reportlab.pdfgen import canvas") == {"reportlab"}
+    # Les deux qui portent le sens de la règle 1 : le domaine est **synchrone**.
+    assert _forbidden_imports("from anyio import to_thread") == {"anyio"}
+    assert _forbidden_imports("import websockets") == {"websockets"}
 
 
 def _forbidden_imports(source: str) -> set[str]:

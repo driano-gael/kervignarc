@@ -34,8 +34,9 @@ describe('libelleAction', () => {
   })
 
   it('rend le slug brut pour un acte inconnu, plutôt qu’une case vide', () => {
-    // ⚠️ Le garde-fou de `DETTE-095`, versant front : `ActionAuditee` peut gagner un membre sans
-    // que ce registre le sache — les deux listes sont dans deux langages.
+    // ⚠️ Garde-fou du registre jumeau : `ActionAuditee` peut gagner un membre sans que cette
+    // table le sache — les deux listes sont dans deux langages. Côté serveur, le jumeau est
+    // gardé par une assertion d'exhaustivité (`test_tableur_palmares.py`) ; ici c'est le repli.
     expect(libelleAction('nouvel_acte')).toBe('nouvel_acte')
   })
 })
@@ -71,6 +72,16 @@ describe('filtrer', () => {
 
   it('filtre par type d’acte', () => {
     expect(filtrer(journal, 'forfait', '').map((e) => e.id)).toEqual([3])
+  })
+
+  it('replie bien les accents, et NE replie PAS ce qui n’en est pas', () => {
+    // ⚠️ Ancrage posé en 2ᵉ passe : la propriété n'était couverte par rien, et le passage de
+    // `[̀-ͯ]` à une propriété Unicode a été fait sans test. `\p{Diacritic}` retirait
+    // aussi `^` et `` ` `` — une recherche sur `^` aurait alors matché toutes les lignes.
+    const accentue = [entree({ id: 9, auteur: 'LE GUÉN Anne' })]
+    expect(filtrer(accentue, '', 'le guen')).toHaveLength(1)
+    expect(filtrer(accentue, '', 'le guén')).toHaveLength(1)
+    expect(filtrer(accentue, '', '^')).toHaveLength(0)
   })
 
   it('cherche dans l’auteur en repliant casse et accents', () => {

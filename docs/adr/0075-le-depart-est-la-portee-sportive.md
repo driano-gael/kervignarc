@@ -312,10 +312,15 @@ expliqué chez lui, le mode de panne que ce paragraphe décrit), **`0100`** (E16
 et IHM** : l'adresse d'admin gagne un 4ᵉ segment, l'élément ouvert ; aucun moteur ne lit une
 adresse, aucune portée ne change. Inscrit **en 2ᵉ passe de revue** : l'ADR argumentait son
 exclusion **chez lui** et l'intervalle sautait de `0099` à rien — la 5ᵉ occurrence du mode de panne
-que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US), **`0101`** (E16US007, ⚠️ **ROUVERT par `E16US016` le 18/09/2026** — §6 ajouté, deux conséquences devenues caduques ; **il reste hors critère** : un format de fichier ne touche ni portée, ni moteur, ni politique injectable au sens de la règle 2, et `openpyxl` est une dépendance de rendu, pas une septième politique —
+que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US), **`0101`** (E16US007 —
 **outillage documentaire** : un catalogue de formats de fichier ne touche ni portée, ni moteur, ni
-politique injectable au sens de la règle 2. ✅ **Inscrit du premier coup, hors revue** — 3ᵉ US
-d'affilée), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
+politique injectable au sens de la règle 2. ✅ Inscrit du premier coup à sa création.
+⚠️ **ROUVERT par `E16US016` le 18/09/2026** — §6 ajouté (le rendu tableur est injecté, pas
+recopié), deux conséquences devenues caduques (`xlsx` et le palmarès). **Il porte sa section**,
+mise à jour dans le même commit : renommage `Tableau`→`Grille`, cellule *Porté ?* du §4
+rétablie, appelants du point unique complétés. Réexaminé au critère à cette occasion : toujours
+**outillage documentaire**, donc hors de la liste nominative. *(Placement et redite corrigés en
+2ᵉ passe de revue — l'insertion initiale coupait l'entrée en deux.)*), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
 que `0099` : une règle d'écriture ne touche ni portée, ni moteur, ni politique injectable.
 ✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée), **`0107`** (E16US011 —
 **politique d'autorisation** : un ordre entre rôles pour arbitrer une écriture concurrente ne touche

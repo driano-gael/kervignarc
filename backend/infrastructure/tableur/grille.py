@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from dataclasses import dataclass
 from typing import Protocol
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.worksheet.worksheet import Worksheet
 
 from infrastructure.erreurs import InfrastructureError
@@ -27,6 +29,12 @@ _SEPARATEUR = ";"
 _AMORCES_DE_FORMULE = ("=", "+", "-", "@", "\t", "\r")
 
 _FORMAT_MONTANT_XLSX = "0.00"
+
+# Ce qu'Excel refuse dans un nom d'onglet, et la longueur qu'il tolère. ⚠️ openpyxl ne lève que
+# sur les caractères interdits : au-delà de 31 il se contente d'un avertissement, et un caractère
+# de contrôle produit un `workbook.xml` **mal formé**, donc un classeur illisible servi en 200.
+_TITRE_INTERDIT = re.compile(r"[\/*?:\[\]]")
+_TITRE_MAX = 31
 
 
 @dataclass(frozen=True)
@@ -84,7 +92,7 @@ def rendre_xlsx(grille: Grille) -> bytes:
     try:
         classeur = Workbook()
         feuille = classeur.active
-        feuille.title = grille.titre
+        feuille.title = _titre_sur(grille.titre)
         for numero, ligne in enumerate((grille.entetes, *grille.lignes), start=1):
             _ecrire_ligne_xlsx(feuille, numero, ligne)
         # Fige l'en-tête : un journal de mille lignes se lit en défilant, sans perdre ses colonnes.
@@ -92,9 +100,7 @@ def rendre_xlsx(grille: Grille) -> bytes:
         tampon = io.BytesIO()
         classeur.save(tampon)
         return tampon.getvalue()
-    except Exception as echec:
-        # ⚠️ openpyxl **refuse** les caractères de contrôle (`IllegalCharacterError`), que Python
-        # accepte au milieu d'une `str` — un seul dans un nom d'archer ferait tomber tout l'export.
+    except Exception as echec:  # pragma: no cover - défense ; les entrées fautives sont assainies
         raise InfrastructureError("Échec du rendu xlsx du document.") from echec
 
 
@@ -111,6 +117,8 @@ def _ecrire_ligne_xlsx(feuille: Worksheet, numero: int, ligne: tuple[Cellule, ..
             case = feuille.cell(row=numero, column=colonne, value=valeur.centimes / 100)
             case.number_format = _FORMAT_MONTANT_XLSX
             continue
+        if isinstance(valeur, str):
+            valeur = ILLEGAL_CHARACTERS_RE.sub("", valeur)
         case = feuille.cell(row=numero, column=colonne, value=valeur)
         if isinstance(valeur, str):
             case.data_type = "s"
@@ -124,3 +132,15 @@ def _cellule_csv(cellule: Cellule) -> str:
     if isinstance(cellule, int):
         return str(cellule)
     return f"'{cellule}" if cellule.startswith(_AMORCES_DE_FORMULE) else cellule
+
+
+def _titre_sur(titre: str) -> str:
+    """Rend un nom d'onglet qu'Excel accepte : sans caractère interdit ni de contrôle, borné à 31.
+
+    ⚠️ **Assainir plutôt que laisser lever** : un `/` dans un libellé de catégorie ferait échouer
+    **tout** l'export, et un caractère de contrôle produirait un classeur illisible servi en 200.
+    La donnée vient de la saisie et de l'import FFTA — un onglet renommé coûte moins qu'un export
+    perdu le jour J.
+    """
+    propre = _TITRE_INTERDIT.sub(" ", ILLEGAL_CHARACTERS_RE.sub("", titre)).strip()
+    return propre[:_TITRE_MAX] or "Export"
