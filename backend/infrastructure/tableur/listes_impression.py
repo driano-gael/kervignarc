@@ -14,7 +14,7 @@ from domain.listes_impression import (
     ListePlacement,
     StatutPaiement,
 )
-from infrastructure.tableur.tableau import Cellule, Montant, RenduTableur, Tableau
+from infrastructure.tableur.grille import Cellule, Grille, Montant, RenduTableur
 
 _ENTETE_PLACEMENT = ("Départ", "Cible", "Couloir", "Nom", "Prénom", "Catégorie")
 _ENTETE_CLUB_PAIEMENT = (
@@ -49,7 +49,7 @@ class GenerateurListesImpressionTableur:
             )
             for ligne in liste.lignes
         )
-        return self._rendu(Tableau(_ENTETE_PLACEMENT, lignes))
+        return self._rendu(Grille(_ENTETE_PLACEMENT, lignes, titre="Placement"))
 
     def club_paiement(self, liste: ListeClubPaiement) -> bytes:
         """Rend la liste club & paiement — **une ligne par archer**, le club en colonne."""
@@ -68,7 +68,7 @@ class GenerateurListesImpressionTableur:
             for groupe in liste.groupes
             for ligne in groupe.lignes
         )
-        return self._rendu(Tableau(_ENTETE_CLUB_PAIEMENT, lignes))
+        return self._rendu(Grille(_ENTETE_CLUB_PAIEMENT, lignes, titre="Club et paiement"))
 
 
 def _libelle_statut(statut: StatutPaiement) -> str:

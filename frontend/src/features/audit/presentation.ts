@@ -1,9 +1,10 @@
 // Mise en forme du journal d'audit (E16US016) — fonctions **pures**, testables sans rendu.
 //
-// ⚠️ `LIBELLES_ACTION` est un registre **jumeau** de `ActionAuditee` (`domain/entree_audit.py`), et
-// rien ne rapproche les deux listes : elles sont dans deux langages (`DETTE-095`, même mode de
-// panne que les identifiants du catalogue d'exports). D'où le repli de `libelleAction`, qui rend
-// le slug brut plutôt qu'une case vide — une action neuve reste lisible, en attendant sa traduction.
+// ⚠️ `LIBELLES_ACTION` est un registre **jumeau** de `ActionAuditee` (`domain/entree_audit.py`),
+// et rien ne rapproche les deux listes : elles sont dans deux langages. D'où le repli de
+// `libelleAction`, qui rend le slug brut plutôt qu'une case vide — une action neuve reste lisible
+// en attendant sa traduction. ⚠️ Un jumeau de plus existe côté serveur (`infrastructure/tableur/
+// audit.py`), pour que l'export nomme l'acte comme l'écran.
 
 import type { EntreeAudit } from './api'
 
@@ -53,7 +54,10 @@ export function actionsPresentes(entrees: EntreeAudit[]): string[] {
 }
 
 function replier(texte: string): string {
-  return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
+  return texte
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase('fr')
 }
 
 /** Filtre le journal : par action, puis par recherche libre sur qui / quoi / avant-après.
@@ -61,8 +65,8 @@ function replier(texte: string): string {
  * `DETTE-101` : le filtrage est **client**, sur le journal entier chargé — le serveur ne sait pas
  * filtrer. Le repli d'accents ci-dessous est ce qui rendra la résorption non triviale.
  *
- * La recherche replie casse et accents, comme la recherche transverse d'E16US010 — « leguen »
- * doit trouver « LE GUEN », sinon le champ ne sert qu'à qui connaît déjà l'orthographe exacte.
+ * ⚠️ La recherche replie casse et accents, **pas les espaces** : « le guén » trouve « LE GUEN »,
+ * « leguen » non. Supprimer les espaces serait une autre règle, non demandée.
  */
 export function filtrer(entrees: EntreeAudit[], action: string, recherche: string): EntreeAudit[] {
   const terme = replier(recherche.trim())

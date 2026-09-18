@@ -27,7 +27,12 @@ export function Audit({ tournoiId }: { tournoiId: number }) {
   const [recherche, setRecherche] = useState('')
   const [page, setPage] = useState(0)
 
-  const entrees = useMemo(() => journal.data ?? [], [journal.data])
+  // ⚠️ **Antichronologique**, à rebours du port : `AuditRepository.par_tournoi` garantit
+  // l'ordre croissant, et l'**export** le conserve — un journal de preuve se lit dans le sens
+  // du temps. L'écran, lui, sert à retrouver l'acte qui vient d'avoir lieu : sur les ~1 284
+  // entrées d'une matinée (planche A18), le laisser croissant ouvrait 25 pages trop tôt.
+  // Arbitrage du commanditaire du 18/09/2026, reversé au CA.
+  const entrees = useMemo(() => [...(journal.data ?? [])].reverse(), [journal.data])
   const filtrees = useMemo(() => filtrer(entrees, action, recherche), [entrees, action, recherche])
   const corrections = useMemo(() => entrees.filter(estCorrective).length, [entrees])
 

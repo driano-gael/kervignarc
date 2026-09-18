@@ -9,8 +9,8 @@
 ne permettait de le **regarder**. En cas de contestation, la trace existait et restait hors
 d'atteinte.
 
-Elle a désormais son écran, dans l'axe **Gestion** : le tableau des actes du plus récent au plus
-ancien, un compteur des corrections à part, une recherche qui ignore majuscules et accents, un
+Elle a désormais son écran, dans l'axe **Gestion** : le tableau des actes **du plus récent au
+plus ancien** — on vient y chercher ce qui vient de se passer —, un compteur des corrections à part, une recherche qui ignore majuscules et accents, un
 filtre par type d'acte, et le détail « avant → après » qui se déplie sur la ligne. Réservé à
 l'administrateur : une pièce de litige ne s'ouvre pas au public.
 

@@ -59,6 +59,8 @@ class ServiceAudit:
     def lister(self, tournoi_id: TournoiId) -> list[EntreeAudit]:
         """Renvoie les entrées d'audit d'un tournoi, en ordre chronologique (liste possible vide).
 
+        `DETTE-101` : aucun filtre ni borne — l'écran charge tout et trie côté client.
+
         Lève `TournoiIntrouvable` si le tournoi n'existe pas.
         """
         self._verifier_tournoi(tournoi_id)
@@ -116,6 +118,9 @@ class ServiceExportAudit:
         """
         entrees = self._journal.lister(tournoi_id)
         tournoi = self._tournois.par_id(tournoi_id)
-        assert tournoi is not None, "Le lecteur a déjà validé l'existence du tournoi."
+        if tournoi is None:
+            # ⚠️ Pas un `assert` : le tournoi peut disparaître entre les deux lectures, et un
+            # `assert` rendrait 500 là où la route promet 404 — en plus de s'effacer sous `-O`.
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         document = JournalAudit(tournoi=tournoi.nom, entrees=tuple(entrees))
         return self._generateurs.pour(format_).journal(document)

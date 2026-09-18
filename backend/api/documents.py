@@ -59,5 +59,10 @@ def reponse_document(
     return Response(
         content=contenu,
         media_type=MEDIA_TYPES[format_],
-        headers={"Content-Disposition": f'{disposition}; filename="{nom_fichier}"'},
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{nom_fichier}"',
+            # Le contenu vient de la saisie et de l'import FFTA, et sort sur une origine partagée
+            # avec la SPA : le navigateur ne doit pas re-deviner le type (E16US016, revue axe C2).
+            "X-Content-Type-Options": "nosniff",
+        },
     )

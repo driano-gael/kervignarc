@@ -6,8 +6,8 @@ de lignes. Le registre câblé le dit tout seul au catalogue (ADR-0101 §5).
 
 from __future__ import annotations
 
-from domain.entree_audit import JournalAudit
-from infrastructure.tableur.tableau import Cellule, RenduTableur, Tableau
+from domain.entree_audit import ActionAuditee, JournalAudit
+from infrastructure.tableur.grille import Cellule, Grille, RenduTableur
 
 _ENTETE = ("Horodatage", "Auteur", "Action", "Objet", "Avant", "Après")
 
@@ -28,11 +28,31 @@ class GenerateurJournalAuditTableur:
             (
                 entree.horodatage.strftime(_FORMAT_HORODATAGE),
                 entree.auteur,
-                entree.action.value,
+                _libelle_action(entree.action),
                 entree.objet,
                 entree.avant or "",
                 entree.apres or "",
             )
             for entree in journal.entrees
         )
-        return self._rendu(Tableau(_ENTETE, lignes))
+        return self._rendu(Grille(_ENTETE, lignes, titre="Journal d'audit"))
+
+
+# Les mots de l'écran (`frontend/src/features/audit/presentation.ts`) : l'organisateur qui compare
+# le tableau et le fichier lit le même acte deux fois, pas un libellé et un slug (règle 3).
+# ⚠️ Registre jumeau d'`ActionAuditee` — le repli rend le slug brut plutôt qu'une case vide.
+_LIBELLES_ACTION = {
+    ActionAuditee.VALIDATION: "Validation",
+    ActionAuditee.CORRECTION_SCORE: "Correction",
+    ActionAuditee.ANNULATION_VALIDATION: "Annulation de validation",
+    ActionAuditee.FORFAIT: "Forfait",
+    ActionAuditee.REPLACEMENT: "Replacement",
+    ActionAuditee.PAIEMENT: "Paiement",
+    ActionAuditee.LANCEMENT: "Lancement",
+    ActionAuditee.REMBOURSEMENT: "Remboursement",
+}
+
+
+def _libelle_action(action: ActionAuditee) -> str:
+    """L'acte en clair ; repli sur le slug pour un membre neuf non encore traduit."""
+    return _LIBELLES_ACTION.get(action, action.value)

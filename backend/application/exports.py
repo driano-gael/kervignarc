@@ -111,6 +111,7 @@ class CatalogueExports:
 # DETTE-095 : les identifiants ci-dessous doivent exister dans la table `documents` de
 # `Exports.tsx` ; rien ne rapproche les deux listes, elles sont dans deux langages.
 def construire_catalogue(
+    *,
     formats_listes: tuple[FormatExport, ...],
     formats_feuille: tuple[FormatExport, ...],
     formats_palmares: tuple[FormatExport, ...],

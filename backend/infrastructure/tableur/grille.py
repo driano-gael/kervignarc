@@ -1,10 +1,10 @@
-"""Socle des rendus tableur : un **tableau** composé une fois, rendu en CSV ou en xlsx (E16US016).
+"""Socle des rendus tableur : une **grille** composée une fois, rendue en CSV ou en xlsx (E16US016).
 
 Pourquoi un socle et non un adapter par document et par format : ADR-0101 §6.
 
-⚠️ La neutralisation des formules (CWE-1236) n'est **pas** commune aux deux rendus : le CSV préfixe
-une apostrophe, le xlsx force le type de la cellule. Appliquer le remède CSV au xlsx afficherait
-l'apostrophe dans la case, sous les yeux de l'organisateur.
+⚠️ Le type s'appelle `Grille` et **non `Tableau`** : ce dernier est un terme FFTA du glossaire —
+l'arbre de matchs à élimination (`domain/tableau.py`). Même parti que le paquet, qui ne s'appelle
+pas `csv` pour ne pas heurter le module stdlib qu'il importe.
 """
 
 from __future__ import annotations
@@ -45,54 +45,56 @@ Cellule = str | int | Montant
 
 
 @dataclass(frozen=True)
-class Tableau:
-    """Un document tabulaire prêt à rendre : une ligne d'en-tête, puis les données.
+class Grille:
+    """Un document tabulaire prêt à rendre : un titre de feuille, une ligne d'en-tête, les données.
 
-    ⚠️ Aucun total, aucun bloc, aucun titre de document (ADR-0101 §4) : ce qui fait un beau PDF
-    casse le tri et le filtre d'un tableur.
+    ⚠️ Aucun total, aucun bloc, aucun titre **dans** la grille (ADR-0101 §4) : ce qui fait un beau
+    PDF casse le tri et le filtre d'un tableur. `titre` nomme l'onglet du classeur, rien de plus —
+    le CSV l'ignore, n'ayant pas d'onglet.
     """
 
     entetes: tuple[str, ...]
     lignes: tuple[tuple[Cellule, ...], ...]
+    titre: str = "Export"
 
 
 class RenduTableur(Protocol):
-    """Port interne : transforme un `Tableau` en octets téléchargeables."""
+    """Port interne : transforme une `Grille` en octets téléchargeables."""
 
-    def __call__(self, tableau: Tableau) -> bytes:
-        """Rend le tableau ; lève `InfrastructureError` si l'écriture échoue."""
+    def __call__(self, grille: Grille) -> bytes:
+        """Rend la grille ; lève `InfrastructureError` si l'écriture échoue."""
         ...
 
 
-def rendre_csv(tableau: Tableau) -> bytes:
+def rendre_csv(grille: Grille) -> bytes:
     """Rend en CSV lisible par un tableur français (ADR-0101 §4 : BOM, point-virgule, virgule)."""
     try:
         tampon = io.StringIO(newline="")
         # `\r\n` : fin de ligne attendue par la RFC 4180 et par Excel sous Windows.
         redacteur = csv.writer(tampon, delimiter=_SEPARATEUR, lineterminator="\r\n")
-        redacteur.writerow(tableau.entetes)
-        redacteur.writerows(
-            tuple(_cellule_csv(cellule) for cellule in ligne) for ligne in tableau.lignes
-        )
+        for ligne in (grille.entetes, *grille.lignes):
+            redacteur.writerow(tuple(_cellule_csv(cellule) for cellule in ligne))
         return tampon.getvalue().encode("utf-8-sig")
     except Exception as echec:  # pragma: no cover - défense, `csv` n'échoue pas sur du `str`
         raise InfrastructureError("Échec du rendu CSV du document.") from echec
 
 
-def rendre_xlsx(tableau: Tableau) -> bytes:
-    """Rend en classeur Excel — une seule feuille, l'en-tête figé."""
+def rendre_xlsx(grille: Grille) -> bytes:
+    """Rend en classeur Excel — une feuille nommée, l'en-tête figé."""
     try:
         classeur = Workbook()
         feuille = classeur.active
-        feuille.append(list(tableau.entetes))
-        for numero, ligne in enumerate(tableau.lignes, start=2):
+        feuille.title = grille.titre
+        for numero, ligne in enumerate((grille.entetes, *grille.lignes), start=1):
             _ecrire_ligne_xlsx(feuille, numero, ligne)
         # Fige l'en-tête : un journal de mille lignes se lit en défilant, sans perdre ses colonnes.
         feuille.freeze_panes = "A2"
         tampon = io.BytesIO()
         classeur.save(tampon)
         return tampon.getvalue()
-    except Exception as echec:  # pragma: no cover - défense, openpyxl n'échoue pas sur ces types
+    except Exception as echec:
+        # ⚠️ openpyxl **refuse** les caractères de contrôle (`IllegalCharacterError`), que Python
+        # accepte au milieu d'une `str` — un seul dans un nom d'archer ferait tomber tout l'export.
         raise InfrastructureError("Échec du rendu xlsx du document.") from echec
 
 
@@ -101,7 +103,8 @@ def _ecrire_ligne_xlsx(feuille: Worksheet, numero: int, ligne: tuple[Cellule, ..
 
     ⚠️ openpyxl interprète toute chaîne commençant par `=` comme une formule (`data_type` vaut
     alors `f`) : sans ce forçage, un nom d'archer importé exécuterait du calcul à l'ouverture.
-    Le `data_type` se pose **après** l'affectation, qui le recalcule.
+    Le `data_type` se pose **après** l'affectation, qui le recalcule. ⚠️ **L'en-tête passe par ici
+    comme les données** : l'en exempter rouvrait le trou au premier document à colonnes calculées.
     """
     for colonne, valeur in enumerate(ligne, start=1):
         if isinstance(valeur, Montant):

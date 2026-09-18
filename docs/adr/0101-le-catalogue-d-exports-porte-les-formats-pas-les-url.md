@@ -2,7 +2,6 @@
 
 - **Statut** : Accepté
 - **Date** : 2026-08-30
-  devenues caduques)
 - **US** : E16US007, E16US016 *(rouvert le 18/09/2026 : §6 ajouté, deux conséquences
   devenues caduques)*
 - **Décideurs** : Organisateur / Architecte
@@ -139,7 +138,7 @@ auraient recopié, mot pour mot, la composition des colonnes de leur jumelle pou
 l'écriture du fichier. C'est le mode de panne que `DETTE-085` documente : deux jumeaux qui
 divergent au premier ajout de colonne, sans que `tsc` ni `mypy` ne voient rien.
 
-La composition et le rendu sont donc séparés. Un document compose un `Tableau` — en-têtes et
+La composition et le rendu sont donc séparés. Un document compose une `Grille` — en-têtes et
 cellules **typées** (`str`, `int`, `Montant`) —, et le rendu (`rendre_csv`, `rendre_xlsx`) est
 passé au constructeur de l'adapter : `GenerateurPalmaresTableur(rendre_csv)` et
 `GenerateurPalmaresTableur(rendre_xlsx)` sont **deux instances d'une seule classe**. Il n'y a
@@ -151,6 +150,14 @@ autre : forcer `data_type = "s"` sur la cellule. openpyxl interprète par défau
 commençant par `=` comme une formule — le risque du §4 bis est donc **plus grand** ici, pas
 moindre : un `.xlsx` porte le calcul dans le fichier, là où le CSV dépend du tableur qui l'ouvre.
 La neutralisation vit par conséquent dans chaque rendu, jamais dans la composition.
+
+⚠️ **Le type s'appelle `Grille`, pas `Tableau`** — et ce n'est pas un détail de goût :
+**Tableau** est un terme du glossaire FFTA, l'**arbre de matchs à élimination**, réalisé par
+`domain/tableau.py`. La 1ʳᵉ livraison l'avait confisqué pour « grille de tableur », jusqu'à faire
+importer un `Tableau` non-sportif dans le module du **palmarès**, dont le sujet est précisément le
+classement issu des tableaux (relevé par deux axes de revue). Le paquet, lui, argumentait déjà de
+ne pas s'appeler `csv` pour ne pas heurter le module stdlib qu'il importe : le même raisonnement
+vaut *a fortiori* contre un terme métier central.
 
 Le typage des cellules a une seconde raison, absente du CSV : un `Montant` devient un **nombre**
 dans le classeur, donc une colonne sommable — ce que §4 exigeait déjà sans pouvoir l'obtenir en
@@ -213,17 +220,17 @@ texte.
 | §1 — chaque document garde sa route et ses options | `backend/api/v1/listes_impression.py` (`tri`, `depart_id` **inchangés**) · `backend/api/v1/feuille_de_marque.py` (`depart_id` en chemin) | oui — aucune option déplacée |
 | §2 — le format est un adapter, jamais une branche | `backend/application/exports.py` (`RegistreDeFormats.pour`) · `backend/application/listes_impression.py` et `backend/application/feuille_de_marque.py` (`self._generateurs.pour(format_)`, **zéro** `if`) | oui |
 | §2 — l'adapter tableur réalise le **même** port que le PDF | `backend/infrastructure/tableur/listes_impression.py` (`GenerateurListesImpressionTableur`, port `GenerateurListesImpression`) — ⚠️ **renommé en E16US016** : la classe ne rend plus un seul format, elle en reçoit un (§6) | oui |
-| §3 — les formats dérivent du câblage | `backend/application/exports.py` (`construire_catalogue`, fonction **pure**) · `backend/bootstrap/composition.py` (`construire_catalogue(formats_listes, formats_feuille)`) · `RegistreDeFormats.formats` — gardé par `test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne` (décor **mono-format** : une liste écrite en dur en annoncerait deux) | oui — ⚠️ **corrigé en revue (axe B)** : la 1ʳᵉ livraison composait le catalogue **dans** `bootstrap/`, donc hors de portée des tests ; la cellule « gardé » promettait plus que la preuve, exactement le défaut qu'ADR-0075 documente |
+| §3 — les formats dérivent du câblage | `backend/application/exports.py` (`construire_catalogue`, fonction **pure**) · `backend/bootstrap/composition.py` (`construire_catalogue(...)`, appelée **par mot-clé** : quatre tuples de même type s'intervertissent en silence) · `RegistreDeFormats.formats` — gardé par `test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne` (décor **mono-format** : une liste écrite en dur en annoncerait deux) | oui — ⚠️ **corrigé en revue (axe B)** : la 1ʳᵉ livraison composait le catalogue **dans** `bootstrap/`, donc hors de portée des tests ; la cellule « gardé » promettait plus que la preuve, exactement le défaut qu'ADR-0075 documente |
 | §3 — registre vide refusé, ordre stable | `RegistreDeFormats.__init__` (`ValueError`) et `.formats` (itère `FormatExport`) — gardés par `test_un_registre_vide_est_refuse_a_la_construction` et `test_les_formats_sortent_dans_l_ordre_du_catalogue_pas_du_cablage` | oui |
-| §4 — BOM, séparateur, montants, pas de totaux | `backend/infrastructure/tableur/tableau.py` (`utf-8-sig`, `_SEPARATEUR = ";"`, `_cellule_csv`, `Montant`) · `backend/infrastructure/tableur/listes_impression.py` (`_ENTETE_CLUB_PAIEMENT`, avec `Club` en colonne) — ⚠️ **les trois premiers ont déménagé en E16US016** : ils appartiennent au rendu, pas au document |
-| §4 bis — une cellule de texte ne devient pas une formule | `backend/infrastructure/tableur/tableau.py` (`_cellule_csv`, `_AMORCES_DE_FORMULE` ; **et** `_ecrire_ligne_xlsx` depuis E16US016, cf. §6) — appliqué aux **colonnes de texte seulement**, jamais aux montants (un `-5,00` préfixé cesserait d'être sommable) ; gardé par `test_un_club_nomme_comme_une_formule_n_est_pas_execute` et `test_les_montants_ne_sont_jamais_neutralises` | oui — ⚠️ **ajouté en revue** : relevé par les **cinq** axes (CWE-1236), le chemin étant complet (import FFTA → CSV → tableur de la trésorière) |
+| §4 — BOM, séparateur, montants, pas de totaux | `backend/infrastructure/tableur/grille.py` (`utf-8-sig`, `_SEPARATEUR = ";"`, `_cellule_csv`, `Montant`) · `backend/infrastructure/tableur/listes_impression.py` (`_ENTETE_CLUB_PAIEMENT`, avec `Club` en colonne) — ⚠️ **les trois premiers ont déménagé en E16US016** : ils appartiennent au rendu, pas au document | oui |
+| §4 bis — une cellule de texte ne devient pas une formule | `backend/infrastructure/tableur/grille.py` (`_cellule_csv`, `_AMORCES_DE_FORMULE` ; **et** `_ecrire_ligne_xlsx` depuis E16US016, cf. §6). ⚠️ **L'en-tête passe par le même chemin depuis la revue** : il l'esquivait, et l'axe adversarial l'a prouvé sur le XML produit — appliqué aux **colonnes de texte seulement**, jamais aux montants (un `-5,00` préfixé cesserait d'être sommable) ; gardé par `test_un_club_nomme_comme_une_formule_n_est_pas_execute` et `test_les_montants_ne_sont_jamais_neutralises` | oui — ⚠️ **ajouté en revue** : relevé par les **cinq** axes (CWE-1236), le chemin étant complet (import FFTA → CSV → tableur de la trésorière) |
 | §4 — le contenu ne dépend pas du format | `backend/application/listes_impression.py` — le contenu est composé **avant** `.pour(format_)` ; gardé par `test_le_contenu_compose_ne_depend_pas_du_format` | oui |
 | §5 — un export mono-format, et le refus explicite | `backend/bootstrap/composition.py` (`RegistreDeFormats({FormatExport.PDF: GenerateurFeuilleDeMarquePdf()})`) · `backend/application/erreurs/exploitation.py` (`FormatExportIndisponible`) · `backend/api/erreurs.py` (→ 400) | oui |
 | §5 / §1 — l'écran ne tient aucune liste de formats | `frontend/src/features/exports/Exports.tsx` et `api.ts` — les boutons sont produits depuis le catalogue reçu | oui |
-| §6 — composition et rendu séparés | `backend/infrastructure/tableur/tableau.py` (`Tableau`, `Cellule`, `Montant`, `RenduTableur`, `rendre_csv`, `rendre_xlsx`) | oui |
+| §6 — composition et rendu séparés | `backend/infrastructure/tableur/grille.py` (`Grille`, `Cellule`, `Montant`, `RenduTableur`, `rendre_csv`, `rendre_xlsx`) | oui |
 | §6 — une classe, deux instances (zéro `if` sur le format) | `backend/bootstrap/composition.py` (`GenerateurListesImpressionTableur(rendre_csv)` **et** `(rendre_xlsx)`, idem palmarès et audit) · `backend/infrastructure/tableur/{listes_impression,palmares,audit}.py` (trois compositeurs, **aucun** ne connaît de format) | oui |
-| §6 — la neutralisation appartient au rendu, pas à la composition | `tableau.py` (`_cellule_csv` préfixe ; `_ecrire_ligne_xlsx` force `data_type = "s"`) — gardé par `test_un_nom_qui_commence_par_egal_reste_du_texte` et `test_le_texte_neutralise_n_est_pas_defigure`, **vérifiés par sabotage** | oui |
-| §6 — un montant est un nombre dans le classeur | `tableau.py` (`Montant`, `_FORMAT_MONTANT_XLSX`) — gardé par `test_un_montant_est_un_nombre_sommable` | oui |
+| §6 — la neutralisation appartient au rendu, pas à la composition | `grille.py` (`_cellule_csv` préfixe ; `_ecrire_ligne_xlsx` force `data_type = "s"`) — gardé par `test_un_nom_qui_commence_par_egal_reste_du_texte`, `test_le_texte_neutralise_n_est_pas_defigure` et, **depuis la revue**, les deux cas d'en-tête (`…_en_xlsx`, `…_est_neutralise_en_csv`) ; **vérifiés par sabotage** | oui |
+| §6 — un montant est un nombre dans le classeur | `grille.py` (`Montant`, `_FORMAT_MONTANT_XLSX`) — gardé par `test_un_montant_est_un_nombre_sommable` | oui |
 | Conséquence — le palmarès est au catalogue | `backend/application/palmares.py` (`formats_disponibles`, `imprimer(…, format_)`, **aucun** `if`) · `backend/api/v1/palmares.py` (`/tournois/{id}/palmares/document`, `?format=`) · `backend/bootstrap/composition.py` (`RegistreDeFormats` à trois entrées) | oui |
 | Conséquence — le journal d'audit est au catalogue, sans PDF | `backend/application/audit.py` (`ServiceExportAudit`, port étroit `LecteurJournalAudit`) · `backend/api/v1/audit.py` (`/audit/document`, `exiger_admin`) · `composition.py` (registre **sans** `FormatExport.PDF`) — gardé par `test_un_export_peut_n_offrir_aucun_pdf` (`backend/tests/test_service_exports.py`) et `test_un_format_non_cable_est_refuse` (`backend/tests/test_service_audit.py`) | oui |
 | Conséquence — point unique de réponse binaire | `backend/api/documents.py` (`reponse_document`, `reponses_document`, `MEDIA_TYPES`) — module d'API **sans routeur**, appelé par `listes_impression.py` et `feuille_de_marque.py` ; exhaustivité gardée par `test_chaque_format_porte_un_media_type_distinct` | oui — ⚠️ **corrigé en revue (axes A, C2)** : il vivait dans le routeur du catalogue, et le dictionnaire OpenAPI réénumérait les types MIME **à la main**, dans le module même qui importe le registre |

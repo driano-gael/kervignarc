@@ -76,7 +76,7 @@ pretty = true
 show_error_codes = true
 warn_unreachable = true
 
-# ReportLab (E09US001, ADR-0031) ne publie ni marqueur `py.typed` ni stubs : mypy strict refuserait
+# DETTE-102 — ReportLab (E09US001, ADR-0031) ne publie ni marqueur `py.typed` ni stubs : mypy strict refuserait
 # l'import non typé. On tolère l'absence de types **pour cette lib tierce uniquement**. Portée exacte :
 # les symboles ReportLab deviennent `Any`, donc les *appels* à ReportLab dans `infrastructure/pdf/`
 # ne sont pas type-vérifiés ; la logique **maison** de l'adapter (boucles, f-strings, `_echapper`,
@@ -86,7 +86,7 @@ warn_unreachable = true
 module = ["reportlab.*"]
 ignore_missing_imports = true
 
-# openpyxl (E16US016) ne publie pas de marqueur `py.typed` : **même cas, même remède** que
+# DETTE-102 — openpyxl (E16US016) ne publie pas de marqueur `py.typed` : **même cas, même remède** que
 # ReportLab ci-dessus. Portée exacte : les symboles openpyxl deviennent `Any`, donc les appels
 # openpyxl d'`infrastructure/tableur/` ne sont pas type-vérifiés ; la logique maison du module
 # (typage des cellules, neutralisation, montants) l'est, elle. Le paquet de stubs `types-openpyxl`

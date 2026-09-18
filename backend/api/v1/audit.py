@@ -60,6 +60,8 @@ class EntreeAuditReponse(BaseModel):
 async def lister_audit(tournoi_id: int, request: Request) -> list[EntreeAuditReponse]:
     """Liste les entrées d'audit d'un tournoi (chronologique) — lecture **admin**.
 
+    `DETTE-101` : aucun paramètre de filtre ni de pagination ; le tri se fait à l'écran.
+
     `404 tournoi_introuvable` si le tournoi n'existe pas (et non une liste vide trompeuse).
     """
     service: ServiceAudit = request.app.state.service_audit

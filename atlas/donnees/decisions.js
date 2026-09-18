@@ -4053,6 +4053,7 @@ window.ATLAS.decisions = {
     "E16US011",
     "E16US014",
     "E16US015",
+    "E16US016",
     "E16US017",
     "E16US019",
     "E16US020"
@@ -8835,7 +8836,7 @@ window.ATLAS.decisions = {
   {
    "amende_par": [],
    "date": "2026-08-30",
-   "date_brute": "2026-08-30 devenues caduques)",
+   "date_brute": "2026-08-30",
    "extrait": "### §1 — Le catalogue porte les formats, et rien d'autre GET /api/v1/exports énumère les documents proposés par l'écran « Exports & impressions » et, pour chacun, les formats que ce serveur sait produire. Il ne porte ni URL, ni verbe HTTP, ni paramètres : chaque document garde sa route et ses options d'IHM. La propriété obtenue est donc exactement celle du CA, ni plus ni moins : | Geste | L'écran change-t-il ? | |---|---| | Ajouter un format à un document existant | non — un adapter, une ligne au composition root | | Ajouter un document au catalogue | oui — il lui faut ses commandes (quel départ, quel tri) | C'est assumé : le CA demande le premier. Promettre le second aurait coûté le […]",
    "fichier": "docs/adr/0101-le-catalogue-d-exports-porte-les-formats-pas-les-url.md",
    "identifiant": "0101",
@@ -9055,6 +9056,30 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/infrastructure/tableur/grille.py",
+     "existe": true,
+     "symboles": [
+      "_cellule_csv",
+      "Montant",
+      "_ENTETE_CLUB_PAIEMENT",
+      "Club",
+      "_AMORCES_DE_FORMULE",
+      "_ecrire_ligne_xlsx",
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises",
+      "Grille",
+      "Cellule",
+      "RenduTableur",
+      "rendre_csv",
+      "rendre_xlsx"
+     ],
+     "symboles_absents": [
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises"
+     ],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/infrastructure/tableur/listes_impression.py",
      "existe": true,
      "symboles": [
@@ -9076,30 +9101,6 @@ window.ATLAS.decisions = {
       "if"
      ],
      "symboles_absents": [],
-     "verifiable": true
-    },
-    {
-     "chemin": "backend/infrastructure/tableur/tableau.py",
-     "existe": true,
-     "symboles": [
-      "_cellule_csv",
-      "Montant",
-      "_ENTETE_CLUB_PAIEMENT",
-      "Club",
-      "_AMORCES_DE_FORMULE",
-      "_ecrire_ligne_xlsx",
-      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
-      "test_les_montants_ne_sont_jamais_neutralises",
-      "Tableau",
-      "Cellule",
-      "RenduTableur",
-      "rendre_csv",
-      "rendre_xlsx"
-     ],
-     "symboles_absents": [
-      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
-      "test_les_montants_ne_sont_jamais_neutralises"
-     ],
      "verifiable": true
     },
     {

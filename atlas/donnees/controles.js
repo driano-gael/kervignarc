@@ -82,12 +82,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
-   "code": "date-non-canonique",
-   "message": "date « 2026-08-30 devenues caduques) » hors du format ISO utilisé par le reste du registre (AAAA-MM-JJ).",
-   "severite": "signal",
-   "sujet": "ADR-0101"
-  },
-  {
    "code": "features-enchevetrees",
    "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
@@ -269,7 +263,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/tableau.py » — introuvable(s) dans le fichier.",
+   "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/grille.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0101"
   },
@@ -288,6 +282,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 47
+  "signaux": 46
  }
 };

@@ -8,9 +8,10 @@ une ligne par archer, parce qu'un podium recopié en blocs casse le tri et le fi
 
 from __future__ import annotations
 
+from domain.classement import StatutClassement
 from domain.palmares import LignePalmares, Palmares
 from domain.podium import ReglagePodiums
-from infrastructure.tableur.tableau import Cellule, RenduTableur, Tableau
+from infrastructure.tableur.grille import Cellule, Grille, RenduTableur
 
 _ENTETE = (
     "Rang",
@@ -56,7 +57,7 @@ class GenerateurPalmaresTableur:
             )
             for ligne in affiche.lignes
         )
-        return self._rendu(Tableau(_ENTETE, lignes))
+        return self._rendu(Grille(_ENTETE, lignes, titre="Palmarès"))
 
 
 def _rang(borne_min: int | None, borne_max: int | None) -> str:
@@ -70,10 +71,19 @@ def _rang(borne_min: int | None, borne_max: int | None) -> str:
     return str(borne_min) if borne_min == borne_max else f"{borne_min}-{borne_max}"
 
 
+# Les mots du PDF du même palmarès (`infrastructure/pdf/palmares.py`) : le document du mur et
+# celui de la presse nomment le même archer pareil (règle 3). ⚠️ Registre jumeau de
+# `StatutClassement` — un membre ajouté sans son libellé tombe sur le repli, pas sur une case vide.
+_LIBELLES_STATUT = {
+    StatutClassement.ABANDON: "Abandon",
+    StatutClassement.DISQUALIFIE: "Disqualifié",
+}
+
+
 def _statut(ligne: LignePalmares) -> str:
     """Ce que la ligne dit d'elle-même : une place acquise, une attente, ou un statut de forfait."""
-    if ligne.statut.value != "en_lice":
-        return ligne.statut.value
+    if ligne.statut is not StatutClassement.EN_LICE:
+        return _LIBELLES_STATUT.get(ligne.statut, ligne.statut.value)
     if ligne.en_lice:
-        return "en cours"
-    return "acquis" if ligne.decerne else ""
+        return "En cours"
+    return "Acquis" if ligne.decerne else ""

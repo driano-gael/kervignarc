@@ -3,7 +3,14 @@
 // verrouiller ici. On vérifie que le tri est toujours joint et que le départ ne l'est que demandé.
 
 import { describe, expect, it } from 'vitest'
-import { avecFormat, cheminClubPaiement, cheminFeuilleDeMarque, cheminPlacement } from './api'
+import {
+  avecFormat,
+  cheminAudit,
+  cheminClubPaiement,
+  cheminFeuilleDeMarque,
+  cheminPalmares,
+  cheminPlacement,
+} from './api'
 
 describe('cheminPlacement', () => {
   it('joint le tri, sans départ quand aucun filtre', () => {
@@ -34,6 +41,20 @@ describe('cheminClubPaiement', () => {
 describe('cheminFeuilleDeMarque', () => {
   it('cible la route du départ demandé', () => {
     expect(cheminFeuilleDeMarque(7, 3)).toBe('/api/v1/tournois/7/departs/3/feuille-de-marque')
+  })
+})
+
+describe('cheminPalmares', () => {
+  // ⚠️ E16US016 a **supprimé** `/palmares.pdf` sans alias : une faute de frappe ici donne un lien
+  // mort le jour J, sur la route publique remise aux archers, sans que rien côté serveur ne rougisse.
+  it('vise la route généralisée, sans extension dans le chemin', () => {
+    expect(cheminPalmares(7)).toBe('/api/v1/tournois/7/palmares/document')
+  })
+})
+
+describe('cheminAudit', () => {
+  it('vise la route de document du journal', () => {
+    expect(cheminAudit(7)).toBe('/api/v1/tournois/7/audit/document')
   })
 })
 

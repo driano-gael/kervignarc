@@ -964,7 +964,11 @@ def test_la_restriction_par_categorie_vaut_pour_tous_les_formats() -> None:
     pdf, csv = _FauxGenerateurPalmares("PDF"), _FauxGenerateurPalmares("CSV")
     service = _service_multi_format(monde, {FormatExport.PDF: pdf, FormatExport.CSV: csv})
 
-    service.imprimer(monde.tournoi_id, categorie_id=monde.categorie_id)
-    service.imprimer(monde.tournoi_id, categorie_id=monde.categorie_id, format_=FormatExport.CSV)
+    # ⚠️ Une catégorie **qui retranche vraiment** : avec `monde.categorie_id`, tous les archers
+    # du décor passent, et l'égalité des deux appels resterait vraie même si `categorie_id` était
+    # ignoré des deux côtés — le test ne prouvait rien (relevé par l'axe adversarial).
+    service.imprimer(monde.tournoi_id, categorie_id=999)
+    service.imprimer(monde.tournoi_id, categorie_id=999, format_=FormatExport.CSV)
 
+    assert csv.appels[0][1].lignes == ()
     assert pdf.appels == csv.appels

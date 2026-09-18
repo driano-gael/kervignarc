@@ -337,4 +337,7 @@ async def imprimer_palmares(
     """
     service: ServicePalmares = request.app.state.service_palmares
     document = await run_in_threadpool(service.imprimer, tournoi_id, categorie_id, format_)
-    return reponse_document(document, format_, f"palmares-{tournoi_id}", disposition="inline")
+    # ⚠️ `inline` pour le **PDF seul** : son geste est « ouvrir, vérifier, imprimer au mur ».
+    # Un tableur ne s'affiche pas dans un navigateur — `inline` n'y ferait qu'élargir le sniffing.
+    disposition = "inline" if format_ is FormatExport.PDF else "attachment"
+    return reponse_document(document, format_, f"palmares-{tournoi_id}", disposition=disposition)

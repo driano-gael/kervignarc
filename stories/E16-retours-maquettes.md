@@ -353,8 +353,16 @@
   ⚠️ **`DETTE-031` est en vis-à-vis** (chaque lecture reconstruit toutes les phases à tableau) : un
   format de plus multiplie ce coût **sur une route ouverte**. À élargir, pas à contourner.
 - **CA — le journal d'audit se CONSULTE, puis s'exporte** : ⚠️ **corrigé en revue le 30/08/2026** — la première rédaction disait la consultation « déjà acquise ». C'est faux côté produit : la route `GET /tournois/{id}/audit` existe et n'a aucune restriction de statut, mais **aucun écran ne l'appelle**. Il faut donc livrer **l'écran** (le CA d'origine, A18, dit « consultable en cours de tournoi ») **puis** l'export.
-  ⚠️ **Niveau d'écran arbitré le 18/09/2026** : liste **chronologique paginée**, **filtre par type
-  d'acte**, et **dépliage du avant/après** de chaque entrée. Le commanditaire a écarté la liste nue
+  ⚠️ **Niveau d'écran arbitré le 18/09/2026** : liste paginée, **filtre par type d'acte**, et
+  **dépliage du avant/après** de chaque entrée.
+  ⚠️ **Ordre tranché le 18/09/2026, en cours d'US : du PLUS RÉCENT au plus ancien.** La 1ʳᵉ
+  rédaction de ce CA disait « chronologique », et le code l'a suivie — mais la fiche de recette
+  écrite dans le même commit disait l'inverse, divergence relevée par deux axes de revue. Le
+  commanditaire a tranché l'**antichronologique** : l'écran sert à retrouver l'acte qui vient
+  d'avoir lieu, et sur les ~1 284 entrées d'une matinée (planche A18) le sens du temps ouvrait 25
+  pages trop tôt. ⚠️ **L'export, lui, reste chronologique** — un journal de preuve se lit dans le
+  sens du temps —, de même que le port `AuditRepository.par_tournoi` : c'est l'**écran** qui
+  retourne, pas la donnée. Le commanditaire a écarté la liste nue
   (un journal réel fait des centaines de lignes : sans filtre, l'écran ne sert pas le litige en salle
   qu'A18 vise) **et** la version riche à filtres cumulés auteur/période, qui aurait demandé une route
   de filtrage serveur pour un besoin non constaté.

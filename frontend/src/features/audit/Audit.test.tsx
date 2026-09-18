@@ -48,6 +48,19 @@ describe('Audit — le journal se consulte', () => {
     journal = []
   })
 
+  it('montre les actes les plus récents en premier', async () => {
+    // Le journal sert à retrouver ce qui vient de se passer : ouvrir sur le début de matinée
+    // obligeait à pagniner 25 fois sur un tournoi réel (planche A18 : 1 284 entrées).
+    journal = [entree({ id: 1, auteur: 'PREMIER ACTE' }), entree({ id: 2, auteur: 'DERNIER ACTE' })]
+
+    monter()
+    await screen.findByText('DERNIER ACTE')
+    const lignes = screen.getAllByRole('row')
+
+    expect(lignes[1]).toHaveTextContent('DERNIER ACTE')
+    expect(lignes[2]).toHaveTextContent('PREMIER ACTE')
+  })
+
   it('liste les actes, avec qui et sur quoi', async () => {
     journal = [
       entree({ id: 1, auteur: 'LE GUEN Anne', objet: 'Série 1' }),
@@ -149,11 +162,14 @@ describe('Audit — le journal se consulte', () => {
     )
 
     monter()
-    await screen.findByText('ARCHER 1')
+    // ⚠️ **Antichronologique** (arbitrage du 18/09/2026) : la 1ʳᵉ page porte les actes les plus
+    // récents, donc `ARCHER 60`. Le serveur, lui, rend l'ordre croissant — c'est l'écran qui
+    // retourne, et l'export qui conserve le sens du temps.
+    await screen.findByText('ARCHER 60')
     expect(screen.getByText('Page 1 sur 2')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Suivant' }))
-    expect(screen.getByText('ARCHER 60')).toBeInTheDocument()
+    expect(screen.getByText('ARCHER 1')).toBeInTheDocument()
 
     await userEvent.type(screen.getByLabelText(/Rechercher/), 'ARCHER 3')
     expect(screen.getByText('ARCHER 3')).toBeInTheDocument()

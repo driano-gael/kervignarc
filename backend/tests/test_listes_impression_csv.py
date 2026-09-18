@@ -16,8 +16,8 @@ from domain.listes_impression import (
     ListePlacement,
     TriPlacement,
 )
+from infrastructure.tableur.grille import rendre_csv
 from infrastructure.tableur.listes_impression import GenerateurListesImpressionTableur
-from infrastructure.tableur.tableau import rendre_csv
 
 
 def _ligne_placement(nom: str, prenom: str, cible: int, position: str) -> LignePlacement:

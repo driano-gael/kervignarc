@@ -153,7 +153,9 @@ def test_l_export_rend_un_csv_lisible_par_un_tableur(
         assert 'filename="audit-' in reponse.headers["content-disposition"]
         texte = reponse.content.decode("utf-8-sig")
         assert "Horodatage;Auteur;Action;Objet;Avant;Après" in texte
-        assert "ROUX Sophie;correction_score;Série 1, f2;8;9" in texte
+        # ⚠️ « Correction » et non le slug `correction_score` : depuis la revue, l'export
+        # nomme l'acte comme l'écran (règle 3) — l'organisateur comparait deux vocabulaires.
+        assert "ROUX Sophie;Correction;Série 1, f2;8;9" in texte
 
 
 def test_l_export_xlsx_rend_un_classeur(

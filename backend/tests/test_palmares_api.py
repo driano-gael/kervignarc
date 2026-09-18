@@ -521,6 +521,10 @@ def test_le_tableur_du_palmares_respecte_la_restriction_de_categorie(
             f"/api/v1/tournois/{tournoi_id}/palmares/document?format=csv&categorie_id=9999"
         )
 
+    # ⚠️ Le statut d'abord : un corps d'erreur JSON tient sur **une** ligne, donc les deux
+    # assertions suivantes passeraient sur un 404 — le test serait vrai par accident (revue axe B).
+    assert aucune.status_code == 200, aucune.text
+    assert aucune.content.decode("utf-8-sig").startswith("Rang;")
     assert len(aucune.content.splitlines()) < len(tout.content.splitlines())
     assert len(aucune.content.splitlines()) == 1
 

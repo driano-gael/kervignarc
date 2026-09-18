@@ -300,7 +300,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 94,
+   "occurrences": 95,
    "source": "infrastructure"
   },
   {
@@ -1165,7 +1165,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 4,
+   "occurrences": 5,
    "origines": [
     "backend/infrastructure/tableur/audit.py",
     "backend/infrastructure/tableur/listes_impression.py",
@@ -1252,7 +1252,7 @@ window.ATLAS.carte = {
    "couche_source": "infrastructure",
    "occurrences": 1,
    "origines": [
-    "backend/infrastructure/tableur/tableau.py"
+    "backend/infrastructure/tableur/grille.py"
    ],
    "source": "infrastructure/tableur"
   }
@@ -2830,7 +2830,7 @@ window.ATLAS.carte = {
   {
    "adapters": [],
    "couche": "infrastructure",
-   "fichier": "backend/infrastructure/tableur/tableau.py",
+   "fichier": "backend/infrastructure/tableur/grille.py",
    "hors_domaine": true,
    "methodes": [],
    "nom": "RenduTableur",
@@ -3159,8 +3159,8 @@ window.ATLAS.carte = {
   "aretes_front": 179,
   "enchevetrements": 4,
   "features": 51,
-  "imports": 958,
-  "imports_entre_couches": 810,
+  "imports": 959,
+  "imports_entre_couches": 811,
   "plus_gros_noeud": 24,
   "ports": 72,
   "ports_hors_domaine": 28,

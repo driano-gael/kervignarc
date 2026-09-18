@@ -29,6 +29,13 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
         "sqlalchemy",
         "alembic",
         "httpx",
+        # Rendu de documents : le domaine décrit le contenu, l'infrastructure le rend (ADR-0031,
+        # ADR-0101). ⚠️ Ajoutées en E16US016 avec `openpyxl` : les trois y manquaient depuis leur
+        # introduction, donc un `import reportlab` dans `domain/` passait hook, CI et revue.
+        "reportlab",
+        "openpyxl",
+        "et_xmlfile",
+        "zeroconf",
         # Autres couches (le domaine ne dépend d'aucune couche externe)
         "application",
         "infrastructure",

@@ -1036,12 +1036,15 @@ def create_app(
     # est la primitive pour le seul cas sans agrégat, le lancement de tour (E12US002) ; voir
     # `application/audit.py`. La consultation admin (`GET .../audit`) est livrée. L'horodatage passe
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
-    app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
+    service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
+    app.state.service_audit = service_audit
     # E16US016 : l'**export** du journal est un service distinct, branché sur `ServiceAudit` par le
     # port étroit `LecteurJournalAudit` — le socle d'écriture de la trace ne dépend pas de
     # l'outillage qui la relit. ⚠️ Pas de PDF câblé : un journal se dépouille au tableur.
+    # ⚠️ La variable **locale** et non `app.state.service_audit`, qui vaut `Any` : c'est elle
+    # qui fait vérifier par mypy que `ServiceAudit` réalise bien `LecteurJournalAudit`.
     app.state.service_export_audit = ServiceExportAudit(
-        app.state.service_audit,
+        service_audit,
         tournoi_repository,
         RegistreDeFormats(
             {
@@ -1067,7 +1070,10 @@ def create_app(
     formats_palmares: tuple[FormatExport, ...] = app.state.service_palmares.formats_disponibles
     formats_audit: tuple[FormatExport, ...] = app.state.service_export_audit.formats_disponibles
     app.state.catalogue_exports = construire_catalogue(
-        formats_listes, formats_feuille, formats_palmares, formats_audit
+        formats_listes=formats_listes,
+        formats_feuille=formats_feuille,
+        formats_palmares=formats_palmares,
+        formats_audit=formats_audit,
     )
 
     # --- Pilotage d'un tour (E12US002, ADR-0056) : feu vert + lancement. Compose les services de
