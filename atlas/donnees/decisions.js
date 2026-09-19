@@ -4094,6 +4094,7 @@ window.ATLAS.decisions = {
     "E05US032",
     "E05US034",
     "E05US035",
+    "E06US009",
     "E16US002",
     "E16US007",
     "E16US008",
@@ -9632,10 +9633,13 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "SectionPalmares",
-      "classer_clubs"
+      "classer_clubs",
+      "Palmares",
+      "SectionPalmaresReponse.de_section"
      ],
      "symboles_absents": [
-      "classer_clubs"
+      "classer_clubs",
+      "SectionPalmaresReponse.de_section"
      ],
      "verifiable": true
     },
@@ -10613,6 +10617,139 @@ window.ATLAS.decisions = {
    "titre": "La porte mécanique tient dans un script, et en deux étages",
    "us": [
     "E00US031"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-19",
+   "date_brute": "2026-09-19",
+   "extrait": "### 1. Une réponse, N sections — et aucune route par départ GET /api/v1/tournois/{id}/palmares rend sections: [{ depart_id, libelle, podiums, classement_vide, classement_clubs, lignes }], une par créneau, dans l'ordre des départs. Pourquoi pas une route par départ, qui était le remède annoncé : les quatre surfaces du palmarès (pilotage, écran de salle, appli publique, document) veulent toutes les afficher ensemble. Une route par départ leur aurait imposé N requêtes, donc N instants de lecture différents pour un même écran — exactement ce que RenduPalmares existe pour empêcher : un PUT de réglage intercalé entre deux requêtes rendrait des blocs qui se contredisent. ⚠️ Cela ferme une […]",
+   "fichier": "docs/adr/0111-le-palmares-rend-toutes-ses-sections-en-une-reponse.md",
+   "identifiant": "0111",
+   "liens": [
+    {
+     "cible": "E06US009",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0075",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0103",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0101",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/palmares.py",
+     "existe": true,
+     "symboles": [
+      "PalmaresReponse",
+      "SectionPalmaresReponse",
+      "de_section",
+      "classer_clubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "RenduPalmares.sections",
+      "ServicePalmares.rendu",
+      "pour_depart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/pdf/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_corps",
+      "_corps_creneau",
+      "_ENTETE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_corps",
+      "_corps_creneau",
+      "_ENTETE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_pdf_palmares.py",
+     "existe": true,
+     "symboles": [
+      "test_deux_creneaux_font_deux_sections",
+      "test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_palmares_par_depart.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_tableur_palmares.py",
+     "existe": true,
+     "symboles": [
+      "test_deux_creneaux_font_deux_sections",
+      "test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/VuePalmares.tsx",
+     "existe": true,
+     "symboles": [
+      "SectionCreneau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le palmarès rend toutes ses sections en **une** réponse",
+   "us": [
+    "E06US009",
+    "E16US007",
+    "E16US016"
    ]
   }
  ]

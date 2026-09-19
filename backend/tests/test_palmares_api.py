@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -26,21 +25,9 @@ from bootstrap.composition import create_app
 from domain.classement_clubs import ClassementClubs, LigneClassementClubs
 from domain.podium import PorteePodium
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, section_unique
 from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
 from tests.test_placement_duels_api import _phase_elimination, _quatre_archers_classes
-
-
-def _creneau(corps: dict[str, Any]) -> dict[str, Any]:
-    """La **seule** section du palmarès — les décors d'ici montent un tournoi mono-créneau.
-
-    ⚠️ **Le dépliage est l'assertion** (E06US009) : il lève si la réponse en porte deux, ce qui
-    voudrait dire que le décor a changé sans que ces tests le sachent. Le cas à N créneaux est
-    couvert par `test_service_palmares_par_depart.py`.
-    """
-    (section,) = corps["sections"]
-    assert isinstance(section, dict)
-    return section
 
 
 @pytest.fixture
@@ -79,8 +66,8 @@ def test_le_palmares_rend_une_ligne_par_archer_avec_ses_deux_rangs(
     assert reponse.status_code == 200, reponse.text
     corps = reponse.json()
     assert corps["tournoi_id"] == tournoi_id
-    assert {ligne["archer_id"] for ligne in _creneau(corps)["lignes"]} == set(archers)
-    for ligne in _creneau(corps)["lignes"]:
+    assert {ligne["archer_id"] for ligne in section_unique(corps)["lignes"]} == set(archers)
+    for ligne in section_unique(corps)["lignes"]:
         assert ligne["rang_min"] is not None and ligne["rang_max"] is not None
         assert ligne["rang_categorie_min"] is not None
         assert ligne["origine"] in {"duels", "qualification"}
@@ -103,10 +90,10 @@ def test_les_podiums_sortent_par_categorie(
 
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
 
-    assert len(_creneau(corps)["podiums"]) == 1
-    assert _creneau(corps)["podiums"][0]["portee"] == "categorie"
-    assert _creneau(corps)["podiums"][0]["libelle"] != ""
-    assert _creneau(corps)["podiums"][0]["places"] == []
+    assert len(section_unique(corps)["podiums"]) == 1
+    assert section_unique(corps)["podiums"][0]["portee"] == "categorie"
+    assert section_unique(corps)["podiums"][0]["libelle"] != ""
+    assert section_unique(corps)["podiums"][0]["places"] == []
 
 
 def test_le_filtre_par_categorie_est_transmis(
@@ -122,7 +109,7 @@ def test_le_filtre_par_categorie_est_transmis(
         )
 
     assert reponse.status_code == 200, reponse.text
-    assert _creneau(reponse.json())["lignes"] == []
+    assert section_unique(reponse.json())["lignes"] == []
 
 
 def test_tournoi_inconnu_rend_404(app_palmares: FastAPI, connecter_admin: ConnecterAdmin) -> None:
@@ -231,9 +218,9 @@ def test_le_reglage_commande_les_blocs_rendus_par_le_palmares(
         )
         aucun = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
 
-    assert [bloc["portee"] for bloc in _creneau(scratch)["podiums"]] == ["scratch"]
-    assert _creneau(scratch)["podiums"][0]["cle"] is None
-    assert _creneau(aucun)["podiums"] == []
+    assert [bloc["portee"] for bloc in section_unique(scratch)["podiums"]] == ["scratch"]
+    assert section_unique(scratch)["podiums"][0]["cle"] is None
+    assert section_unique(aucun)["podiums"] == []
 
 
 def test_une_portee_inconnue_est_refusee_a_la_frontiere(
@@ -309,13 +296,13 @@ def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums(
     # **peuplés** sous filtre est au service, sur un tableau réellement joué :
     # `test_un_filtre_par_categorie_ne_rogne_pas_les_podiums` de `test_service_palmares.py`.
     assert (
-        _creneau(entier)["podiums"] == _creneau(filtre)["podiums"]
+        section_unique(entier)["podiums"] == section_unique(filtre)["podiums"]
     ), "les podiums ne dépendent pas du filtre"
     # Ancré sur le contenu, pas sur une égalité de listes vides : le bloc doit exister et se
     # nommer. ⚠️ Son `effectif` vaut 0 ici, et c'est juste — le décor d'API ne joue aucun duel,
     # donc personne n'est récompensable. La valeur est ancrée au service, qui les joue.
-    assert _creneau(entier)["podiums"][0]["libelle"] == "Toutes catégories"
-    assert _creneau(filtre)["lignes"] == [], "le filtre, lui, restreint bien le classement"
+    assert section_unique(entier)["podiums"][0]["libelle"] == "Toutes catégories"
+    assert section_unique(filtre)["lignes"] == [], "le filtre, lui, restreint bien le classement"
 
 
 def test_le_reglage_se_lit_sans_authentification(app_palmares: FastAPI) -> None:
@@ -350,10 +337,10 @@ def test_classement_vide_dit_le_tournoi_pas_la_selection(
         entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
         filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
 
-    assert _creneau(entier)["classement_vide"] is False, "le tournoi est classé"
-    assert _creneau(filtre)["classement_vide"] is False, "il l'est toujours, filtre ou pas"
+    assert section_unique(entier)["classement_vide"] is False, "le tournoi est classé"
+    assert section_unique(filtre)["classement_vide"] is False, "il l'est toujours, filtre ou pas"
     assert (
-        _creneau(filtre)["lignes"] == [] and _creneau(filtre)["podiums"] == []
+        section_unique(filtre)["lignes"] == [] and section_unique(filtre)["podiums"] == []
     ), "le décor du 4ᵉ déplacement"
 
 
@@ -372,10 +359,12 @@ def test_le_classement_des_clubs_est_servi_avec_le_palmares(
 
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
 
-    assert _creneau(corps)["classement_clubs"]["portees_comptees"] == [
+    assert section_unique(corps)["classement_clubs"]["portees_comptees"] == [
         "categorie"
     ], "le défaut d'ADR-0103"
-    assert _creneau(corps)["classement_clubs"]["provisoire"] is True, "aucun duel n'est tranché"
+    assert (
+        section_unique(corps)["classement_clubs"]["provisoire"] is True
+    ), "aucun duel n'est tranché"
 
 
 def test_la_portee_club_seule_ne_donne_aucune_base_au_classement_des_clubs(
@@ -397,8 +386,8 @@ def test_la_portee_club_seule_ne_donne_aucune_base_au_classement_des_clubs(
 
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
 
-    assert _creneau(corps)["classement_clubs"]["portees_comptees"] == []
-    assert _creneau(corps)["classement_clubs"]["lignes"] == []
+    assert section_unique(corps)["classement_clubs"]["portees_comptees"] == []
+    assert section_unique(corps)["classement_clubs"]["lignes"] == []
 
 
 def test_un_filtre_par_categorie_ne_rogne_pas_le_classement_des_clubs(
@@ -416,7 +405,7 @@ def test_un_filtre_par_categorie_ne_rogne_pas_le_classement_des_clubs(
         entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
         filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
 
-    assert _creneau(entier)["classement_clubs"] == _creneau(filtre)["classement_clubs"]
+    assert section_unique(entier)["classement_clubs"] == section_unique(filtre)["classement_clubs"]
 
 
 def test_le_dto_du_classement_des_clubs_recopie_chaque_metal_dans_sa_colonne() -> None:
@@ -481,12 +470,14 @@ def test_le_reglage_vide_se_distingue_a_la_frontiere_de_l_absence_de_base(
         )
         club_seul = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
 
-    assert _creneau(rien)["classement_clubs"]["portees_comptees"] == []
-    assert _creneau(club_seul)["classement_clubs"]["portees_comptees"] == [], "même absence de base"
+    assert section_unique(rien)["classement_clubs"]["portees_comptees"] == []
     assert (
-        _creneau(rien)["classement_clubs"]["portees_reglees"] == []
+        section_unique(club_seul)["classement_clubs"]["portees_comptees"] == []
+    ), "même absence de base"
+    assert (
+        section_unique(rien)["classement_clubs"]["portees_reglees"] == []
     ), "le tournoi ne récompense rien"
-    assert _creneau(club_seul)["classement_clubs"]["portees_reglees"] == ["club"], "lui, si"
+    assert section_unique(club_seul)["classement_clubs"]["portees_reglees"] == ["club"], "lui, si"
 
 
 # --- E16US016 : le palmarès sort aussi en tableur ------------------------------------------------

@@ -125,11 +125,13 @@ class _Reel:
                 validation=GrainValidation.fin_de_serie(),
             )
         )
+        self._etape_qualif = etape_qualif
         qualif = self.phases.ajouter(etape_qualif.instancier(1))
         assert qualif.id is not None
         self.qualif_id = qualif.id
 
         self.phase_tableau_id: int | None = None
+        self._etape_tableau: EtapeDeroule | None = None
         if avec_tableau:
             self.gabarits.ajouter(
                 GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=self.tournoi_id)
@@ -142,24 +144,61 @@ class _Reel:
                     tournoi_id=self.tournoi_id, ordre=2, type=TypePhase.ELIMINATION_DIRECTE
                 )
             )
+            self._etape_tableau = etape
             phase = self.phases.ajouter(etape.instancier(1))
             assert phase.id is not None
             self.phase_tableau_id = phase.id
 
-    def inscrire_classe(self, valeurs: tuple[ZoneScore, ...]) -> int:
-        """Ajoute un archer inscrit avec une série (une volée validée) ; renvoie son `archer_id`."""
+    def ajouter_creneau(self, numero: int, horaire: str, depart_id: int) -> int:
+        """Un créneau de plus, avec **sa** qualification — et son tableau si le décor en a un.
+
+        ⚠️ **L'étape est réutilisée, la phase est instanciée** (ADR-0076) : un déroulé se définit
+        une fois au tournoi et porte un avancement par départ. Poser une seconde étape ferait un
+        déroulé à deux qualifications, ce qui n'est pas le cas qu'on veut couvrir ici.
+        """
+        self.departs.ajouter(
+            dataclasses.replace(
+                Depart.creer(
+                    tournoi_id=self.tournoi_id,
+                    numero=numero,
+                    tarif_centimes=800,
+                    horaire=horaire,
+                ),
+                id=depart_id,
+            )
+        )
+        qualif = self.phases.ajouter(self._etape_qualif.instancier(depart_id))
+        assert qualif.id is not None
+        if self._etape_tableau is not None:
+            self.phases.ajouter(self._etape_tableau.instancier(depart_id))
+        return qualif.id
+
+    def inscrire_classe(
+        self,
+        valeurs: tuple[ZoneScore, ...],
+        depart_id: int = 1,
+        qualif_id: int | None = None,
+    ) -> int:
+        """Ajoute un archer inscrit avec une série (une volée validée) ; renvoie son `archer_id`.
+
+        `depart_id` / `qualif_id` visent un **autre** créneau (cf. `ajouter_creneau`) : la série
+        pend à la qualification **de ce créneau**, sans quoi le classement du second départ serait
+        vide et le décor ne prouverait rien.
+        """
         archer = self.archers.ajouter(
             Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=self.categorie_id)
         )
         assert archer.id is not None
-        inscription = self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=1))
+        inscription = self.inscriptions.ajouter(
+            Inscription(archer_id=archer.id, depart_id=depart_id)
+        )
         assert inscription.id is not None
         self.series.enregistrer(
             Serie(
                 tournoi_id=self.tournoi_id,
                 archer_id=archer.id,
                 volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
-                phase_id=self.qualif_id,
+                phase_id=qualif_id if qualif_id is not None else self.qualif_id,
             )
         )
         return archer.id
@@ -206,7 +245,8 @@ def _creneau(resultat: ResultatSimulation) -> CreneauSimule:
 
     ⚠️ **Le dépliage `(x,) = ...` est l'assertion** : il lève si la simulation en rend deux, ce qui
     voudrait dire que le décor a changé sans que ces tests le sachent. Le cas multi-créneaux est
-    couvert par `test_la_simulation_rejoue_chaque_creneau`.
+    couvert plus bas, par `test_la_simulation_rejoue_chaque_creneau` — écrit **après** que la revue
+    eut constaté que ce renvoi désignait un test qui n'existait pas.
     """
     (creneau,) = resultat.creneaux
     return creneau
@@ -365,3 +405,75 @@ def test_tournoi_brouillon_vide_se_simule_sans_erreur() -> None:
 
     assert _creneau(resultat).classement.lignes == ()
     assert _creneau(resultat).tableaux == ()
+
+
+def test_la_simulation_rejoue_chaque_creneau() -> None:
+    """CA « la simulation suit » (E06US009) : deux créneaux peuplés, deux créneaux rejoués.
+
+    ⚠️ **Ce test n'existait pas quand la docstring de `_creneau` le disait déjà écrit.** La revue
+    l'a relevé : les six autres tests de ce fichier déplient `(x,) = resultat.creneaux`, donc ils
+    assèrent l'unicité — exactement le décor sous lequel l'ancien `creneaux[0]` était déjà juste.
+    Un diff futur qui remettrait `phases.par_tournoi` dans `_creneau_simule` passerait au vert sur
+    tout le reste du fichier.
+
+    ⚠️ **L'assertion porte sur l'identité des archers, pas sur `len(creneaux) == 2`** : un rejeu
+    qui rendrait deux fois le classement du matin a bien deux créneaux.
+    """
+    reel = _Reel()
+    matin = [
+        reel.inscrire_classe(v)
+        for v in (
+            (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+            (ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.NEUF),
+        )
+    ]
+    qualif_2 = reel.ajouter_creneau(numero=2, horaire="14:00", depart_id=2)
+    apres_midi = [
+        reel.inscrire_classe(v, depart_id=2, qualif_id=qualif_2)
+        for v in (
+            (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.NEUF),
+            (ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.HUIT),
+        )
+    ]
+
+    resultat = reel.service().simuler(reel.tournoi_id)
+
+    assert [creneau.depart_id for creneau in resultat.creneaux] == [1, 2]
+    assert [creneau.libelle for creneau in resultat.creneaux] == [
+        "Départ n°1 — 09:00",
+        "Départ n°2 — 14:00",
+    ]
+    vus = [
+        {ligne.archer_id for ligne in creneau.classement.lignes} for creneau in resultat.creneaux
+    ]
+    assert vus == [set(matin), set(apres_midi)]
+
+
+def test_chaque_creneau_simule_ne_porte_que_ses_propres_tableaux() -> None:
+    """Le second piège, nommé par le ⚠️ de `_creneau_simule` : la portée des ARBRES, pas du rang.
+
+    Passer de `phases.par_tournoi` à `phases.par_depart` corrige le classement ; oublier de le faire
+    pour les tableaux met **tous** les arbres du tournoi sous **chaque** classement. C'est le même
+    défaut de portée, retourné, et il ne se voit qu'à deux créneaux portant chacun un tableau.
+    """
+    reel = _Reel(avec_tableau=True)
+    for valeurs in (
+        (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+        (ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.NEUF),
+        (ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.HUIT),
+    ):
+        reel.inscrire_classe(valeurs)
+    qualif_2 = reel.ajouter_creneau(numero=2, horaire="14:00", depart_id=2)
+    for valeurs in (
+        (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.NEUF),
+        (ZoneScore.NEUF, ZoneScore.HUIT, ZoneScore.HUIT),
+        (ZoneScore.HUIT, ZoneScore.HUIT, ZoneScore.HUIT),
+    ):
+        reel.inscrire_classe(valeurs, depart_id=2, qualif_id=qualif_2)
+
+    resultat = reel.service().simuler(reel.tournoi_id)
+
+    # Chaque créneau porte au plus **son** arbre : jamais celui de l'autre, jamais les deux.
+    phases_vues = [{etat.phase_id for etat in creneau.tableaux} for creneau in resultat.creneaux]
+    assert phases_vues[0].isdisjoint(phases_vues[1]), "un arbre ne pend qu'à son créneau"
+    assert all(len(vues) <= 1 for vues in phases_vues), "un tableau par créneau, pas deux"

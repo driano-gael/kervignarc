@@ -596,7 +596,7 @@ window.ATLAS.avancement = {
    "resorption_us": [
     "E16US009"
    ],
-   "severite": "mineur"
+   "severite": "majeur"
   },
   {
    "identifiant": "088",
@@ -3335,8 +3335,10 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0075",
     "0103",
-    "0104"
+    "0104",
+    "0111"
    ],
    "dettes_introduites": [
     "106"
@@ -4315,7 +4317,8 @@ window.ATLAS.avancement = {
     "0075",
     "0096",
     "0101",
-    "0102"
+    "0102",
+    "0111"
    ],
    "dettes_introduites": [
     "095"
@@ -4521,7 +4524,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0075",
-    "0101"
+    "0101",
+    "0111"
    ],
    "dettes_introduites": [
     "031",

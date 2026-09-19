@@ -856,10 +856,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   d'architecture ([ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md),
   [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)), deux
   migrations, et un **garde-fou mécanique** qui fait désormais échouer les tests si quelqu'un
-  rebranche une phase sur le tournoi — c'est précisément ce qui manquait à la décision de 2025. Trois
-  limites restent **tracées** plutôt que corrigées à la hâte : palmarès mono-départ (`DETTE-045`,
-  dont la résorption demande un arbitrage du commanditaire), série unique par tournoi pour un archer
-  inscrit sur deux créneaux (`DETTE-046`), et l'absence de vue d'ensemble des N classements.
+  rebranche une phase sur le tournoi — c'est précisément ce qui manquait à la décision de 2025. Deux
+  limites restent **tracées** plutôt que corrigées à la hâte : série unique par tournoi pour un
+  archer inscrit sur deux créneaux (`DETTE-046`), et l'absence de vue d'ensemble des N classements.
+  *(La troisième — le palmarès mono-départ, `DETTE-045` — a été **résorbée le 19/09/2026** par
+  `E06US009`.)*
   ⚠️ **Cette US a été spécifiée après avoir été écrite** : partie d'un constat de bug, elle n'avait
   ni fiche ni entrée au tracker. Ses critères d'acceptation décrivent donc le livré et valent comme
   non-régression, pas comme preuve que le besoin a été compris — c'est à la recette de le confirmer.

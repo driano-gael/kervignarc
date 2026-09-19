@@ -289,10 +289,20 @@ function Progression({ etat }: { etat: EtatSession }) {
 function VuePublic({ etat }: { etat: EtatSession }) {
   return (
     <div>
-      <h3 className="carte__sous-titre">Classement</h3>
-      <TableClassement tournoiId={etat.tournoi_id} lignes={etat.classement.lignes} admin={false} />
-      {etat.tableaux.map((tableau, index) => (
-        <TableauDuels key={index} tableau={tableau} />
+      {etat.creneaux.map((creneau) => (
+        <section key={creneau.depart_id} aria-label={creneau.libelle}>
+          {/* Le créneau est titré même quand il n'y en a qu'un — mêmes raisons que `VuePalmares`
+              (E06US009) : une seule mise en page à tenir, et l'on sait quel départ on regarde. */}
+          <h3 className="carte__sous-titre">{creneau.libelle} — classement</h3>
+          <TableClassement
+            tournoiId={etat.tournoi_id}
+            lignes={creneau.classement.lignes}
+            admin={false}
+          />
+          {creneau.tableaux.map((tableau, index) => (
+            <TableauDuels key={index} tableau={tableau} />
+          ))}
+        </section>
       ))}
     </div>
   )
@@ -462,11 +472,16 @@ function VueArcher({ etat, sessionId }: { etat: EtatSession; sessionId: number }
           onChange={(e) => setArcherId(e.target.value === '' ? null : Number(e.target.value))}
         >
           <option value="">— Choisir un archer —</option>
-          {etat.classement.lignes.map((ligne) => (
-            <option key={ligne.archer_id} value={ligne.archer_id}>
-              {ligne.nom} {ligne.prenom} — {ligne.total} pts
-            </option>
-          ))}
+          {/* ⚠️ **Aplati sur tous les créneaux, et nommé** : un archer ne tire que dans le sien,
+              mais deux créneaux peuvent porter le même nom de famille — sans le libellé, la liste
+              proposerait deux entrées indiscernables (E06US009). */}
+          {etat.creneaux.flatMap((creneau) =>
+            creneau.classement.lignes.map((ligne) => (
+              <option key={`${creneau.depart_id}-${ligne.archer_id}`} value={ligne.archer_id}>
+                {ligne.nom} {ligne.prenom} — {ligne.total} pts ({creneau.libelle})
+              </option>
+            )),
+          )}
         </select>
       </div>
       {detail.data && (
@@ -523,14 +538,24 @@ function VueScoreur({
   const unite = etat.prochaine_unite
   const designer = useDesignerVainqueur()
 
-  if (etat.tableaux.length === 0) {
+  // ⚠️ La garde porte sur **l'ensemble** des créneaux (E06US009) : un tournoi dont le matin duelle
+  // et dont l'après-midi n'a pas commencé n'est pas « sans duels ». Même parti que `VuePalmares`,
+  // qui ne rend son message global que si AUCUN créneau n'est classé.
+  if (etat.creneaux.every((creneau) => creneau.tableaux.length === 0)) {
     return <p className="carte__etat">Les duels n'ont pas encore commencé.</p>
   }
 
   return (
     <div>
-      {etat.tableaux.map((tableau, index) => (
-        <TableauDuels key={index} tableau={tableau} />
+      {etat.creneaux.map((creneau) => (
+        <section key={creneau.depart_id} aria-label={`Duels — ${creneau.libelle}`}>
+          <h3 className="carte__sous-titre">{creneau.libelle}</h3>
+          {creneau.tableaux.length === 0 ? (
+            <p className="carte__etat">Les duels n'ont pas encore commencé sur ce créneau.</p>
+          ) : (
+            creneau.tableaux.map((tableau, index) => <TableauDuels key={index} tableau={tableau} />)
+          )}
+        </section>
       ))}
       {enPause &&
       unite?.genre === 'duel' &&

@@ -310,10 +310,11 @@ class Palmares:
 class SectionPalmares:
     """Le palmarès d'**un** créneau — l'unité que le produit décerne (ADR-0075, E06US009).
 
-    ⚠️ **`complet` porte les podiums, `affiche` porte le classement.** Les confondre fabriquait des
-    blocs faux dès qu'une catégorie est filtrée : un podium est celui du créneau entier.
+    ⚠️ **`complet` porte les podiums, `affiche` le classement** : les confondre fabriquait des blocs
+    faux dès qu'une catégorie est filtrée.
 
-    ⚠️ **Ici et non dans `application/`** : le port `GenerateurPalmares` la reçoit (règle 2).
+    ⚠️ **Ici et non dans `application/`** : le port la reçoit (règle 2). Mais **aucune règle du
+    domaine ne doit lire `affiche` ni `libelle`** — ils ne font que traverser (revue, axe D).
     """
 
     depart_id: DepartId

@@ -180,9 +180,14 @@ donc **aucune** agrégation inter-départs à écrire.
 - **CA — juxtaposition, pas addition** : l'application ne produit **aucun** classement « du
   tournoi » toutes catégories et tous départs confondus. Deux archers de créneaux différents ne sont
   jamais comparés. *(C'est l'arbitrage : le tournoi est un contenant, le départ la portée sportive.)*
-- **CA — chaque podium est nommé** : le créneau est identifié par son libellé usuel (« Départ 2 —
-  14:00 »), le **même** partout dans le produit. Un podium anonyme dans une pile de quatre ne se
-  distribue pas.
+- **CA — chaque podium est nommé** : le créneau est identifié par le libellé du **domaine**
+  (`Depart.libelle_creneau`, « Départ n°2 — 14:00 »), **composé par le serveur** — le document PDF
+  le porte aussi et n'a pas de front pour le fabriquer. Un podium anonyme dans une pile de quatre
+  ne se distribue pas. ⚠️ **Il n'est PAS encore le même partout dans le produit** : cinq sites en
+  composent deux orthographes (`DETTE-106`), et c'est la forme **serveur** qui fait foi — elle est
+  persistée verbatim au registre de remboursement ([ADR-0057](../docs/adr/0057-registre-de-remboursements.md)).
+  *(La rédaction d'origine disait « le même partout » : elle était fausse à la livraison, et elle
+  aurait fait écrire à l'US de résorption l'alignement inverse — relevé par deux axes de revue.)*
 - **CA — le classement des clubs est juxtaposé lui aussi** *(arbitrage du commanditaire du
   19/09/2026)* : `N` créneaux font `N` classements de clubs, donc `N` lauréats — chacun compté sur
   les médailles de **son** créneau. ⚠️ Ce CA n'existait pas à la rédaction de la fiche : le
@@ -193,9 +198,6 @@ donc **aucune** agrégation inter-départs à écrire.
 - **CA — la simulation suit** : le rejeu de simulation **et la session de simulation pilotée**
   cessent de ne voir que le premier départ. *(La session pilotée a été ajoutée au périmètre au
   cadrage du 19/09/2026 : voir la note ci-dessous.)*
-- **CA — chaque podium est nommé par le libellé du domaine** : `Depart.libelle_creneau`, soit
-  « Départ n°2 — 14:00 ». ⚠️ **Composé par le serveur, jamais par le client** — le PDF est généré
-  côté serveur et n'a pas de front pour le fabriquer.
 - **Notes — ce n'est pas qu'un changement d'affichage.** `_premier_depart` disparaît de
   `application/palmares.py` : tant qu'il existe, la vue reste juste par accident sur les tournois
   mono-créneau et fausse partout ailleurs.
@@ -218,15 +220,26 @@ donc **aucune** agrégation inter-départs à écrire.
   classement à plat, qui se trie et se filtre, et des onglets rendraient les `N` rangs 1
   indiscernables. ⚠️ **Conséquence à connaître : la colonne « Rang » n'est plus unique** dans le
   tableur, chaque créneau y recommençant à 1.
-- **Notes — ⚠️ le coût est multiplié par le nombre de créneaux, et c'est irréductible.** Un podium
-  par départ demande un classement par départ, et rien n'est mis en cache (`DETTE-031`). La lecture
-  du référentiel des clubs, elle, a été **hissée hors de la boucle** : laissée dans le calcul, elle
-  relisait tous les clubs `N` fois par rendu, sur une route publique que chaque tablette interroge.
+- **Notes — ⚠️ le coût est multiplié par le nombre de créneaux ; une part seulement est
+  irréductible.** Un podium par départ demande un classement par départ, et rien n'est mis en cache
+  (`DETTE-031`) : cela, on ne peut pas l'éviter. Mais `ServiceClassement.pour_phase` relit à chaque
+  appel les **archers**, les **catégories**, les **forfaits** et le tournoi — à la maille *tournoi*,
+  donc `N` fois le même résultat. Cette part-là est du travail jeté, et elle reste ouverte
+  (`DETTE-031` élargie). *(La première rédaction disait « irréductible » tout court, dans trois
+  artefacts à la fois : le garde-fou qui m'avait alerté était un compteur qui ne comptait que les
+  **clubs**, donc le correctif a été calibré sur la portée du détecteur — relevé par l'axe D.)*
+  Le référentiel des clubs, lui, est bien **hissé hors de la boucle**.
 - **Notes — dette ouverte en chemin** : `DETTE-106`, cinq orthographes concurrentes du libellé de
   créneau (deux au moins : « Départ **n°**2 » côté serveur, « Départ 2 » côté front). Unifier est un
   **remède structurel** — ADR + US dédiée —, donc hors de cette US, qui se contente d'utiliser
   l'existant plutôt que d'inventer une sixième forme.
-- **Résorbe** : `DETTE-045` *(les trois sites)*. **Ouvre** : `DETTE-106`. **Dépend de** : E01US025 · **Jalon** : J3
+- **Résorbe** : `DETTE-045` *(les trois sites, **côté portée d'affichage**)*. ⚠️ **Le moteur de la
+  session pilotée, lui, reste mono-qualification** : le harnais écrit toutes ses volées dans la
+  phase rendue par `qualification_du_tournoi` (`DETTE-022`, `DETTE-047`), si bien qu'à `N` créneaux
+  seul celui-là porte des scores et que les autres s'affichent **vides**. Corriger cela n'était pas
+  le sujet de cette US et relève des deux dettes citées (relevé par l'axe C1).
+  **Ouvre** : `DETTE-106`. **Décide** : [ADR-0111](../docs/adr/0111-le-palmares-rend-toutes-ses-sections-en-une-reponse.md) ;
+  **amende** : [ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) § 9. **Dépend de** : E01US025 · **Jalon** : J3
 
 ---
 

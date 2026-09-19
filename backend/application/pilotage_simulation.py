@@ -167,16 +167,15 @@ class EtatSession:
     def creneau_unique(self) -> CreneauSimule:
         """Le seul créneau de cette session — pour les appelants qui n'en fabriquent **qu'un**.
 
-        ⚠️ **Une garde, pas un `[0]`** (E06US009) : `simulation_format` monte un tournoi à un seul
-        départ et a le droit d'aplatir, mais le jour où il en montera deux, un `[0]` nu rendrait
-        silencieusement le premier — exactement le défaut que cette US vient de retirer de trois
-        autres sites. Ici, il lèvera.
+        ⚠️ **Une garde, pas un `[0]`** (E06US009) : `simulation_format` monte un seul départ et a
+        le droit d'aplatir ; à deux, un `[0]` nu rendrait le premier en silence.
+
+        ⚠️ **`assert`, et non une `ApplicationError`** (deux axes de revue) : un 409 promettrait
+        qu'un changement d'état sauve la requête, alors que c'est le serveur qui est incohérent.
         """
-        if len(self.creneaux) != 1:
-            raise PilotageSimulationInvalide(
-                f"Cette session porte {len(self.creneaux)} créneaux : "
-                "aucun n'est « le » créneau de la simulation."
-            )
+        assert (
+            len(self.creneaux) == 1
+        ), f"Session à {len(self.creneaux)} créneaux : aucun n'est « le » créneau de la simulation."
         return self.creneaux[0]
 
 
@@ -774,15 +773,16 @@ class ServicePilotageSimulation:
         return ZONES_DEFAUT
 
     def _tableaux(
-        self, session: SessionSimulation, phases: Sequence[PhaseId] | None = None
+        self, session: SessionSimulation, phases: Sequence[PhaseId]
     ) -> tuple[EtatTableau, ...]:
-        """Les tableaux **jouables** (une phase pas encore prête est sautée, comme le one-shot).
+        """Les tableaux **jouables** du créneau (une phase pas encore prête est sautée).
 
-        `phases` restreint au créneau demandé ; `None` rend ceux de toute la session — ce que la
-        progression compte, elle qui se mesure sur le tournoi entier.
+        ⚠️ `phases` est **obligatoire** : la branche « toute la session » a été retirée en revue
+        avec son dernier appelant. La laisser invitait à relire à plat ce que les créneaux portent
+        déjà, donc à reconstruire deux fois.
         """
         tableaux: list[EtatTableau] = []
-        for phase_id in session.phases_duels if phases is None else phases:
+        for phase_id in phases:
             try:
                 tableaux.append(
                     session.harnais.saisie_duels.etat_tableau(session.tournoi_id, phase_id)
@@ -828,7 +828,6 @@ class ServicePilotageSimulation:
 
     def _etat(self, session: SessionSimulation) -> EtatSession:
         creneaux = self._creneaux(session)
-        tableaux = self._tableaux(session)
         prochaine = self._prochaine_unite(session)
         if isinstance(prochaine, ProchaineVolee):
             etape = EtapeSimulation.QUALIFICATION
@@ -840,7 +839,13 @@ class ServicePilotageSimulation:
             volees_faites=session.volees_jouees,
             volees_total=session.bareme.nb_volees * len(session.archers_ordonnes),
             duels_faits=session.duels_joues,
-            duels_total=sum(max(0, etat.effectif - 1) for etat in tableaux),
+            # ⚠️ **Dérivé des créneaux déjà calculés**, jamais d'un second `_tableaux` à plat : la
+            # reconstruction d'arbre est la lecture la plus chère du produit (`DETTE-031`) et
+            # `_etat` est traversé à **chaque** pas du cockpit. Le doublon a vécu le temps de la
+            # revue de l'US qui l'a introduit (trois axes).
+            duels_total=sum(
+                max(0, etat.effectif - 1) for creneau in creneaux for etat in creneau.tableaux
+            ),
         )
         return EtatSession(
             session_id=session.id,
@@ -864,9 +869,18 @@ class ServicePilotageSimulation:
         """
         creneaux = session.harnais.departs.par_tournoi(session.tournoi_id)
         if not creneaux:
+            # ⚠️ **Garde défensive, sans test — et c'est dit parce que ça ne se devine pas.** Le
+            # harnais hydrate les créneaux à `demarrer`, et un tournoi qui n'en a aucun échoue plus
+            # tôt (sa qualification pend à un départ). Aucun décor ne peut donc l'atteindre. Elle
+            # remplace l'`IndexError` d'avant E06US009, qui sortait en 500 : un refus typé coûte
+            # une ligne, un 500 sur une lecture d'état coûte un diagnostic.
             raise TournoiSansDepart(
                 "Cette session n'a aucun créneau : il n'y a rien à rejouer.",
             )
+        # ⚠️ **Un créneau rendu n'est pas un créneau joué** : le harnais écrit toutes ses volées
+        # dans `session.phase_qualif_id`, résolu par `qualification_du_tournoi` (`DETTE-022`,
+        # `DETTE-047`). À N créneaux, seul celui-là porte des scores ; les autres sortent d'ici
+        # avec un classement vide. E06US009 a corrigé la **portée d'affichage**, pas le moteur.
         simules: list[CreneauSimule] = []
         for depart in creneaux:
             assert depart.id is not None, "Le magasin in-memory attribue un identifiant."

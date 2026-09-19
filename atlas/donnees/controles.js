@@ -275,7 +275,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce classer_clubs dans « backend/domain/palmares.py » — introuvable(s) dans le fichier.",
+   "message": "annonce classer_clubs, SectionPalmaresReponse.de_section dans « backend/domain/palmares.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0104"
   },

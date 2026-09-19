@@ -182,11 +182,10 @@ class ServicePalmares:
     ) -> RenduPalmares:
         """**Une section par créneau**, sa restriction d'affichage et le réglage — en une lecture.
 
-        Ensemble parce qu'ils doivent être cohérents : composer les podiums sur le palmarès filtré
-        rendait un bloc « Scratch » amputé de la catégorie demandée (bloquant de revue).
+        Composer les podiums sur le palmarès filtré amputait « Scratch » (bloquant de revue).
 
-        ⚠️ **N créneaux coûtent N calculs, et c'est irréductible** : un podium par départ demande
-        un classement par départ (`DETTE-031` — rien n'est mis en cache).
+        ⚠️ **N classements sont irréductibles ; les lectures de référentiel ne le sont pas** —
+        `pour_phase` relit archers, catégories et forfaits à la maille tournoi (`DETTE-031`, revue).
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
@@ -233,15 +232,20 @@ class ServicePalmares:
     ) -> Palmares:
         """Le palmarès d'**un** créneau, éventuellement **filtré** à une catégorie.
 
-        ⚠️ **Aucun appelant de production** : les routes passent par `rendu`, `imprimer` ou
-        `reglage_podiums`. C'est une commodité de lecture pour les tests, et elle ne compose
-        **jamais** de podium — les blocs se lisent sur `SectionPalmares.complet`. Le filtre lui-même
-        reste le CA d'E06US001 : voir une catégorie sans perdre la position d'ensemble.
+        ⚠️ **Aucun appelant de production** : commodité de lecture pour les tests, qui ne compose
+        **jamais** de podium — les blocs se lisent sur `SectionPalmares.complet`.
+
+        ⚠️ **Ne calcule QUE la section demandée** : écrite sur `rendu`, elle payait N classements
+        pour en jeter N-1, sur un helper qu'appellent soixante tests (revue).
         """
-        for section in self.rendu(tournoi_id, categorie_id).sections:
-            if section.depart_id == depart_id:
-                return section.affiche
-        raise DepartIntrouvable(f"Aucun créneau d'identifiant {depart_id} dans ce tournoi.")
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        depart = next((d for d in self._departs.par_tournoi(tournoi_id) if d.id == depart_id), None)
+        if depart is None:
+            raise DepartIntrouvable(f"Aucun créneau d'identifiant {depart_id} dans ce tournoi.")
+        libelles = self._libelles_club(tournoi.reglage_podiums)
+        return self._section(tournoi_id, depart, libelles, categorie_id).affiche
 
     def _calculer(
         self,
@@ -354,8 +358,8 @@ class ServicePalmares:
     ) -> bytes:
         """Rend le palmarès dans le format demandé (CA « affiché et exportable », E16US016).
 
-        Même calcul que `pour_tournoi` — un document qui divergerait de l'écran serait pire que
-        pas de document du tout : c'est celui-là qu'on affiche au mur.
+        Même calcul que `rendu` — un document qui divergerait de l'écran serait pire que pas de
+        document du tout : c'est celui-là qu'on affiche au mur.
         ⚠️ `format_` retombe sur le PDF : les appelants d'avant E16US016 n'en passent aucun.
         """
         # ⚠️ Les blocs se composent sur `complet`, jamais sur la restriction : sinon le mur du

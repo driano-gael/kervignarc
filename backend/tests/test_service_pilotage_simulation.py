@@ -135,6 +135,7 @@ class _Contexte:
         )
         assert _d.id is not None
         self.depart_id = _d.id
+        self._etapes: list[EtapeDeroule] = []
 
         # Deux gestes depuis ADR-0076 : l'étape définit (au tournoi), la phase avance (au créneau).
         # L'adapter refuse un avancement sans définition — une instance orpheline serait invisible
@@ -177,7 +178,34 @@ class _Contexte:
                 profondeur=phase.profondeur,
             )
         )
+        self._etapes.append(etape)
         self.phases.ajouter(etape.instancier(self.depart_id))
+
+    def second_creneau(self, nb_archers: int = 4) -> int:
+        """Un second créneau, avec **les mêmes étapes instanciées** et ses propres inscrits.
+
+        ⚠️ **Les étapes sont réutilisées, pas redéfinies** (ADR-0076) : un déroulé se définit une
+        fois au tournoi, chaque départ en porte l'avancement. Redéfinir donnerait un déroulé à deux
+        qualifications, qui n'est pas le cas couvert ici.
+        """
+        autre = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+        )
+        assert autre.id is not None
+        for etape in self._etapes:
+            self.phases.ajouter(etape.instancier(autre.id))
+        for indice in range(nb_archers):
+            archer = self.archers.ajouter(
+                Archer(
+                    nom=f"Soir{indice}",
+                    prenom=f"P{indice}",
+                    tournoi_id=self.tournoi_id,
+                    categorie_id=self.categorie_id,
+                )
+            )
+            assert archer.id is not None
+            self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=autre.id))
+        return autre.id
 
     def service(self, diffusion: DiffusionSimulation | None = None) -> ServicePilotageSimulation:
         return ServicePilotageSimulation(
@@ -549,3 +577,32 @@ def test_valeur_zone_manque_vaut_zero() -> None:
     """Cohérence du barème du générateur : `M` vaut 0, les zones marquantes leur valeur."""
     assert valeur_zone(ZoneScore.MANQUE) == 0
     assert valeur_zone(ZoneScore.DIX) == 10
+
+
+def test_chaque_creneau_de_la_session_porte_son_classement_et_ses_arbres() -> None:
+    """CA « la simulation suit », volet **session pilotée** (E06US009).
+
+    ⚠️ **C'est le seul des trois sites de `DETTE-045` servi par une route de production**
+    (`/api/v1/simulations/*`) et, jusqu'à cette revue, le moins testé : tous les autres tests de ce
+    fichier passent par `creneau_unique()`, qui **assère l'unicité** — donc exactement le décor sous
+    lequel l'ancien `…par_tournoi(...)[0]` était déjà juste.
+
+    Deux pièges symétriques, et ce test tombe sur l'un comme sur l'autre :
+    - rendre le classement du **premier** créneau pour tous (le défaut d'origine) ;
+    - rendre **tous** les arbres du tournoi sous **chaque** classement — ce que produirait un
+      `session.phases_duels` consommé tel quel au lieu de l'intersection avec `par_depart`.
+    """
+    ctx = _Contexte(nb_archers=4, avec_duels=True)
+    autre_depart = ctx.second_creneau()
+    service = ctx.service()
+
+    depart = service.demarrer(ctx.tournoi_id, graine=3)
+    etat = service.terminer(depart.session_id)
+
+    assert [creneau.depart_id for creneau in etat.creneaux] == [ctx.depart_id, autre_depart]
+    assert [creneau.libelle for creneau in etat.creneaux] == [
+        "Départ n°1 — 09:00",
+        "Départ n°2 — 14:00",
+    ]
+    phases_vues = [{tableau.phase_id for tableau in creneau.tableaux} for creneau in etat.creneaux]
+    assert phases_vues[0].isdisjoint(phases_vues[1]), "un arbre ne pend qu'à son créneau"

@@ -266,10 +266,12 @@ cache, c'est là qu'il faudra le poser, pas ici.
   `PalmaresReponse.de_rendu`), composé sur `section.complet` et non sur `section.affiche`
   (décision 8 + ADR-0103 §7). **C'est le site qui porte la décision 9** : un classement de clubs
   par section, donc un lauréat par créneau. Le remonter d'un cran rétablirait le défaut.
-- `backend/domain/palmares.py` — `SectionPalmares` : **la maille** que `classer_clubs` reçoit
-  (décision 9). Tant qu'elle n'existait pas, rien dans les types ne distinguait « le palmarès d'un
-  créneau » de « le palmarès du tournoi », et c'est ce qui a laissé le défaut vivre treize jours
-  sans que la moindre signature s'en plaigne.
+- `backend/domain/palmares.py` — `SectionPalmares` : le type qui **nomme** la maille à l'appelant
+  et la transporte jusqu'au port. ⚠️ **`classer_clubs` reçoit toujours un `Palmares` nu** : la
+  maille est tenue par sa docstring et par le site d'appel (`SectionPalmaresReponse.de_section`),
+  **pas par la signature** — rien dans les types n'empêche de lui repasser un palmarès de tournoi.
+  Écrire l'inverse ici serait le défaut d'ADR-0017 en version atténuée : nommer un module qui ne
+  porte pas ce qu'on lui prête (relevé en revue, axe C2).
 - `backend/tests/test_service_palmares_par_depart.py` — `test_chaque_creneau_a_son_club_laureat`
   garde la décision 9. ⚠️ **Il n'assère pas sur `ClassementClubs.lignes`** : un décompte de
   médailles suppose des duels joués, et sans eux le classement est vide des deux côtés d'une

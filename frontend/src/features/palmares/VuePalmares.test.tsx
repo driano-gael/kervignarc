@@ -101,10 +101,9 @@ const PALMARES: Palmares = { tournoi_id: 1, profondeur_podium: 4, sections: [SEC
 /** Un palmarès à **un** créneau, dont on surcharge la section (E06US009).
  *
  * ⚠️ Les surcharges portent sur la SECTION, plus sur le palmarès : `podiums`, `lignes`,
- * `classement_vide` et `classement_clubs` ont changé de niveau. Un `{ ...PALMARES, podiums: [] }`
- * compilerait encore (`podiums` n'existant plus, TypeScript le refuse — c'est justement ce qui a
- * rendu la migration sûre), mais ne prouverait plus rien. La juxtaposition de N créneaux se teste
- * séparément, dans `rend un bloc par créneau`.
+ * `classement_vide` et `classement_clubs` ont changé de niveau. TypeScript **refuse** désormais un
+ * `{ ...PALMARES, podiums: [] }` — c'est ce qui a rendu la migration sûre. La juxtaposition de N
+ * créneaux se teste séparément, dans `rend un bloc par créneau`.
  */
 function palmaresAvec(surcharges: Partial<SectionPalmares>): Palmares {
   return { ...PALMARES, sections: [{ ...SECTION, ...surcharges }] }
@@ -135,7 +134,9 @@ describe('VuePalmares — centrage « mes archers »', () => {
     await waitFor(() => expect(screen.getByText('Mes archers')).toBeInTheDocument())
     // Nommé, et non pris par sa position : E16US017 a ajouté un second tableau à cet écran (le
     // classement des clubs), et `getByRole('table')` seul est devenu ambigu.
-    const classement = within(screen.getByLabelText(/Mes archers/)).getByRole('table')
+    const classement = within(screen.getByLabelText('Mes archers — Départ n°1 — 09:00')).getByRole(
+      'table',
+    )
     expect(classement).toHaveTextContent('MARTIN')
     expect(classement).not.toHaveTextContent('CHAMPION')
   })
@@ -226,8 +227,13 @@ describe('VuePalmares — un palmarès par créneau (E06US009)', () => {
     expect(await screen.findByText('Départ n°1 — 09:00')).toBeInTheDocument()
     expect(screen.getByText('Départ n°2 — 14:00')).toBeInTheDocument()
     // Les deux podiums coexistent : rien n'est agrégé, rien n'est masqué.
-    expect(screen.getAllByLabelText(/Classement complet/)).toHaveLength(2)
+    expect(screen.getAllByLabelText(/Classement complet —/)).toHaveLength(2)
     expect(screen.getByText('Benjamin 1 Femme')).toBeInTheDocument()
+    // ⚠️ **Les noms accessibles des repères répétés doivent DIFFÉRER** : c'est tout le défaut a11y
+    // que cette US dit fermer, et il ne se voit qu'ici — un `aria-label` fixe rendrait N repères
+    // « Classement des clubs » que rien ne distingue dans la liste d'un lecteur d'écran.
+    expect(screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00')).toBeInTheDocument()
+    expect(screen.getByLabelText('Classement des clubs — Départ n°2 — 14:00')).toBeInTheDocument()
   })
 
   it('titre le créneau même quand le tournoi n’en a qu’un', async () => {
@@ -248,7 +254,9 @@ describe('VuePalmares — un palmarès par créneau (E06US009)', () => {
     })
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
-    expect(await screen.findByLabelText(/Classement complet — Départ n°1/)).toBeInTheDocument()
+    expect(
+      await screen.findByLabelText('Classement complet — Départ n°1 — 09:00'),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Aucun archer classé pour l['’]instant/)).toBeInTheDocument()
   })
 })
@@ -258,9 +266,13 @@ describe('VuePalmares — classement des clubs (E16US017)', () => {
     vi.mocked(getPalmares).mockResolvedValue(PALMARES)
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
-    await waitFor(() => expect(screen.getByLabelText(/Classement des clubs/)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00'),
+      ).toBeInTheDocument(),
+    )
     expect(
-      within(screen.getByLabelText(/Classement des clubs/)).getByRole('table'),
+      within(screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00')).getByRole('table'),
     ).toHaveTextContent('Compagnie de Kervignarc')
   })
 
@@ -282,8 +294,12 @@ describe('VuePalmares — classement des clubs (E16US017)', () => {
     )
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
-    await waitFor(() => expect(screen.getByLabelText(/Classement des clubs/)).toBeInTheDocument())
-    const rangs = within(screen.getByLabelText(/Classement des clubs/))
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00'),
+      ).toBeInTheDocument(),
+    )
+    const rangs = within(screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00'))
       .getAllByRole('row')
       .slice(1)
       .map((ligne) => ligne.querySelectorAll('td')[0]?.textContent)
@@ -308,7 +324,11 @@ describe('VuePalmares — classement des clubs (E16US017)', () => {
     await waitFor(() =>
       expect(screen.getByText(/à l’intérieur de chaque club/)).toBeInTheDocument(),
     )
-    expect(within(screen.getByLabelText(/Classement des clubs/)).queryByRole('table')).toBeNull()
+    expect(
+      within(screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00')).queryByRole(
+        'table',
+      ),
+    ).toBeNull()
   })
 })
 
@@ -326,8 +346,14 @@ describe('VuePalmares — classement des clubs, correctifs de revue', () => {
     )
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
-    await waitFor(() => expect(screen.getByLabelText(/Classement des clubs/)).toBeInTheDocument())
-    const ligne = within(screen.getByLabelText(/Classement des clubs/)).getAllByRole('row')[1]
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00'),
+      ).toBeInTheDocument(),
+    )
+    const ligne = within(
+      screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00'),
+    ).getAllByRole('row')[1]
     expect([...(ligne?.querySelectorAll('td') ?? [])].map((c) => c.textContent)).toEqual([
       '1ᵉʳ',
       'Compagnie de Kervignarc',
@@ -354,7 +380,7 @@ describe('VuePalmares — classement des clubs, correctifs de revue', () => {
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
     await waitFor(() => expect(screen.getByText('Classement complet')).toBeInTheDocument())
-    expect(screen.queryByLabelText(/Classement des clubs/)).toBeNull()
+    expect(screen.queryByLabelText('Classement des clubs — Départ n°1 — 09:00')).toBeNull()
   })
 
   it('dit qu’aucun club n’a de médaille plutôt que de les ranger tous 1ᵉʳˢ', async () => {
@@ -371,6 +397,10 @@ describe('VuePalmares — classement des clubs, correctifs de revue', () => {
     await waitFor(() =>
       expect(screen.getByText('Aucun club n’a encore de médaille.')).toBeInTheDocument(),
     )
-    expect(within(screen.getByLabelText(/Classement des clubs/)).queryByRole('table')).toBeNull()
+    expect(
+      within(screen.getByLabelText('Classement des clubs — Départ n°1 — 09:00')).queryByRole(
+        'table',
+      ),
+    ).toBeNull()
   })
 })

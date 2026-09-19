@@ -88,12 +88,11 @@ export function VuePalmares({
             ? 'Connexion momentanément perdue — mise à jour au retour.'
             : 'Chargement…'}
         </p>
-      ) : /* ⚠️ **Le serveur le dit, on ne le déduit pas.** Quatre gardes successives ont tenté
-             d'inférer « ce créneau est-il classé ? » de `lignes` (filtrées) puis de `podiums` (que
-             le réglage vide à bon droit quand aucune portée n'est cochée) : quatre fois fausses,
-             dans un coin différent. Le vide du FILTRE, lui, est nommé par `ClassementFinal`.
-             ⚠️ Ici la question se pose **par créneau** : un tournoi dont le matin est classé et
-             l'après-midi pas encore n'est ni « classé » ni « vide » (E06US009). */
+      ) : /* ⚠️ **Le serveur le dit, on ne le déduit pas** (ADR-0103 §6) : quatre gardes ont tenté
+             d'inférer « est-ce classé ? » de `lignes` ou de `podiums`, quatre fois à tort. Ici on
+             ne fait que **réunir** des `classement_vide` servis — ce n'est pas une 5ᵉ inférence.
+             ⚠️ La question se pose **par créneau** : matin classé, après-midi pas encore n'est ni
+             « classé » ni « vide ». `sections` n'est jamais vide (409 `TournoiSansDepart`). */
       donnees.sections.every((section) => section.classement_vide) ? (
         <p className="carte__etat">Aucun archer classé pour l'instant.</p>
       ) : (
@@ -142,11 +141,11 @@ function SectionCreneau({
               profondeur={profondeur}
             />
           ))}
-          <ClassementClubs classement={section.classement_clubs} creneau={section.libelle} />
+          <ClassementClubs classement={section.classement_clubs} libelleCreneau={section.libelle} />
           <ClassementFinal
             lignes={centrerLignes(section.lignes, mode, suivis)}
             mode={mode}
-            creneau={section.libelle}
+            libelleCreneau={section.libelle}
           />
         </>
       )}
@@ -207,10 +206,10 @@ function BlocPodium({
  */
 function ClassementClubs({
   classement,
-  creneau,
+  libelleCreneau,
 }: {
   classement: ClassementClubsDto
-  creneau: string
+  libelleCreneau: string
 }) {
   // ⚠️ **Le serveur le dit, on ne le déduit pas** — même avertissement que quinze lignes plus haut.
   // Un tournoi qui ne récompense rien (réglage vide, licite — ADR-0103 §1) n'a pas de question à se
@@ -219,7 +218,7 @@ function ClassementClubs({
   const etat = etatClassementClubs(classement)
   return (
     // ⚠️ Le créneau entre dans le nom accessible, pour la même raison que `ClassementFinal`.
-    <section className="palmares-podium" aria-label={`Classement des clubs — ${creneau}`}>
+    <section className="palmares-podium" aria-label={`Classement des clubs — ${libelleCreneau}`}>
       <h4 className="palmares-section">Classement des clubs</h4>
       {/* Sur quoi le décompte repose — sans quoi « Or : 2 » pour un club à un seul archer se lit
           comme une erreur, alors que c'est le cumul de deux portées réglées. */}
@@ -267,11 +266,11 @@ function ClassementClubs({
 function ClassementFinal({
   lignes,
   mode,
-  creneau,
+  libelleCreneau,
 }: {
   lignes: LignePalmares[]
   mode: ModeAffichage
-  creneau: string
+  libelleCreneau: string
 }) {
   // ⚠️ Le libellé de la section est **celui du titre visible**, jamais un synonyme : un `aria-label`
   // qui contredit son propre `<h4>` annonce autre chose que ce qui est affiché.
@@ -283,7 +282,7 @@ function ClassementFinal({
     // ⚠️ **Le créneau entre dans le nom accessible** (E06US009) : l'écran porte désormais un
     // de ces repères PAR créneau, et quatre « Classement complet » identiques dans la liste
     // des repères d'un lecteur d'écran ne se distinguent que par leur ordre d'apparition.
-    <section aria-label={`${titre} — ${creneau}`}>
+    <section aria-label={`${titre} — ${libelleCreneau}`}>
       <h4 className="palmares-section">{titre}</h4>
       {lignes.length === 0 ? (
         <p className="carte__etat">
