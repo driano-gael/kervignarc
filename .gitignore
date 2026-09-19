@@ -47,3 +47,6 @@ Thumbs.db
 
 # === Divers ===
 *.log
+
+# Journaux de la porte mécanique locale (porte.py)
+.porte/

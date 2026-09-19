@@ -119,6 +119,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-non-verifiable",
+   "message": "annonce InscriptionRepositorySQL.supprimer_avec_remboursement, DepartRepositorySQL.supprimer_avec_remboursements, ArcherRepositorySQL.supprimer_avec_remboursements, DELETE, commit dans « backend/infrastructure/db/repositories/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0057"
+  },
+  {
+   "code": "portage-non-verifiable",
    "message": "annonce podium dans « backend/tests/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0061"
@@ -282,6 +288,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 46
+  "signaux": 47
  }
 };

@@ -28,7 +28,6 @@ import pytest
 RACINE = Path(__file__).resolve().parents[2]
 AGENTS = RACINE / ".claude" / "agents"
 COMMANDE = RACINE / ".claude" / "commands" / "revue-us.md"
-REGLAGES = RACINE / ".claude" / "settings.json"
 
 AXES = ("revue-axe-a", "revue-axe-b", "revue-axe-c1", "revue-axe-c2", "revue-axe-d")
 
@@ -111,25 +110,40 @@ def test_tout_agent_cite_par_la_commande_existe() -> None:
         ), f"{fichier.name} : le champ `name` ne vaut pas `{nom}` — l'agent serait injoignable"
 
 
-def test_la_porte_ne_prescrit_aucune_commande_refusee_par_le_depot() -> None:
-    """Le garde-fou qui manquait : une porte qu'on n'a pas le droit d'exécuter.
+def test_la_porte_delegue_au_script_plutot_que_de_prescrire_des_commandes() -> None:
+    """Le contrôle des commandes refusées a suivi les commandes (E00US031, ADR-0110).
 
-    `porte-mecanique` prescrit des commandes shell ; `.claude/settings.json` est versionné et peut
-    en refuser. Une commande refusée ne produit **aucun** code de sortie : elle tombe en « non
-    exécuté », et sans ce test rien ne signalait que la porte tournait amputée.
+    Il vivait ici tant que `porte-mecanique.md` prescrivait des commandes shell. Elles sont
+    passées dans `backend/porte.py`, où `test_porte_couvre_la_ci.py` les confronte aux refus de
+    `.claude/settings.json` — la liste y est exécutable, donc vérifiable, au lieu d'être en prose.
+    Ce qui reste à garder ici : que l'agent **délègue** bien. Une réécriture qui relancerait les
+    commandes à la main sortirait du champ de ce contrôle sans rien faire rougir.
     """
-    reglages = json.loads(REGLAGES.read_text(encoding="utf-8"))
-    refuses = {
-        entree[len("Bash(") : -len(":*)")]
-        for entree in reglages["permissions"]["deny"]
-        if entree.startswith("Bash(") and entree.endswith(":*)")
-    }
-
     texte = (AGENTS / "porte-mecanique.md").read_text(encoding="utf-8")
-    prescrites = set(re.findall(r"`(npm [a-z]+|pytest|mypy|ruff [a-z]+|pip-audit)`", texte))
+    assert "porte.py" in texte, (
+        "porte-mecanique.md ne lance plus `porte.py` : les commandes refusées par "
+        ".claude/settings.json ne seraient alors couvertes par aucun test."
+    )
 
-    collisions = {c for c in prescrites for r in refuses if c == r or c.startswith(f"{r} ")}
-    assert not collisions, (
-        f"la porte prescrit {sorted(collisions)}, que .claude/settings.json refuse. "
-        "Soit la permission s'ouvre, soit l'omission se déclare dans porte-mecanique.md."
+
+def test_la_commande_prescrite_est_autorisee_par_le_depot() -> None:
+    """Le mode de panne d'origine est intact : une commande non autorisée ne rend aucun `EXIT`.
+
+    ⚠️ L'enjeu a changé d'échelle depuis E00US031 — ce n'est plus une étape de la porte qui
+    manquerait, c'est **toute** la porte qui ne partirait pas, l'agent ayant interdiction de
+    rejouer les commandes à la main.
+    """
+    motif = re.compile(r"```bash\n(.+?)\n```", re.S)
+    bloc = motif.search((AGENTS / "porte-mecanique.md").read_text("utf-8"))
+    assert bloc, "plus de bloc de commande dans porte-mecanique.md"
+    reglages = json.loads((RACINE / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    prefixes = [
+        entree[len("Bash(") : -len(":*)")]
+        for entree in reglages["permissions"]["allow"]
+        if entree.startswith("Bash(") and entree.endswith(":*)")
+    ]
+    commande = bloc.group(1).split(";")[0].strip()
+    assert any(commande.startswith(prefixe) for prefixe in prefixes), (
+        f"`{commande}` n'est couverte par aucune entrée `allow` de .claude/settings.json : "
+        "la porte demanderait une permission et ne rendrait aucun code de sortie."
     )

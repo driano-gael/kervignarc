@@ -214,6 +214,32 @@ window.ATLAS.historique = {
    "us": []
   }
  ],
+ "cpu-et-tokens-contre-temps-humain": [
+  {
+   "adr": [],
+   "date": "2026-09-19",
+   "motif": "fix(e00us031): traiter la revue — 1 bloquant, 12 majeurs, cinq axes",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "22e576f39e",
+   "us": [
+    "E00US031"
+   ]
+  },
+  {
+   "adr": [
+    "0110"
+   ],
+   "date": "2026-09-19",
+   "motif": "docs(e00us031): ADR-0110, la checklist d'implementation et la regle des ressources",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "19fad7dc9c",
+   "us": [
+    "E00US031"
+   ]
+  }
+ ],
  "cycle-de-branche": [
   {
    "adr": [],

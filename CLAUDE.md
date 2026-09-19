@@ -66,9 +66,23 @@ ruff check . && ruff format .
 # Frontend (depuis frontend/)
 npm run dev / build / lint / format / typecheck
 
+# Porte mécanique locale (depuis la RACINE ; le venv n'a pas à être activé) — ADR-0110
+python backend/porte.py --rapide   # ~30 s : ruff, mypy, domaine+service+oracle, atlas, tsc
+python backend/porte.py            # la CI en entier, en SEQUENTIEL (~13 min) — ADR-0110 §3
+
 # Application complète (proche production, port fixe)
 cd backend && python run_dev.py        # --no-build réutilise frontend/dist/
 ```
+
+**L'étage rapide se lance à chaque étape d'implémentation**, l'étage complet **une fois**, avant la
+revue — et **jamais pendant** : les deux se disputent les cœurs de la machine, et c'est ce qui a
+produit la seule porte à 40 minutes de [`docs/metriques-revue.md`](docs/metriques-revue.md).
+⚠️ L'étage rapide couvre la **règle métier** (domaine, service, oracle 120), jamais
+l'intégration : ni API, ni migrations, ni repositories, ni `vitest`, ni `eslint`, ni le `build`,
+ni les audits, **ni les cliquets documentaires** de `test_atlas_corpus`. Son tableau affiche
+`6/14 lancées` et nomme les manquantes ; il n'autorise pas à sauter l'étage complet.
+⚠️ Le parallélisme n'aide qu'à l'étage **rapide** : à l'étage complet il est plus lent (`pytest`
+double sous contention), d'où le défaut séquentiel.
 
 `pre-commit` (racine) lance ruff, mypy strict, le garde-fou d'isolation du domaine, eslint et
 prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et sur `main`.
@@ -232,6 +246,20 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   point précédent : la mémoire reste un lieu d'écriture utile — elle **double** le dépôt pour ce poste
   — mais pour ce qui cadre le projet, elle ne le **remplace** pas.)*
 
+- **Du CPU et des tokens contre du temps humain, jamais l'inverse.** <!--regle:cpu-et-tokens-contre-temps-humain--> Le coût réel du projet n'est
+  ni le token ni la seconde de calcul : c'est le **nombre d'allers-retours** et **l'attente de
+  l'utilisateur**. Une passe qui consomme plus vaut mieux que cinq qui consomment moins — **182 PR
+  fusionnées** ont produit ~155 commits de correction de revue et **21 US à seconde passe**
+  *(le compte d'**US** fait autorité dans [`SUIVI-US.md`](journal-d-avancement/SUIVI-US.md) ; 182
+  est un compte de **PR**, les deux ne se confondent pas)*. Donc :
+  **paralléliser plutôt que raccourcir** — *quand c'est mesuré gagnant : la porte complète, elle,
+  est plus rapide en séquentiel (ADR-0110 §3)* —, lancer
+  les portes **en arrière-plan** pendant qu'on rédige commit et journal, et préférer un sous-agent
+  qui **mesure** à une supposition. ⚠️ **Ce qui est exclu : acheter du temps en dégradant une
+  vérification** — pas de porte ciblée après correctifs (on relance **tout**), pas de
+  mineur laissé de côté pour aller plus vite. *(Arbitrage du 19/09/2026, cf.
+  [ADR-0110](docs/adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md).)*
+
 ## Workflow
 
 - <!--regle:une-branche-par-us--> **Une branche par US**, jamais de travail direct sur `main`. Nommage
@@ -385,6 +413,7 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 | [`cahier-des-charges-ux.md`](cahier-des-charges-ux.md) · [`-design.md`](cahier-des-charges-design.md) | Parcours & registres `D-nn` / `DV-nn` |
 | [`moteur-placement-lucky-loser.md`](moteur-placement-lucky-loser.md) | Formalisation du moteur de placement |
 | [`docs/glossaire.md`](docs/glossaire.md) · [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) · [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) | Vocabulaire, modèle, règles FFTA |
+| [`docs/checklist-implementation.md`](docs/checklist-implementation.md) | **À lire au début d'une US** — les défauts que la revue trouve le plus souvent, en questions |
 | [`docs/dette.md`](docs/dette.md) · [`docs/dependances.md`](docs/dependances.md) · [`docs/adr/`](docs/adr/) | Registres et décisions |
 | [`docs/maquettes.md`](docs/maquettes.md) | Maquettes vivantes (URL + contenu) et écarts doc/CA/code qu'elles ont fait remonter — lu par [`/maquettes`](.claude/commands/maquettes.md) |
 | [`epics/`](epics/) · [`stories/`](stories/) | Backlog produit (jalons J0→J4) |

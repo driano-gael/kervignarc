@@ -53,45 +53,10 @@ jobs:
       - name: Tests (pytest)
         run: pytest
 
+      # Extrait de ce fichier en E00US031 : `porte.py` lance le même script, et
+      # `test_porte_couvre_la_ci.py` compare les deux listes de vérifications (ADR-0110).
       - name: requirements.txt synchronisé avec pyproject.toml
-        shell: python
-        run: |
-          import re
-          import sys
-          import tomllib
-          from pathlib import Path
-
-          def norm(name: str) -> str:
-              return re.sub(r"[-_.]+", "-", name).lower()
-
-          data = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
-          project = data["project"]
-          direct = list(project.get("dependencies", []))
-          for extra in project.get("optional-dependencies", {}).values():
-              direct += extra
-
-          have: set[str] = set()
-          for line in Path("requirements.txt").read_text("utf-8").splitlines():
-              m = re.match(r"^([A-Za-z0-9._-]+)==([^\s;]+)", line.strip())
-              if m:
-                  have.add(f"{norm(m.group(1))}=={m.group(2).lower()}")
-
-          missing: list[str] = []
-          for spec in direct:
-              m = re.match(r"^([A-Za-z0-9._-]+)(?:\[[^\]]*\])?==([^\s;]+)", spec)
-              if not m:
-                  missing.append(f"{spec} (doit être épinglé avec ==)")
-              elif f"{norm(m.group(1))}=={m.group(2).lower()}" not in have:
-                  missing.append(f"{m.group(1)}=={m.group(2)}")
-
-          if missing:
-              print("requirements.txt désynchronisé de pyproject.toml. Manquant/incohérent :")
-              for item in missing:
-                  print(f"  - {item}")
-              print('Régénère : pip install -e ".[dev]" && '
-                    "pip freeze --exclude-editable > requirements.txt")
-              sys.exit(1)
-          print("requirements.txt est synchronisé avec pyproject.toml.")
+        run: python verifier_requirements.py
 
       - name: Audit sécurité (pip-audit)
         run: |

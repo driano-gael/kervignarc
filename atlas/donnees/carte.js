@@ -276,7 +276,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 366,
+   "occurrences": 367,
    "source": "application"
   },
   {
@@ -767,7 +767,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 351,
+   "occurrences": 352,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1313,6 +1313,7 @@ window.ATLAS.carte = {
     "par_id",
     "par_tournoi",
     "supprimer",
+    "supprimer_avec_remboursements",
     "tous"
    ],
    "nom": "ArcherRepository",
@@ -1531,7 +1532,15 @@ window.ATLAS.carte = {
    "adapters": [
     {
      "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "ArcherRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
      "nom": "DepartRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryArcherRepository"
     },
     {
      "fichier": "backend/infrastructure/memory/repositories.py",
@@ -3118,24 +3127,8 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
-     "fichier": "backend/infrastructure/db/repositories/moteur.py",
-     "nom": "FormatTournoiRepositorySQL"
-    },
-    {
-     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
-     "nom": "ClubRepositorySQL"
-    },
-    {
-     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
-     "nom": "GabaritSalleRepositorySQL"
-    },
-    {
      "fichier": "backend/infrastructure/db/repositories/referentiel.py",
      "nom": "TournoiRepositorySQL"
-    },
-    {
-     "fichier": "backend/infrastructure/memory/repositories.py",
-     "nom": "InMemoryGabaritSalleRepository"
     },
     {
      "fichier": "backend/infrastructure/memory/repositories.py",
@@ -3147,6 +3140,7 @@ window.ATLAS.carte = {
    "hors_domaine": false,
    "methodes": [
     "ajouter",
+    "compter_descendance",
     "enregistrer",
     "lister",
     "par_id",
@@ -3160,8 +3154,8 @@ window.ATLAS.carte = {
   "aretes_front": 179,
   "enchevetrements": 4,
   "features": 51,
-  "imports": 960,
-  "imports_entre_couches": 812,
+  "imports": 961,
+  "imports_entre_couches": 813,
   "plus_gros_noeud": 24,
   "ports": 72,
   "ports_hors_domaine": 28,

@@ -41,16 +41,36 @@ US ciblée : `$ARGUMENTS` (si vide, la déduire de la branche courante `<type>/<
 2. `git fetch` puis déterminer la base : `git merge-base HEAD origin/main`.
 3. Calculer le périmètre : `git diff --stat origin/main...HEAD` et la liste des fichiers modifiés. Ignorer les artefacts (`node_modules/`, `.venv/`, `dist/`, lockfiles générés sauf incohérence). **Repère de détection pour l'axe B (règle 9-doc)** : le diff touche-t-il `frontend/src/**` **sans** ajouter ni compléter un `docs/fonctionnel/<ExxUSyyy>.md` ? Si oui, c'est le signal d'une **fiche fonctionnelle manquante** — passe-le explicitement à l'axe B, qui tranchera (fiche due et absente = bloquant, ou US purement outillage front à justifier).
 4. **Règle 12 — le format, ici ; le jugement, à un relecteur.** `git log --format='%h %s%n%b' origin/main..HEAD`. Tu vérifies toi-même le **factuel** : type/scope conventionnel, cohérence avec la branche, corps qui explique le quoi **et** le pourquoi, références présentes. Tu **ne juges pas** « décision structurante ⇒ ADR » : c'est la seule règle des seize dont l'objet est de rattraper ce que **tu** as escamoté, et te la confier la neutralise. Elle est à l'axe C2 ; passe-lui le log en périmètre. *(Preuve que ce n'est pas théorique : le commit `b47b25c` — refonte de cette procédure même — a été livré sans ADR, et c'est un relecteur tiers qui l'a rattrapé. ADR-0013 n'existerait pas autrement.)*
-5. **Passer la porte mécanique AVANT de dépenser une passe de revue** — via l'agent **`porte-mecanique`**, à qui tu passes la liste des fichiers touchés. Il lit `.github/workflows/ci.yml`, exécute les étapes concernées, et te rend la liste verbatim des `run:` qu'il y a trouvés, un `EXIT` par commande, et les échecs non résumés. **La sortie volumineuse des tests reste dans son contexte, pas dans le tien.**
+5. **Passer la porte mécanique AVANT de dépenser une passe de revue** — via l'agent
+   **`porte-mecanique`**, qui lance `backend/porte.py` et te rend son tableau
+   `vérification → état → durée`, le compte `n/m lancées`, et les échecs verbatim des seules
+   lignes rouges. **La sortie volumineuse des tests reste dans son contexte, pas dans le tien.**
 
-   ⚠️ **Ouvre `.github/workflows/ci.yml` et compare toi-même** — `grep -n 'run:' .github/workflows/ci.yml`, une dizaine de lignes — plutôt que de recouper le rapport de l'agent avec lui-même. Un exécutant qui omet une étape l'omet **aussi de sa transcription** : les deux colonnes concordent alors sans rien prouver, et c'est exactement l'auto-cohérence que `CLAUDE.md` § Cycle de branche décrit pour le hook de l'atlas (« il compare du périmé à du périmé »). Ce que l'agent apporte, c'est de lire `ci.yml` **au lieu** d'une liste recopiée ; ce que toi seul apportes, c'est un **second regard indépendant** — il coûte un `grep`. Si la section verbatim manque au rapport, ou si elle diverge de ce que tu lis, **le rapport est nul et non avenu**.
+   ⚠️ **Trois contrôles t'appartiennent, et ils tiennent en trois regards sur le tableau** —
+   l'agent est un `haiku` sans référence de comparaison, c'est toi qui as le diff :
+   - **`n` doit valoir `m`**, et `m` doit valoir le nombre de vérifications de `GROUPES`
+     (`backend/porte.py`) — **14** à ce jour. Un `m` plus petit signe un étage rapide.
+   - **L'en-tête doit dire `PORTE COMPLÈTE`, jamais `PORTE RAPIDE`.** L'étage rapide ne joue ni
+     l'API, ni les migrations, ni `vitest`, ni `eslint`, ni les audits, ni les cliquets
+     documentaires : **il ne fonde aucun verdict avant une PR**.
+   - **`pytest` et `vitest` doivent figurer au tableau.** Ce sont les deux lignes qu'une porte
+     amputée perd en premier.
 
-   `DETTE-093` — **ce contrôle n'est pas mécanisé, et son absence a déjà produit un faux vert**
-   (E16US010) : recouper la liste des étapes ne dit rien du **décompte des `EXIT`**.
+   `DETTE-093` — le décompte des étapes est désormais **mécanisé** (`porte.py` ne sort `0`
+   qu'après avoir tout joué, et `backend/tests/test_porte_couvre_la_ci.py` confronte sa liste à
+   `ci.yml` dans les deux sens). Ce qui reste à l'œil est ci-dessus : le **mode** et le **compte
+   attendu**, que rien ne peut vérifier de l'intérieur de la porte.
 
-   Vérifie ensuite que les omissions sont bien les **deux** énumérées dans `porte-mecanique.md` — installation des dépendances Python, synchro `requirements.txt`↔`pyproject.toml` — et **rien d'autre** : `npm ci` en particulier doit avoir tourné. Toute autre divergence est un bug de cette procédure. *(Ce contrôle n'est pas décoratif : la liste que cette commande portait en dur avait divergé de `ci.yml` **deux fois** — `npm test` manquant depuis sa rédaction, découvert le 15/08/2026 sur E05US028, puis le job `atlas` jamais mentionné.)*
+   *(Pourquoi ces contrôles et pas d'autres : jusqu'en `E00US031`, l'agent lisait `ci.yml`,
+   recopiait ses `run:` et tu les recoupais au `grep`. La liste vit maintenant dans `porte.py`,
+   et sa correspondance avec `ci.yml` est un test — ce recoupement manuel n'a plus d'objet.)*
 
-   **Rouge ou INCOMPLÈTE ⇒ tu corriges d'abord, tu ne lances pas la revue** : un diff qui ne passe pas mypy fait relire du code condamné, et une porte incomplète ne prouve rien. Seule interprétation qui t'appartient : `python -m atlas --verifier` rouge **peut** être le cas connu de régénération post-commit (`CLAUDE.md` § Cycle de branche) — auquel cas tu **régénères** (`cd backend && python -m atlas`), tu **commites** la carte et tu **redemandes la porte**. Un atlas rouge ne franchit jamais l'étape 0. La CI garde le dernier mot.
+   **Rouge ou INCOMPLÈTE ⇒ tu corriges d'abord, tu ne lances pas la revue** : un diff qui ne passe
+   pas mypy fait relire du code condamné, et une porte incomplète ne prouve rien. Seule
+   interprétation qui t'appartient : la ligne `atlas à jour` rouge **peut** être le cas connu de
+   régénération post-commit (`CLAUDE.md` § Cycle de branche) — auquel cas tu **régénères**
+   (`cd backend && python -m atlas`), tu **commites** la carte et tu **redemandes la porte**. Un
+   atlas rouge ne franchit jamais l'étape 0. La CI garde le dernier mot.
 6. **Décider si la décharge s'applique** (voir ci-dessous). Si elle est suspendue, **note les fichiers qui la suspendent** : c'est cette liste, et pas le seul mot « SUSPENDUE », qui est passée à l'axe A.
 7. **Noter l'heure une seconde fois** (la première est au point 1) : les deux bornes donnent `durée porte` dans [`docs/metriques-revue.md`](../../docs/metriques-revue.md).
 

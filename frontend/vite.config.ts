@@ -1,5 +1,9 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
+
+// Extension `.js` exigée par `tsc` sur ce fichier (`moduleResolution: node16`) ; Vite la résout
+// vers le source `.ts`.
+import { CHEMINS_AVEC_DOM } from './src/test-environnement.js'
 
 // En dev, le front (serveur Vite) et le backend (Uvicorn, port 8000) sont sur des origins
 // distincts : on **proxifie** l'API, la sonde de santé et le WebSocket vers le backend.
@@ -15,12 +19,32 @@ export default defineConfig({
       '/ws': { target: CIBLE_BACKEND, ws: true },
     },
   },
-  // Tests (E14US002 — outillage de test de rendu, ADR-0053). `jsdom` fournit un DOM en mémoire pour
-  // les tests de composants (Testing Library) ; les tests de logique pure préexistants s'y exécutent
-  // sans changement (jsdom est un sur-ensemble de l'environnement Node). `test-setup.ts` étend
-  // `expect` (jest-dom) et nettoie le DOM entre les tests.
+  // Tests (E14US002 — outillage de test de rendu, ADR-0053). `jsdom` fournit un DOM en mémoire aux
+  // tests de composants (Testing Library) ; `test-setup.ts` étend `expect` (jest-dom) et nettoie le
+  // DOM entre les tests.
+  // ⚠️ Deux projets depuis E00US031 (ADR-0110) : instancier jsdom pour les 67 modules de logique
+  // pure coûtait ~67 s sur 224 — mesuré, pas supposé. Les tests de logique tournent donc sous
+  // `node`, **sans** `test-setup.ts`, dont `cleanup()` et `localStorage.clear()` y échoueraient.
   test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'dom',
+          environment: 'jsdom',
+          setupFiles: ['./src/test-setup.ts'],
+          include: ['src/**/*.test.tsx', ...CHEMINS_AVEC_DOM],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, ...CHEMINS_AVEC_DOM],
+        },
+      },
+    ],
   },
 })
