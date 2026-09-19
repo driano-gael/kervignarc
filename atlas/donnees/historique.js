@@ -5,28 +5,6 @@ window.ATLAS.historique = {
  "autonomie-par-defaut-main-rendue-sur-trois-cas-seulement": [
   {
    "adr": [],
-   "date": "2026-08-16",
-   "motif": "fix(e00us018): 2e passe — les trous que le 1er correctif avait déplacés",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "8fd9e6c8b2",
-   "us": [
-    "E00US018"
-   ]
-  },
-  {
-   "adr": [],
-   "date": "2026-08-16",
-   "motif": "fix(e00us018): l'atlas cesse d'affirmer deux choses fausses",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "b800b6c00c",
-   "us": [
-    "E00US018"
-   ]
-  },
-  {
-   "adr": [],
    "date": "2026-08-15",
    "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
@@ -43,15 +21,6 @@ window.ATLAS.historique = {
    "nature": "commit",
    "origine": "git",
    "reference": "4a7aaf01c0",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
-   "motif": "docs(workflow): règle — tenir SUIVI-US.md à jour dès que nécessaire",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "4096ee0ca5",
    "us": []
   },
   {
@@ -86,19 +55,6 @@ window.ATLAS.historique = {
    ]
   },
   {
-   "adr": [
-    "0075"
-   ],
-   "date": "2026-08-06",
-   "motif": "docs(e01us025): acter que le départ est la portée sportive (ADR-0075)",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "1a5e5a4329",
-   "us": [
-    "E01US025"
-   ]
-  },
-  {
    "adr": [],
    "date": "2026-07-20",
    "motif": "docs(process): cadrer l'intention en tête d'une US à surface utilisateur",
@@ -106,29 +62,18 @@ window.ATLAS.historique = {
    "origine": "git",
    "reference": "cfd23b4754",
    "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "2d04c9babb",
-   "us": []
   }
  ],
  "ce-qui-cadre-le-projet-va-dans-le-depot-pas-en-memoire-locale": [
   {
-   "adr": [
-    "0110"
-   ],
-   "date": "2026-09-19",
-   "motif": "docs(e00us031): ADR-0110, la checklist d'implementation et la regle des ressources",
+   "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
    "origine": "git",
-   "reference": "19fad7dc9c",
+   "reference": "bc38f0140b",
    "us": [
-    "E00US031"
+    "E00US018"
    ]
   },
   {
@@ -217,28 +162,6 @@ window.ATLAS.historique = {
   },
   {
    "adr": [],
-   "date": "2026-08-16",
-   "motif": "fix(e00us018): 3e passe — le commentaire disait fermé, le code ne l'était pas",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "e09ad9a787",
-   "us": [
-    "E00US018"
-   ]
-  },
-  {
-   "adr": [],
-   "date": "2026-08-15",
-   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "bc38f0140b",
-   "us": [
-    "E00US018"
-   ]
-  },
-  {
-   "adr": [],
    "date": "2026-07-15",
    "motif": "docs(claude): consigner les règles projet pour le développement assisté",
    "nature": "commit",
@@ -261,24 +184,6 @@ window.ATLAS.historique = {
   },
   {
    "adr": [],
-   "date": "2026-07-29",
-   "motif": "docs(workflow): trois cas de reprise de main, et sortir le poste du depot",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "4a7aaf01c0",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(claude): passer l'assistant en autonomie sur le cycle d'une US",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "e33c52cb4b",
-   "us": []
-  },
-  {
-   "adr": [],
    "date": "2026-07-15",
    "motif": "docs(claude): consigner les règles projet pour le développement assisté",
    "nature": "commit",
@@ -288,50 +193,6 @@ window.ATLAS.historique = {
   }
  ],
  "composition-root-explicite": [
-  {
-   "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(tests): faire dériver les tests du CA, pas du code écrit",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "f353682ed7",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "2d04c9babb",
-   "us": []
-  }
- ],
- "cpu-et-tokens-contre-temps-humain": [
-  {
-   "adr": [
-    "0110"
-   ],
-   "date": "2026-09-19",
-   "motif": "docs(e00us031): ADR-0110, la checklist d'implementation et la regle des ressources",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "19fad7dc9c",
-   "us": [
-    "E00US031"
-   ]
-  },
-  {
-   "adr": [],
-   "date": "2026-08-16",
-   "motif": "fix(e00us018): l'atlas cesse d'affirmer deux choses fausses",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "b800b6c00c",
-   "us": [
-    "E00US018"
-   ]
-  },
   {
    "adr": [],
    "date": "2026-08-15",
@@ -351,6 +212,32 @@ window.ATLAS.historique = {
    "origine": "git",
    "reference": "2d04c9babb",
    "us": []
+  }
+ ],
+ "cpu-et-tokens-contre-temps-humain": [
+  {
+   "adr": [],
+   "date": "2026-09-19",
+   "motif": "fix(e00us031): traiter la revue — 1 bloquant, 12 majeurs, cinq axes",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "22e576f39e",
+   "us": [
+    "E00US031"
+   ]
+  },
+  {
+   "adr": [
+    "0110"
+   ],
+   "date": "2026-09-19",
+   "motif": "docs(e00us031): ADR-0110, la checklist d'implementation et la regle des ressources",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "19fad7dc9c",
+   "us": [
+    "E00US031"
+   ]
   }
  ],
  "cycle-de-branche": [
@@ -397,15 +284,6 @@ window.ATLAS.historique = {
    "us": [
     "E00US018"
    ]
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
-   "motif": "docs(process): marquer l'US ✅ à la revue, dans son propre commit",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "bf3cead778",
-   "us": []
   },
   {
    "adr": [],
@@ -457,6 +335,19 @@ window.ATLAS.historique = {
    "us": []
   },
   {
+   "adr": [
+    "0075"
+   ],
+   "date": "2026-08-06",
+   "motif": "docs(e01us025): acter que le départ est la portée sportive (ADR-0075)",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "1a5e5a4329",
+   "us": [
+    "E01US025"
+   ]
+  },
+  {
    "adr": [],
    "date": "2026-07-15",
    "motif": "docs(claude): consigner les règles projet pour le développement assisté",
@@ -502,17 +393,6 @@ window.ATLAS.historique = {
  "dependances-externes": [
   {
    "adr": [],
-   "date": "2026-08-27",
-   "motif": "refactor(e00us027): le code porte des pointeurs, pas le raisonnement",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "5a97815b14",
-   "us": [
-    "E00US027"
-   ]
-  },
-  {
-   "adr": [],
    "date": "2026-08-15",
    "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
@@ -546,11 +426,11 @@ window.ATLAS.historique = {
   },
   {
    "adr": [],
-   "date": "2026-07-20",
-   "motif": "docs(process): ce qui cadre le projet va dans le dépôt, pas en mémoire locale",
+   "date": "2026-07-15",
+   "motif": "docs(claude): réduire le contexte consommé par une session d'US",
    "nature": "commit",
    "origine": "git",
-   "reference": "f80ddc1134",
+   "reference": "90c5926b80",
    "us": []
   }
  ],
@@ -577,6 +457,17 @@ window.ATLAS.historique = {
   }
  ],
  "front-react": [
+  {
+   "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
+  },
   {
    "adr": [],
    "date": "2026-07-15",
@@ -610,6 +501,17 @@ window.ATLAS.historique = {
   }
  ],
  "isolation-du-domaine": [
+  {
+   "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
+  },
   {
    "adr": [],
    "date": "2026-07-15",
@@ -666,15 +568,6 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-07-20",
-   "motif": "docs(process): cadrer l'intention en tête d'une US à surface utilisateur",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "cfd23b4754",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
    "motif": "docs(process): le journal d'avancement est un livrable tenu à jour",
    "nature": "commit",
    "origine": "git",
@@ -685,20 +578,22 @@ window.ATLAS.historique = {
  "l-assistant-deroule-le-cycle-d-une-us-en-autonomie": [
   {
    "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
+  },
+  {
+   "adr": [],
    "date": "2026-07-29",
    "motif": "docs(workflow): trois cas de reprise de main, et sortir le poste du depot",
    "nature": "commit",
    "origine": "git",
    "reference": "4a7aaf01c0",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(revue): fermer les trous du 2e tour de revue (principes, pas listes)",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "24b154cae5",
    "us": []
   },
   {
@@ -744,6 +639,15 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-07-15",
+   "motif": "docs(revue): fermer les trous du 2e tour de revue (principes, pas listes)",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "24b154cae5",
+   "us": []
+  },
+  {
+   "adr": [],
+   "date": "2026-07-15",
    "motif": "docs(claude): passer l'assistant en autonomie sur le cycle d'une US",
    "nature": "commit",
    "origine": "git",
@@ -783,6 +687,17 @@ window.ATLAS.historique = {
   }
  ],
  "redecouper-une-us-trop-grosse": [
+  {
+   "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
+  },
   {
    "adr": [],
    "date": "2026-07-15",
@@ -840,12 +755,25 @@ window.ATLAS.historique = {
  "remede-structurel": [
   {
    "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(claude): réduire le contexte consommé par une session d'US",
+   "date": "2026-08-16",
+   "motif": "fix(e00us018): 3e passe — le commentaire disait fermé, le code ne l'était pas",
    "nature": "commit",
    "origine": "git",
-   "reference": "90c5926b80",
-   "us": []
+   "reference": "e09ad9a787",
+   "us": [
+    "E00US018"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
   },
   {
    "adr": [],
@@ -882,14 +810,23 @@ window.ATLAS.historique = {
  "simplicite-assumee-hors-domaine": [
   {
    "adr": [],
-   "date": "2026-08-27",
-   "motif": "refactor(e00us027): le code porte des pointeurs, pas le raisonnement",
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
    "origine": "git",
-   "reference": "5a97815b14",
+   "reference": "bc38f0140b",
    "us": [
-    "E00US027"
+    "E00US018"
    ]
+  },
+  {
+   "adr": [],
+   "date": "2026-07-15",
+   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "2d04c9babb",
+   "us": []
   }
  ],
  "sqlite-single-writer": [
@@ -929,15 +866,6 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-07-20",
-   "motif": "docs(process): le journal d'avancement est un livrable tenu à jour",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "351987fd43",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
    "motif": "docs(process): marquer l'US ✅ à la revue, dans son propre commit",
    "nature": "commit",
    "origine": "git",
@@ -951,6 +879,15 @@ window.ATLAS.historique = {
    "nature": "commit",
    "origine": "git",
    "reference": "4096ee0ca5",
+   "us": []
+  },
+  {
+   "adr": [],
+   "date": "2026-07-15",
+   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "2d04c9babb",
    "us": []
   }
  ],
@@ -1039,21 +976,25 @@ window.ATLAS.historique = {
  "une-branche-par-us": [
   {
    "adr": [],
-   "date": "2026-07-29",
-   "motif": "docs(workflow): trois cas de reprise de main, et sortir le poste du depot",
+   "date": "2026-08-16",
+   "motif": "fix(e00us018): l'atlas cesse d'affirmer deux choses fausses",
    "nature": "commit",
    "origine": "git",
-   "reference": "4a7aaf01c0",
-   "us": []
+   "reference": "b800b6c00c",
+   "us": [
+    "E00US018"
+   ]
   },
   {
    "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(claude): passer l'assistant en autonomie sur le cycle d'une US",
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
    "origine": "git",
-   "reference": "e33c52cb4b",
-   "us": []
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
   },
   {
    "adr": [],
