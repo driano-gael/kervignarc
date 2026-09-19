@@ -892,7 +892,7 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [],
-  "derniere": "E01US026"
+  "derniere": "E00US031"
  },
  "epics": [
   {
@@ -1524,7 +1524,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US027",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Le code porte des pointeurs, pas le raisonnement",
@@ -1542,7 +1542,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US028",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Un ADR qui nomme du code disparu fait rougir la CI",
@@ -1559,7 +1559,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US029",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque",
@@ -1577,11 +1577,30 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US030",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Un fait, un lieu : la charte des documents",
    "titre_story": "Un fait, un lieu : la charte des documents"
+  },
+  {
+   "adr": [
+    "0110"
+   ],
+   "dettes_introduites": [
+    "105"
+   ],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "✅",
+   "identifiant": "E00US031",
+   "sections": [
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "La porte mécanique en deux étages, et la checklist d'implémentation",
+   "titre_story": "La porte mécanique en deux étages, et la checklist d'implémentation"
   },
   {
    "adr": [
@@ -4769,8 +4788,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 142,
-  "vivantes": 177
+  "livrees": 143,
+  "vivantes": 178
  },
  "sections": [
   {
@@ -6015,12 +6034,12 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    1,
-    4
+    2,
+    5
    ],
    "compteur_ecrit": [
-    1,
-    4
+    2,
+    5
    ],
    "lignes": [
     {
@@ -6046,9 +6065,15 @@ window.ATLAS.avancement = {
      "etat": "⬜",
      "identifiant": "E00US030",
      "titre": "Un fait, un lieu : la charte des documents"
+    },
+    {
+     "comptee": true,
+     "etat": "✅",
+     "identifiant": "E00US031",
+     "titre": "La porte mécanique en deux étages, et la checklist d'implémentation"
     }
    ],
-   "titre": "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+   "titre": "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
   },
   {
    "calcule": [

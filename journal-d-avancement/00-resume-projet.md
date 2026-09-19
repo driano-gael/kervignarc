@@ -600,7 +600,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **142 US livrées** (mergées, revues, CI verte) à la date du 19/09/2026 — dont **deux
+- **143 US livrées** (mergées, revues, CI verte) à la date du 19/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
   autorité sur le compte —, la dernière **livraison** étant `E01US026` — **supprimer un tournoi :

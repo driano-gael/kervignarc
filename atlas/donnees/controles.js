@@ -284,16 +284,10 @@ window.ATLAS.controles = {
    "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0106"
-  },
-  {
-   "code": "us-inconnue",
-   "message": "cite l'US E00US031, absente de `stories/`.",
-   "severite": "signal",
-   "sujet": "ADR-0110"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 48
+  "signaux": 47
  }
 };

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 19/09/2026, 10 h 53** · **142 US livrées** · dernière : `E01US026`
+**Dernière mise à jour : 19/09/2026, 14 h 42** · **143 US livrées** · dernière : `E00US031`
 *(**l'accueil du tournoi parle par départ** — un bloc par créneau en tête de l'écran d'atterrissage :
 horaire, quota, état de cycle, **effectif du créneau** et la **pause affichée là où elle a lieu**, au
 lieu des seuls totaux tournoi. ⚠️ **Le cadrage était la moitié de l'US** : la fiche exigeait de borner
@@ -1360,7 +1360,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
 | E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
 
-## Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**
+## Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**
 
 > ⚠️ **Section élargie le 30/08/2026.** Elle ne portait que le **code** (`E00US027`, ADR-0099).
 > La revue d'`E16US007` a montré que le raisonnement chassé du code avait été déversé dans une
@@ -1379,6 +1379,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US028 | Un ADR qui nomme du code disparu fait rougir la CI | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §3. ⚠️ **Le contrôle existe déjà** : `portage-symbole-absent` (`backend/atlas/controles.py`) rend **22 constats** et vit en sévérité `SIGNAL`, noyé dans un lot de 45 que personne ne lit. L'US solde les 22 et le passe **bloquant**. Ferme la limite écrite en dernière ligne des Notes d'`E00US027`, sur sa première moitié)* |
 | E00US029 | Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §2. Source de pourrissement n° 1 mesurée : deux fiches livrées affirmaient qu'un geste n'existait pas alors qu'il venait d'être livré)* |
 | E00US030 | Un fait, un lieu : la charte des documents | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §1 et §4. **Mesuré** : 13 documents touchés par une US, dont **11** énonçant le même fait. ⚠️ **US structurante** — touche `CLAUDE.md`, et une question revient au commanditaire sur `00-resume-projet.md`, qui est un livrable. À prendre **après** `E00US028` et `E00US029`)* |
+| E00US031 | La porte mécanique en deux étages, et la checklist d'implémentation | hors jalon | ✅ *(née d'un diagnostic des allers-retours implémentation ↔ revue, demandé le 19/09/2026. **Le profilage a démenti l'hypothèse de départ** : les « 40 minutes de porte » n'étaient pas de l'orchestration mais **une passe lancée en parallèle de la revue**, et `metriques-revue.md` le disait déjà — médiane 11-13 min sur 52 passes. [ADR-0110](../docs/adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md). Livré : `backend/porte.py` en deux étages — un **étage rapide de ~46 s** qui n'existait pas (2719 tests de domaine et service, ruff, mypy strict, atlas, typage TS), et l'étage complet. ⚠️ **Parallèle en rapide, séquentiel en complet** : mesuré 68,4 → 46,3 s d'un côté, mais 845 → 905 s de l'autre, `pytest` doublant sous contention sur 4 cœurs. Huit marqueurs pytest posés à la collecte, `--strict-markers`, et **deux garde-fous** — la correspondance `porte.py` ↔ `ci.yml` dans les deux sens, et le gel des modules hors convention. Côté front, `jsdom` n'est plus instancié que pour les tests qui ont un DOM : **224,5 → 143 s (-36 %)**. `docs/checklist-implementation.md` dérive du dépouillement des **152 corps de commit** de correction de revue — 58 affirmations fausses dans un artefact, 42 trous de test, 31 tests placebo. `DETTE-105` : la collecte pytest coûte 7,5 s à chaque invocation)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 
