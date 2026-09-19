@@ -22,6 +22,7 @@ from application.erreurs import (
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import EtatTableau, ServiceSaisieDuels
 from domain.classement import Classement
+from domain.depart import Depart, DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.phase import TypePhase
 from domain.ports import (
@@ -150,8 +151,23 @@ vivante) : un harnais par appel, aucune fuite d'état entre deux simulations."""
 
 
 @dataclass(frozen=True)
+class CreneauSimule:
+    """Ce qu'un **créneau** a produit dans la simulation — son classement et ses tableaux.
+
+    ⚠️ **Les tableaux pendent au créneau, pas au tournoi** (E06US009) : ils étaient lus par
+    `par_tournoi` alors que le classement ne venait que du premier départ, si bien qu'un arbre de
+    l'après-midi se lisait sous le classement du matin. Deux mailles dans le même objet.
+    """
+
+    depart_id: DepartId
+    libelle: str
+    classement: Classement
+    tableaux: tuple[EtatTableau, ...]
+
+
+@dataclass(frozen=True)
 class ResultatSimulation:
-    """L'état **éphémère** d'une simulation : le classement de qualif et les tableaux joués.
+    """L'état **éphémère** d'une simulation : **un créneau simulé par départ** du tournoi.
 
     Ces objets vivent en mémoire le temps de l'appel ; rien n'est persisté. `tableaux` porte un
     `EtatTableau` par phase d'élimination directe **jouable** (vide s'il n'y a pas de phase de
@@ -159,8 +175,7 @@ class ResultatSimulation:
     """
 
     tournoi_id: TournoiId
-    classement: Classement
-    tableaux: tuple[EtatTableau, ...]
+    creneaux: tuple[CreneauSimule, ...]
 
 
 class ServiceSimulation:
@@ -221,8 +236,8 @@ class ServiceSimulation:
             series=self._series,
         )
 
-        # La simulation rejoue **un** créneau : le premier du tournoi simulé (`simulation_format`
-        # n'en fabrique qu'un ; le rejeu multi-départs relève de `DETTE-045`).
+        # La simulation rejoue **chaque** créneau du tournoi simulé (E06US009) : elle n'en voyait
+        # que le premier, donc un tournoi de quatre départs se rejouait au quart, silencieusement.
         #
         # ⚠️ La garde n'est pas décorative : un tournoi `brouillon` **sans aucun créneau** est le
         # chemin normal de l'atelier, et l'indexation nue levait un `IndexError` — donc un **500**
@@ -232,12 +247,26 @@ class ServiceSimulation:
             raise TournoiSansDepart(
                 "Ce tournoi n'a aucun créneau : il n'y a rien à rejouer en simulation."
             )
-        depart_simule = creneaux[0]
-        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
-        classement = harnais.classement.pour_depart(depart_simule.id)
         gabarit_present = harnais.gabarits.par_tournoi(tournoi_id) is not None
+        return ResultatSimulation(
+            tournoi_id,
+            tuple(
+                self._creneau_simule(harnais, tournoi_id, depart, gabarit_present)
+                for depart in creneaux
+            ),
+        )
+
+    def _creneau_simule(
+        self,
+        harnais: HarnaisSimulation,
+        tournoi_id: TournoiId,
+        depart: Depart,
+        gabarit_present: bool,
+    ) -> CreneauSimule:
+        assert depart.id is not None, "Le magasin in-memory attribue un identifiant."
+        classement = harnais.classement.pour_depart(depart.id)
         tableaux: list[EtatTableau] = []
-        for phase in harnais.phases.par_tournoi(tournoi_id):
+        for phase in harnais.phases.par_depart(depart.id):
             if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
                 continue
             try:
@@ -263,4 +292,4 @@ class ServiceSimulation:
                 # généré des scores.
                 continue
 
-        return ResultatSimulation(tournoi_id, classement, tuple(tableaux))
+        return CreneauSimule(depart.id, depart.libelle_creneau(), classement, tuple(tableaux))

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Protocol
@@ -21,12 +22,14 @@ from application.erreurs import (
     PilotageSimulationInvalide,
     PrelevementEnAttente,
     SessionSimulationIntrouvable,
+    TournoiSansDepart,
     UniteSimulationInvalide,
 )
 from application.generateur_scores import GenerateurScores, valeur_zone
 from application.portee import qualification_du_tournoi
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
+    CreneauSimule,
     HarnaisSimulation,
     UsineHarnais,
     charger_tournoi_simulable,
@@ -35,7 +38,6 @@ from application.simulation import (
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import ZONES_DEFAUT, ZoneScore
-from domain.classement import Classement
 from domain.duel import Cote
 from domain.erreurs import EffectifTableauInvalide
 from domain.phase import PhaseId, TypePhase
@@ -152,9 +154,30 @@ class EtatSession:
     etat_pilote: EtatPilote
     etape: EtapeSimulation
     progression: Progression
-    classement: Classement
-    tableaux: tuple[EtatTableau, ...]
+    creneaux: tuple[CreneauSimule, ...]
+    """**Un par créneau du tournoi simulé** (E06US009), chacun avec son classement et ses arbres.
+
+    ⚠️ **Le cockpit lisait le premier créneau et l'appelait « le » classement** — sur un tournoi de
+    quatre départs, il en montrait un quart sans rien dire. Le site n'était marqué nulle part : ni
+    la fiche d'US ni `docs/dette.md` ne le citaient, seul `simulation.py` portait le marqueur.
+    """
+
     prochaine_unite: ProchaineUnite | None
+
+    def creneau_unique(self) -> CreneauSimule:
+        """Le seul créneau de cette session — pour les appelants qui n'en fabriquent **qu'un**.
+
+        ⚠️ **Une garde, pas un `[0]`** (E06US009) : `simulation_format` monte un tournoi à un seul
+        départ et a le droit d'aplatir, mais le jour où il en montera deux, un `[0]` nu rendrait
+        silencieusement le premier — exactement le défaut que cette US vient de retirer de trois
+        autres sites. Ici, il lèvera.
+        """
+        if len(self.creneaux) != 1:
+            raise PilotageSimulationInvalide(
+                f"Cette session porte {len(self.creneaux)} créneaux : "
+                "aucun n'est « le » créneau de la simulation."
+            )
+        return self.creneaux[0]
 
 
 class DiffusionSimulation(Protocol):
@@ -750,10 +773,16 @@ class ServicePilotageSimulation:
                     return blason.zones
         return ZONES_DEFAUT
 
-    def _tableaux(self, session: SessionSimulation) -> tuple[EtatTableau, ...]:
-        """Les tableaux **jouables** (une phase pas encore prête est sautée, comme le one-shot)."""
+    def _tableaux(
+        self, session: SessionSimulation, phases: Sequence[PhaseId] | None = None
+    ) -> tuple[EtatTableau, ...]:
+        """Les tableaux **jouables** (une phase pas encore prête est sautée, comme le one-shot).
+
+        `phases` restreint au créneau demandé ; `None` rend ceux de toute la session — ce que la
+        progression compte, elle qui se mesure sur le tournoi entier.
+        """
         tableaux: list[EtatTableau] = []
-        for phase_id in session.phases_duels:
+        for phase_id in session.phases_duels if phases is None else phases:
             try:
                 tableaux.append(
                     session.harnais.saisie_duels.etat_tableau(session.tournoi_id, phase_id)
@@ -798,9 +827,7 @@ class ServicePilotageSimulation:
         return None
 
     def _etat(self, session: SessionSimulation) -> EtatSession:
-        depart_simule = session.harnais.departs.par_tournoi(session.tournoi_id)[0]
-        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
-        classement = session.harnais.classement.pour_depart(depart_simule.id)
+        creneaux = self._creneaux(session)
         tableaux = self._tableaux(session)
         prochaine = self._prochaine_unite(session)
         if isinstance(prochaine, ProchaineVolee):
@@ -823,10 +850,40 @@ class ServicePilotageSimulation:
             etat_pilote=session.etat_pilote,
             etape=etape,
             progression=progression,
-            classement=classement,
-            tableaux=tableaux,
+            creneaux=creneaux,
             prochaine_unite=prochaine,
         )
+
+    def _creneaux(self, session: SessionSimulation) -> tuple[CreneauSimule, ...]:
+        """Chaque créneau du tournoi simulé, avec **son** classement et **ses** arbres.
+
+        ⚠️ **`par_depart` filtré sur `phases_duels`, et non `phases_duels` tel quel** : la session
+        porte les phases à duels de tout le tournoi, sans leur créneau. Les rendre en bloc sous
+        chaque classement aurait remplacé « un créneau sur quatre » par « les quatre arbres sous
+        chaque classement » — le même défaut de portée, retourné.
+        """
+        creneaux = session.harnais.departs.par_tournoi(session.tournoi_id)
+        if not creneaux:
+            raise TournoiSansDepart(
+                "Cette session n'a aucun créneau : il n'y a rien à rejouer.",
+            )
+        simules: list[CreneauSimule] = []
+        for depart in creneaux:
+            assert depart.id is not None, "Le magasin in-memory attribue un identifiant."
+            phases = tuple(
+                phase.id
+                for phase in session.harnais.phases.par_depart(depart.id)
+                if phase.id is not None and phase.id in session.phases_duels
+            )
+            simules.append(
+                CreneauSimule(
+                    depart.id,
+                    depart.libelle_creneau(),
+                    session.harnais.classement.pour_depart(depart.id),
+                    self._tableaux(session, phases),
+                )
+            )
+        return tuple(simules)
 
     def _exiger_pause(self, session: SessionSimulation) -> None:
         if session.etat_pilote is not EtatPilote.EN_PAUSE:

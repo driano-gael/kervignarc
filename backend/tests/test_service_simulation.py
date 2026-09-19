@@ -31,7 +31,7 @@ from application.erreurs import (
     TournoiIntrouvable,
     TournoiSansDepart,
 )
-from application.simulation import ServiceSimulation
+from application.simulation import CreneauSimule, ResultatSimulation, ServiceSimulation
 from bootstrap.composition import fabriquer_harnais_simulation
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -201,6 +201,17 @@ class _Reel:
         self.tournois.enregistrer(dataclasses.replace(base, statut=statut))
 
 
+def _creneau(resultat: ResultatSimulation) -> CreneauSimule:
+    """Le **seul** créneau du résultat — les décors d'ici montent un tournoi mono-départ.
+
+    ⚠️ **Le dépliage `(x,) = ...` est l'assertion** : il lève si la simulation en rend deux, ce qui
+    voudrait dire que le décor a changé sans que ces tests le sachent. Le cas multi-créneaux est
+    couvert par `test_la_simulation_rejoue_chaque_creneau`.
+    """
+    (creneau,) = resultat.creneaux
+    return creneau
+
+
 def test_tournoi_inconnu_leve_tournoi_introuvable() -> None:
     reel = _Reel()
     with pytest.raises(TournoiIntrouvable):
@@ -262,8 +273,8 @@ def test_rejeu_ephemere_reproduit_le_classement_reel() -> None:
     attendu = reel.classement_reel().pour_depart(reel.tournoi_id)
     resultat = reel.service().simuler(reel.tournoi_id)
 
-    assert resultat.classement == attendu
-    assert [ligne.rang_scratch for ligne in resultat.classement.lignes] == [1, 2, 3]
+    assert _creneau(resultat).classement == attendu
+    assert [ligne.rang_scratch for ligne in _creneau(resultat).classement.lignes] == [1, 2, 3]
 
 
 def test_simulation_ne_pollue_pas_les_repositories_reels() -> None:
@@ -302,8 +313,8 @@ def test_chemin_duels_est_exerce_et_renvoie_le_tableau() -> None:
 
     resultat = reel.service().simuler(reel.tournoi_id)
 
-    assert len(resultat.tableaux) == 1
-    tableau = resultat.tableaux[0]
+    assert len(_creneau(resultat).tableaux) == 1
+    tableau = _creneau(resultat).tableaux[0]
     assert tableau.effectif == 4
     assert tableau.taille == 4
     # Rien n'a été persisté côté réel : aucun plan de duel matérialisé, aucune série ajoutée.
@@ -326,9 +337,9 @@ def test_phase_tableau_non_puissance_de_deux() -> None:
 
     resultat = reel.service().simuler(reel.tournoi_id)
 
-    assert len(resultat.tableaux) == 1
-    assert resultat.tableaux[0].effectif == 3
-    assert resultat.tableaux[0].taille == 4
+    assert len(_creneau(resultat).tableaux) == 1
+    assert _creneau(resultat).tableaux[0].effectif == 3
+    assert _creneau(resultat).tableaux[0].taille == 4
 
 
 def test_phase_tableau_pas_encore_jouable_est_ignoree() -> None:
@@ -342,8 +353,8 @@ def test_phase_tableau_pas_encore_jouable_est_ignoree() -> None:
 
     resultat = reel.service().simuler(reel.tournoi_id)
 
-    assert resultat.tableaux == ()
-    assert len(resultat.classement.lignes) == 1
+    assert _creneau(resultat).tableaux == ()
+    assert len(_creneau(resultat).classement.lignes) == 1
 
 
 def test_tournoi_brouillon_vide_se_simule_sans_erreur() -> None:
@@ -352,5 +363,5 @@ def test_tournoi_brouillon_vide_se_simule_sans_erreur() -> None:
 
     resultat = reel.service().simuler(reel.tournoi_id)
 
-    assert resultat.classement.lignes == ()
-    assert resultat.tableaux == ()
+    assert _creneau(resultat).classement.lignes == ()
+    assert _creneau(resultat).tableaux == ()

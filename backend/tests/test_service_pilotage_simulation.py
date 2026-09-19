@@ -221,15 +221,15 @@ def test_le_bot_deroule_jusqu_au_classement_et_au_podium() -> None:
     assert etat.etat_pilote is EtatPilote.TERMINEE
     assert etat.etape is EtapeSimulation.TERMINEE
     # Tous les archers classés, avec un total (ils ont tiré) et un rang scratch attribué.
-    assert len(etat.classement.lignes) == 4
-    assert all(ligne.total > 0 for ligne in etat.classement.lignes)
-    rangs = [ligne.rang_scratch for ligne in etat.classement.lignes]
+    assert len(etat.creneau_unique().classement.lignes) == 4
+    assert all(ligne.total > 0 for ligne in etat.creneau_unique().classement.lignes)
+    rangs = [ligne.rang_scratch for ligne in etat.creneau_unique().classement.lignes]
     assert None not in rangs
     assert sorted(rang for rang in rangs if rang is not None) == [1, 2, 3, 4]
     # Le tableau de duels s'est joué jusqu'au bout : podium peuplé (or/argent/bronze).
-    assert len(etat.tableaux) == 1
-    assert etat.tableaux[0].est_termine
-    assert len(etat.tableaux[0].podium) >= 3
+    assert len(etat.creneau_unique().tableaux) == 1
+    assert etat.creneau_unique().tableaux[0].est_termine
+    assert len(etat.creneau_unique().tableaux[0].podium) >= 3
 
 
 def test_avancer_pas_a_pas_progresse_puis_termine() -> None:
@@ -259,7 +259,7 @@ def test_meme_graine_meme_deroule() -> None:
         service = ctx.service()
         depart = service.demarrer(ctx.tournoi_id, graine=99)
         etat = service.terminer(depart.session_id)
-        totaux.append([ligne.total for ligne in etat.classement.lignes])
+        totaux.append([ligne.total for ligne in etat.creneau_unique().classement.lignes])
     assert totaux[0] == totaux[1]
 
 
@@ -275,9 +275,12 @@ def test_meme_graine_meme_deroule_avec_duels() -> None:
         ctx = _Contexte(nb_archers=4, avec_duels=True, nb_volees=2, nb_fleches=3)
         service = ctx.service()
         etat = service.terminer(service.demarrer(ctx.tournoi_id, graine=123).session_id)
-        totaux = [ligne.total for ligne in etat.classement.lignes]
+        totaux = [ligne.total for ligne in etat.creneau_unique().classement.lignes]
         # `EtatTableau.podium` : tuples (rang, Duelliste), pas des objets.
-        podium = [(rang, duelliste.archer_id) for rang, duelliste in etat.tableaux[0].podium]
+        podium = [
+            (rang, duelliste.archer_id)
+            for rang, duelliste in etat.creneau_unique().tableaux[0].podium
+        ]
         empreintes.append((totaux, podium))
     assert empreintes[0] == empreintes[1]
     assert len(empreintes[0][1]) >= 3  # un podium a bien été produit (le test a du sens)
@@ -290,7 +293,7 @@ def test_scores_generes_bornes_et_etales() -> None:
     etat = service.terminer(service.demarrer(ctx.tournoi_id, graine=3).session_id)
 
     score_max = BaremeQualification.creer(3, 3).score_max  # 3 volées x 3 flèches x 10 = 90
-    totaux = [ligne.total for ligne in etat.classement.lignes]
+    totaux = [ligne.total for ligne in etat.creneau_unique().classement.lignes]
     assert all(0 <= total <= score_max for total in totaux)
     # Des niveaux distincts par archer → des totaux distincts (déterministe, donc non flaky).
     assert len(set(totaux)) > 1
@@ -414,7 +417,7 @@ def test_reprise_en_main_duel_designe_le_vainqueur(cote: Cote) -> None:
 
     apres = service.designer_vainqueur(depart.session_id, unite.phase_id, unite.match_numero, cote)
     # Le match désigné est tranché en faveur du camp **choisi** (l'humain a joué le scoreur).
-    tableau = apres.tableaux[0]
+    tableau = apres.creneau_unique().tableaux[0]
     match = next(d for d in tableau.duels if d.numero == unite.match_numero)
     assert match.duel is not None
     assert match.duel.validee_par == "Manuel"

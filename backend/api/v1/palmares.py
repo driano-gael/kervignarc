@@ -20,7 +20,7 @@ from api.documents import reponse_document, reponses_document
 from application.exports import FormatExport
 from application.palmares import RenduPalmares, ServicePalmares
 from domain.classement_clubs import ClassementClubs, classer_clubs
-from domain.palmares import LignePalmares
+from domain.palmares import LignePalmares, SectionPalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.db import WriteQueue
 
@@ -199,43 +199,43 @@ class ReglerPodiumsRequete(BaseModel):
     profondeur: int
 
 
-class PalmaresReponse(BaseModel):
-    """Le palmarès d'un tournoi : les podiums réglés, puis le classement complet."""
+class SectionPalmaresReponse(BaseModel):
+    """Le palmarès d'**un** créneau — l'unité que l'organisateur récompense (E06US009)."""
 
-    tournoi_id: int
+    depart_id: int
+    libelle: str
+    """Le libellé usuel du créneau (« Départ n°2 — 14:00 »), composé par le **serveur**.
+
+    ⚠️ **Dit, jamais recomposé par le client** : le document PDF le porte déjà et n'a pas de front
+    pour le fabriquer ; deux orthographes du même créneau sur deux surfaces ne se rattrapent pas.
+    """
+
     podiums: list[PodiumReponse]
-    profondeur_podium: int
-    """Les places récompensées (E16US014) — rendue ici pour que l'écran sache si un podium est
-    complet **sans** payer une seconde requête sur les surfaces publiques."""
-
     classement_vide: bool
-    """Le palmarès complet ne porte **aucune ligne** — donc aucun archer au classement du créneau de
-    référence (`DETTE-045`). Dit par le serveur, jamais déduit par le client.
+    """Ce créneau ne porte **aucune ligne** — donc aucun archer à son classement. Dit par le
+    serveur, jamais déduit par le client.
 
     ⚠️ **C'est le fait que quatre gardes successives ont tenté d'inférer, et raté quatre fois.** Ni
     `podiums` (que le réglage vide à bon droit) ni `lignes` (que le filtre restreint) n'y répondent.
     """
 
     classement_clubs: ClassementClubsReponse
-    """Le trophée du club le plus performant (E16US017), servi avec le reste du palmarès.
-
-    Rendu ici plutôt que sur une route à part : il dérive des **mêmes** podiums, et deux requêtes
-    pourraient encadrer un PUT de réglage — le décompte contredirait alors les blocs affichés.
-    """
+    """Le trophée du club le plus performant **de ce créneau** (E16US017, ADR-0104 amendé par
+    E06US009) : N créneaux font N lauréats, comme N podiums."""
 
     lignes: list[LignePalmaresReponse]
 
     @staticmethod
-    def de_rendu(tournoi_id: int, rendu: RenduPalmares) -> PalmaresReponse:
+    def de_section(section: SectionPalmares, reglage: ReglagePodiums) -> SectionPalmaresReponse:
         """⚠️ **Les podiums viennent de `complet`, les lignes d'`affiche`.**
 
         Les composer sur la vue filtrée rendait un bloc « Scratch » réduit aux archers d'une seule
         catégorie — un podium faux, à l'écran public comme sur le PDF (bloquant de revue).
         """
-        return PalmaresReponse(
-            tournoi_id=tournoi_id,
-            profondeur_podium=rendu.reglage.profondeur,
-            classement_vide=not rendu.complet.lignes,
+        return SectionPalmaresReponse(
+            depart_id=section.depart_id,
+            libelle=section.libelle,
+            classement_vide=not section.complet.lignes,
             podiums=[
                 PodiumReponse(
                     portee=bloc.portee,
@@ -250,14 +250,42 @@ class PalmaresReponse(BaseModel):
                         for place in bloc.places
                     ],
                 )
-                for bloc in rendu.complet.podiums(rendu.reglage)
+                for bloc in section.complet.podiums(reglage)
             ],
             # Sur `complet`, pour la même raison que les podiums : un classement de clubs composé
             # sur la vue filtrée ne compterait que les médailles d'une catégorie.
             classement_clubs=ClassementClubsReponse.de_classement(
-                classer_clubs(rendu.complet, rendu.reglage)
+                classer_clubs(section.complet, reglage)
             ),
-            lignes=[LignePalmaresReponse.de_ligne(ligne) for ligne in rendu.affiche.lignes],
+            lignes=[LignePalmaresReponse.de_ligne(ligne) for ligne in section.affiche.lignes],
+        )
+
+
+class PalmaresReponse(BaseModel):
+    """Le palmarès d'un tournoi : **une section par créneau**, juxtaposées (E06US009).
+
+    ⚠️ **Aucun champ ne porte un total « du tournoi »**, et c'est la décision, pas un oubli : deux
+    archers de créneaux différents ne sont jamais comparés (arbitrage du 07/08/2026). Un champ
+    agrégé ici serait la porte par laquelle l'agrégation rentrerait.
+    """
+
+    tournoi_id: int
+    profondeur_podium: int
+    """Les places récompensées (E16US014) — rendue ici pour que l'écran sache si un podium est
+    complet **sans** payer une seconde requête sur les surfaces publiques. **Au tournoi et non à la
+    section** : c'est un réglage du tournoi (ADR-0103), le même pour tous ses créneaux."""
+
+    sections: list[SectionPalmaresReponse]
+
+    @staticmethod
+    def de_rendu(tournoi_id: int, rendu: RenduPalmares) -> PalmaresReponse:
+        return PalmaresReponse(
+            tournoi_id=tournoi_id,
+            profondeur_podium=rendu.reglage.profondeur,
+            sections=[
+                SectionPalmaresReponse.de_section(section, rendu.reglage)
+                for section in rendu.sections
+            ],
         )
 
 

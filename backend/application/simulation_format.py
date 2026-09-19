@@ -221,7 +221,7 @@ class ServiceSimulationFormat:
                 duels_total=final.progression.duels_faits,
                 volees_total=final.progression.volees_faites,
                 phases=_phases_jouees(final, harnais, tournoi, projection),
-                classement=final.classement,
+                classement=final.creneau_unique().classement,
                 projection=projection,
             )
         finally:
@@ -343,7 +343,8 @@ def _phases_jouees(
     l'absence de tableau — une élimination directe peut n'avoir rien eu à jouer.
     """
     assert tournoi.id is not None
-    par_phase = {etat.phase_id: etat for etat in final.tableaux}
+    creneau = final.creneau_unique()
+    par_phase = {etat.phase_id: etat for etat in creneau.tableaux}
     blocs = {bloc.ordre: bloc for bloc in projection.blocs}
     phases: list[ToursPhase] = []
     for phase in sorted(harnais.phases.par_tournoi(tournoi.id), key=lambda p: p.ordre):
@@ -359,7 +360,7 @@ def _phases_jouees(
                 ToursPhase(
                     ordre=phase.ordre,
                     type=phase.type,
-                    effectif=len(final.classement.lignes),
+                    effectif=len(creneau.classement.lignes),
                     effectif_projete=projete,
                     tours=0,
                     tours_projetes=tours_projetes,

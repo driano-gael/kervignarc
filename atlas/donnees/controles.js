@@ -275,6 +275,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce classer_clubs dans « backend/domain/palmares.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0104"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce vu_par_archer dans « backend/domain/classement_clubs.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0104"
@@ -288,6 +294,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 47
+  "signaux": 48
  }
 };

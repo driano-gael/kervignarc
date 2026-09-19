@@ -83,8 +83,8 @@ def classer_clubs(palmares: Palmares, reglage: ReglagePodiums) -> ClassementClub
     Le décompte porte sur les médailles que le tournoi **décerne** : un archer médaillé dans deux
     portées cumulées en rapporte deux à son club (ADR-0104 §4, dont la limite mono-catégorie).
     ⚠️ Un archer **sans club** n'en rapporte à personne et ne crée aucune ligne (ADR-0014).
-    ⚠️ `DETTE-045` — ce classement **agrège** et désigne un **lauréat unique**, sur la donnée du
-    seul premier créneau : un club qui tire l'après-midi n'apporte rien.
+    ⚠️ **Un appel par CRÉNEAU** (ADR-0104 décision 9) : lui passer le palmarès d'un tournoi
+    entier désignerait un vainqueur qu'aucun règlement ne prévoit.
     """
     reglees = reglage.portees_actives()
     portees = tuple(portee for portee in reglees if portee in PORTEES_INTER_CLUBS)

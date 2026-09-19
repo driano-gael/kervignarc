@@ -600,11 +600,22 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **143 US livrées** (mergées, revues, CI verte) à la date du 19/09/2026 — la dernière à
-  **surface visible** étant `E01US026` ; `E00US031`, d'outillage, ne change aucun écran — dont **deux
+- **144 US livrées** (mergées, revues, CI verte) à la date du 19/09/2026 — la dernière à
+  **surface visible** étant `E06US009` — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E01US026` — **supprimer un tournoi :
+  autorité sur le compte —, la dernière **livraison** étant `E06US009` — **un palmarès par
+  départ, juxtaposés** : sur un tournoi à plusieurs créneaux, l'écran « Palmarès », le PDF et le
+  tableur ne montraient que le **premier** — et rien ne le disait. Les trois rendent désormais un
+  bloc **titré par créneau**, chacun avec ses podiums, son classement des clubs et son classement
+  complet. ⚠️ **Rien n'est additionné d'un créneau à l'autre** : deux archers qui n'ont pas tiré
+  au même moment ne sont jamais comparés, donc chaque départ a son « 1ᵉʳ ». ⚠️ **Le trophée du club
+  suit la même règle** — arbitrage du commanditaire : quatre créneaux peuvent désigner quatre clubs
+  lauréats, et la promesse d'un club « le plus performant de la journée » est retirée. ⚠️ Le
+  raccourci vivait à **trois** endroits du code, dont un que ni la fiche ni le registre de dette ne
+  citaient — et c'était le seul atteignable par une vraie page. La plus visible des anomalies de
+  portée ouvertes par le passage du classement au créneau (`DETTE-045`) est soldée.
+  Avant elle, `E01US026` — **supprimer un tournoi :
   voir ce qui partira, puis confirmer** : la suppression d'un tournoi contenant quoi que ce soit
   finissait en « erreur serveur » depuis les premiers écrans (la plus ancienne anomalie du
   registre, `DETTE-001`, ouverte treize mois). Elle **aboutit** désormais, après une fenêtre qui

@@ -30,7 +30,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.identite import EmplacementLogo, IdentiteVisuelle, Logo
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
-from domain.palmares import Palmares
+from domain.palmares import SectionPalmares
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.placement_par_bloc import BlocDeCouloirs
@@ -1028,16 +1028,16 @@ class GenerateurPalmares(Protocol):
         self,
         tournoi: str,
         *,
-        complet: Palmares,
-        affiche: Palmares,
+        sections: Sequence[SectionPalmares],
         reglage: ReglagePodiums,
     ) -> bytes:
-        """Rend le palmarès en un PDF (les podiums réglés + le classement).
+        """Rend le palmarès en un document : **une section par créneau** (E06US009).
 
-        ⚠️ **Deux palmarès, et ce n'est pas une redondance** : les podiums se composent sur
-        `complet`, le classement se tire d'`affiche` (restreint quand une catégorie est filtrée).
-        Les confondre imprimait au mur un podium amputé (E16US014, bloquant de revue). ⚠️ **Passés
-        par mot-clé** : deux `Palmares` positionnels s'inversent sans que mypy le voie.
+        ⚠️ **Chaque section porte deux palmarès, et ce n'est pas une redondance** : les podiums se
+        composent sur `complet`, le classement se tire d'`affiche` (restreint quand une catégorie
+        est filtrée). Les confondre imprimait au mur un podium amputé (E16US014, bloquant de
+        revue). ⚠️ **Un document à N sections, jamais un document par créneau** : le choix de
+        découpage d'un export est celui du format, pas du classement (`stories/E06US009`).
         """
         ...
 

@@ -1,8 +1,8 @@
 # ADR-0104 — Le classement des clubs se compte en médailles **inter-clubs**
 
-- **Statut** : Accepté
+- **Statut** : Accepté — **amendé le 2026-09-19** (décision 9, `E06US009`)
 - **Date** : 2026-09-04
-- **US** : E16US017
+- **US** : E16US017 · **amendement** : E06US009
 - **Décideurs** : Organisateur / Architecte
 - **S'appuie sur** :
   - [ADR-0103](0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md) — la portée d'un podium est
@@ -183,6 +183,32 @@ la commenter (parti de `_podiums`, ADR-0103 §6) — quand l'écran, lui, nomme 
 médaillé** : les deux le disent, le papier compris, car un tournoi dont personne n'a de club
 rattaché doit produire ce signal.
 
+### 9. Le classement se compte **par créneau** — N départs font N lauréats
+
+*Amendement du **19/09/2026**, `E06US009`. Cette décision n'existait pas à la rédaction : le
+présent ADR a été écrit le 04/09/2026 sur un produit dont le palmarès ne voyait, à son insu,
+que le premier créneau (`DETTE-045`).*
+
+Le § Contexte justifie le trophée par le questionnaire de maquettes (A16), qui demande « le club le
+plus performant **de la journée** ». Pris au mot, cela réclamait une agrégation sur tous les
+créneaux — et c'eût été la **seule** du produit, contre l'arbitrage du 07/08/2026 (« juxtaposé —
+4 départs = 4 podiums ») et contre [ADR-0075](0075-le-depart-est-la-portee-sportive.md), qui fait du
+départ la portée sportive.
+
+La question a été reposée au commanditaire le 19/09/2026, en même temps que la résorption de
+`DETTE-045`. **Arbitrage : juxtaposé, comme les podiums.** Un tournoi à quatre créneaux décerne
+quatre classements de clubs, chacun compté sur les médailles de **son** créneau.
+
+⚠️ **Ce que cela change dans le texte ci-dessus.** « Le club le plus performant de la journée » du
+§ Contexte devient « de ce créneau » : le trophée unique de la formulation d'origine n'est plus
+promis par le produit. Ce qui se remet physiquement au pied de quel podium est une question
+d'organisation, pas de calcul — le produit dit qui a gagné **chaque** créneau.
+
+⚠️ **Rien dans `classer_clubs` n'a changé**, et c'est le signe que la fonction était juste : elle
+consomme **un** `Palmares` et ne sait pas de quelle maille il est. Le défaut vivait entièrement chez
+son appelant, qui lui passait le palmarès du premier départ en l'appelant « le tournoi ». La seule
+garde ajoutée est dans la docstring : elle nomme désormais la maille attendue.
+
 ## Conséquences
 
 **Ce qui devient possible.** L'organisateur remet le trophée du club sans compter les médailles à la
@@ -198,12 +224,12 @@ C'est un élargissement mesuré de `DETTE-031` (le palmarès est déjà reconstr
 lecture, sur une route publique) : un `SELECT` sur un référentiel de quelques dizaines de lignes
 contre une reconstruction de tous les tableaux.
 
-**Ce qui n'est pas fait, et qu'il faut savoir.** `DETTE-045` s'applique **aussi** à ce classement :
-le palmarès est rendu « du tournoi » alors qu'il dérive du **premier créneau**. Un classement de
-clubs est encore plus exposé que les podiums à cette imprécision, puisqu'il agrège — un club dont
-les archers tirent sur un autre départ n'apporte rien. La ligne existante couvre déjà le cas
-(elle nomme les portées *toutes catégories* et *club* comme revendiquant une portée que la donnée ne
-couvre pas) ; elle n'a pas été élargie, elle s'applique telle quelle.
+~~**Ce qui n'est pas fait, et qu'il faut savoir.** `DETTE-045`~~ — **résorbée le 19/09/2026 par
+`E06US009`**, et par la décision 9 ci-dessus. Ce paragraphe avertissait qu'un classement de clubs
+est « encore plus exposé que les podiums » au raccourci du premier créneau, puisqu'il agrège. Il
+l'était en effet : c'est ce constat, relu au cadrage d'`E06US009`, qui a fait reposer la question
+au commanditaire au lieu de juxtaposer mécaniquement. `classer_clubs` reçoit désormais le palmarès
+d'**un** créneau, et il y en a autant que de départs.
 
 De même, l'écran projeté ne **pagine pas** le palmarès (ADR-0103 § Conséquences) : un classement de
 clubs à trente lignes montrera le haut et rien d'autre au vidéoprojecteur.
@@ -232,10 +258,23 @@ cache, c'est là qu'il faudra le poser, pas ici.
   comparaison passerait.
 - `backend/application/palmares.py` — `ServicePalmares._libelles_club` : la garde élargie du
   § Conséquences. C'est **le** symbole dont la modification casserait le nommage des clubs sans
-  qu'aucun rang ne bouge.
+  qu'aucun rang ne bouge. ⚠️ **Appelé depuis `rendu` et non depuis `_calculer`** (E06US009) : à
+  N créneaux, le laisser dans le calcul relisait tout le référentiel des clubs **N fois** par
+  rendu, sur une route publique que chaque tablette interroge.
 - `backend/api/v1/palmares.py` — `ClassementClubsReponse`, `LigneClassementClubsReponse` et l'appel
-  de `classer_clubs` dans `PalmaresReponse.de_rendu`, composé sur `rendu.complet` et non sur
-  `rendu.affiche` (décision 8 + ADR-0103 §7).
+  de `classer_clubs` dans **`SectionPalmaresReponse.de_section`** (et non plus dans
+  `PalmaresReponse.de_rendu`), composé sur `section.complet` et non sur `section.affiche`
+  (décision 8 + ADR-0103 §7). **C'est le site qui porte la décision 9** : un classement de clubs
+  par section, donc un lauréat par créneau. Le remonter d'un cran rétablirait le défaut.
+- `backend/domain/palmares.py` — `SectionPalmares` : **la maille** que `classer_clubs` reçoit
+  (décision 9). Tant qu'elle n'existait pas, rien dans les types ne distinguait « le palmarès d'un
+  créneau » de « le palmarès du tournoi », et c'est ce qui a laissé le défaut vivre treize jours
+  sans que la moindre signature s'en plaigne.
+- `backend/tests/test_service_palmares_par_depart.py` — `test_chaque_creneau_a_son_club_laureat`
+  garde la décision 9. ⚠️ **Il n'assère pas sur `ClassementClubs.lignes`** : un décompte de
+  médailles suppose des duels joués, et sans eux le classement est vide des deux côtés d'une
+  régression. Il garde donc son **entrée** — que `section.complet` ne porte que les clubs de son
+  créneau. Le décompte lui-même reste couvert en pur par `test_domain_classement_clubs.py`.
 - `backend/infrastructure/pdf/palmares.py` — `GenerateurPalmaresPdf._classement_clubs` : la section
   imprimée, et le saut du bloc sans base (décision 8).
 - `frontend/src/features/palmares/VuePalmares.tsx` — le composant `ClassementClubs` (décision 8),

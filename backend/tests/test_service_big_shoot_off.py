@@ -636,7 +636,7 @@ def test_le_verdict_du_barrage_debloque_la_manche() -> None:
 class _FauxGenerateurPalmares:
     """Double du port `GenerateurPalmares` — le palmarès de ce test ne s'imprime pas."""
 
-    def palmares(self, nom: str, *, complet: object, affiche: object, reglage: object) -> bytes:
+    def palmares(self, nom: str, *, sections: object, reglage: object) -> bytes:
         raise NotImplementedError
 
 
@@ -670,7 +670,7 @@ def test_le_palmares_consomme_les_rangs_du_big_shoot_off() -> None:
         FauxClubRepository(),
         None,
         service,
-    ).pour_tournoi(monde.tournoi_id)
+    ).pour_depart(monde.tournoi_id, monde.depart_id)
 
     rangs = {ligne.archer_id: (ligne.rang_min, ligne.rang_max) for ligne in palmares.lignes}
     assert rangs[a] == (1, 1)

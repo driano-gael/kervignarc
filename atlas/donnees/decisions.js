@@ -9385,17 +9385,20 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/palmares.py",
      "existe": true,
      "symboles": [
-      "PalmaresReponse.classement_vide",
+      "SectionPalmaresReponse.classement_vide",
       "PodiumReponse",
       "effectif",
       "en_attente",
       "PlacePodiumReponse",
       "ReglagePodiumsReponse",
       "ReglerPodiumsRequete",
-      "PalmaresReponse.de_rendu",
+      "SectionPalmaresReponse.de_section",
       "reglage_podiums",
       "regler_podiums",
-      "exiger_admin"
+      "exiger_admin",
+      "PalmaresReponse",
+      "tournoi_id",
+      "profondeur_podium"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9532,6 +9535,7 @@ window.ATLAS.decisions = {
    "us": [
     "E06US001",
     "E06US004",
+    "E06US009",
     "E16US009",
     "E16US014",
     "E16US017"
@@ -9547,6 +9551,12 @@ window.ATLAS.decisions = {
    "liens": [
     {
      "cible": "E16US017",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E06US009",
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
@@ -9578,9 +9588,10 @@ window.ATLAS.decisions = {
       "ClassementClubsReponse",
       "LigneClassementClubsReponse",
       "classer_clubs",
+      "SectionPalmaresReponse.de_section",
       "PalmaresReponse.de_rendu",
-      "rendu.complet",
-      "rendu.affiche"
+      "section.complet",
+      "section.affiche"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9589,7 +9600,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/palmares.py",
      "existe": true,
      "symboles": [
-      "ServicePalmares._libelles_club"
+      "ServicePalmares._libelles_club",
+      "rendu",
+      "_calculer"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9615,10 +9628,33 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/domain/palmares.py",
+     "existe": true,
+     "symboles": [
+      "SectionPalmares",
+      "classer_clubs"
+     ],
+     "symboles_absents": [
+      "classer_clubs"
+     ],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/infrastructure/pdf/palmares.py",
      "existe": true,
      "symboles": [
       "GenerateurPalmaresPdf._classement_clubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_palmares_par_depart.py",
+     "existe": true,
+     "symboles": [
+      "test_chaque_creneau_a_son_club_laureat",
+      "ClassementClubs.lignes",
+      "section.complet"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9644,9 +9680,10 @@ window.ATLAS.decisions = {
    ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté",
+   "statut_brut": "Accepté — **amendé le 2026-09-19** (décision 9, `E06US009`)",
    "titre": "Le classement des clubs se compte en médailles **inter-clubs**",
    "us": [
+    "E06US009",
     "E16US014",
     "E16US017"
    ]

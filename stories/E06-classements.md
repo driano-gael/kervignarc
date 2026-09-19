@@ -183,15 +183,50 @@ donc **aucune** agrégation inter-départs à écrire.
 - **CA — chaque podium est nommé** : le créneau est identifié par son libellé usuel (« Départ 2 —
   14:00 »), le **même** partout dans le produit. Un podium anonyme dans une pile de quatre ne se
   distribue pas.
-- **CA — la simulation suit** : le rejeu de simulation cesse de ne voir que le premier départ.
+- **CA — le classement des clubs est juxtaposé lui aussi** *(arbitrage du commanditaire du
+  19/09/2026)* : `N` créneaux font `N` classements de clubs, donc `N` lauréats — chacun compté sur
+  les médailles de **son** créneau. ⚠️ Ce CA n'existait pas à la rédaction de la fiche : le
+  classement des clubs a été livré le 04/09/2026 par `E16US017`, **après** l'arbitrage du
+  07/08/2026. Il **amende [ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md)**
+  (décision 9), dont le § Contexte promettait « le club le plus performant **de la journée** » —
+  formulation qui réclamait la seule agrégation inter-départs du produit.
+- **CA — la simulation suit** : le rejeu de simulation **et la session de simulation pilotée**
+  cessent de ne voir que le premier départ. *(La session pilotée a été ajoutée au périmètre au
+  cadrage du 19/09/2026 : voir la note ci-dessous.)*
+- **CA — chaque podium est nommé par le libellé du domaine** : `Depart.libelle_creneau`, soit
+  « Départ n°2 — 14:00 ». ⚠️ **Composé par le serveur, jamais par le client** — le PDF est généré
+  côté serveur et n'a pas de front pour le fabriquer.
 - **Notes — ce n'est pas qu'un changement d'affichage.** `_premier_depart` disparaît de
   `application/palmares.py` : tant qu'il existe, la vue reste juste par accident sur les tournois
-  mono-créneau et fausse partout ailleurs. Les marqueurs `# DETTE-045` posés dans `palmares.py`,
-  `simulation.py` et `simulation_format.py` désignent les sites exacts.
-- **Notes — exports** : tout export du palmarès (EPIC-09) hérite de la juxtaposition. Un fichier par
-  départ ou un fichier à N sections est un choix de **format d'export**, pas de classement — à
-  trancher dans l'US d'export, pas ici.
-- **Résorbe** : `DETTE-045`. **Dépend de** : E01US025 · **Jalon** : J3
+  mono-créneau et fausse partout ailleurs.
+- **Notes — ⚠️ le raccourci était à TROIS endroits, et la fiche en nommait deux faux.** Constaté au
+  cadrage du 19/09/2026 :
+  - `application/palmares.py` (`_premier_depart`) — marqué, atteignable, **le vrai sujet** ;
+  - `application/simulation.py` (`creneaux[0]`, en ligne) — marqué, mais `ServiceSimulation.simuler`
+    n'a **aucun appelant de production** : seuls trois tests l'exercent ;
+  - `application/pilotage_simulation.py` (`_etat`) — **ni marqué ni cité nulle part**, et pourtant
+    le seul des trois servi par une route (`/api/v1/simulations/*`). Il indexait même à nu, donc
+    **500** là où `simulation.py` avait appris à lever `TournoiSansDepart` (409).
+
+  `simulation_format.py`, que la fiche et le registre citaient comme site, ne portait **aucun**
+  marqueur et n'était pas concerné : il fabrique **un seul** créneau (`Depart.creer(numero=1)`).
+  Son unicité est désormais **gardée** plutôt que supposée — `EtatSession.creneau_unique()` lève au
+  lieu d'indexer.
+- **Notes — exports, tranché le 19/09/2026** : tout export du palmarès hérite de la juxtaposition,
+  en **un document à N sections** et non un fichier par départ. Le PDF titre chaque créneau ; le
+  tableur garde **une** grille et ouvre une colonne « Départ » — le parti de ce format est le
+  classement à plat, qui se trie et se filtre, et des onglets rendraient les `N` rangs 1
+  indiscernables. ⚠️ **Conséquence à connaître : la colonne « Rang » n'est plus unique** dans le
+  tableur, chaque créneau y recommençant à 1.
+- **Notes — ⚠️ le coût est multiplié par le nombre de créneaux, et c'est irréductible.** Un podium
+  par départ demande un classement par départ, et rien n'est mis en cache (`DETTE-031`). La lecture
+  du référentiel des clubs, elle, a été **hissée hors de la boucle** : laissée dans le calcul, elle
+  relisait tous les clubs `N` fois par rendu, sur une route publique que chaque tablette interroge.
+- **Notes — dette ouverte en chemin** : `DETTE-106`, cinq orthographes concurrentes du libellé de
+  créneau (deux au moins : « Départ **n°**2 » côté serveur, « Départ 2 » côté front). Unifier est un
+  **remède structurel** — ADR + US dédiée —, donc hors de cette US, qui se contente d'utiliser
+  l'existant plutôt que d'inventer une sixième forme.
+- **Résorbe** : `DETTE-045` *(les trois sites)*. **Ouvre** : `DETTE-106`. **Dépend de** : E01US025 · **Jalon** : J3
 
 ---
 

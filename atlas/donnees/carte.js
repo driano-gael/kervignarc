@@ -2167,10 +2167,6 @@ window.ATLAS.carte = {
      "nom": "ServiceIdentite"
     },
     {
-     "fichier": "backend/application/palmares.py",
-     "nom": "ServicePalmares"
-    },
-    {
      "fichier": "backend/domain/blason.py",
      "nom": "Blason"
     },

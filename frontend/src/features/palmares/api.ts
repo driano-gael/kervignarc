@@ -95,18 +95,29 @@ export interface ClassementClubs {
   provisoire: boolean
 }
 
-export interface Palmares {
-  tournoi_id: number
+// Le palmarès d'**un** créneau (E06US009). Quatre départs font quatre podiums : le produit ne
+// compare jamais deux archers de créneaux différents, et aucun total « du tournoi » n'existe.
+export interface SectionPalmares {
+  depart_id: number
+  // « Départ n°2 — 14:00 », **composé par le serveur** : le PDF le porte déjà et n'a pas de front
+  // pour le fabriquer. Ne pas le recomposer ici (cf. `DETTE-106`).
+  libelle: string
   podiums: Podium[]
   classement_clubs: ClassementClubs
-  // Les places récompensées : de quoi savoir si un bloc est complet sans une seconde requête —
-  // les surfaces publiques ne lisent jamais le réglage lui-même.
-  profondeur_podium: number
-  // ⚠️ **« Ce tournoi est-il classé ? », dit par le serveur.** Ni `podiums` (que le réglage peut
+  // ⚠️ **« Ce créneau est-il classé ? », dit par le serveur.** Ni `podiums` (que le réglage peut
   // vider à bon droit) ni `lignes` (que le filtre restreint) ne répondent à cette question : quatre
   // gardes successives ont tenté de l'inférer et l'ont ratée quatre fois.
   classement_vide: boolean
   lignes: LignePalmares[]
+}
+
+export interface Palmares {
+  tournoi_id: number
+  // Les places récompensées : de quoi savoir si un bloc est complet sans une seconde requête —
+  // les surfaces publiques ne lisent jamais le réglage lui-même. **Au tournoi et non à la
+  // section** : c'est un réglage du tournoi (ADR-0103), le même pour tous ses créneaux.
+  profondeur_podium: number
+  sections: SectionPalmares[]
 }
 
 // Ce que le tournoi récompense. La **lecture** est publique comme le palmarès ; seule l'écriture

@@ -7,6 +7,7 @@ bibliothèque brute ne remonte.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -24,7 +25,7 @@ from reportlab.platypus import (
 
 from domain.classement import StatutClassement
 from domain.classement_clubs import ClassementClubs, classer_clubs
-from domain.palmares import LignePalmares, Palmares, PlacePodium
+from domain.palmares import LignePalmares, Palmares, PlacePodium, SectionPalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.pdf._commun import echapper as _echapper
@@ -80,45 +81,71 @@ class GenerateurPalmaresPdf:
             spaceBefore=5 * mm,
             spaceAfter=1 * mm,
         )
+        self._creneau = ParagraphStyle(
+            "creneau_palmares",
+            parent=styles["Heading1"],
+            fontSize=13,
+            spaceBefore=8 * mm,
+            spaceAfter=2 * mm,
+        )
+        """Le titre d'une section de créneau (E06US009).
+
+        ⚠️ **Plus fort que `_section`, qui sert déjà à « Classement complet » à l'intérieur d'une
+        section** : deux niveaux au même poids et le lecteur ne sait plus quel classement appartient
+        à quel départ — sur un document qu'on affiche au mur pour remettre des médailles.
+        """
+
         self._info = ParagraphStyle("info_palmares", parent=styles["Normal"], fontSize=11)
 
     def palmares(
         self,
         tournoi: str,
         *,
-        complet: Palmares,
-        affiche: Palmares,
+        sections: Sequence[SectionPalmares],
         reglage: ReglagePodiums,
     ) -> bytes:
         """Rend le palmarès en PDF. Enveloppe tout échec en `InfrastructureError`."""
         try:
-            return self._rendre("Palmarès", self._corps(tournoi, complet, affiche, reglage))
+            return self._rendre("Palmarès", self._corps(tournoi, sections, reglage))
         # ReportLab lève une famille d'exceptions hétérogène : on enveloppe (aucune fuite brute).
         except Exception as exc:
             raise InfrastructureError("Échec de génération du PDF du palmarès.") from exc
 
     def _corps(
-        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+        self, tournoi: str, sections: Sequence[SectionPalmares], reglage: ReglagePodiums
     ) -> list[Flowable]:
+        """Un document, **une section par créneau** (E06US009).
+
+        ⚠️ **Le titre de créneau est rendu même à un seul départ.** L'omettre aurait fait deux
+        documents à maintenir au lieu d'un, et surtout : c'est sur ce titre que l'organisateur
+        s'appuie pour savoir quelles médailles il tient en main.
+        """
         elements: list[Flowable] = [
             Paragraph(f"Palmarès — {_echapper(tournoi)}", self._titre),
             Paragraph("Podiums décernés, puis classement complet", self._sous_titre),
             Spacer(1, 4 * mm),
         ]
+        for section in sections:
+            elements.append(Paragraph(_echapper(section.libelle), self._creneau))
+            elements.extend(self._corps_creneau(section, reglage))
+        return elements
+
+    def _corps_creneau(self, section: SectionPalmares, reglage: ReglagePodiums) -> list[Flowable]:
+        elements: list[Flowable] = []
         # ⚠️ **La garde de vacuité porte sur `complet`, jamais sur `affiche`.** Posée sur la vue
         # filtrée, elle jetait TOUS les podiums dès qu'une catégorie sans inscrit était demandée —
         # et le document affiché au mur ne portait plus que « Aucun archer classé » (bloquant de
         # revue, 3ᵉ déplacement du même défaut).
-        if not complet.lignes:
+        if not section.complet.lignes:
             elements.append(Paragraph("Aucun archer classé.", self._info))
             return elements
-        elements.extend(self._podiums(complet, reglage))
-        elements.extend(self._classement_clubs(classer_clubs(complet, reglage)))
+        elements.extend(self._podiums(section.complet, reglage))
+        elements.extend(self._classement_clubs(classer_clubs(section.complet, reglage)))
         elements.append(Paragraph("Classement complet", self._section))
-        if not affiche.lignes:
+        if not section.affiche.lignes:
             elements.append(Paragraph("Aucun archer dans la sélection imprimée.", self._info))
             return elements
-        elements.append(self._table_classement(affiche.lignes))
+        elements.append(self._table_classement(section.affiche.lignes))
         return elements
 
     def _podiums(self, palmares: Palmares, reglage: ReglagePodiums) -> list[Flowable]:

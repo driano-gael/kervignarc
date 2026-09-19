@@ -9,7 +9,12 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
-import type { ClassementClubs as ClassementClubsDto, LignePalmares, Podium } from './api'
+import type {
+  ClassementClubs as ClassementClubsDto,
+  LignePalmares,
+  Podium,
+  SectionPalmares,
+} from './api'
 import { urlPalmaresDocument } from './api'
 import { usePalmares } from './hooks'
 import {
@@ -84,25 +89,68 @@ export function VuePalmares({
             : 'Chargement…'}
         </p>
       ) : /* ⚠️ **Le serveur le dit, on ne le déduit pas.** Quatre gardes successives ont tenté
-             d'inférer « ce tournoi est-il classé ? » de `lignes` (filtrées) puis de `podiums` (que
+             d'inférer « ce créneau est-il classé ? » de `lignes` (filtrées) puis de `podiums` (que
              le réglage vide à bon droit quand aucune portée n'est cochée) : quatre fois fausses,
-             dans un coin différent. Le vide du FILTRE, lui, est nommé par `ClassementFinal`. */
-      donnees.classement_vide ? (
+             dans un coin différent. Le vide du FILTRE, lui, est nommé par `ClassementFinal`.
+             ⚠️ Ici la question se pose **par créneau** : un tournoi dont le matin est classé et
+             l'après-midi pas encore n'est ni « classé » ni « vide » (E06US009). */
+      donnees.sections.every((section) => section.classement_vide) ? (
+        <p className="carte__etat">Aucun archer classé pour l'instant.</p>
+      ) : (
+        donnees.sections.map((section) => (
+          <SectionCreneau
+            key={section.depart_id}
+            section={section}
+            profondeur={donnees.profondeur_podium}
+            mode={mode}
+            suivis={suivis}
+          />
+        ))
+      )}
+    </>
+  )
+}
+
+/** Le palmarès d'**un** créneau, titré de son libellé (E06US009).
+ *
+ * ⚠️ **Le titre s'affiche même à un seul créneau.** Le masquer aurait fait deux mises en page à
+ * tenir au lieu d'une — et surtout : c'est ce titre que l'organisateur lit pour savoir quelles
+ * médailles il tient en main. Le PDF fait le même choix, pour la même raison.
+ */
+function SectionCreneau({
+  section,
+  profondeur,
+  mode,
+  suivis,
+}: {
+  section: SectionPalmares
+  profondeur: number
+  mode: ModeAffichage
+  suivis: number[]
+}) {
+  return (
+    <section className="palmares-creneau" aria-label={section.libelle}>
+      <h3 className="palmares-creneau__titre">{section.libelle}</h3>
+      {section.classement_vide ? (
         <p className="carte__etat">Aucun archer classé pour l'instant.</p>
       ) : (
         <>
-          {donnees.podiums.map((podium) => (
+          {section.podiums.map((podium) => (
             <BlocPodium
               key={`${podium.portee}-${podium.cle ?? 'scratch'}`}
               podium={podium}
-              profondeur={donnees.profondeur_podium}
+              profondeur={profondeur}
             />
           ))}
-          <ClassementClubs classement={donnees.classement_clubs} />
-          <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
+          <ClassementClubs classement={section.classement_clubs} creneau={section.libelle} />
+          <ClassementFinal
+            lignes={centrerLignes(section.lignes, mode, suivis)}
+            mode={mode}
+            creneau={section.libelle}
+          />
         </>
       )}
-    </>
+    </section>
   )
 }
 
@@ -157,14 +205,21 @@ function BlocPodium({
  * ⚠️ **Le rang vient du serveur**, sauts d'*ex æquo* compris (1-2-2-4) : le recalculer sur l'index
  * de la boucle ferait passer un second 1ᵉʳ pour un 2ᵉ.
  */
-function ClassementClubs({ classement }: { classement: ClassementClubsDto }) {
+function ClassementClubs({
+  classement,
+  creneau,
+}: {
+  classement: ClassementClubsDto
+  creneau: string
+}) {
   // ⚠️ **Le serveur le dit, on ne le déduit pas** — même avertissement que quinze lignes plus haut.
   // Un tournoi qui ne récompense rien (réglage vide, licite — ADR-0103 §1) n'a pas de question à se
   // voir répondre. Lire `podiums` pour le savoir aurait été la 5ᵉ inférence du même genre.
   if (classement.portees_reglees.length === 0) return null
   const etat = etatClassementClubs(classement)
   return (
-    <section className="palmares-podium" aria-label="Classement des clubs">
+    // ⚠️ Le créneau entre dans le nom accessible, pour la même raison que `ClassementFinal`.
+    <section className="palmares-podium" aria-label={`Classement des clubs — ${creneau}`}>
       <h4 className="palmares-section">Classement des clubs</h4>
       {/* Sur quoi le décompte repose — sans quoi « Or : 2 » pour un club à un seul archer se lit
           comme une erreur, alors que c'est le cumul de deux portées réglées. */}
@@ -209,7 +264,15 @@ function ClassementClubs({ classement }: { classement: ClassementClubsDto }) {
  * une panne. On nomme le cas — un archer suivi peut n'être dans aucun tableau (sorti en
  * qualification), ou dans une catégorie filtrée juste au-dessus.
  */
-function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: ModeAffichage }) {
+function ClassementFinal({
+  lignes,
+  mode,
+  creneau,
+}: {
+  lignes: LignePalmares[]
+  mode: ModeAffichage
+  creneau: string
+}) {
   // ⚠️ Le libellé de la section est **celui du titre visible**, jamais un synonyme : un `aria-label`
   // qui contredit son propre `<h4>` annonce autre chose que ce qui est affiché.
   const titre = mode === 'suivis' ? 'Mes archers' : 'Classement complet'
@@ -217,7 +280,10 @@ function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: Mode
     // Section nommée comme ses deux voisines (`BlocPodium`, `ClassementClubs`) depuis qu'E16US017
     // a ajouté un second tableau à cet écran : sans elle, les deux ne se distinguent que par leur
     // position dans le DOM.
-    <section aria-label={titre}>
+    // ⚠️ **Le créneau entre dans le nom accessible** (E06US009) : l'écran porte désormais un
+    // de ces repères PAR créneau, et quatre « Classement complet » identiques dans la liste
+    // des repères d'un lecteur d'écran ne se distinguent que par leur ordre d'apparition.
+    <section aria-label={`${titre} — ${creneau}`}>
       <h4 className="palmares-section">{titre}</h4>
       {lignes.length === 0 ? (
         <p className="carte__etat">

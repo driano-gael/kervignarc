@@ -8,12 +8,15 @@ une ligne par archer, parce qu'un podium recopié en blocs casse le tri et le fi
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from domain.classement import StatutClassement
-from domain.palmares import LignePalmares, Palmares
+from domain.palmares import LignePalmares, SectionPalmares
 from domain.podium import ReglagePodiums
 from infrastructure.tableur.grille import Cellule, Grille, RenduTableur
 
 _ENTETE = (
+    "Départ",
     "Rang",
     "Nom",
     "Prénom",
@@ -35,17 +38,20 @@ class GenerateurPalmaresTableur:
         self,
         tournoi: str,
         *,
-        complet: Palmares,
-        affiche: Palmares,
+        sections: Sequence[SectionPalmares],
         reglage: ReglagePodiums,
     ) -> bytes:
-        """Rend le classement en tableur. ⚠️ `complet` et `reglage` ne servent qu'aux podiums,
-        que ce format ne porte pas : c'est **`affiche`** qui est rendu, donc la restriction par
-        catégorie est respectée — la rendre sur `complet` exporterait le tournoi entier à qui a
-        demandé une catégorie.
+        """Rend le classement en tableur : c'est **`affiche`** qui sort, jamais `complet`.
+
+        ⚠️ Rendre `complet` exporterait le tournoi entier à qui a demandé une catégorie.
+
+        ⚠️ **Les créneaux tiennent dans UNE grille, colonne « Départ »** (E06US009) et non en N
+        onglets : le parti de ce format est le classement à plat, qui se trie et se filtre. Donc
+        **le rang n'est pas unique** dans sa colonne — chaque créneau recommence à 1.
         """
         lignes: tuple[tuple[Cellule, ...], ...] = tuple(
             (
+                section.libelle,
                 _rang(ligne.rang_min, ligne.rang_max),
                 ligne.nom,
                 ligne.prenom,
@@ -55,7 +61,8 @@ class GenerateurPalmaresTableur:
                 _rang(ligne.rang_club_min, ligne.rang_club_max),
                 _statut(ligne),
             )
-            for ligne in affiche.lignes
+            for section in sections
+            for ligne in section.affiche.lignes
         )
         return self._rendu(Grille(_ENTETE, lignes, titre="Palmarès"))
 

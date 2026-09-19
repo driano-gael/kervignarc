@@ -72,8 +72,12 @@ def test_cycle_complet_via_api(app_simulation: FastAPI, connecter_admin: Connect
         assert fin.status_code == 200, fin.text
         corps = fin.json()
         assert corps["etat_pilote"] == "terminee"
-        assert len(corps["classement"]["lignes"]) == 16
-        assert all(ligne["total"] > 0 for ligne in corps["classement"]["lignes"])
+        # ⚠️ **Un créneau, déplié** (E06US009) : la session rend désormais un classement PAR
+        # départ. Le dépliage lève si le décor en monte deux, au lieu de lire le premier en
+        # silence — c'est exactement le raccourci que cette US a retiré de ce service.
+        (creneau,) = corps["creneaux"]
+        assert len(creneau["classement"]["lignes"]) == 16
+        assert all(ligne["total"] > 0 for ligne in creneau["classement"]["lignes"])
 
         # Lecture indépendante (le front recharge après un signal de diffusion).
         relecture = client.get(f"/api/v1/simulations/{session_id}")

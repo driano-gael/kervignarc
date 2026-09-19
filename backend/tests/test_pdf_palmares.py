@@ -21,7 +21,7 @@ from dataclasses import replace
 from reportlab.platypus import Flowable, Paragraph
 
 from domain.classement import StatutClassement
-from domain.palmares import LignePalmares, OriginePalmares, Palmares
+from domain.palmares import LignePalmares, OriginePalmares, Palmares, SectionPalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.pdf.palmares import GenerateurPalmaresPdf
 
@@ -56,6 +56,62 @@ def _textes(elements: list[Flowable]) -> list[str]:
     return [element.text for element in elements if isinstance(element, Paragraph)]
 
 
+_CRENEAU = "Départ n°1 — 09:00"
+"""Le libellé rendu par `Depart.libelle_creneau` — recopié ici parce que ces tests n'ont pas de
+départ, seulement un `SectionPalmares`. ⚠️ Jumeau de `domain/depart.py`, gardé par
+`test_service_palmares_par_depart.py` côté service."""
+
+
+def _section(complet: Palmares, affiche: Palmares, libelle: str = _CRENEAU) -> SectionPalmares:
+    """Un créneau unique — ce que ces tests rendaient avant qu'un document en porte N (E06US009)."""
+    return SectionPalmares(depart_id=41, libelle=libelle, complet=complet, affiche=affiche)
+
+
+def _corps(
+    tournoi: str,
+    complet: Palmares,
+    affiche: Palmares,
+    reglage: ReglagePodiums = _REGLAGE,
+) -> list[Flowable]:
+    """Le corps d'un document **à une section** : ces tests portent sur le rendu d'un créneau.
+
+    ⚠️ **La juxtaposition de N créneaux se teste à part** (`test_deux_creneaux_font_deux_sections`)
+    et non en paramétrant les trente tests d'ici : ce qu'ils gardent est le contenu d'une section,
+    qui n'a pas changé.
+    """
+    return GenerateurPalmaresPdf()._corps(tournoi, [_section(complet, affiche)], reglage)
+
+
+def test_deux_creneaux_font_deux_sections() -> None:
+    """CA « un palmarès par créneau » + « chaque podium est nommé », au papier (E06US009).
+
+    ⚠️ **Le document est UN fichier à N sections, pas N fichiers** : le choix de découpage d'un
+    export appartient au format, pas au classement (`stories/E06-classements.md`). L'organisateur
+    imprime une fois et remet les médailles créneau par créneau.
+    """
+    matin = Palmares(lignes=(_ligne(1, 1),))
+    apres_midi = Palmares(lignes=(_ligne(2, 1),))
+
+    corps = GenerateurPalmaresPdf()._corps(
+        "Salle 18m",
+        [
+            _section(matin, matin),
+            SectionPalmares(
+                depart_id=42,
+                libelle="Départ n°2 — 14:00",
+                complet=apres_midi,
+                affiche=apres_midi,
+            ),
+        ],
+        _REGLAGE,
+    )
+
+    textes = _textes(corps)
+    assert _CRENEAU in textes
+    assert "Départ n°2 — 14:00" in textes
+    assert textes.count("Classement complet") == 2, "un classement par créneau, pas un global"
+
+
 def test_un_filtre_qui_vide_le_classement_ne_retire_pas_les_podiums() -> None:
     """**Le bloquant de la 3ᵉ passe, au seul endroit où il vivait.**
 
@@ -67,7 +123,7 @@ def test_un_filtre_qui_vide_le_classement_ne_retire_pas_les_podiums() -> None:
     complet = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)))
     vide = Palmares(lignes=())
 
-    corps = GenerateurPalmaresPdf()._corps("Salle 18m", complet, vide, _REGLAGE)
+    corps = _corps("Salle 18m", complet, vide, _REGLAGE)
 
     textes = _textes(corps)
     assert "Podium — Toutes catégories" in textes, "les podiums restent, ils sont ceux du tournoi"
@@ -83,7 +139,7 @@ def test_un_palmares_reellement_vide_ne_dit_que_cela() -> None:
     """
     vide = Palmares(lignes=())
 
-    corps = GenerateurPalmaresPdf()._corps("Salle 18m", vide, vide, _REGLAGE)
+    corps = _corps("Salle 18m", vide, vide, _REGLAGE)
 
     assert "Aucun archer classé." in _textes(corps)
     assert not [t for t in _textes(corps) if t.startswith("Podium —")]
@@ -98,7 +154,7 @@ def test_un_bloc_sans_place_ne_s_imprime_pas() -> None:
     en_lice = _ligne(1, 1)
     complet = Palmares(lignes=(replace(en_lice, en_lice=True),))
 
-    corps = GenerateurPalmaresPdf()._corps("Salle 18m", complet, complet, _REGLAGE)
+    corps = _corps("Salle 18m", complet, complet, _REGLAGE)
 
     assert not [t for t in _textes(corps) if t.startswith("Podium —")]
     assert "Classement complet" in _textes(corps)
@@ -109,7 +165,7 @@ def test_le_document_rendu_est_un_pdf_non_vide() -> None:
     complet = Palmares(lignes=(_ligne(1, 1),))
 
     document = GenerateurPalmaresPdf().palmares(
-        "Salle 18m", complet=complet, affiche=complet, reglage=_REGLAGE
+        "Salle 18m", sections=[_section(complet, complet)], reglage=_REGLAGE
     )
 
     assert document.startswith(b"%PDF")
@@ -127,7 +183,7 @@ def test_la_table_du_classement_suit_la_selection_demandee() -> None:
     complet = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2), _ligne(3, 3, categorie_id=2)))
     affiche = complet.pour_categorie(2)
 
-    corps = GenerateurPalmaresPdf()._corps("Salle 18m", complet, affiche, _REGLAGE)
+    corps = _corps("Salle 18m", complet, affiche, _REGLAGE)
 
     table = corps[-1]
     noms = [cellule[2] for cellule in table._cellvalues[1:]]
@@ -149,9 +205,7 @@ def test_le_classement_des_clubs_s_imprime_avec_ses_trois_colonnes_de_metaux() -
     # permutation. (Palmarès monté à la main : la composition réaliste est couverte au domaine.)
     palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 1), _ligne(3, 2)))
 
-    corps = GenerateurPalmaresPdf()._corps(
-        "Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE
-    )
+    corps = _corps("Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE)
 
     assert "Classement des clubs" in _textes(corps)
     table = next(
@@ -172,9 +226,7 @@ def test_le_classement_des_clubs_ne_s_imprime_pas_sans_base() -> None:
     palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)))
     reglage = replace(_REGLAGE, portees=frozenset({PorteePodium.CLUB}))
 
-    corps = GenerateurPalmaresPdf()._corps(
-        "Tournoi", complet=palmares, affiche=palmares, reglage=reglage
-    )
+    corps = _corps("Tournoi", complet=palmares, affiche=palmares, reglage=reglage)
 
     assert "Classement des clubs" not in _textes(corps)
 
@@ -184,9 +236,7 @@ def test_un_decompte_provisoire_se_dit_sur_le_papier() -> None:
     porter lui-même la réserve, là où l'écran se rafraîchit tout seul."""
     palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)), duels_non_commences=True)
 
-    corps = GenerateurPalmaresPdf()._corps(
-        "Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE
-    )
+    corps = _corps("Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE)
 
     assert any(texte.startswith("Décompte provisoire") for texte in _textes(corps))
 
@@ -201,9 +251,7 @@ def test_le_papier_dit_qu_aucun_club_n_a_de_medaille_au_lieu_de_se_taire() -> No
     sans_club = replace(_ligne(1, 1), club_id=None, club_libelle=None)
     palmares = Palmares(lignes=(sans_club,))
 
-    corps = GenerateurPalmaresPdf()._corps(
-        "Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE
-    )
+    corps = _corps("Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE)
 
     assert "Classement des clubs" in _textes(corps), "la section reste : la base existe"
     # Le papier dit sa base, comme l'écran.
@@ -216,7 +264,7 @@ def test_un_reglage_vide_n_imprime_aucune_section_de_clubs() -> None:
     """Ne rien récompenser est un réglage licite (ADR-0103 §1) : il n'y a rien à commenter."""
     palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)))
 
-    corps = GenerateurPalmaresPdf()._corps(
+    corps = _corps(
         "Tournoi",
         complet=palmares,
         affiche=palmares,
@@ -235,8 +283,8 @@ def test_le_filtre_par_categorie_ne_rogne_pas_le_classement_des_clubs_imprime() 
     complet = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2), _ligne(3, 3, categorie_id=2)))
     affiche = complet.pour_categorie(2)
 
-    entier = GenerateurPalmaresPdf()._corps("Tournoi", complet, complet, _REGLAGE)
-    filtre = GenerateurPalmaresPdf()._corps("Tournoi", complet, affiche, _REGLAGE)
+    entier = _corps("Tournoi", complet, complet, _REGLAGE)
+    filtre = _corps("Tournoi", complet, affiche, _REGLAGE)
 
     clubs = [
         element._cellvalues

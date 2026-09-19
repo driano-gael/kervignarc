@@ -19,6 +19,7 @@ import datetime
 import json
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -50,6 +51,19 @@ from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin, poser_phase_sql
 from tests.test_placement_api import _appliquer_gabarit
+
+
+def _creneau(corps: dict[str, Any]) -> dict[str, Any]:
+    """La **seule** section du palmarès — les décors d'ici montent un tournoi mono-créneau.
+
+    ⚠️ **Le dépliage est l'assertion** (E06US009) : il lève si la réponse en porte deux, ce qui
+    voudrait dire que le décor a changé sans que ces tests le sachent. Le cas à N créneaux est
+    couvert par `test_service_palmares_par_depart.py`.
+    """
+    (section,) = corps["sections"]
+    assert isinstance(section, dict)
+    return section
+
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -703,7 +717,7 @@ def test_le_drapeau_de_desynchronisation_traverse_les_deux_vues(
 def _palmares_lignes(client: TestClient, tournoi_id: int) -> list[dict[str, object]]:
     reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares")
     assert reponse.status_code == 200, reponse.text
-    lignes: list[dict[str, object]] = reponse.json()["lignes"]
+    lignes: list[dict[str, object]] = _creneau(reponse.json())["lignes"]
     return lignes
 
 

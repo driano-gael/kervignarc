@@ -24,12 +24,13 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from collections.abc import Sequence
 
 import pytest
 
 from application.erreurs import FormatExportIndisponible, TournoiIntrouvable
 from application.exports import FormatExport, RegistreDeFormats
-from application.palmares import ServicePalmares
+from application.palmares import RenduPalmares, ServicePalmares
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
@@ -40,7 +41,7 @@ from domain.club import Club
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
-from domain.palmares import LignePalmares, OriginePalmares, Palmares
+from domain.palmares import LignePalmares, OriginePalmares, Palmares, SectionPalmares
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import (
@@ -50,7 +51,7 @@ from domain.politiques import (
     ProfondeurClassement,
 )
 from tests.conftest import FauxClubRepository, poser_phase_factice
-from tests.test_service_routage import _Monde
+from tests.test_service_routage import _MATIN, _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
@@ -133,23 +134,40 @@ class _FauxGenerateurPalmares:
 
     def __init__(self, marque: str = "PDF") -> None:
         self.marque = marque
-        self.appels: list[tuple[str, Palmares]] = []
+        self.appels: list[tuple[str, tuple[SectionPalmares, ...]]] = []
         self.reglages: list[ReglagePodiums] = []
-        # Le palmarès **complet** reçu à part : c'est lui qui porte les podiums.
-        self.podiums: list[Palmares] = []
 
     def palmares(
         self,
         tournoi: str,
         *,
-        complet: Palmares,
-        affiche: Palmares,
+        sections: Sequence[SectionPalmares],
         reglage: ReglagePodiums,
     ) -> bytes:
-        self.appels.append((tournoi, affiche))
-        self.podiums.append(complet)
+        self.appels.append((tournoi, tuple(sections)))
         self.reglages.append(reglage)
         return f"<{self.marque}>".encode()
+
+    def section(self, depart_id: int = _MATIN) -> SectionPalmares:
+        """La section d'un créneau, au **dernier** appel (E06US009).
+
+        ⚠️ **Nommée par son créneau, jamais `sections[0]`** : un document porte désormais N
+        sections et les décors d'ici posent deux créneaux dont un seul est peuplé — un index nu
+        désignerait l'après-midi vide dès qu'on écrit `[-1]`, ce qui était vrai de trois
+        assertions avant cette US.
+        """
+        _, sections = self.appels[-1]
+        return next(section for section in sections if section.depart_id == depart_id)
+
+
+def _matin(rendu: RenduPalmares) -> SectionPalmares:
+    """La section du créneau du matin — **le seul peuplé** dans les décors de ce fichier.
+
+    ⚠️ **Nommée, et non `sections[0]`** : `_Monde` pose deux créneaux depuis E01US025, et un `[0]`
+    nu ici redeviendrait illisible le jour où un décor peuplera l'après-midi. Les CA multi-créneaux
+    vivent dans `test_service_palmares_par_depart.py`.
+    """
+    return next(section for section in rendu.sections if section.depart_id == _MATIN)
 
 
 def _service(
@@ -173,7 +191,9 @@ def _service(
 def _rangs(
     monde: _Monde, aggregation: Aggregation | None = None
 ) -> list[tuple[int, int | None, int | None]]:
-    palmares = _service(monde, aggregation=aggregation).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde, aggregation=aggregation).pour_depart(
+        monde.tournoi_id, monde.depart_id
+    )
     return [(ligne.archer_id, ligne.rang_min, ligne.rang_max) for ligne in palmares.lignes]
 
 
@@ -199,7 +219,7 @@ def test_tournoi_inconnu_refuse() -> None:
     monde, _ = _monde_de_quatre()
 
     with pytest.raises(TournoiIntrouvable):
-        _service(monde).pour_tournoi(999)
+        _service(monde).pour_depart(999, monde.depart_id)
 
 
 def test_sans_phase_de_tableau_le_palmares_est_celui_de_la_qualification() -> None:
@@ -214,7 +234,7 @@ def test_sans_phase_de_tableau_le_palmares_est_celui_de_la_qualification() -> No
         monde.inscrire_classe(("9", "9", "9")),
     ]
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     assert [ligne.archer_id for ligne in palmares.lignes] == attendus
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
@@ -234,7 +254,7 @@ def test_le_podium_sort_des_matchs_terminaux_du_tableau() -> None:
     for numero in (1, 2, 3, 4):
         monde.gagner(numero)
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
     tableau, _lignes = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
     attendus = [place.participant.ref_id for place in tableau.podium()]
 
@@ -254,7 +274,7 @@ def test_le_podium_se_publie_des_la_petite_finale_sans_attendre_la_finale() -> N
         monde.gagner(numero)
     monde.gagner(4)  # la petite finale, avant la finale
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     assert [ligne.rang_min for ligne in _podium(palmares, monde.categorie_id)] == [3, 4]
 
@@ -272,7 +292,7 @@ def test_les_duellistes_precedent_les_archers_restes_en_qualification() -> None:
     monde, archers = _monde_de_quatre()
     _abandonner_en_qualification(monde, archers[0])
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     assert palmares.lignes[-1].archer_id == archers[0]
     assert palmares.lignes[-1].statut is StatutClassement.ABANDON
@@ -287,7 +307,7 @@ def test_un_archer_encore_en_lice_n_est_pas_range_derriere_les_elimines() -> Non
     monde.gagner(1)
     monde.gagner(2)
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
     finalistes = {monde.gagne_de(1), monde.gagne_de(2)}
 
     assert {ligne.archer_id for ligne in palmares.lignes[:2]} == finalistes
@@ -312,7 +332,7 @@ def test_les_sortis_au_meme_tour_sont_departages_par_la_qualification_par_defaut
 
     rangs = {
         ligne.archer_id: (ligne.rang_min, ligne.rang_max)
-        for ligne in _service(monde).pour_tournoi(monde.tournoi_id).lignes
+        for ligne in _service(monde).pour_depart(monde.tournoi_id, monde.depart_id).lignes
     }
     attendus = sorted(battus, key=archers.index)
 
@@ -333,7 +353,7 @@ def test_la_politique_ex_aequo_est_injectable() -> None:
     rangs = {
         ligne.archer_id: (ligne.rang_min, ligne.rang_max)
         for ligne in _service(monde, aggregation=AggregationExAequo())
-        .pour_tournoi(monde.tournoi_id)
+        .pour_depart(monde.tournoi_id, monde.depart_id)
         .lignes
     }
 
@@ -367,9 +387,11 @@ def test_le_filtre_par_categorie_restreint_l_affichage_sans_renumeroter() -> Non
         monde.inscrire_classe(("9", "9", "9")),
     ]
 
-    tout = _service(monde).pour_tournoi(monde.tournoi_id)
-    filtre = _service(monde).pour_tournoi(monde.tournoi_id, categorie_id=monde.categorie_id)
-    autre = _service(monde).pour_tournoi(monde.tournoi_id, categorie_id=999)
+    tout = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
+    filtre = _service(monde).pour_depart(
+        monde.tournoi_id, monde.depart_id, categorie_id=monde.categorie_id
+    )
+    autre = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id, categorie_id=999)
 
     assert [ligne.archer_id for ligne in filtre.lignes] == [
         ligne.archer_id for ligne in tout.lignes
@@ -396,11 +418,13 @@ def test_l_export_pdf_recoit_exactement_le_palmares_affiche() -> None:
     document = _service(monde, generateur).imprimer(monde.tournoi_id)
 
     assert document == b"<PDF>"
-    ((tournoi, palmares),) = generateur.appels
+    ((tournoi, _),) = generateur.appels
     attendu = monde.tournois.par_id(monde.tournoi_id)
     assert attendu is not None
     assert tournoi == attendu.nom
-    assert palmares == _service(monde).pour_tournoi(monde.tournoi_id)
+    assert generateur.section().affiche == _service(monde).pour_depart(
+        monde.tournoi_id, monde.depart_id
+    )
 
 
 def test_l_export_pdf_refuse_un_tournoi_inconnu() -> None:
@@ -422,8 +446,7 @@ def test_l_export_pdf_honore_le_filtre_de_categorie() -> None:
 
     _service(monde, generateur).imprimer(monde.tournoi_id, categorie_id=999)
 
-    ((_tournoi, palmares),) = generateur.appels
-    assert palmares.lignes == ()
+    assert generateur.section().affiche.lignes == ()
 
 
 def test_une_phase_sans_duel_tranche_ne_pese_pas_sur_le_palmares() -> None:
@@ -438,7 +461,7 @@ def test_une_phase_sans_duel_tranche_ne_pese_pas_sur_le_palmares() -> None:
     """
     monde, archers = _monde_de_quatre()
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     assert [ligne.archer_id for ligne in palmares.lignes] == archers
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4]
@@ -457,7 +480,7 @@ def test_le_premier_duel_tranche_fait_basculer_le_palmares_sur_le_tableau() -> N
     monde, _ = _monde_de_quatre()
     monde.gagner(1)
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
     battu = monde.perd_de(1)
 
     assert palmares.lignes[-1].archer_id == battu
@@ -487,7 +510,7 @@ def test_sans_petite_finale_le_bronze_n_est_pas_gagne_au_tir() -> None:
     for numero in (1, 2, 3):
         monde.gagner(numero)
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
     podium = _podium(palmares, monde.categorie_id)
 
     assert [ligne.rang_categorie_min for ligne in podium] == [1, 2, 3, 4]
@@ -501,7 +524,9 @@ def test_avec_petite_finale_le_bronze_est_decerne() -> None:
     for numero in (1, 2, 3, 4):
         monde.gagner(numero)
 
-    podium = _podium(_service(monde).pour_tournoi(monde.tournoi_id), monde.categorie_id)
+    podium = _podium(
+        _service(monde).pour_depart(monde.tournoi_id, monde.depart_id), monde.categorie_id
+    )
 
     assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
     assert all(ligne.decerne for ligne in podium)
@@ -528,7 +553,7 @@ def test_un_forfait_avant_tout_duel_ne_fait_pas_basculer_le_palmares() -> None:
         )
     )
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4]
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
@@ -562,7 +587,7 @@ def test_le_rang_de_categorie_reste_borne_par_la_categorie() -> None:
     monde.placer()
     monde.gagner(1)
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     par_categorie: dict[int, int] = {}
     for ligne in palmares.lignes:
@@ -600,7 +625,7 @@ def test_un_bye_resolu_ne_fait_pas_basculer_le_palmares() -> None:
         monde.tournoi_id, monde.phase_id, numero, 1, (ZoneScore.DIX,) * 3, (ZoneScore.SIX,) * 3
     )
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4, 5, 6]
@@ -649,7 +674,7 @@ def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
     monde.series.semer(monde.tournoi_id, basse_archers[1], _v10(), basse.id)
     monde.series.semer(monde.tournoi_id, basse_archers[0], _v10(("10", "10", "9")), basse.id)
 
-    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde).pour_depart(monde.tournoi_id, monde.depart_id)
 
     rangs = [(ligne.archer_id, ligne.rang_min) for ligne in palmares.lignes]
     assert rangs == [
@@ -713,7 +738,7 @@ def test_un_podium_de_club_porte_le_nom_du_club_lu_au_referentiel() -> None:
         monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
     )
 
-    blocs = service.rendu(monde.tournoi_id).complet.podiums(
+    blocs = _matin(service.rendu(monde.tournoi_id)).complet.podiums(
         ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
     )
 
@@ -785,8 +810,8 @@ def test_le_pdf_recoit_le_reglage_du_tournoi_et_le_palmares_complet() -> None:
 
     assert generateur.reglages[-1] == reglage
     # Les podiums viennent du palmarès complet ; le classement imprimé suit le filtre.
-    assert generateur.podiums[-1].lignes
-    assert generateur.appels[-1][1].lignes == ()
+    assert generateur.section().complet.lignes
+    assert generateur.section().affiche.lignes == ()
 
 
 def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums() -> None:
@@ -807,13 +832,13 @@ def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums() -> None:
     entier = service.rendu(monde.tournoi_id)
     filtre = service.rendu(monde.tournoi_id, categorie_id=monde.categorie_id + 99)
 
-    (bloc_entier,) = entier.complet.podiums(reglage)
-    (bloc_filtre,) = filtre.complet.podiums(reglage)
+    (bloc_entier,) = _matin(entier).complet.podiums(reglage)
+    (bloc_filtre,) = _matin(filtre).complet.podiums(reglage)
 
     assert bloc_entier.places, "le décor doit décerner des places"
     assert bloc_entier.effectif == 4, "les quatre archers du décor sont tous passés par le tableau"
     assert bloc_filtre == bloc_entier, "le bloc ne dépend en rien du filtre demandé"
-    assert filtre.affiche.lignes == (), "le filtre restreint bien le classement, lui"
+    assert _matin(filtre).affiche.lignes == (), "le filtre restreint bien le classement, lui"
 
 
 def test_une_phase_a_duels_non_commencee_tient_les_blocs_en_attente() -> None:
@@ -827,10 +852,10 @@ def test_une_phase_a_duels_non_commencee_tient_les_blocs_en_attente() -> None:
     service = _service(monde)
     reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))
 
-    avant = service.rendu(monde.tournoi_id).complet.podiums(reglage)
+    avant = _matin(service.rendu(monde.tournoi_id)).complet.podiums(reglage)
     for numero in (1, 2, 3, 4):
         monde.gagner(numero)
-    apres = service.rendu(monde.tournoi_id).complet.podiums(reglage)
+    apres = _matin(service.rendu(monde.tournoi_id)).complet.podiums(reglage)
 
     assert avant[0].places == (), "aucun duel tiré : rien n'est décerné"
     assert avant[0].en_attente is True, "mais la phase est ouverte et n'a rien livré"
@@ -864,7 +889,7 @@ def test_le_classement_des_clubs_nomme_ses_clubs_sans_la_portee_club() -> None:
     )
 
     rendu = service.rendu(monde.tournoi_id)
-    classement = classer_clubs(rendu.complet, rendu.reglage)
+    classement = classer_clubs(_matin(rendu).complet, rendu.reglage)
 
     assert classement.portees_comptees == (PorteePodium.CATEGORIE,), "le défaut d'ADR-0103"
     assert [ligne.club_libelle for ligne in classement.lignes] == ["Compagnie de Kervignarc"]
@@ -935,7 +960,7 @@ def test_le_contenu_du_palmares_ne_depend_pas_du_format() -> None:
     service.imprimer(monde.tournoi_id, format_=FormatExport.CSV)
 
     assert pdf.appels == csv.appels
-    assert pdf.podiums == csv.podiums
+    assert pdf.section().complet == csv.section().complet
     assert pdf.reglages == csv.reglages
 
 
@@ -970,5 +995,5 @@ def test_la_restriction_par_categorie_vaut_pour_tous_les_formats() -> None:
     service.imprimer(monde.tournoi_id, categorie_id=999)
     service.imprimer(monde.tournoi_id, categorie_id=999, format_=FormatExport.CSV)
 
-    assert csv.appels[0][1].lignes == ()
+    assert csv.section().affiche.lignes == ()
     assert pdf.appels == csv.appels
