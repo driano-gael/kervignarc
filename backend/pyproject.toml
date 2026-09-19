@@ -98,4 +98,17 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --strict-markers"
+# Posés automatiquement à la collecte par `tests/conftest.py` (ADR-0110), d'après le nom du
+# module. `--strict-markers` fait échouer un marqueur non déclaré : sans lui, `-m domaien`
+# ne sélectionnerait rien, en silence, et la porte rapide se croirait verte.
+markers = [
+    "domaine: règles métier pures — ni base, ni framework (règle 1)",
+    "service: orchestration métier sur doublures en mémoire",
+    "api: endpoints HTTP montés sur une app de test",
+    "repository: adapters de persistance sur base migrée",
+    "migration: pilotage direct d'Alembic, révision par révision",
+    "atlas: génération et contrôles de l'atlas",
+    "oracle: rejeu du tournoi de référence (Tableaux.xlsx)",
+    "divers: hors convention de nommage — voir FAMILLES_DE_TESTS",
+]

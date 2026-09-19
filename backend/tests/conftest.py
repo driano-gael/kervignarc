@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import re
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -76,6 +77,37 @@ if TYPE_CHECKING:
 # annotations sont différées (`from __future__ import annotations`), donc `fastapi` n'est
 # jamais requis ici ; les tests qui s'en servent créent leur `TestClient` ailleurs.
 ConnecterAdmin = Callable[["TestClient"], None]
+
+
+# --- Familles de tests : marquage automatique à la collecte (ADR-0110) --------------------
+#
+# Le classement se lit sur le **nom du module**, jamais sur son chemin : les 249 fichiers de
+# test vivent à plat dans `tests/`.
+# ⚠️ Un module qui sort de ces conventions tombe en `divers` **sans rien signaler** —
+# `test_familles_de_tests.py` gèle la liste des non classés pour que l'ajout d'un module hors
+# convention soit un échec de test, pas un silence.
+FAMILLES_DE_TESTS: tuple[tuple[str, str], ...] = (
+    ("domaine", r"^test_domain"),
+    ("service", r"^test_service_"),
+    ("api", r"_api$"),
+    ("repository", r"_repository$"),
+    ("migration", r"^test_migration"),
+    ("atlas", r"^test_atlas_"),
+    ("oracle", r"^test_oracle_"),
+)
+FAMILLE_PAR_DEFAUT = "divers"
+
+
+def famille_du_module(tige: str) -> str:
+    for nom, motif in FAMILLES_DE_TESTS:
+        if re.search(motif, tige):
+            return nom
+    return FAMILLE_PAR_DEFAUT
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    for item in items:
+        item.add_marker(famille_du_module(item.path.stem))
 
 
 class HorlogeFigee:
