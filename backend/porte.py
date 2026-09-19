@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import io
+import os
 import shutil
 import subprocess
 import sys
@@ -19,7 +20,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
-SORTIES = RACINE / ".porte"
+
+# ⚠️ Un sous-dossier par processus : ce projet fait tourner des agents concurrents dans le même
+# arbre de travail, et deux portes simultanées qui partagent un journal rendent un rapport
+# « verbatim » qui ment. Le tableau final imprime le chemin, personne n'a donc à le deviner.
+SORTIES = RACINE / ".porte" / str(os.getpid())
 
 
 @dataclasses.dataclass(frozen=True)
@@ -30,6 +35,15 @@ class Verification:
     ligne_ci: str
     rapide: bool = False
     essais: int = 1
+    environnement: tuple[tuple[str, str], ...] = ()
+
+
+# ⚠️ Le job `backend` de la CI **ne construit pas le front** : `npm run build` vit dans un autre
+# job. En local `frontend/dist/` existe — cette porte le reconstruit elle-même — et fait monter la
+# SPA à la racine, qui attrape des requêtes que le serveur nu laisserait tomber et **change des
+# codes de réponse** (404 par repli SPA au lieu de 405). Sans cette variable, `pytest` serait vert
+# ici et rouge en CI sans qu'une ligne de code ait bougé (constaté le 29/08/2026 sur E16US010).
+SANS_BUILD_FRONT = (("KERVIGNARC_FRONTEND_DIST", str(RACINE / ".porte" / "dist-absent")),)
 
 
 # ⚠️ `ligne_ci` est la ligne `run:` correspondante de `.github/workflows/ci.yml`, à la lettre.
@@ -48,7 +62,9 @@ BACKEND: tuple[Verification, ...] = (
         True,
     ),
     Verification("mypy (strict)", (*PY, "-m", "mypy", "."), "backend", "mypy .", True),
-    Verification("pytest", (*PY, "-m", "pytest"), "backend", "pytest"),
+    Verification(
+        "pytest", (*PY, "-m", "pytest"), "backend", "pytest", environnement=SANS_BUILD_FRONT
+    ),
     Verification(
         "requirements sync",
         (*PY, "verifier_requirements.py"),
@@ -108,6 +124,7 @@ PYTEST_RAPIDE = Verification(
     "backend",
     "",
     True,
+    environnement=SANS_BUILD_FRONT,
 )
 
 
@@ -128,7 +145,7 @@ def _resoudre(commande: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _executer(verification: Verification) -> Resultat:
-    SORTIES.mkdir(exist_ok=True)
+    SORTIES.mkdir(parents=True, exist_ok=True)
     journal = SORTIES / f"{verification.nom.replace(' ', '_').replace('/', '-')}.txt"
     debut = time.monotonic()
     code = 1
@@ -139,6 +156,7 @@ def _executer(verification: Verification) -> Resultat:
                 cwd=RACINE / verification.dossier,
                 capture_output=True,
                 shell=False,
+                env={**os.environ, **dict(verification.environnement)},
             )
         except OSError as erreur:
             # Une porte qui plante est plus dangereuse qu'une porte rouge : l'échec d'une

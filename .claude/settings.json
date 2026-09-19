@@ -28,7 +28,9 @@
       "Bash(python -m atlas:*)",
       "Bash(.venv/Scripts/python.exe -m atlas:*)",
       "Bash(date:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(.venv/Scripts/python.exe porte.py:*)",
+      "Bash(python porte.py:*)"
     ],
     "deny": [
       "Bash(rm:*)",

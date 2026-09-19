@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 from porte import GROUPES
 
-CI = Path(__file__).resolve().parent.parent.parent / ".github" / "workflows" / "ci.yml"
+RACINE = Path(__file__).resolve().parent.parent.parent
+CI = RACINE / ".github" / "workflows" / "ci.yml"
+REGLAGES = RACINE / ".claude" / "settings.json"
 
 # Lignes de `run:` que `porte.py` ne reproduit **pas**, et pourquoi.
 # ⚠️ Y ajouter une ligne, c'est décider qu'une vérification de la CI ne sera pas jouée en
@@ -74,6 +77,33 @@ def test_la_porte_n_invente_aucune_verification() -> None:
     assert not inventees, (
         f"Ces lignes de porte.py ne correspondent à aucun `run:` de ci.yml : {sorted(inventees)}. "
         "Le champ `ligne_ci` doit citer la CI à la lettre."
+    )
+
+
+def test_la_porte_ne_lance_aucune_commande_refusee_par_le_depot() -> None:
+    """Le contrôle a suivi les commandes : il portait sur `porte-mecanique.md` jusqu'en E00US031.
+
+    Une commande refusée par `.claude/settings.json` ne produit **aucun** code de sortie : elle
+    tombe en « non exécuté », et la porte se croirait verte en ayant tourné amputée.
+    """
+    reglages = json.loads(REGLAGES.read_text(encoding="utf-8"))
+    refuses = [
+        entree[len("Bash(") : -len(":*)")]
+        for entree in reglages["permissions"]["deny"]
+        if entree.startswith("Bash(") and entree.endswith(":*)")
+    ]
+    assert refuses, "aucun refus lu : ce garde-fou ne vérifierait plus rien"
+
+    collisions = {
+        v.ligne_ci
+        for groupe in GROUPES.values()
+        for v in groupe
+        for refus in refuses
+        if v.ligne_ci == refus or v.ligne_ci.startswith(f"{refus} ")
+    }
+    assert not collisions, (
+        f"porte.py lance {sorted(collisions)}, que .claude/settings.json refuse. "
+        "Soit la permission s'ouvre, soit la vérification sort de la porte."
     )
 
 
