@@ -10457,6 +10457,105 @@ window.ATLAS.decisions = {
     "E05US033",
     "E16US019"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-19",
+   "date_brute": "2026-09-19",
+   "extrait": "1. Les vérifications vivent dans un script, backend/porte.py. Il enchaîne tout sans intervention, écrit chaque sortie dans .porte/\u003cnom>.txt (ignoré de git) et n'affiche qu'un tableau vérification → état → durée. Le détail ne se lit que pour les lignes rouges. Le gain n'est pas sur l'horloge : c'est que l'agent de porte n'ingère plus des milliers de lignes de sortie, et que l'utilisateur peut lancer la porte lui-même, sans agent. 2. Deux étages. --rapide tourne pendant l'implémentation ; l'étage complet reproduit la CI et se lance une fois, avant la revue. 3. Parallèle à l'étage rapide, séquentiel à l'étage complet. Mesuré à conditions égales : | Étage | Séquentiel | Parallèle | […]",
+   "fichier": "docs/adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md",
+   "identifiant": "0110",
+   "liens": [
+    {
+     "cible": "E00US031",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0086",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0102",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": ".github/workflows/ci.yml",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "CLAUDE.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/porte.py",
+     "existe": true,
+     "symboles": [
+      "ligne_ci"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/pyproject.toml",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/conftest.py",
+     "existe": true,
+     "symboles": [
+      "FAMILLES_DE_TESTS",
+      "famille_du_module",
+      "pytest_collection_modifyitems"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_familles_de_tests.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_porte_couvre_la_ci.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/verifier_requirements.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "La porte mécanique tient dans un script, et en deux étages",
+   "us": [
+    "E00US031"
+   ]
   }
  ]
 };

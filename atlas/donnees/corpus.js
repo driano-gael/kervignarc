@@ -157,6 +157,14 @@ window.ATLAS.corpus = {
   },
   {
    "genre": "regle",
+   "identifiant": "cpu-et-tokens-contre-temps-humain",
+   "lien": "regle.html?id=cpu-et-tokens-contre-temps-humain",
+   "recherche": "du cpu et des tokens contre du temps humain, jamais l'inverse economie de contexte le cout reel du projet n'est ni le token ni la seconde de calcul : c'est le nombre d'allers-retours et l'attente de l'utilisateur. une passe qui consomme plus vaut mieux que cinq qui consomment moins — 183 us livrees ont produit ~155 commits de correction de revue et 21 us a seconde passe. donc : paralleliser plutot que raccourcir (les verifications independantes partent ensemble), lancer les portes en arriere-plan pendant qu'on redige commit et journal, et preferer un sous-agent qui mesure a une supposition. ⚠ ce qui est exclu : acheter du temps en degradant une verification — pas de porte ciblee apres correctifs (on relance tout, parallelise), pas de mineur laisse de cote pour aller plus vite. (arbitrage du 19/09/2026, cf. adr-0110.)",
+   "texte": "Le coût réel du projet n'est ni le token ni la seconde de calcul : c'est le nombre d'allers-retours et l'attente de l'utilisateur. Une passe qui consomme plus vaut mieux que cinq qui consomment moins — 183 US livrées ont produit ~155 commits de correction de revue et 21 US à seconde passe. Donc : paralléliser plutôt que raccourcir (les vérifications indépendantes partent ensemble), lancer les portes en arrière-plan pendant qu'on rédige commit et journal, et préférer un sous-agent qui mesure à une supposition. ⚠️ Ce qui est exclu : acheter du temps en dégradant une vérification — pas de porte ciblée après correctifs (on relance tout, parallélisé), pas de mineur laissé de côté pour aller plus vite. (Arbitrage du 19/09/2026, cf. ADR-0110.)",
+   "titre": "Du CPU et des tokens contre du temps humain, jamais l'inverse"
+  },
+  {
+   "genre": "regle",
    "identifiant": "une-branche-par-us",
    "lien": "regle.html?id=une-branche-par-us",
    "recherche": "une branche par us workflow jamais de travail direct sur main. nommage \u003ctype>/\u003cexxusyyy>-\u003cslug-court> en minuscules kebab-case (ex. feat/e04us003-saisie-fleches). \u003ctype> ∈ feat | fix | refactor | test | docs | chore, coherent branche ↔ commits ↔ us.",
@@ -1114,6 +1122,14 @@ window.ATLAS.corpus = {
    "recherche": "adr-0109 une volee en correction reste comptee : le verrou d'ecriture n'est pas le compte s'appuie sur adr-0035 s'appuie sur adr-0036 s'appuie sur adr-0039 voisin adr-0107 e02us003 e05us033 e16us019 1. le verrou d'ecriture et le compte deviennent deux etats distincts. volee gagne correction_ouverte_par ; validee (« cette volee compte ») vaut validee_par is not none, et verrouillee (« on ne peut pas y ecrire ») vaut validee and not en_correction. les quatre lecteurs de totaux passent de verrouillee a validee : ils ne bougent pas quand une correction s'ouvre. 2. annuler rouvre le lot de validation, identifie en base. volee gagne lot_validation, pose par serie.valider. le lot n'est pas recalculable : saisir_volee n'impose aucun ordre de saisie, alors que valider prend « les n premieres non validees » — un lot reel peut donc etre non contigu (volees 1 et 3 si la 2 n'etait pas saisie), et […]",
    "texte": "1. Le verrou d'écriture et le compte deviennent deux états distincts. Volee gagne correction_ouverte_par ; validee (« cette volée compte ») vaut validee_par is not None, et verrouillee (« on ne peut pas y écrire ») vaut validee and not en_correction. Les quatre lecteurs de totaux passent de verrouillee à validee : ils ne bougent pas quand une correction s'ouvre. 2. Annuler rouvre le LOT de validation, identifié en base. Volee gagne lot_validation, posé par Serie.valider. Le lot n'est pas recalculable : saisir_volee n'impose aucun ordre de saisie, alors que valider prend « les N premières non validées » — un lot réel peut donc être non contigu (volées 1 et 3 si la 2 n'était pas saisie), et […]",
    "titre": "ADR-0109 — Une volée en correction reste comptée : le verrou d'écriture n'est pas le compte"
+  },
+  {
+   "genre": "decision",
+   "identifiant": "0110",
+   "lien": "adr.html?id=0110",
+   "recherche": "adr-0110 la porte mecanique tient dans un script, et en deux etages us adr-e00us031 s'appuie sur adr-0086 s'appuie sur adr-0102 e00us031 1. les verifications vivent dans un script, backend/porte.py. il enchaine tout sans intervention, ecrit chaque sortie dans .porte/\u003cnom>.txt (ignore de git) et n'affiche qu'un tableau verification → etat → duree. le detail ne se lit que pour les lignes rouges. le gain n'est pas sur l'horloge : c'est que l'agent de porte n'ingere plus des milliers de lignes de sortie, et que l'utilisateur peut lancer la porte lui-meme, sans agent. 2. deux etages. --rapide tourne pendant l'implementation ; l'etage complet reproduit la ci et se lance une fois, avant la revue. 3. parallele a l'etage rapide, sequentiel a l'etage complet. mesure a conditions egales : | etage | sequentiel | parallele | […]",
+   "texte": "1. Les vérifications vivent dans un script, backend/porte.py. Il enchaîne tout sans intervention, écrit chaque sortie dans .porte/\u003cnom>.txt (ignoré de git) et n'affiche qu'un tableau vérification → état → durée. Le détail ne se lit que pour les lignes rouges. Le gain n'est pas sur l'horloge : c'est que l'agent de porte n'ingère plus des milliers de lignes de sortie, et que l'utilisateur peut lancer la porte lui-même, sans agent. 2. Deux étages. --rapide tourne pendant l'implémentation ; l'étage complet reproduit la CI et se lance une fois, avant la revue. 3. Parallèle à l'étage rapide, séquentiel à l'étage complet. Mesuré à conditions égales : | Étage | Séquentiel | Parallèle | […]",
+   "titre": "ADR-0110 — La porte mécanique tient dans un script, et en deux étages"
   }
  ]
 };

@@ -4,6 +4,15 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "105",
+   "introduite_par": [
+    "E00US031"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "104",
    "introduite_par": [
     "E16US012",

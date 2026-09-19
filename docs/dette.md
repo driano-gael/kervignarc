@@ -40,6 +40,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
+| [DETTE-105](#dette-105--la-collecte-pytest-coûte-75-s-à-chaque-invocation) | technique | mineur | `backend/tests/` (249 modules à plat), `backend/porte.py` (`PYTEST_RAPIDE`, marqueur `DETTE-105`) | Collecter les 249 modules de test coûte **7,5 s**, payés à **chaque** invocation de pytest — y compris pour un seul test ciblé, et y compris quand un marqueur désélectionne 60 % de la suite | **16 % de l'étage rapide** (7,5 s sur 46 s). Plus l'étage est court, plus cette part pèse : c'est elle qui empêche de descendre sous ~10 s | `E00US031` (constat, non traité) | Mesurer le coût d'import module par module (`-X importtime`), hisser les imports lourds hors du niveau module. À reprendre si l'étage rapide devait descendre sous 20 s |
 | [DETTE-104](#dette-104--vingt-neuf-copies-locales-de-fauxtournoirepository) | technique | mineur | `backend/tests/` (29 modules), `backend/tests/conftest.py` | **29 copies locales** de `FauxTournoiRepository` (et plusieurs de `FauxArcherRepository`) coexistent avec la doublure partagée de `conftest.py`. Mesure : `grep -rl --include='*.py' "class FauxTournoiRepository" backend/tests` | **Chiffré pour la première fois par E01US026** : ajouter **une** méthode au port `TournoiRepository` a coûté **25 éditions mécaniques** dans des modules qui ne testent pas la suppression. Aucun risque de faux vert (mypy vérifie la conformité structurelle au site d'appel), seulement un coût par élargissement de port | E16US012 a installé la doublure partagée sans rapatrier les copies — « rangement transverse, pas le travail d'une branche fonctionnelle » ; E01US026 ne l'aggrave pas (elle n'ajoute aucune copie) mais en mesure le prix | Rapatrier sur `conftest.FauxTournoiRepository`, **dans l'US qui touchera ces décors** — pas en US dédiée : le geste est mécanique et sans valeur propre. Aucun marqueur en code : la mesure est le `grep` ci-contre, et 29 marqueurs seraient précisément la duplication qu'on déplore |
 | [DETTE-101](#dette-101--le-journal-daudit-se-charge-en-entier-pour-être-filtré-à-lécran) | technique | mineur | `backend/application/audit.py` (`ServiceAudit.lister`), `backend/infrastructure/db/repositories/exploitation.py` (`AuditRepositorySQL.par_tournoi`), `backend/api/v1/audit.py` (`lister_audit`, aucun paramètre), `frontend/src/features/audit/Audit.tsx` (marqueur `DETTE-101`), `frontend/src/features/audit/presentation.ts` (`filtrer`) | L'écran de consultation charge **tout** le journal d'un tournoi en une requête, puis filtre et pagine côté client. Ni le port, ni l'adapter SQL, ni la route ne savent filtrer ou paginer : `par_tournoi` fait un `select … where tournoi_id = …` sans borne | Sur un tournoi réel (la planche A18 en montre 1 284 entrées), c'est ~300 Ko de JSON à chaque ouverture de l'écran — acceptable sur le réseau local du jour J, où l'admin est sur un PC câblé, et **c'est pourquoi c'est mineur**. Le seuil de gêne n'est pas mesuré : il n'a pas été éprouvé sur un journal réel. ⚠️ Le coût grandit avec la **durée** du tournoi, pas avec son effectif | **E16US016** — périmètre arbitré par le commanditaire le 18/09/2026 : la variante « filtres cumulés + recherche serveur » a été présentée et **écartée** au profit de « liste + filtres simples », qui n'exige aucune route de filtrage. La dette est donc **le prix connu d'un choix**, pas un oubli | Ajouter `action` et une pagination (`limite`/`curseur`) au port `AuditRepository`, à `ServiceAudit.lister` et à la route, puis retirer le filtre client. ⚠️ **La recherche libre ne suit pas mécaniquement** : elle replie casse et accents (`presentation.ts`), ce que SQLite ne fait pas sans `LIKE` sur une colonne normalisée — même obstacle que `DETTE-006` (`cle_nom`). À reprendre **avec** elle, pas séparément |
 | [DETTE-102](#dette-102--deux-libs-de-rendu-échappent-au-typage-strict) | technique | mineur | `backend/pyproject.toml` (les deux blocs `[[tool.mypy.overrides]]`, marqueurs `DETTE-102`) ; portée réelle : `backend/infrastructure/pdf/*.py` et `backend/infrastructure/tableur/grille.py` | `reportlab` et `openpyxl` ne publient pas de marqueur `py.typed` : leurs symboles valent `Any` sous `mypy --strict`, donc les appels à ces libs ne sont pas type-vérifiés | Concrètement : `_ecrire_ligne_xlsx(feuille: Worksheet, …)` est annoté contre un type qui vaut `Any` — l'annotation est **inerte** —, `Workbook.active` est donné non-`Optional` alors qu'il l'est, et une faute sur le garde-fou CWE-1236 (`data_type = "str"` au lieu de `"s"`) passerait `mypy`. Rattrapé au runtime par `test_tableur_grille.py`, d'où *mineur* | **E16US016** — relevée par les axes B et C2. ⚠️ Les deux cas ne sont **pas** identiques : `types-reportlab` n'est pas officiel, tandis que **`types-openpyxl` existe et vient de typeshed**. L'écart n'est donc pas subi mais **choisi** (une dépendance de plus, règle 11) — c'est la définition d'une dette assumée, et le précédent ReportLab n'avait jamais été inscrit | Déclarer `types-openpyxl` au groupe `dev`, retirer l'override `openpyxl.*`, vérifier que `mypy --strict` reste vert. Le volet ReportLab ne se ferme que si un paquet de stubs officiel apparaît |
@@ -4600,6 +4601,32 @@ toucher les deux autres l'élargit, et c'est exactement ce qui vient de se produ
 **Résorption.** Une fonction `replier(texte)` unique dans `shared/`, les trois sites migrés dessus,
 un test d'ancrage sur les cas qui distinguent les variantes. ~8 lignes, aucune abstraction neuve —
 même forme que `DETTE-029` (une règle réécrite à N sites), qui renvoie elle aussi à une US dédiée.
+
+### DETTE-105 — La collecte pytest coûte 7,5 s à chaque invocation
+
+Mesuré le 19/09/2026 sur ce poste : `pytest --collect-only -q` sur `tests/` demande **7,5 s** pour
+249 modules, dont ~1,1 s de démarrage pur. Le reste est l'**import** des modules de test, et il est
+payé même quand un marqueur en désélectionne la majorité — la sélection par `-m` intervient
+**après** la collecte.
+
+**Pourquoi on ne peut pas y échapper par les chemins.** L'idée naturelle — ne passer à pytest que
+les fichiers concernés — est **plus lente**, et c'est contre-intuitif : 67 chemins passés en
+arguments demandent **13,2 s** de collecte, contre 7,5 s pour le répertoire entier (249 fichiers).
+Chaque argument déclenche sa propre résolution de rootdir et de `conftest`, et sur Windows la
+rafale de `stat` coûte plus que le parcours d'arbre unique. C'est la mesure qui a imposé les
+marqueurs d'[ADR-0110](adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md).
+
+**Ce que ce n'est pas.** Aucun risque de faux vert : la collecte est complète, rien n'est manqué.
+C'est un coût de **latence**, pas de couverture.
+
+**Impact réel.** Sur l'étage rapide mesuré à 46 s, la collecte pèse 7,5 s, soit 16 %. Tant que
+l'étage rapide est à ~46 s, le jeu n'en vaut pas la chandelle. Il le vaudrait si l'on cherchait à
+descendre sous les 20 s, seuil à partir duquel la porte se lance vraiment « sans y penser ».
+
+**Résorption.** `python -X importtime -m pytest --collect-only` pour classer les imports par coût,
+puis hisser les plus lourds hors du niveau module (imports locaux dans les fixtures). ⚠️ À ne
+tenter qu'avec la suite complète en filet : déplacer un import de module change l'ordre
+d'initialisation, et plusieurs modules de test s'importent entre eux ici.
 
 ### DETTE-104 — vingt-neuf copies locales de `FauxTournoiRepository`
 
