@@ -48,7 +48,8 @@ demandent **13,2 s** de collecte, là où le répertoire entier (249 fichiers) n
 Windows la rafale de `stat` coûte plus que le parcours d'arbre unique.
 
 **5. Ce qui reste, et qui n'existait pas.** La répartition par famille désigne un étage rapide sans
-ambiguïté : **domaine + service = 2719 tests (63 % de la suite) pour 3,1 s attribués**, quand
+ambiguïté : **domaine + service = 2719 tests (63 % de la suite) pour 3,1 s attribués** — l'oracle 120 s'y
+ajoute pour ~4 s, quand
 API + migrations pèsent **358 s (81 % du temps) pour 19 % des tests**. L'isolation du domaine
 (règle 1) — décidée pour la propreté — produit gratuitement un étage de vérification court. **Il
 n'était simplement pas outillé.**
@@ -56,7 +57,8 @@ n'était simplement pas outillé.**
 ## Décision
 
 **1. Les vérifications vivent dans un script, `backend/porte.py`.** Il enchaîne tout sans
-intervention, écrit chaque sortie dans `.porte/<nom>.txt` (ignoré de git) et n'affiche qu'un tableau
+intervention, écrit chaque sortie dans `.porte/<pid>/<nom>.txt` (ignoré de git ; un sous-dossier par
+processus, ce dépôt faisant tourner des agents concurrents dans le même arbre) et n'affiche qu'un tableau
 `vérification → état → durée`. Le détail ne se lit **que** pour les lignes rouges. Le gain n'est pas
 sur l'horloge : c'est que l'agent de porte n'ingère plus des milliers de lignes de sortie, et que
 **l'utilisateur peut lancer la porte lui-même**, sans agent.
@@ -81,8 +83,11 @@ défaut de chacun est mesuré, pas choisi par symétrie.
 Huit familles — `domaine`, `service`, `api`, `repository`, `migration`, `atlas`, `oracle`,
 `divers` — sont posées **automatiquement à la collecte** par `tests/conftest.py`, d'après le nom du
 module : les 249 fichiers de test vivent à plat, le chemin ne discrimine rien. `--strict-markers`
-est activé, sans quoi un `-m domaien` mal tapé ne sélectionnerait rien **en silence**, et la porte
-se croirait verte.
+est activé : il fait échouer un marqueur **posé** sans être déclaré. ⚠️ Il ne valide **pas**
+l'expression `-m` — mesuré : `pytest -m domaien` rend `no tests collected` sans broncher. Ce qui
+protège d'une expression vide est le **code de sortie 5** de pytest, que `porte.py` lit comme
+rouge ; et ce qui protège d'une famille inexistante dans une expression **valide** est
+`test_l_etage_rapide_ne_selectionne_que_des_familles_existantes`.
 
 **5. `ci.yml` reste la référence, et un test garde la correspondance.** `porte.py` cite pour chaque
 vérification la ligne `run:` correspondante ; `tests/test_porte_couvre_la_ci.py` compare les deux
@@ -98,31 +103,58 @@ un test. Sans lui, la porte locale passerait au vert sur un dépôt que la CI re
 `node_modules` au lockfile — la garde contre le piège `@emnapi`. Seize secondes ne s'échangent pas
 contre un trou dans une vérification.
 
+**8. `jsdom` n'est instancié que pour les tests qui en ont besoin.** `vitest` le montait pour les
+134 fichiers de test du front, alors que `environment` cumulait **423,8 s** de temps worker contre
+66 s de tests réels. Deux projets Vitest, répartis par une convention que le dépôt suivait déjà sans
+le savoir : `.test.tsx` → composant → `jsdom` (60 fichiers, **tous** important Testing Library) ;
+`.test.ts` → logique pure → `node`. Mesuré à suite complète : **224,5 s → 150 s**.
+
+⚠️ Les exceptions sont une **table justifiée**, pas une liste. La détection automatique ne voit que
+les usages **directs** du DOM ; un besoin **transitif** — un test qui n'écrit ni `document` ni
+`localStorage` mais exerce un chemin qui en dépend — ne se détecte pas et s'inscrit à la main avec
+sa raison. Trois modules étaient dans ce cas et exerçaient sous `node` des chemins morts
+(`appliquerTheme` sort tôt sans `document`, un store `persist` devient inopérant sans
+`localStorage`) : ils restaient **verts en couvrant moins**.
+
+**9. Du CPU et des tokens contre du temps humain, jamais l'inverse.** L'arbitrage du 19/09/2026 qui
+a commandé cette US : une passe qui consomme plus vaut mieux que cinq qui consomment moins, mais
+**jamais** en dégradant une vérification. Conséquences opérationnelles : on parallélise **quand
+c'est mesuré gagnant** (décision 3), on lance les portes en arrière-plan, on ne cible pas la porte
+après correctifs. La règle vit dans `CLAUDE.md`
+(`<!--regle:cpu-et-tokens-contre-temps-humain-->`) et son artefact d'application est
+[`docs/checklist-implementation.md`](../checklist-implementation.md), tirée du dépouillement des
+152 corps de commit de correction de revue. ⚠️ **Cette checklist est un fichier à lire, pas un
+mécanisme** : rien ne la vérifie, et c'est sa limite — dite en tête du fichier.
+
 ## Conséquences
 
 **Ce qu'on gagne, honnêtement.** L'étage complet ne devient **pas** plus rapide : 845 s mesurés
 contre une médiane historique de 11 à 13 minutes — c'est un statu quo. Ce qui change est ailleurs :
 
-1. **Un étage rapide de ~46 s** sur 2719 tests, `ruff`, `mypy --strict`, l'atlas et le typage
+1. **Un étage rapide de ~30 s** sur 2738 tests, `ruff`, `mypy --strict`, l'atlas et le typage
    TypeScript. Il n'existait pas. C'est le seul vrai gain, et il porte sur la **fréquence** de
    vérification, pas sur sa durée.
 2. **La porte ne se lance plus pendant la revue.** C'est la cause mesurée de la seule passe à
    40 minutes, et aucune optimisation de `pytest` n'y aurait changé quoi que ce soit.
 3. **La correspondance avec la CI devient vérifiée** au lieu d'être supposée.
-4. **L'utilisateur peut lancer la porte seul**, sans agent ni session.
+4. **L'utilisateur peut lancer la porte seul**, sans agent ni session, et **sans activer le
+   venv** : `porte.py` cherche le sien à côté de lui, faute de quoi la commande prescrite
+   (`python backend/porte.py`) tomberait sur l'interpréteur système et rendrait un tableau tout
+   rouge qu'on prendrait pour une régression.
 
 ⚠️ **Ce que l'étage rapide ne couvre pas**, et c'est le risque principal : les **776 tests d'API**,
-les migrations, les repositories, `eslint`, `prettier`, `vitest`, le `build` et les deux audits. Il
+les migrations, les repositories, `eslint`, `prettier`, `vitest`, le `build`, les deux audits
+et les **cliquets documentaires** de `test_atlas_corpus` (famille `atlas`, 43,8 s mesurées : elle
+doublerait l'étage). Il
 valide la **règle métier**, jamais l'intégration. Une US qui touche un endpoint, une migration ou le
 rendu front n'est **pas** vérifiée par lui, et il ne remplace jamais l'étage complet avant la PR.
 
 ⚠️ **Un module de test hors convention de nommage tombe en `divers` sans rien signaler**, et sort
-de fait de l'étage rapide. `tests/test_familles_de_tests.py` gèle la liste des 34 modules
+de fait de l'étage rapide. `tests/test_familles_de_tests.py` gèle la liste des 35 modules
 actuellement hors convention : un module neuf y fait échouer un test.
 
-**Ce qui reste ouvert.** `vitest` instancie **jsdom pour ses 133 fichiers** alors que 69 n'ont aucun
-besoin d'un DOM (**~67 s** mesurés comme récupérables). La collecte pytest coûte **7,5 s** à chaque
-invocation, soit 16 % de l'étage rapide — inscrite en [`DETTE-105`](../dette.md#dette-105--la-collecte-pytest-coûte-75-s-à-chaque-invocation).
+**Ce qui reste ouvert.** La collecte pytest coûte **7,5 s** à chaque invocation, soit 16 % de
+l'étage rapide — inscrite en [`DETTE-105`](../dette.md#dette-105--la-collecte-pytest-coûte-75-s-à-chaque-invocation).
 
 **Ce qui a été écarté.** `pytest-xdist` : la mesure 3 montre que `pytest` souffre déjà de la
 contention sur 4 cœurs ; lui en donner davantage aggraverait ce qu'on vient de constater. Il
@@ -149,4 +181,13 @@ question.
   chevauchement entre familles
 - `backend/verifier_requirements.py` — le contrôle extrait de `ci.yml`, appelé par les deux portes
 - `.github/workflows/ci.yml` — appelle désormais `verifier_requirements.py` au lieu de sa copie
+- `.claude/agents/porte-mecanique.md` — l'organe de la décision 1 : il lance une commande et lit
+  les seuls journaux rouges, au lieu d'ingérer la sortie de douze
+- `.claude/commands/revue-us.md` § étape 0 — les trois contrôles qui restent à l'œil (mode, compte
+  attendu, présence de `pytest` et `vitest`), les seuls que la porte ne peut pas faire d'elle-même
+- `frontend/vite.config.ts` — les deux projets Vitest de la décision 8
+- `frontend/src/test-environnement.ts` — la table justifiée des exceptions et la détection des
+  usages directs
+- `frontend/src/test-environnement.test.ts` — vérifie les deux sens, plus qu'aucun fichier de test
+  n'échappe aux deux projets
 - `CLAUDE.md` § Commandes — les deux étages, et la règle « jamais pendant la revue »

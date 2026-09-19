@@ -66,9 +66,9 @@ ruff check . && ruff format .
 # Frontend (depuis frontend/)
 npm run dev / build / lint / format / typecheck
 
-# Porte mécanique locale (depuis backend/) — ADR-0110
-python porte.py --rapide      # ~46 s : ruff, mypy, domaine+service, atlas, tsc
-python porte.py               # la CI en entier, trois groupes en parallèle (~15 min)
+# Porte mécanique locale (depuis la RACINE ; le venv n'a pas à être activé) — ADR-0110
+python backend/porte.py --rapide   # ~30 s : ruff, mypy, domaine+service+oracle, atlas, tsc
+python backend/porte.py            # la CI en entier, en SEQUENTIEL (~13 min) — ADR-0110 §3
 
 # Application complète (proche production, port fixe)
 cd backend && python run_dev.py        # --no-build réutilise frontend/dist/
@@ -77,8 +77,12 @@ cd backend && python run_dev.py        # --no-build réutilise frontend/dist/
 **L'étage rapide se lance à chaque étape d'implémentation**, l'étage complet **une fois**, avant la
 revue — et **jamais pendant** : les deux se disputent les cœurs de la machine, et c'est ce qui a
 produit la seule porte à 40 minutes de [`docs/metriques-revue.md`](docs/metriques-revue.md).
-⚠️ L'étage rapide couvre la **règle métier**, jamais l'intégration : ni API, ni migrations, ni
-`vitest`, ni `eslint`, ni les audits. Il n'autorise pas à sauter l'étage complet.
+⚠️ L'étage rapide couvre la **règle métier** (domaine, service, oracle 120), jamais
+l'intégration : ni API, ni migrations, ni repositories, ni `vitest`, ni `eslint`, ni le `build`,
+ni les audits, **ni les cliquets documentaires** de `test_atlas_corpus`. Son tableau affiche
+`6/14 lancées` et nomme les manquantes ; il n'autorise pas à sauter l'étage complet.
+⚠️ Le parallélisme n'aide qu'à l'étage **rapide** : à l'étage complet il est plus lent (`pytest`
+double sous contention), d'où le défaut séquentiel.
 
 `pre-commit` (racine) lance ruff, mypy strict, le garde-fou d'isolation du domaine, eslint et
 prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et sur `main`.
@@ -244,12 +248,15 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 
 - **Du CPU et des tokens contre du temps humain, jamais l'inverse.** <!--regle:cpu-et-tokens-contre-temps-humain--> Le coût réel du projet n'est
   ni le token ni la seconde de calcul : c'est le **nombre d'allers-retours** et **l'attente de
-  l'utilisateur**. Une passe qui consomme plus vaut mieux que cinq qui consomment moins — 183 US
-  livrées ont produit ~155 commits de correction de revue et **21 US à seconde passe**. Donc :
-  **paralléliser plutôt que raccourcir** (les vérifications indépendantes partent ensemble), lancer
+  l'utilisateur**. Une passe qui consomme plus vaut mieux que cinq qui consomment moins — **182 PR
+  fusionnées** ont produit ~155 commits de correction de revue et **21 US à seconde passe**
+  *(le compte d'**US** fait autorité dans [`SUIVI-US.md`](journal-d-avancement/SUIVI-US.md) ; 182
+  est un compte de **PR**, les deux ne se confondent pas)*. Donc :
+  **paralléliser plutôt que raccourcir** — *quand c'est mesuré gagnant : la porte complète, elle,
+  est plus rapide en séquentiel (ADR-0110 §3)* —, lancer
   les portes **en arrière-plan** pendant qu'on rédige commit et journal, et préférer un sous-agent
   qui **mesure** à une supposition. ⚠️ **Ce qui est exclu : acheter du temps en dégradant une
-  vérification** — pas de porte ciblée après correctifs (on relance tout, parallélisé), pas de
+  vérification** — pas de porte ciblée après correctifs (on relance **tout**), pas de
   mineur laissé de côté pour aller plus vite. *(Arbitrage du 19/09/2026, cf.
   [ADR-0110](docs/adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md).)*
 

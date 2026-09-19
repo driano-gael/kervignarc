@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
-from tests.conftest import FAMILLE_PAR_DEFAUT, FAMILLES_DE_TESTS, famille_du_module
+from porte import PYTEST_RAPIDE, _selection
+from tests.conftest import (
+    FAMILLE_PAR_DEFAUT,
+    FAMILLES_DE_TESTS,
+    famille_du_module,
+)
 
 RACINE = Path(__file__).parent
 
@@ -56,7 +62,7 @@ MODULES_SANS_FAMILLE: frozenset[str] = frozenset(
 
 
 def _tiges_des_modules() -> set[str]:
-    return {chemin.stem for chemin in RACINE.glob("test_*.py")}
+    return {chemin.stem for chemin in RACINE.rglob("test_*.py")}
 
 
 def test_les_familles_sont_disjointes() -> None:
@@ -91,3 +97,46 @@ def test_le_gel_ne_cite_que_des_modules_encore_hors_convention() -> None:
     assert (
         not reclasses
     ), f"Ces modules ont rejoint une famille et doivent sortir du gel : {sorted(reclasses)}"
+
+
+def _familles_connues() -> set[str]:
+    return {nom for nom, _ in FAMILLES_DE_TESTS} | {FAMILLE_PAR_DEFAUT}
+
+
+def test_les_marqueurs_declares_sont_exactement_les_familles() -> None:
+    """Deux copies indépendantes : `conftest.py` pose les familles, `pyproject.toml` les déclare.
+
+    ⚠️ Renommer une famille d'un seul côté laisse tout vert et vide l'étage rapide de sa
+    sélection — `--strict-markers` ne rattrape que le marqueur **posé**, jamais l'expression `-m`.
+    """
+    config = tomllib.loads((RACINE.parent / "pyproject.toml").read_text(encoding="utf-8"))
+    declares = {
+        ligne.split(":", 1)[0].strip()
+        for ligne in config["tool"]["pytest"]["ini_options"]["markers"]
+    }
+    assert declares == _familles_connues(), (
+        f"déclarés dans pyproject.toml : {sorted(declares)} ; "
+        f"posés par conftest.py : {sorted(_familles_connues())}"
+    )
+
+
+def test_l_etage_rapide_ne_selectionne_que_des_familles_existantes() -> None:
+    """Le vrai trou que `--strict-markers` ne ferme pas : une faute dans l'expression `-m`.
+
+    ⚠️ `-m "domaine or servce"` sélectionne les tests `domaine`, sort **0**, et la porte rapide
+    se déclare verte avec 40 % des tests en moins. Mesuré : `--strict-markers` ne valide pas
+    l'expression, seul un `-m` qui ne sélectionne **rien** est rattrapé (code de sortie 5).
+    """
+    # ⚠️ Le **dernier** `-m` : le premier est celui de `python -m pytest`.
+    jetons = list(PYTEST_RAPIDE.commande)
+    expression = jetons[len(jetons) - jetons[::-1].index("-m")]
+    nommees = {mot for mot in re.findall(r"[a-z_]+", expression) if mot not in {"or", "and", "not"}}
+    inconnues = nommees - _familles_connues()
+    assert (
+        not inconnues
+    ), f"L'étage rapide sélectionne des familles qui n'existent pas : {inconnues}"
+
+
+def test_l_etage_rapide_joue_bien_des_tests() -> None:
+    """Sans ce test, retirer `PYTEST_RAPIDE` de la sélection rend `--rapide` vert sans un test."""
+    assert PYTEST_RAPIDE in _selection(rapide=True)["backend"]

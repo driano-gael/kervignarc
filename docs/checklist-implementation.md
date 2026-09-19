@@ -4,7 +4,8 @@ Les défauts que `/revue-us` trouve **le plus souvent**, transformés en questio
 **pendant** qu'on code — et non après, quand une revue les relève.
 
 > **D'où elle vient.** Dépouillement des **152 corps de commit de correction de revue** de `main`
-> (19/09/2026, 433 Ko). Chaque case correspond à une famille observée **au moins 12 fois**. Ce n'est
+> (19/09/2026, 433 Ko). Chaque case **chiffrée** correspond à une famille observée au moins 12 fois ;
+> les autres sont des rappels de règle du projet, sans compte. Ce n'est
 > pas une liste de bonnes pratiques : c'est la liste de ce qui est réellement passé au travers ici.
 >
 > **Comment s'en servir.** À lire **au début** d'une US, pas à la fin. Une case n'est cochable que
@@ -68,6 +69,7 @@ Les défauts que `/revue-us` trouve **le plus souvent**, transformés en questio
       `stories/`, **dans le même commit**. *(22 commits.)*
 - [ ] **Garde-fou** — Si j'en écris un : qu'est-ce qu'il **ne** couvre **pas** ? Je l'ai fait
       échouer exprès. Un garde-fou qui promet plus qu'il ne tient est pire que pas de garde-fou.
+      *(17 commits.)*
 - [ ] **Suivi** — US à surface visible : `SUIVI-US.md` **et** `00-resume-projet.md` **et** le
       fichier daté, dans le commit de l'US. *(21 commits.)*
 - [ ] **Fiche fonctionnelle** — `docs/fonctionnel/<ExxUSyyy>.md` décrit ce qui **existe** et est
@@ -77,6 +79,9 @@ Les défauts que `/revue-us` trouve **le plus souvent**, transformés en questio
 
 - [ ] **Le diff entier, d'un bloc** — `git diff main...HEAD` relu en une fois. C'est l'angle de
       `revue-axe-c1`, le seul qui attrape les défauts de conjonction, et je code par morceaux.
+- [ ] **Aucun pipe sur une vérification** — `pytest | tail` rapporte l'exit de `tail`, pas de
+      `pytest` : une suite rouge devient verte **en silence**. Rediriger vers un fichier, puis
+      `echo EXIT=$?`. ⚠️ Vaut pour `grep` aussi, qui sort `1` quand il ne trouve rien.
 - [ ] **Porte complète** — `python porte.py`, **jamais pendant la revue** : les deux se disputent
       les 4 cœurs, et c'est ce qui a produit la seule porte à 40 minutes du registre.
 

@@ -100,8 +100,10 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
 # Posés automatiquement à la collecte par `tests/conftest.py` (ADR-0110), d'après le nom du
-# module. `--strict-markers` fait échouer un marqueur non déclaré : sans lui, `-m domaien`
-# ne sélectionnerait rien, en silence, et la porte rapide se croirait verte.
+# module. `--strict-markers` fait échouer un marqueur **posé** sans être déclaré ici.
+# ⚠️ Il ne valide PAS l'expression `-m` : `pytest -m domaien` rend « no tests collected »
+# sans broncher (mesuré le 19/09/2026). Le code de sortie 5 rattrape une expression vide ;
+# `test_l_etage_rapide_ne_selectionne_que_des_familles_existantes` rattrape le reste.
 markers = [
     "domaine: règles métier pures — ni base, ni framework (règle 1)",
     "service: orchestration métier sur doublures en mémoire",

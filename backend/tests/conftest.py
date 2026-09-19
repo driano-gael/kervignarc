@@ -82,7 +82,7 @@ ConnecterAdmin = Callable[["TestClient"], None]
 # --- Familles de tests : marquage automatique à la collecte (ADR-0110) --------------------
 #
 # Le classement se lit sur le **nom du module**, jamais sur son chemin : les 249 fichiers de
-# test vivent à plat dans `tests/`.
+# test vivent à plat dans `tests/` (~250 au 19/09/2026).
 # ⚠️ Un module qui sort de ces conventions tombe en `divers` **sans rien signaler** —
 # `test_familles_de_tests.py` gèle la liste des non classés pour que l'ajout d'un module hors
 # convention soit un échec de test, pas un silence.

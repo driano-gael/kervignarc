@@ -1,9 +1,9 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 // Extension `.js` exigée par `tsc` sur ce fichier (`moduleResolution: node16`) ; Vite la résout
 // vers le source `.ts`.
-import { TESTS_TS_AVEC_DOM } from './src/test-environnement.js'
+import { CHEMINS_AVEC_DOM } from './src/test-environnement.js'
 
 // En dev, le front (serveur Vite) et le backend (Uvicorn, port 8000) sont sur des origins
 // distincts : on **proxifie** l'API, la sonde de santé et le WebSocket vers le backend.
@@ -33,7 +33,7 @@ export default defineConfig({
           name: 'dom',
           environment: 'jsdom',
           setupFiles: ['./src/test-setup.ts'],
-          include: ['src/**/*.test.tsx', ...TESTS_TS_AVEC_DOM],
+          include: ['src/**/*.test.tsx', ...CHEMINS_AVEC_DOM],
         },
       },
       {
@@ -42,7 +42,7 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           include: ['src/**/*.test.ts'],
-          exclude: [...TESTS_TS_AVEC_DOM],
+          exclude: [...configDefaults.exclude, ...CHEMINS_AVEC_DOM],
         },
       },
     ],

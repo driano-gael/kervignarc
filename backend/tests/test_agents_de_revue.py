@@ -19,6 +19,7 @@ au `re`, et faire entrer PyYAML au dépôt pour cinq en-têtes serait une lib «
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -122,4 +123,27 @@ def test_la_porte_delegue_au_script_plutot_que_de_prescrire_des_commandes() -> N
     assert "porte.py" in texte, (
         "porte-mecanique.md ne lance plus `porte.py` : les commandes refusées par "
         ".claude/settings.json ne seraient alors couvertes par aucun test."
+    )
+
+
+def test_la_commande_prescrite_est_autorisee_par_le_depot() -> None:
+    """Le mode de panne d'origine est intact : une commande non autorisée ne rend aucun `EXIT`.
+
+    ⚠️ L'enjeu a changé d'échelle depuis E00US031 — ce n'est plus une étape de la porte qui
+    manquerait, c'est **toute** la porte qui ne partirait pas, l'agent ayant interdiction de
+    rejouer les commandes à la main.
+    """
+    motif = re.compile(r"```bash\n(.+?)\n```", re.S)
+    bloc = motif.search((AGENTS / "porte-mecanique.md").read_text("utf-8"))
+    assert bloc, "plus de bloc de commande dans porte-mecanique.md"
+    reglages = json.loads((RACINE / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    prefixes = [
+        entree[len("Bash(") : -len(":*)")]
+        for entree in reglages["permissions"]["allow"]
+        if entree.startswith("Bash(") and entree.endswith(":*)")
+    ]
+    commande = bloc.group(1).split(";")[0].strip()
+    assert any(commande.startswith(prefixe) for prefixe in prefixes), (
+        f"`{commande}` n'est couverte par aucune entrée `allow` de .claude/settings.json : "
+        "la porte demanderait une permission et ne rendrait aucun code de sortie."
     )

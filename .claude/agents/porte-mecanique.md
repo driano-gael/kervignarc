@@ -22,12 +22,19 @@ emportés et la traçabilité du travail d'autrui détruite). `<!-- DETTE-069 --
 ## Étape 1 — Lancer la porte
 
 ```bash
-cd backend && .venv/Scripts/python.exe porte.py; echo "EXIT=$?"
+python backend/porte.py; echo "EXIT=$?"
 ```
 
-C'est tout. Une seule commande, un seul `EXIT`. Ajoute `--rapide` **uniquement** si l'appelant te le
-demande explicitement — l'étage rapide ne couvre pas l'intégration (ni API, ni migrations, ni
-`vitest`, ni `eslint`, ni les audits) et ne peut donc pas fonder un verdict avant une PR.
+C'est tout : une seule commande, un seul `EXIT`, **depuis la racine du dépôt**. Pas de chemin de
+venv — `porte.py` cherche le sien à côté de lui, et un `.venv/Scripts/…` est un fait de poste qui
+n'a rien à faire dans un fichier versionné. ⚠️ S'il n'en trouve pas et que l'outillage manque, la
+porte sort en **2** avec « venv incomplet, pas un diff cassé » : c'est un problème d'environnement
+— rends `PORTE INCOMPLÈTE`, ne réinstalle rien.
+
+⚠️ N'ajoute `--rapide` que si l'appelant te le demande **explicitement**. L'étage rapide ne joue ni
+l'API, ni les migrations, ni les repositories, ni `vitest`, ni `eslint`, ni le `build`, ni les
+audits, ni les **cliquets documentaires** de `test_atlas_corpus` : il ne fonde **aucun** verdict
+avant une PR. Le tableau le dit lui-même — il affiche `6/14 lancées` et nomme les huit manquantes.
 
 Elle imprime un tableau `vérification → état → durée`, un compte `n/m lancées`, et le **chemin du
 journal** de chaque ligne rouge. Reporte ce tableau tel quel.

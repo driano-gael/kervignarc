@@ -1,7 +1,7 @@
 """Porte mécanique locale : les vérifications de `ci.yml`, en deux étages (ADR-0110).
 
-`--rapide` (~46 s) tient dans une boucle d'implémentation ; sans option, tout est joué.
-Les trois groupes tournent en parallèle, comme les trois jobs GitHub.
+`--rapide` (~50 s) tient dans une boucle d'implémentation et parallélise ses trois groupes ;
+sans option, tout est joué, **en séquentiel** — le parallèle y est plus lent (ADR-0110 §3).
 
     python porte.py --rapide
 """
@@ -26,6 +26,8 @@ RACINE = Path(__file__).resolve().parent.parent
 # « verbatim » qui ment. Le tableau final imprime le chemin, personne n'a donc à le deviner.
 SORTIES = RACINE / ".porte" / str(os.getpid())
 
+LIMITE_PAR_DEFAUT = 1800
+
 
 @dataclasses.dataclass(frozen=True)
 class Verification:
@@ -36,6 +38,7 @@ class Verification:
     rapide: bool = False
     essais: int = 1
     environnement: tuple[tuple[str, str], ...] = ()
+    limite: int = LIMITE_PAR_DEFAUT
 
 
 # ⚠️ Le job `backend` de la CI **ne construit pas le front** : `npm run build` vit dans un autre
@@ -46,11 +49,23 @@ class Verification:
 SANS_BUILD_FRONT = (("KERVIGNARC_FRONTEND_DIST", str(RACINE / ".porte" / "dist-absent")),)
 
 
-# ⚠️ `ligne_ci` est la ligne `run:` correspondante de `.github/workflows/ci.yml`, à la lettre.
-# `tests/test_porte_couvre_la_ci.py` compare les deux listes : une vérification ajoutée à la
-# CI sans l'être ici fait rougir ce test. C'est ce qui tient les deux fichiers ensemble —
-# sans lui, la porte locale passerait au vert sur un dépôt que la CI refuse (ADR-0110).
-PY = (sys.executable,)
+def _python_du_venv() -> str:
+    # ⚠️ La porte se lance `python backend/porte.py` depuis la racine, et ce `python` est
+    # souvent celui du **système** — qui n'a ni ruff, ni mypy, ni pytest : tout le groupe
+    # backend sortirait rouge sur « No module named ruff ». On cherche donc le venv à côté de
+    # ce fichier, plutôt que d'écrire un chemin de poste dans la commande prescrite.
+    for relatif in ("Scripts/python.exe", "bin/python"):
+        candidat = Path(__file__).resolve().parent / ".venv" / relatif
+        if candidat.is_file():
+            return str(candidat)
+    return sys.executable
+
+
+# ⚠️ `ligne_ci` cite la ligne `run:` correspondante de `ci.yml`, à la lettre.
+# `tests/test_porte_couvre_la_ci.py` compare les deux listes **et** confronte `ligne_ci` à
+# `commande` : une étiquette qui ne décrit plus ce qui est lancé fait rougir un test. Sans cette
+# seconde confrontation, la citation serait déclarée au lieu d'être vérifiée (ADR-0110 §5).
+PY = (_python_du_venv(),)
 
 BACKEND: tuple[Verification, ...] = (
     Verification("ruff (lint)", (*PY, "-m", "ruff", "check", "."), "backend", "ruff check .", True),
@@ -104,6 +119,7 @@ FRONTEND: tuple[Verification, ...] = (
         "frontend",
         "npm audit --audit-level=high --fetch-timeout=60000",
         essais=3,
+        limite=300,
     ),
 )
 
@@ -113,14 +129,15 @@ GROUPES: dict[str, tuple[Verification, ...]] = {
     "frontend": FRONTEND,
 }
 
-# L'étage rapide restreint pytest au domaine et au service : 2719 tests en ~19 s, contre
-# ~445 s pour la suite. La sélection passe par un marqueur et jamais par une liste de
-# chemins — 67 chemins en arguments coûtent 13,2 s de collecte là où le répertoire entier
-# (249 fichiers) n'en coûte que 7,5 (mesuré le 19/09/2026 sur Windows). Ces 7,5 s restent
-# payées ici, `-m` ne filtrant qu'après la collecte : DETTE-105.
+# L'étage rapide restreint pytest au domaine, au service et à l'oracle : 2738 tests en ~23 s,
+# contre ~460 s pour la suite. La sélection passe par un marqueur et jamais par une liste de
+# chemins — 67 chemins en arguments coûtent 13,2 s de collecte là où le répertoire entier en
+# coûte 7,5 (mesuré le 19/09/2026 sur Windows). Ces 7,5 s restent payées ici : DETTE-105.
+# ⚠️ La famille `atlas` en est **exclue** : 43,8 s mesurées, elle doublerait l'étage. Les
+# cliquets documentaires de `test_atlas_corpus` ne sont donc pas joués par `--rapide`.
 PYTEST_RAPIDE = Verification(
-    "pytest (domaine + service)",
-    (*PY, "-m", "pytest", "-m", "domaine or service"),
+    "pytest (domaine + service + oracle)",
+    (*PY, "-m", "pytest", "-m", "domaine or service or oracle"),
     "backend",
     "",
     True,
@@ -145,7 +162,6 @@ def _resoudre(commande: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _executer(verification: Verification) -> Resultat:
-    SORTIES.mkdir(parents=True, exist_ok=True)
     journal = SORTIES / f"{verification.nom.replace(' ', '_').replace('/', '-')}.txt"
     debut = time.monotonic()
     code = 1
@@ -156,9 +172,9 @@ def _executer(verification: Verification) -> Resultat:
                 cwd=RACINE / verification.dossier,
                 capture_output=True,
                 shell=False,
-                env={**os.environ, **dict(verification.environnement)},
+                timeout=verification.limite,
             )
-        except OSError as erreur:
+        except (OSError, subprocess.TimeoutExpired) as erreur:
             # Une porte qui plante est plus dangereuse qu'une porte rouge : l'échec d'une
             # vérification ne doit jamais emporter les autres groupes.
             journal.write_text(f"{verification.commande[0]} : {erreur}\n", encoding="utf-8")
@@ -195,6 +211,22 @@ def _selection(rapide: bool) -> dict[str, tuple[Verification, ...]]:
     return retenues
 
 
+def _rendre_compte(resultats: list[Resultat], groupes: dict[str, tuple[Verification, ...]]) -> None:
+    # ⚠️ Le dénominateur est le total de `GROUPES`, **jamais** celui de la sélection : compter
+    # la sélection ferait afficher « 6/6 » à un étage rapide amputé de huit vérifications, ce
+    # qui est exactement le faux vert que ce compte existe pour interdire.
+    attendues = sum(len(v) for v in GROUPES.values())
+    joues = {r.nom for r in resultats}
+    absentes = [v.nom for groupe in groupes.values() for v in groupe if v.nom not in joues]
+    non_selectionnees = [v.nom for groupe in GROUPES.values() for v in groupe if v.nom not in joues]
+    print(f"\n  total — {len(resultats)}/{attendues} lancées — journaux : {SORTIES}")
+    if absentes:
+        print(f"  arrêtées par un rouge de leur groupe : {', '.join(absentes)}")
+    restantes = [n for n in non_selectionnees if n not in absentes]
+    if restantes:
+        print(f"  hors de cet étage : {', '.join(restantes)}")
+
+
 def main() -> int:
     # ⚠️ La console Windows est en cp1252 : un seul caractère hors de cette table dans un nom de
     # vérification faisait planter la porte **à l'affichage du tableau**, après que tout avait
@@ -203,10 +235,34 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     analyseur = argparse.ArgumentParser(description=__doc__)
-    analyseur.add_argument("--rapide", action="store_true", help="étage rapide")
-    analyseur.add_argument("--sequentiel", action="store_true", help="forcer le séquentiel")
-    analyseur.add_argument("--parallele", action="store_true", help="forcer le parallèle")
+    analyseur.add_argument(
+        "--rapide", action="store_true", help="étage rapide (~50 s) — ne fonde aucun verdict de PR"
+    )
+    mode = analyseur.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--sequentiel", action="store_true", help="forcer le séquentiel (mesure ADR-0110 §3)"
+    )
+    mode.add_argument(
+        "--parallele",
+        action="store_true",
+        help="forcer le parallèle — plus LENT à l'étage complet (ADR-0110 §3), pas en routine",
+    )
     options = analyseur.parse_args()
+
+    manquants = [
+        outil
+        for outil in ("ruff", "mypy", "pytest")
+        if subprocess.run((*PY, "-c", f"import {outil}"), capture_output=True).returncode != 0
+    ]
+    if manquants:
+        print(f"{PY[0]} n'a pas {', '.join(manquants)} : venv incomplet, pas un diff cassé.")
+        return 2
+
+    try:
+        SORTIES.mkdir(parents=True, exist_ok=True)
+    except OSError as erreur:
+        print(f"journaux impossibles à écrire dans {SORTIES} : {erreur}", file=sys.stderr)
+        return 2
 
     # ⚠️ Le parallélisme n'est bénéfique **qu'à l'étage rapide** (46 s contre 68 s mesurés le
     # 19/09/2026). À l'étage complet il est contre-productif : `pytest` y domine et **double**
@@ -223,15 +279,15 @@ def main() -> int:
         resultats = [r for lot in groupes.values() for r in _derouler(lot)]
     total = time.monotonic() - debut
 
-    largeur = max(len(r.nom) for r in resultats)
+    largeur = max((len(r.nom) for r in resultats), default=0)
     print(f"\n{'PORTE RAPIDE' if options.rapide else 'PORTE COMPLÈTE'}\n")
     for resultat in sorted(resultats, key=lambda r: r.nom):
         etat = "OK  " if resultat.code == 0 else "ROUGE"
         print(f"  {etat}  {resultat.nom:<{largeur}}  {resultat.duree:6.1f} s")
 
+    _rendre_compte(resultats, groupes)
     rouges = [r for r in resultats if r.code != 0]
-    attendues = sum(len(v) for v in groupes.values())
-    print(f"\n  total {total:.1f} s — {len(resultats)}/{attendues} lancées, {len(rouges)} rouge(s)")
+    print(f"  durée {total:.1f} s — {len(rouges)} rouge(s)")
     for resultat in rouges:
         print(f"\n--- {resultat.nom} ---\n{resultat.journal}")
     return 1 if rouges else 0

@@ -10462,7 +10462,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-09-19",
    "date_brute": "2026-09-19",
-   "extrait": "1. Les vérifications vivent dans un script, backend/porte.py. Il enchaîne tout sans intervention, écrit chaque sortie dans .porte/\u003cnom>.txt (ignoré de git) et n'affiche qu'un tableau vérification → état → durée. Le détail ne se lit que pour les lignes rouges. Le gain n'est pas sur l'horloge : c'est que l'agent de porte n'ingère plus des milliers de lignes de sortie, et que l'utilisateur peut lancer la porte lui-même, sans agent. 2. Deux étages. --rapide tourne pendant l'implémentation ; l'étage complet reproduit la CI et se lance une fois, avant la revue. 3. Parallèle à l'étage rapide, séquentiel à l'étage complet. Mesuré à conditions égales : | Étage | Séquentiel | Parallèle | […]",
+   "extrait": "1. Les vérifications vivent dans un script, backend/porte.py. Il enchaîne tout sans intervention, écrit chaque sortie dans .porte/\u003cpid>/\u003cnom>.txt (ignoré de git ; un sous-dossier par processus, ce dépôt faisant tourner des agents concurrents dans le même arbre) et n'affiche qu'un tableau vérification → état → durée. Le détail ne se lit que pour les lignes rouges. Le gain n'est pas sur l'horloge : c'est que l'agent de porte n'ingère plus des milliers de lignes de sortie, et que l'utilisateur peut lancer la porte lui-même, sans agent. 2. Deux étages. --rapide tourne pendant l'implémentation ; l'étage complet reproduit la CI et se lance une fois, avant la revue. 3. Parallèle à l'étage rapide, […]",
    "fichier": "docs/adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md",
    "identifiant": "0110",
    "liens": [
@@ -10543,6 +10543,27 @@ window.ATLAS.decisions = {
     },
     {
      "chemin": "backend/verifier_requirements.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/test-environnement.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/test-environnement.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/vite.config.ts",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
