@@ -462,11 +462,13 @@ class ServiceTournois:
                 (descendance.duels, "duel", "duels"),
                 (descendance.forfaits, "forfait", "forfaits"),
                 (descendance.barrages, "barrage", "barrages"),
+                (descendance.postes, "poste enrôlé", "postes enrôlés"),
+                (descendance.scoreurs, "scoreur", "scoreurs"),
+                (descendance.entrees_audit, "acte au journal", "actes au journal"),
             )
             if nombre
         ]
-        if descendance.remboursements:
-            motifs.append(_accorde_remboursements(descendance))
+        motifs.extend(_motifs_d_argent(descendance))
         raise TournoiPeuple(
             f"« {tournoi.nom} » porte {_enumere(motifs)}. Tout sera détruit et rien ne pourra "
             "être récupéré ; confirmez pour supprimer quand même."
@@ -482,16 +484,29 @@ def _accorde(nombre: int, singulier: str, pluriel: str) -> str:
     return f"{nombre} {singulier if nombre == 1 else pluriel}"
 
 
-def _accorde_remboursements(descendance: DescendanceTournoi) -> str:
-    """Les remboursements, **avec la somme encaissée** qu'ils représentent (E01US026).
+def _motifs_d_argent(descendance: DescendanceTournoi) -> list[str]:
+    """Les deux natures **monétaires**, chiffrées en euros et jamais confondues (E01US026).
 
-    ⚠️ C'est la seule protection possible sur cette nature : le registre des remboursements a
-    `tournoi_id` pour unique FK, donc il part avec le tournoi — il n'existe nulle part où ouvrir un
-    poste de contrepartie, à la différence de DETTE-018 (suppression d'archer, registre survivant).
+    ⚠️ `encaisse` est l'argent **reçu** (inscriptions payées), `remboursements` ce qui était déjà
+    déclaré à rendre : les additionner compterait deux fois la même pièce. Aucune contrepartie n'est
+    possible — le registre a `tournoi_id` pour unique FK, donc il part avec le tournoi (à la
+    différence de DETTE-018, où il survit). Chiffrer est tout ce qui reste.
     """
-    nombre = _accorde(descendance.remboursements, "remboursement", "remboursements")
-    euros = f"{descendance.montant_encaisse_centimes / 100:.2f}".replace(".", ",")
-    return f"{nombre} ({euros} € encaissés, effacés sans contrepartie)"
+    motifs = []
+    if descendance.inscriptions_payees:
+        payees = _accorde(
+            descendance.inscriptions_payees, "inscription payée", "inscriptions payées"
+        )
+        motifs.append(f"{payees} ({_euros(descendance.encaisse_centimes)} encaissés)")
+    if descendance.remboursements:
+        nombre = _accorde(descendance.remboursements, "remboursement", "remboursements")
+        motifs.append(f"{nombre} ({_euros(descendance.remboursements_centimes)} restant à rendre)")
+    return motifs
+
+
+def _euros(centimes: int) -> str:
+    """« 4550 » → « 45,50 € » — le séparateur décimal est la virgule, le lecteur est un bénévole."""
+    return f"{centimes / 100:.2f}".replace(".", ",") + " €"
 
 
 def _enumere(motifs: list[str]) -> str:

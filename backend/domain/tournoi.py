@@ -278,10 +278,11 @@ def _lieu_normalise(lieu: str | None) -> str | None:
 class DescendanceTournoi:
     """Ce qu'un tournoi emporterait s'il était supprimé — un décompte, pas des entités (ADR-0077).
 
-    ⚠️ **Ne compte que ce qui se perd, jamais la configuration** : départs, catégories, blasons et
-    gabarits partent aussi, mais se ressaisissent — les inclure ferait surgir la confirmation sur
-    un tournoi d'essai où il n'y a rien à perdre, et un garde-fou trop fréquent cesse d'être lu
-    (arbitrage du commanditaire, 19/09/2026 ; `stories/` E01US026, puce « CA — vide »).
+    ⚠️ **Le critère est « est-ce que ça se ressaisit ? », pas « est-ce de la donnée ? »** — d'où
+    l'entrée des **postes** et des **scoreurs**, dont le code est tiré au hasard : les QR déjà
+    collés sur les buttes ne se retrouvent pas. Restent dehors, nommément : `depart`, `categorie`,
+    `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi` — configuration qui se refait
+    (arbitrage du 19/09/2026 ; `stories/` E01US026, puce « CA — vide »).
     """
 
     archers: int = 0
@@ -291,12 +292,23 @@ class DescendanceTournoi:
     duels: int = 0
     forfaits: int = 0
     barrages: int = 0
+    # ⚠️ Un tournoi entièrement **préparé** mais sans un seul archer n'est pas vide : ses postes
+    # enrôlés et ses scoreurs codés portent des identifiants tirés au hasard, donc irrécupérables
+    # (revue adversariale d'E01US026 — sans eux, la veille du tournoi, trente tablettes et leurs
+    # QR imprimés partaient sur un seul clic).
+    postes: int = 0
+    scoreurs: int = 0
+    # Le journal d'audit est le seul contenu purgé qu'aucun geste ne reconstitue : c'est une trace,
+    # pas de la configuration (E16US016 lui a donné son écran).
+    entrees_audit: int = 0
+    # Deux sommes **distinctes**, et les confondre était un défaut de la 1ʳᵉ passe : `encaisse` est
+    # l'argent réellement reçu (inscriptions payées, au tarif du créneau) ; `remboursements` est ce
+    # qui avait déjà été déclaré à rendre. Le registre part avec le tournoi — sa seule FK est
+    # `tournoi_id` —, donc aucune contrepartie ne peut être ouverte : on chiffre, faute de tracer.
+    inscriptions_payees: int = 0
+    encaisse_centimes: int = 0
     remboursements: int = 0
-    # Somme encaissée **effacée sans contrepartie** : supprimer le tournoi emporte le registre des
-    # remboursements lui-même (`remboursement.tournoi_id` est sa seule FK), donc il n'y a nulle part
-    # où ouvrir un poste. Le montant est annoncé à la confirmation faute de pouvoir être tracé
-    # (ADR-0077 § Conséquences ; à distinguer de DETTE-018, où le registre, lui, survit).
-    montant_encaisse_centimes: int = 0
+    remboursements_centimes: int = 0
 
     def est_vide(self) -> bool:
         """Vrai si la suppression ne perd rien d'irrécupérable — aucune confirmation à demander."""
@@ -309,6 +321,10 @@ class DescendanceTournoi:
                 self.duels,
                 self.forfaits,
                 self.barrages,
+                self.postes,
+                self.scoreurs,
+                self.entrees_audit,
+                self.inscriptions_payees,
                 self.remboursements,
             )
         )

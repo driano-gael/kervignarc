@@ -3,15 +3,6 @@
 **Séparés du domaine** : le domaine ignore SQLAlchemy (ADR-0003). Un repository
 (`repositories.py`) traduit dans les deux sens ORM ↔ agrégat de domaine. Ces classes
 peuplent `Base.metadata`, cible des migrations Alembic.
-
-⚠️ **Aucune FK de la descendance d'un tournoi ne porte `ON DELETE CASCADE`, et c'est une
-décision, pas un oubli** (ADR-0077, `docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md`)
-: la purge est **applicative**, dans `TournoiRepositorySQL.supprimer`, parce qu'une cascade en base
-armerait une purge silencieuse sur tout autre chemin — import, script, futur endpoint. En ajouter
-une ici contournerait la confirmation, pas seulement la cascade. Les quelques `ON DELETE CASCADE`
-du fichier sont des **exceptions motivées sur place** : donnée dérivée reconstructible, ou
-composant strict d'un agrégat. Une table neuve rattachée au tournoi s'ajoute à cette purge **et**
-à son décompte (`compter_descendance`), sans quoi on annonce moins que ce qui part.
 """
 
 from __future__ import annotations
@@ -22,6 +13,14 @@ from sqlalchemy import ForeignKey, LargeBinary, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
+
+# ⚠️ **Aucune FK de la descendance d'un tournoi ne porte `ON DELETE CASCADE`, et c'est une décision,
+# pas un oubli** (ADR-0077) : la purge est **applicative**, dans `TournoiRepositorySQL.supprimer`,
+# parce qu'une cascade en base armerait une purge silencieuse sur tout autre chemin — import,
+# script, futur endpoint. En ajouter une ici contournerait la confirmation, pas seulement la
+# cascade. Les quelques `ON DELETE CASCADE` du fichier sont des exceptions motivées sur place.
+# Une table neuve rattachée au tournoi s'ajoute à cette purge **et**, si sa perte est
+# irrécupérable, au décompte (`compter_descendance`) — deux tests mécaniques le vérifient.
 
 
 class TournoiORM(Base):
@@ -206,13 +205,11 @@ class ArcherORM(Base):
     nom: Mapped[str] = mapped_column(nullable=False)
     prenom: Mapped[str] = mapped_column(nullable=False)
     cible: Mapped[int | None] = mapped_column(nullable=True)
+    # E02US002 élargit la ligne existante du registre.
     categorie_id: Mapped[int] = mapped_column(ForeignKey("categorie.id"), nullable=False)
     # Club de rattachement, **facultatif** : `NULL` = club encore *inconnu*, jamais « aucun club »
     # (ADR-0014). L'anomalie est signalée à l'écran, pas comblée par un club sentinelle ; la
     # suppression d'un club référencé est refusée côté service (409, `ClubReference`).
-    #
-    # **Hors périmètre de ADR-0077** : elle pointe vers `club`, qui n'est PAS dans la descendance
-    # de `tournoi` — c'est le sens inverse qu'elle contraint, et ce cas-là est tranché.
     club_id: Mapped[int | None] = mapped_column(ForeignKey("club.id"), nullable=True)
     # Handicap (E05US015) : deux colonnes, jamais une seule — le handicap **officiel** entretenu par
     # le club, et la **surcharge** qui le prime pour cette édition (demande du commanditaire,
@@ -253,6 +250,8 @@ class InscriptionORM(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # La purge en cascade est applicative et maîtrisée (`ArcherRepositorySQL.supprimer` et
+    # `DepartRepositorySQL.supprimer`) ; ne pas contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     paye: Mapped[bool] = mapped_column(nullable=False, default=False)
@@ -504,10 +503,16 @@ class SerieORM(Base):
     __table_args__ = (UniqueConstraint("phase_id", "archer_id", name="uq_serie_phase_archer"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # ⚠️ **Conservé bien que dérivable** (phase -> depart -> tournoi) : c'est la portée que lisent
+    # les vues d'ensemble, et la jointure à chaque lecture coûterait plus qu'elle ne rapporte. Ce
+    # n'est plus une clé, seulement un cadre — l'unicité est descendue à la phase.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # La cascade est **applicative et maîtrisée** (`ArcherRepositorySQL.supprimer`), à l'image de
+    # `score.archer_id`/`inscription.archer_id` ; ne pas contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     # `ON DELETE CASCADE`, à l'image de `duel.phase_id` : les flèches d'une phase supprimée n'ont
-    # plus d'existence sportive. C'est le même parti que le tableau de duels, dont la suppression
+    # plus d'existence sportive. Même parti que le tableau de duels, dont la suppression emporte
+    # les rencontres — et non celui du **tournoi**, dont la purge est applicative (ADR-0077).
     phase_id: Mapped[int] = mapped_column(
         ForeignKey("phase.id", ondelete="CASCADE"), nullable=False
     )
@@ -614,6 +619,7 @@ class ForfaitORM(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # `serie.archer_id`).
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     phase_id: Mapped[int] = mapped_column(
         ForeignKey("phase.id", ondelete="CASCADE"), nullable=False
@@ -660,6 +666,8 @@ class BarrageORM(Base):
     __tablename__ = "barrage"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Portée sportive : le barrage départage une place dans le classement **d'un départ** (E01US025,
+    # ADR-0075, migration 0042) — c'était `tournoi_id`.
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     phase_id: Mapped[int | None] = mapped_column(ForeignKey("phase.id"), nullable=True)
     portee: Mapped[str] = mapped_column(nullable=False)
@@ -684,6 +692,8 @@ class BarrageTirORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     barrage_id: Mapped[int] = mapped_column(ForeignKey("barrage.id"), nullable=False)
     manche: Mapped[int] = mapped_column(nullable=False)
+    # FK *enforced* : la cascade applicative de `ArcherRepositorySQL.supprimer`/`fusionner` la
+    # traite explicitement, sans quoi l'archer devient indéracinable (500).
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     score: Mapped[int | None] = mapped_column(nullable=True)
     distance_au_centre: Mapped[int | None] = mapped_column(nullable=True)
@@ -704,7 +714,10 @@ class IdentiteVisuelleORM(Base):
     __tablename__ = "identite_tournoi"
 
     # `ON DELETE CASCADE` : composant **strict** de l'agrégat tournoi (une ligne, sans descendance,
-    # cosmétique), au même titre que `volee.serie_id` — et non la descendance purgée à la main de
+    # cosmétique), au même titre que `volee.serie_id` — et non la descendance purgée à la main.
+    # ⚠️ Sans cela, la ligne d'identité — qui naît au premier réglage et n'est jamais retirée —
+    # rendait le tournoi définitivement indéracinable (`PRAGMA foreign_keys=ON`). Clé primaire
+    # **et** étrangère : au plus une identité par tournoi, tenu par le schéma.
     tournoi_id: Mapped[int] = mapped_column(
         ForeignKey("tournoi.id", ondelete="CASCADE"), primary_key=True
     )

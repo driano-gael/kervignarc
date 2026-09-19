@@ -125,8 +125,6 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
     def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
-        # Vide par défaut : ces tests ne portent pas sur la suppression (E01US026). Le dépôt
-        # partagé de `conftest.py` la rend réglable pour ceux qui en ont besoin.
         return DescendanceTournoi()
 
 

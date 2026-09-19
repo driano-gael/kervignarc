@@ -7,9 +7,9 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Sequence
-from typing import Any, assert_never
+from typing import assert_never
 
-from sqlalchemy import Select, delete, func, select, update
+from sqlalchemy import ColumnElement, Select, delete, func, select, update
 from sqlalchemy import true as sa_true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -116,24 +116,59 @@ def _purger_enfants_directs_du_tournoi(session: Session, tournoi_id: TournoiId) 
     session.execute(delete(IdentiteVisuelleORM).where(IdentiteVisuelleORM.tournoi_id == tournoi_id))
 
 
-def _compte(session: Session, critere: Any) -> int:
-    """Combien de lignes satisfont ce critère — `count(*)`, jamais un `len()` de lignes chargées."""
-    return session.scalar(select(func.count()).where(critere)) or 0
+def _compte(session: Session, *criteres: ColumnElement[bool]) -> int:
+    """Combien de lignes satisfont ces critères — `count(*)`, jamais un `len()` de lignes lues."""
+    return session.scalar(select(func.count()).where(*criteres)) or 0
+
+
+def _encaisse(session: Session, departs_payes: Select[tuple[int]]) -> int:
+    """La somme **réellement reçue** : une inscription payée vaut le tarif de son créneau.
+
+    ⚠️ **Ce n'est pas la somme du registre de remboursements** — les confondre faisait annoncer
+    zéro euro à un tournoi de 400 payants sans remboursement. Le tarif lu est le **courant**, pas
+    celui encaissé (DETTE-016) : le modèle ne stocke qu'un booléen `paye`.
+    """
+    tarifs: dict[int, int] = {}
+    for depart_id, tarif in session.execute(
+        select(DepartORM.id, DepartORM.tarif_centimes)
+    ).tuples():
+        tarifs[depart_id] = tarif
+    return sum(tarifs.get(depart_id, 0) for depart_id in session.scalars(departs_payes))
+
+
+def _reste_a_rendre(session: Session, tournoi_id: TournoiId) -> int:
+    """Les remboursements **encore dus**, à l'exclusion de ceux déjà traités (E01US026).
+
+    ⚠️ Sommer tous les statuts gonflait l'alerte : un poste `remboursé` est de l'argent **déjà
+    rendu**, l'annoncer comme perdu use la garde qu'ADR-0077 veut préserver.
+    """
+    somme = session.scalar(
+        select(func.coalesce(func.sum(RemboursementORM.montant_centimes), 0)).where(
+            RemboursementORM.tournoi_id == tournoi_id,
+            RemboursementORM.statut == StatutRemboursement.A_REMBOURSER.value,
+        )
+    )
+    return somme or 0
 
 
 def _compter_fleches(session: Session, series: Select[tuple[int]]) -> int:
-    """Les flèches **validées** de ces séries, volée par volée (E01US026).
+    """Les flèches de ces séries, volée par volée — **validées ou non** (E01US026).
 
-    ⚠️ Compté en Python et non en SQL : `valeurs` est un document JSON, et `json_array_length` est
-    une extension SQLite qu'on ne peut pas supposer compilée partout. Le volume tient (quelques
-    milliers de volées pour un tournoi entier) — règle 12.
+    ⚠️ Ne filtrer que les validées sous-comptait : en fin de journée, avant validation, le message
+    annonçait « 0 flèche » alors que 7 200 partaient. Compté en Python car `valeurs` est un
+    document JSON et `json_array_length` est une extension qu'on ne peut supposer compilée
+    (règle 12) ; un document corrompu est **ignoré** — SQLite est à typage dynamique, même parti
+    que `_vers_reglage_podiums`.
     """
-    documents = session.scalars(
-        select(VoleeORM.valeurs).where(
-            VoleeORM.serie_id.in_(series), VoleeORM.validee_par.is_not(None)
-        )
-    )
-    return sum(len(json.loads(document)) for document in documents)
+    fleches = 0
+    for document in session.scalars(select(VoleeORM.valeurs).where(VoleeORM.serie_id.in_(series))):
+        try:
+            valeurs = json.loads(document)
+        except ValueError:
+            continue
+        if isinstance(valeurs, list):
+            fleches += len(valeurs)
+    return fleches
 
 
 def _purger_descendance_des_archers(session: Session, archer_ids: Sequence[ArcherId]) -> None:
@@ -151,8 +186,7 @@ def _purger_descendance_des_archers(session: Session, archer_ids: Sequence[Arche
     # `forfait` (E04US015) et `barrage_tir` (E06US003) : FK *enforced*, une ligne orpheline rend
     # l'archer indéracinable (500) — le piège relevé en revue adversariale d'E04US015.
     session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id.in_(archer_ids)))
-    for archer_id in archer_ids:
-        _supprimer_barrages_de_l_archer(session, archer_id)
+    _supprimer_barrages_des_archers(session, archer_ids)
 
 
 def _vers_reglage_podiums(ligne: TournoiORM) -> ReglagePodiums:
@@ -407,22 +441,20 @@ class TournoiRepositorySQL:
             raise InfrastructureError("Échec de mise à jour du tournoi.") from exc
 
     def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
-        """Compte ce que la suppression emporterait (E01US026, ADR-0077).
+        """Compte ce que la suppression emporterait **et ne se ressaisirait pas** (ADR-0077).
 
-        ⚠️ **Ne compte que ce qui se perd** : départs, catégories, blasons et gabarits partent aussi
-        mais se ressaisissent, et les inclure ferait surgir la confirmation sur un tournoi d'essai
-        (arbitrage du 19/09/2026). Les flèches se comptent sur les **volées validées** — seules
-        celles-là comptent dans un classement ; l'agrégat `score`, lui, n'est plus alimenté.
+        ⚠️ **Plus étroit que la purge, volontairement** : `depart`, `categorie`, `blason`,
+        `gabarit_salle`, `deroule_etape` et `identite_tournoi` partent aussi mais se refont — les
+        compter ferait surgir la confirmation sur un tournoi d'essai (arbitrage du 19/09/2026).
+        Le critère exact et la liste des exclus vivent sur `DescendanceTournoi`.
         """
         try:
             with self._session_factory() as session:
                 departs = select(DepartORM.id).where(DepartORM.tournoi_id == tournoi_id)
                 phases = select(PhaseORM.id).where(PhaseORM.depart_id.in_(departs))
                 series = select(SerieORM.id).where(SerieORM.tournoi_id == tournoi_id)
-                montant = session.scalar(
-                    select(func.coalesce(func.sum(RemboursementORM.montant_centimes), 0)).where(
-                        RemboursementORM.tournoi_id == tournoi_id
-                    )
+                payees = select(InscriptionORM.depart_id).where(
+                    InscriptionORM.depart_id.in_(departs), InscriptionORM.paye
                 )
                 return DescendanceTournoi(
                     archers=_compte(session, ArcherORM.tournoi_id == tournoi_id),
@@ -432,8 +464,17 @@ class TournoiRepositorySQL:
                     duels=_compte(session, DuelORM.phase_id.in_(phases)),
                     forfaits=_compte(session, ForfaitORM.tournoi_id == tournoi_id),
                     barrages=_compte(session, BarrageORM.depart_id.in_(departs)),
+                    postes=_compte(session, PosteORM.tournoi_id == tournoi_id),
+                    scoreurs=_compte(session, ScoreurORM.tournoi_id == tournoi_id),
+                    entrees_audit=_compte(session, EntreeAuditORM.tournoi_id == tournoi_id),
+                    inscriptions_payees=_compte(
+                        session,
+                        InscriptionORM.depart_id.in_(departs),
+                        InscriptionORM.paye.is_(sa_true()),
+                    ),
+                    encaisse_centimes=_encaisse(session, payees),
                     remboursements=_compte(session, RemboursementORM.tournoi_id == tournoi_id),
-                    montant_encaisse_centimes=montant or 0,
+                    remboursements_centimes=_reste_a_rendre(session, tournoi_id),
                 )
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec du décompte de la descendance du tournoi.") from exc
@@ -1495,6 +1536,28 @@ def _barrages_contenant(session: Session, archer_id: int) -> list[BarrageORM]:
         for ligne in session.execute(select(BarrageORM)).scalars()
         if archer_id in json.loads(ligne.participants_json)
     ]
+
+
+def _supprimer_barrages_des_archers(session: Session, archer_ids: Sequence[ArcherId]) -> None:
+    """Supprime les barrages où figure **l'un** de ces archers, tirs compris (E06US003).
+
+    ⚠️ **Un seul parcours, quel que soit le nombre d'archers** : rejouer le scan en boucle pour les
+    400 d'un tournoi tenait 400 parcours **dans la transaction du writer unique**, donc autant
+    d'attente pour les tablettes en salle (règle 7). On supprime le **barrage entier** et pas les
+    seuls tirs : amputé d'un tireur annoncé, il serait refusé à la relecture.
+    """
+    vises = set(archer_ids)
+    cibles = [
+        ligne.id
+        for ligne in session.execute(select(BarrageORM)).scalars()
+        if vises & set(json.loads(ligne.participants_json))
+    ]
+    if cibles:
+        session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id.in_(cibles)))
+        session.execute(delete(BarrageORM).where(BarrageORM.id.in_(cibles)))
+    # Ceinture : un tir dont l'archer ne figure (plus) dans `participants_json` échapperait au
+    # filtre et rebloquerait la suppression en 500. Inatteignable par le service aujourd'hui.
+    session.execute(delete(BarrageTirORM).where(BarrageTirORM.archer_id.in_(archer_ids)))
 
 
 def _supprimer_barrages_de_l_archer(session: Session, archer_id: int) -> None:

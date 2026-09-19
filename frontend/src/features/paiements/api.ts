@@ -70,7 +70,7 @@ export interface Remboursement {
   archer_nom: string
   creneau: string
   montant_centimes: number
-  // `depart_supprime` | `desinscription`.
+  // `archer_supprime` | `depart_supprime` | `desinscription`.
   motif: string
   // `a_rembourser` | `rembourse` | `reporte`.
   statut: string

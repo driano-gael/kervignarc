@@ -39,7 +39,7 @@ volumes sont de quelques lignes par créneau, rien ne les interroge autrement qu
 et la règle 12 dit où mettre la rigueur — au moteur métier, pas à l'outillage.
 
 ⚠️ **`ON DELETE CASCADE` absent, comme partout** (`ADR-0077`) : cette table est un descendant du
-départ par la phase, et la politique de suppression de la descendance du tournoi n'est pas tranchée.
+départ par la phase, et la purge de la descendance du tournoi est **applicative** (ADR-0077).
 Ne pas la contourner ici serait la seule façon de la traiter un jour d'un seul geste.
 
 ## Descente

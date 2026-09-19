@@ -70,8 +70,9 @@ règle côté suppression de départ : seules les payées **de tarif > 0** ouvre
   de langage (confirmation chiffrée `DepartEnCoursNonConfirme`, audit `PAIEMENT`↔`REMBOURSEMENT`).
   Front : onglet « Remboursements » de l'écran Paiements + dialogue de confirmation à la désinscription
   payée.
-- **Périmètre borné aux deux déclencheurs du CA — 3ᵉ chemin exclu, différé (DETTE-018,
-  **refermée le 19/09/2026 par E01US026** : le 3ᵉ chemin ouvre désormais son remboursement).** La
+- **Périmètre borné aux deux déclencheurs du CA — 3ᵉ chemin exclu, différé (DETTE-018).**
+  ⚠️ **Refermé le 19/09/2026 par E01US026** : le 3ᵉ chemin ouvre désormais son remboursement
+  (motif `archer_supprime`), et les déclencheurs sont **trois**. La
   suppression d'une **fiche archer** (`ArcherRepositorySQL.supprimer`) purge aussi ses inscriptions en
   cascade : c'est un **troisième** chemin d'effacement d'une inscription payée, **hors** du CA écrit.
   Il n'ouvre **pas** de remboursement — l'étendre ajouterait un déclencheur hors CA **et** toucherait la
@@ -99,3 +100,31 @@ règle côté suppression de départ : seules les payées **de tarif > 0** ouvre
   désormais `application.remboursements`). Le seuil « factoriser au 3ᵉ cas » (CLAUDE.md § Dette) est
   atteint — mais l'extraction d'une constante partagée est un **remède structurel** : à traiter en US
   dédiée, pas en douce dans E08US005. La duplication locale reste **assumée** en attendant (DETTE-017).
+
+## Porté dans le code par
+
+*(Section écrite le 19/09/2026 par E01US026, qui rouvre cet ADR en refermant `DETTE-018`. ⚠️ Chaque
+symbole a été **vérifié dans le code du jour**, pas déduit de l'ADR.)*
+
+- **`backend/domain/remboursement.py`** — `MotifRemboursement` (**trois** valeurs depuis E01US026 :
+  `archer_supprime`, `depart_supprime`, `desinscription`), `StatutRemboursement`,
+  `Remboursement.creer` (qui refuse un montant nul) et les deux transitions terminales.
+- **Les trois réalisations de la couture « un effacement, un poste, une transaction »**, toutes dans
+  `backend/infrastructure/db/repositories/` : `InscriptionRepositorySQL.supprimer_avec_remboursement`
+  (désinscription), `DepartRepositorySQL.supprimer_avec_remboursements` (créneau supprimé) et
+  `ArcherRepositorySQL.supprimer_avec_remboursements` (fiche archer, E01US026). Les trois insèrent
+  les postes dans la **même session** que les `DELETE`, scellée par un **unique** `commit`.
+- **Les trois services qui construisent les postes** : `ServiceInscriptions` (`_libelle_creneau`),
+  `ServiceDeparts._remboursements_des_payees`, `ServiceArchers._remboursements_des_payees`. Ils
+  figent un **instantané textuel** via `Depart.libelle_creneau()` — domicile unique depuis E01US026,
+  le littéral en ayant eu trois.
+- **`backend/application/remboursements.py`** — le traitement (`marquer_rembourse` /
+  `marquer_reporte`), audité, et le refus de re-traiter un poste terminal (409).
+- **`frontend/src/features/paiements/Paiements.tsx`** — le registre à l'écran, `LIBELLE_MOTIF`
+  portant les trois motifs.
+
+⚠️ **Ce que cet ADR ne porte PAS, et qui se lirait à tort comme un quatrième chemin** : la
+suppression d'un **tournoi** *efface* les remboursements au lieu d'en ouvrir. Ce n'est pas une
+entorse : le registre a `tournoi_id` pour unique FK, donc il part avec le tournoi et aucune
+contrepartie n'est inscriptible. Le critère qui sépare les deux gestes est « **le registre
+survit-il ?** » — [ADR-0077](0077-supprimer-un-tournoi-signaler-puis-confirmer.md) § Tranché.

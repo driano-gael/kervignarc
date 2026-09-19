@@ -70,9 +70,11 @@ class TournoiRepository(Protocol):
     def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
         """Compte ce que la suppression du tournoi emporterait (ADR-0077).
 
-        ⚠️ **Le décompte et la cascade de `supprimer` doivent nommer les mêmes tables** : un
-        décompte plus étroit que la purge annoncerait moins que ce qui part, ce que le protocole
-        « signaler puis confirmer » existe précisément pour empêcher.
+        ⚠️ **La purge est exhaustive, le décompte ne l'est pas — et l'écart est la décision.**
+        Le décompte ne retient que ce qui **ne se ressaisit pas** (ADR-0077 § Tranché, point 2) ; la
+        configuration part sans être annoncée. Une table neuve rejoint donc **toujours** la purge,
+        et le décompte **si sa perte est irrécupérable**. Le critère et la liste nominative des
+        exclus vivent sur `DescendanceTournoi`.
         """
         ...
 

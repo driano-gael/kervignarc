@@ -37,7 +37,9 @@ on détruit — en cascade applicative, jamais par `ON DELETE CASCADE` en base.*
 1. **Un tournoi vide se supprime sans rien demander.** Aucun signalement inutile : la confirmation
    doit rester rare pour rester lue.
 2. **Un tournoi peuplé est signalé en 409**, avec un **décompte chiffré** de ce qui partira —
-   archers, inscriptions, scores, séries, duels, forfaits, barrages, remboursements. « Une alerte
+   archers, inscriptions, **flèches tirées** (et non « scores » : l'agrégat `Score` n'a plus
+   d'écrivain, DETTE-011), séries, duels, forfaits, barrages, **postes**, **scoreurs**, **actes au
+   journal d'audit**, inscriptions payées et remboursements. « Une alerte
    qui ne chiffre pas son impact est un clic de plus, pas une protection » (`D-16`) : le message
    nomme les natures et leurs nombres, il ne dit pas « des données existent ».
 3. **L'admin confirme explicitement** (`autoriser_suppression_peuplee=true`), et la suppression
@@ -87,16 +89,23 @@ on détruit — en cascade applicative, jamais par `ON DELETE CASCADE` en base.*
 
 Deux points que cet ADR laissait ouverts, arbitrés par le commanditaire :
 
-1. **Les remboursements sont effacés avec le reste, mais leur montant est chiffré** à la
-   confirmation. ⚠️ Ce n'est **pas** l'inverse de `DETTE-018`, qui, elle, *ouvre* des postes quand
+1. **L'argent est effacé avec le reste, mais chiffré** à la confirmation — en **deux sommes
+   distinctes** : l'**encaissé** (inscriptions payées × tarif du créneau) et le **reste à rendre**
+   (registre des remboursements, postes déjà traités exclus). ⚠️ Les confondre était le défaut de la
+   première version : un tournoi de 400 payants sans aucun remboursement annonçait **zéro euro**. ⚠️ Ce n'est **pas** l'inverse de `DETTE-018`, qui, elle, *ouvre* des postes quand
    on supprime un archer : le critère qui sépare les deux gestes est **« le registre survit-il ? »**.
    Supprimer un archer laisse un registre vivant où inscrire la somme à rendre ; supprimer le
    tournoi emporte le registre lui-même (`remboursement.tournoi_id` est sa seule FK), et un poste
    ouvert y serait détruit dans la même transaction. Sans contrepartie possible, la seule protection
    est d'**annoncer l'argent qui disparaît**, en euros.
-2. **« Vide » se juge sur ce que le décompte nomme**, pas sur la descendance entière : un tournoi
+2. **« Vide » se juge sur ce qui ne se ressaisit pas**, pas sur la descendance entière. Un tournoi
    qui porte des créneaux, des catégories et des blasons mais **aucun archer** se supprime sans rien
-   demander. Le § Contexte ci-dessus dit « depuis E02US010, plus aucun tournoi `prêt` n'est vide » —
+   demander ; la liste des exclus est **nominative** sur `DescendanceTournoi` (`depart`, `categorie`,
+   `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi`).
+   ⚠️ **Le critère n'est pas « est-ce de la donnée ? » — corrigé en revue.** Une première version
+   calibrée sur les seuls mots du commanditaire laissait dehors les **postes**, les **scoreurs** et
+   le **journal d'audit** : un tournoi entièrement préparé la veille, QR imprimés et collés, partait
+   alors sur **un seul clic**, les codes étant tirés par `secrets`. Ils entrent au décompte. Le § Contexte ci-dessus dit « depuis E02US010, plus aucun tournoi `prêt` n'est vide » —
    c'est vrai du **500**, pas du **signalement**. Les deux phrases ne parlaient pas du même « vide »,
    et l'écart se voyait à l'écran : monter puis démonter un tournoi d'essai aurait fait surgir le
    dialogue à chaque fois, ce qui est exactement la façon d'apprendre à cliquer sans lire (§1).
@@ -115,6 +124,12 @@ Deux points que cet ADR laissait ouverts, arbitrés par le commanditaire :
   (cascade transactionnelle) et `compter_descendance`, plus les deux purges partagées
   `_purger_descendance_des_archers` / `_purger_descendance_des_departs`, qui tiennent le §5 :
   **une seule liste de tables** pour la suppression d'archer, celle de départ et celle de tournoi.
+- **`backend/tests/test_tournoi_repository.py`** — les deux tests qui rendent la décision
+  **mécanique** plutôt que déclarative : `test_aucune_table_neuve_n_echappe_a_l_inventaire` (toute
+  table rattachée au tournoi doit rejoindre la purge, dérivé de `Base.metadata`) et
+  `test_aucune_fk_de_la_descendance_ne_cascade_en_base` (§5, liste blanche nominative des
+  exceptions). ⚠️ **C'est ce qui remplace la veille de la ligne `DETTE-001`** : pendant treize mois,
+  l'inventaire n'a tenu que parce qu'une revue le relisait — et elle l'a manqué deux fois.
 - **`backend/infrastructure/db/models.py`** — l'en-tête du module énonce le régime « aucune FK de la
   descendance ne porte `ON DELETE CASCADE`, et c'est une décision ». C'est le seul endroit où il est
   écrit, exprès : il l'était 45 fois, colonne par colonne, et ces 45 copies disaient « non tranchée ».

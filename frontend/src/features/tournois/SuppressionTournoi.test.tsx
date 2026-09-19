@@ -113,6 +113,21 @@ describe('supprimer un tournoi peuplé', () => {
     expect(supprimerTournoi).toHaveBeenCalledTimes(1)
   })
 
+  it('CA — un tournoi en cours n’offre PAS le bouton : le refus est définitif, pas confirmable', async () => {
+    vi.mocked(getTournois).mockResolvedValue([{ ...TERMINE, statut: 'en_cours' }])
+    monter(
+      <GestionTournois
+        selectionneId={null}
+        onChoisi={() => {}}
+        ouvrir={null}
+        onOuvrir={() => {}}
+      />,
+    )
+
+    expect(await screen.findByText(/Terminez ou annulez/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Supprimer' })).toBeNull()
+  })
+
   it('un tournoi vide part sans aucune question — la confirmation doit rester rare', async () => {
     vi.mocked(supprimerTournoi).mockResolvedValue(undefined)
     monter(

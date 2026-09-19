@@ -5,8 +5,9 @@ Revises: 0024_poste
 Create Date: 2026-07-19
 
 Table `entree_audit` (E10US005, socle) : le journal d'audit métier d'un tournoi. Enfant du tournoi
-(`tournoi_id`), comme `scoreur`/`poste` : FK **sans `ON DELETE`** (ADR-0077, purge à traiter dans
-la politique de suppression du tournoi — applicative depuis ADR-0077).
+(`tournoi_id`), comme `scoreur`/`poste` : FK **sans `ON DELETE`** — purge **applicative**, dans
+`TournoiRepositorySQL.supprimer` (ADR-0077). ⚠️ Le journal **compte** au décompte de suppression :
+c'est une trace, pas de la configuration, et rien ne le reconstitue (E01US026).
 
 Journal **en ajout seul** : aucune contrainte d'unicité (deux traces peuvent tout coïncider à
 l'instant près), aucune colonne modifiée après l'insertion. `action` porte la valeur de l'énum

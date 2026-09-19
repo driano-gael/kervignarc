@@ -708,7 +708,7 @@ de moteur (DETTE-028).
 | archer_nom | TEXT | NOT NULL — instantané |
 | creneau | TEXT | NOT NULL — instantané du départ (« Départ n°3 — 09:00 »), le départ a souvent disparu |
 | montant_centimes | INTEGER | NOT NULL, **> 0** — tarif encaissé figé (centimes entiers, ADR-0012) |
-| motif | TEXT | NOT NULL — `depart_supprime`\|`desinscription` (`MotifRemboursement`) |
+| motif | TEXT | NOT NULL — `archer_supprime`\|`depart_supprime`\|`desinscription` (`MotifRemboursement`) |
 | statut | TEXT | NOT NULL — `a_rembourser`\|`rembourse`\|`reporte` (`StatutRemboursement`) |
 | cree_le | DATETIME | NOT NULL — ouverture, en **UTC** (aware, garanti par le domaine) |
 | traite_le | DATETIME | nullable — instant du traitement (`None` tant qu'à traiter) |
@@ -858,7 +858,9 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
 > - `MEMBRE_EQUIPE` (`equipe_id` FK, `archer_id` FK) — composition ; contrainte **configurable**, défaut FFTA §6.3/§7 (3 archers, ou mixte 2 H/F).
 > - `MATCH` opposera des **participants** (`participant_A/B` = archer **ou** équipe), pas des archers en dur (CDC technique §5). Un tournoi individuel est le cas où chaque participant **est** un archer.
 >
-> Élargit [ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) (FK `equipe.tournoi_id`, `membre_equipe.*` sans `ON DELETE`).
+> Entre dans le régime d'[ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) :
+> FK `equipe.tournoi_id`, `membre_equipe.*` **sans `ON DELETE`**, à ajouter à la purge applicative
+> (`TournoiRepositorySQL.supprimer`) **et** à l'inventaire de `test_tournoi_repository.py`.
 
 ## Enums de référence
 

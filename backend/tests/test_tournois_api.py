@@ -499,10 +499,12 @@ def test_supprimer_tournoi_introuvable(
 
 
 def _peupler(client: TestClient, tid: int) -> int:
-    """Garnit le tournoi d'un créneau, d'une catégorie, d'un archer et d'une inscription payée.
+    """Garnit le tournoi d'un créneau **tarifé**, d'une catégorie, d'un archer et d'une inscription
+    réellement **marquée payée**.
 
-    Assez pour que la suppression ait quelque chose à détruire **et** que les FK soient réellement
-    en jeu : c'est ce que le repository factice des tests de service ne peut pas prouver.
+    ⚠️ Le paiement n'est pas décoratif : c'est la seule chose qui fasse traverser toute la pile à la
+    clause en euros du signalement. Sans lui, le calcul du montant n'était vérifié que contre un
+    dépôt factice (relevé en revue, axes B et C1).
     """
     _creer_depart(client, tid)
     depart_id = client.get(f"/api/v1/tournois/{tid}/departs").json()[0]["id"]
@@ -513,11 +515,16 @@ def _peupler(client: TestClient, tid: int) -> int:
         json={"nom": "Tell", "prenom": "Guillaume", "categorie_id": categorie.json()["id"]},
     )
     assert archer.status_code == 201, archer.text
+    archer_id = int(archer.json()["id"])
     inscription = client.post(
-        f"/api/v1/archers/{archer.json()['id']}/inscriptions", json={"depart_id": depart_id}
+        f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id}
     )
     assert inscription.status_code == 201, inscription.text
-    return int(archer.json()["id"])
+    paiement = client.put(
+        f"/api/v1/tournois/{tid}/paiements/archers/{archer_id}", json={"paye": True}
+    )
+    assert paiement.status_code == 200, paiement.text
+    return archer_id
 
 
 def test_supprimer_un_tournoi_peuple_signale_409_chiffre(
@@ -535,6 +542,9 @@ def test_supprimer_un_tournoi_peuple_signale_409_chiffre(
         assert refus.json()["code"] == "tournoi_peuple"
         message = refus.json()["message"]
         assert "1 archer" in message and "1 inscription" in message, message
+        # Le créneau est à 810 centimes (`_creer_depart`) et l'inscription est payée : la clause
+        # en euros doit traverser la pile entière, pas seulement le service.
+        assert "8,10 €" in message, f"somme encaissée non chiffrée de bout en bout : {message}"
         assert client.get(f"/api/v1/tournois/{tid}").status_code == 200
 
 

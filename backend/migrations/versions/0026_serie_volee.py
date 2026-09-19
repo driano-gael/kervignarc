@@ -10,8 +10,8 @@ table **enfant** (une ligne par volée : `numero`, `valeurs` en JSON, marqueurs 
 `validee_par`). Correspondent aux modèles ORM `SerieORM` / `VoleeORM`.
 
 Profil ADR-0077 : `serie.tournoi_id` **et** `serie.archer_id` sont des FK **sans `ON DELETE`** —
-donnée saisie de la descendance du tournoi, purge à traiter dans la politique de suppression non
-tranchée (la cascade `archer` → `serie` est applicative, `ArcherRepositorySQL.supprimer`).
+donnée saisie de la descendance du tournoi, purge **applicative** (`ArcherRepositorySQL.supprimer`
+pour la cascade `archer` → `serie`, `TournoiRepositorySQL.supprimer` pour le tournoi entier).
 `volee.serie_id` fait **exception** (`ON DELETE CASCADE`), comme `placement` : composant strict de
 l'agrégat `Serie`, dont le cycle de vie suit sa série (cf. docstring de `VoleeORM`).
 """

@@ -14,7 +14,6 @@ import { PastillePreparation } from '../jalons/PastillePreparation'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
-import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { FriseCycleDeVie } from '../accueil/FriseCycleDeVie'
 import { BadgeStatut } from '../competition/BadgeStatut'
@@ -226,14 +225,18 @@ function LigneTournoi({
   apercu: ApercuJalon | undefined
 }) {
   const [edition, setEdition] = useOuvertureParAdresse(tournoi.id, ouvrir, onOuvrir)
-  const supprimer = useSupprimerTournoi()
   // Le décompte de ce qui partira est **rendu par le serveur** (409 `tournoi_peuple`), pas calculé
   // ici : le client n'a pas la descendance sous la main, et un chiffre approché sous un bouton
   // destructeur vaudrait moins que pas de chiffre du tout.
-  const signalement =
-    supprimer.error instanceof ErreurApi && supprimer.error.code === 'tournoi_peuple'
-      ? supprimer.error.message
-      : null
+  const [signalement, setSignalement] = useState<string | null>(null)
+  // ⚠️ État **propre**, et surtout pas `supprimer.error` : au clic sur « Supprimer définitivement »,
+  // React Query remet l'erreur à `null`, ce qui démontait le dialogue au moment même de la
+  // confirmation — `enCours` devenait du code mort et deux clics rapprochés partaient tous les deux
+  // (relevé en revue, axe C1). Le composant dit « on désactive sans fermer » ; l'appelant le disait.
+  const supprimer = useSupprimerTournoi({
+    surSignalement: setSignalement,
+    surFin: () => setSignalement(null),
+  })
 
   if (edition) {
     return (
@@ -293,17 +296,27 @@ function LigneTournoi({
       {/* Le signalement chiffré n'est **pas** une erreur : il passe par le dialogue, pas par le
           bandeau rouge — sinon l'admin lirait deux fois la même chose, dont une comme une panne. */}
       <MessageErreur erreur={signalement ? null : supprimer.error} />
-      <DialogueConfirmation
-        ouvert={signalement !== null}
-        titre={`Supprimer « ${tournoi.nom} » ?`}
-        message={signalement ?? ''}
-        detail="Cette suppression est définitive : rien ne pourra être récupéré."
-        libelleConfirmer="Supprimer définitivement"
-        ton="danger"
-        enCours={supprimer.isPending}
-        onAnnuler={() => supprimer.reset()}
-        onConfirmer={() => supprimer.mutate({ id: tournoi.id, autoriserSuppressionPeuplee: true })}
-      />
+      {/* ⚠️ Monté **seulement** quand il s'ouvre, à rebours de `BoutonConfirme` qui le garde en
+          permanence : son titre cite le nom du tournoi, qui figure déjà sur la ligne. Monté à vide,
+          il mettait ce nom deux fois dans le DOM et rendait ambigu tout `getByText(/<nom>/)`. */}
+      {signalement !== null && (
+        <DialogueConfirmation
+          ouvert
+          titre={`Supprimer « ${tournoi.nom} » ?`}
+          message={signalement}
+          detail="Cette suppression est définitive : rien ne pourra être récupéré."
+          libelleConfirmer="Supprimer définitivement"
+          ton="danger"
+          enCours={supprimer.isPending}
+          onAnnuler={() => {
+            setSignalement(null)
+            supprimer.reset()
+          }}
+          onConfirmer={() =>
+            supprimer.mutate({ id: tournoi.id, autoriserSuppressionPeuplee: true })
+          }
+        />
+      )}
     </li>
   )
 }

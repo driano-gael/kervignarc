@@ -260,7 +260,7 @@ class ServiceArchers:
                     archer.tournoi_id,
                     archer_prenom=archer.prenom,
                     archer_nom=archer.nom,
-                    creneau=f"Départ n°{depart.numero} — {depart.horaire}",
+                    creneau=depart.libelle_creneau(),
                     # DETTE-016 : le montant est le **tarif courant**, pas la somme réellement
                     # encaissée (le modèle ne stocke qu'un booléen `paye`) — faux si le tarif a été
                     # édité après le paiement. Même écart que sur les deux autres chemins.
@@ -360,11 +360,10 @@ class ServiceArchers:
         fleches = self._fleches_validees(archer.tournoi_id, archer_id)
         liste_inscriptions = self._inscriptions.par_archer(archer_id)
         inscriptions = len(liste_inscriptions)
-        # ⚠️ Le compte annoncé s'appuie sur `paye` **seul**, quand l'ouverture du remboursement
-        # exige en plus un créneau tarifé (`_remboursements_des_payees`) : un créneau gratuit
-        # marqué payé est donc **sur-signalé** ici et n'ouvre rien ensuite. Tolérable — le message
-        # annonce plus que ce qui partira, jamais moins.
-        payees = sum(1 for inscription in liste_inscriptions if inscription.paye)
+        # ⚠️ Compté par le **même filtre** que l'ouverture (créneau tarifé compris) : annoncer
+        # « un remboursement sera ouvert » sur la foi de `paye` seul envoyait l'admin chercher au
+        # registre un poste qui n'existerait pas — une promesse d'action, pas un sur-signalement.
+        payees = len(self._remboursements_des_payees(archer, archer_id))
         if archer.cible is None and fleches == 0 and inscriptions == 0:
             return
         motifs = []

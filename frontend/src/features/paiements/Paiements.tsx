@@ -220,11 +220,13 @@ function BlocClub({ tournoiId, club }: { tournoiId: number; club: RecapClub }) {
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 // Vue remboursements : les sommes encaissées à rendre (E08US005), à traiter d'abord. Un poste naît
-// quand une inscription payée est effacée (désinscription, suppression de départ) ; on le marque
+// quand une inscription payée est effacée (désinscription, suppression de départ, suppression de
+// la fiche archer — E01US026) ; on le marque
 // **remboursé** (argent rendu) ou **reporté** (réaffecté à un autre créneau).
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
 const LIBELLE_MOTIF: Record<string, string> = {
+  archer_supprime: 'Fiche archer supprimée',
   depart_supprime: 'Départ supprimé',
   desinscription: 'Désinscription',
 }

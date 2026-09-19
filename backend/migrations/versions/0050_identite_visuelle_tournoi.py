@@ -59,7 +59,7 @@ def upgrade() -> None:
     """Crée `identite_tournoi`. Aucune donnée à reprendre (cf. en-tête)."""
     op.create_table(
         "identite_tournoi",
-        # `ON DELETE CASCADE`, et **non** la FK nue que ADR-0077 décrit pour le reste de la
+        # `ON DELETE CASCADE`, et **non** la FK nue qu'ADR-0077 décrit pour le reste de la
         # descendance : l'identité n'est pas une donnée *du* tournoi, c'est un **composant strict**
         # de son agrégat — une ligne, sans descendance, cosmétique, qui n'a aucun sens sans lui.
         # C'est le traitement que le schéma réserve déjà à cette population (`volee.serie_id`,

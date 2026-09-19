@@ -253,7 +253,7 @@ le code par » a été re-vérifiée symbole par symbole à cette occasion), **`
 le code par », elle a été écrite à cette occasion. ⚠️ Il figurait déjà parmi les « au moins cinq
 autres candidats » que le paragraphe `0050` ci-dessus énumérait sans porteur — c'est la 2ᵉ fois que
 cette liste de candidats est confirmée par les faits plutôt que par un audit, ce que `DETTE-091`
-porte), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). La liste dérive à
+porte), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). Et **`0077`** (E01US026, 19/09/2026 — l'ADR portait le placeholder *« à renseigner par l'US de résorption »* ; sa section « Porté dans le code par » a été écrite à cette occasion, **et deux points laissés ouverts ont été tranchés** dans sa *Conséquences* : le sort des remboursements et la définition de « vide ». Il entre au critère — la décision est appliquée par la **portée tournoi** et par la cascade transactionnelle de l'adapter. ⚠️ **`0057`** est rouvert dans le même diff — sa *Conséquences* disait « 3ᵉ chemin exclu, différé », ce que `DETTE-018` refermée rend faux — et il n'avait **aucune** section : elle a été écrite à cette occasion, nommant les **trois** réalisations de sa couture). La liste dérive à
 chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
 `CLAUDE.md`.
 

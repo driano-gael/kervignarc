@@ -682,11 +682,11 @@ def _peuple(**decompte: int) -> DescendanceTournoi:
 
 
 def test_supprimer_un_tournoi_vide_ne_demande_rien() -> None:
-    """CA : un tournoi vide se supprime sans confirmation — elle doit rester rare pour rester lue.
+    """CA : décompte vide ⇒ aucune confirmation — elle doit rester rare pour rester lue.
 
-    « Vide » se juge sur ce que le décompte nomme : le tournoi porte ici un **départ** (`_id_cree`)
-    et part quand même, les créneaux étant de la configuration qui se ressaisit (arbitrage du
-    19/09/2026).
+    ⚠️ Ce test ne prouve **pas** que les créneaux ne comptent pas : ici le décompte est une entrée
+    réglée, pas une lecture de base. La définition de « vide » est tenue en intégration, par
+    `test_tournoi_repository.py::test_un_tournoi_sans_archers_est_vide_meme_avec_des_creneaux`.
     """
     service, departs, _, _, _ = _service_complet()
     tid = _id_cree(service, departs)
@@ -733,20 +733,43 @@ def test_le_signalement_ne_nomme_que_les_natures_presentes() -> None:
         assert absente not in message, f"« {absente} » annoncé alors qu'il n'y en a pas : {message}"
 
 
-def test_le_signalement_chiffre_la_somme_encaissee() -> None:
-    """CA (arbitrage 19/09/2026) : les remboursements partent avec le reste, mais **chiffrés**.
+def test_le_signalement_chiffre_les_deux_sommes_sans_les_confondre() -> None:
+    """CA (arbitrage 19/09/2026) : l'argent part avec le reste, mais **chiffré**.
 
-    Supprimer le tournoi emporte le registre lui-même : aucun poste ne peut être ouvert, donc la
-    seule protection est d'annoncer l'argent qui disparaît — en euros, lisibles par un bénévole.
+    ⚠️ Deux sommes **distinctes** : l'encaissé (inscriptions payées) et ce qui restait à rendre.
+    Les confondre faisait annoncer zéro euro à un tournoi de 400 payants sans remboursement
+    (relevé en revue, axe D). Aucune contrepartie n'est possible — le registre part avec le
+    tournoi —, donc chiffrer est toute la protection.
     """
     service, departs, _, _, tournois = _service_complet()
     tid = _id_cree(service, departs)
-    tournois.descendance = _peuple(remboursements=3, montant_encaisse_centimes=4550)
+    tournois.descendance = _peuple(
+        inscriptions_payees=118,
+        encaisse_centimes=94400,
+        remboursements=3,
+        remboursements_centimes=4550,
+    )
     with pytest.raises(TournoiPeuple) as leve:
         service.supprimer(tid)
     message = str(leve.value)
-    assert "3" in message and "remboursement" in message
-    assert "45,50" in message and "€" in message, f"somme encaissée non chiffrée : {message}"
+    assert "118 inscriptions payées" in message and "944,00 €" in message, message
+    assert "3 remboursements" in message and "45,50 €" in message, message
+
+
+def test_le_signalement_nomme_ce_qui_ne_se_ressaisit_pas() -> None:
+    """CA : postes, scoreurs et journal d'audit sont annoncés — ils ne se refont pas.
+
+    ⚠️ C'est le cas qui porte le vrai risque : un tournoi entièrement **préparé** la veille (QR
+    imprimés, scoreurs codés) n'a pas encore un archer, et partait sur un seul clic.
+    """
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    tournois.descendance = _peuple(postes=30, scoreurs=3, entrees_audit=12)
+    with pytest.raises(TournoiPeuple) as leve:
+        service.supprimer(tid)
+    message = str(leve.value)
+    for attendu in ("30 postes enrôlés", "3 scoreurs", "12 actes au journal"):
+        assert attendu in message, f"« {attendu} » absent du décompte : {message}"
 
 
 def test_la_confirmation_explicite_supprime() -> None:
