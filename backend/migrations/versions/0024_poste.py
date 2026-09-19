@@ -6,7 +6,7 @@ Create Date: 2026-07-18
 
 Table `poste` (E04US001, ADR-0029) : le credential d'une **cible** d'un tournoi — le couple
 `(tournoi_id, cible_index)` plus le `code` imprimé sous le QR. Enfant du tournoi (`tournoi_id`),
-comme `scoreur` : FK **sans `ON DELETE`** (DETTE-001, purge non tranchée).
+comme `scoreur` : FK **sans `ON DELETE`** (ADR-0077, purge applicative (ADR-0077)).
 
 `code` est `UNIQUE` **global** (le rattachement se fait par le seul code) ; `(tournoi_id,
 cible_index)` est `UNIQUE` (une seule cible N par tournoi). Correspond au modèle ORM `PosteORM`.

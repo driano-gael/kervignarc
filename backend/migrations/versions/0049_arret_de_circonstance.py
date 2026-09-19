@@ -69,8 +69,8 @@ def upgrade() -> None:
     op.create_table(
         "arret_de_circonstance",
         sa.Column("id", sa.Integer(), primary_key=True),
-        # DETTE-001 : FK sans ON DELETE CASCADE — descendance du tournoi, politique de suppression
-        # non tranchée. Ne pas la contourner ici est la seule façon de la traiter d'un geste.
+        # ADR-0077 : FK sans ON DELETE CASCADE — descendance du tournoi, politique de suppression
+        # applicative (ADR-0077). Ne pas la contourner ici est la seule façon de la tenir.
         sa.Column("depart_id", sa.Integer(), sa.ForeignKey("depart.id"), nullable=False),
         sa.Column("phase_id", sa.Integer(), sa.ForeignKey("phase.id"), nullable=False),
         sa.Column("apres_tour", sa.Integer(), nullable=False),

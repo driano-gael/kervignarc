@@ -10,7 +10,7 @@ qualification (`placement`, 0022). Distinct de celui-ci : scoppé par **phase**,
 **composite** `(phase_id, inscription_id)` — un archer a une pose en qualif *et* une en tableau.
 Un inscrit **sans** ligne est en réserve.
 
-**`ON DELETE CASCADE`**, à rebours de DETTE-001 : donnée dérivée, reconstructible (l'appariement est
+**`ON DELETE CASCADE`**, à rebours d'ADR-0077 : donnée dérivée, reconstructible (l'appariement est
 recalculé du classement, la pose seule est persistée) et feuille — sa disparition suit celle de la
 phase ou de l'inscription (cf. ADR-0024/0048). Pas de backfill : aucune phase n'a de plan de duels
 tant que l'admin ne le génère pas (tout en réserve).

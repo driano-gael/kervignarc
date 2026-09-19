@@ -15,6 +15,7 @@ from application.erreurs import (
     TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
     TournoiIntrouvable,
+    TournoiPeuple,
     TournoiSansDepart,
     TransitionStatutInvalide,
 )
@@ -26,6 +27,7 @@ from domain.erreurs import NomTournoiInvalide
 from domain.grain_validation import GrainValidation
 from domain.phase import TypePhase
 from domain.tournoi import (
+    DescendanceTournoi,
     StatutTournoi,
     TypeTournoi,
     transitions_possibles,
@@ -669,3 +671,124 @@ def test_supprimer_leve_si_introuvable() -> None:
     service, _ = _service()
     with pytest.raises(TournoiIntrouvable):
         service.supprimer(404)
+
+
+# --- Suppression d'un tournoi peuplé : signaler puis confirmer (E01US026, ADR-0077) ---
+
+
+def _peuple(**decompte: int) -> DescendanceTournoi:
+    """Un décompte de descendance non vide, réglé nature par nature."""
+    return DescendanceTournoi(**decompte)
+
+
+def test_supprimer_un_tournoi_vide_ne_demande_rien() -> None:
+    """CA : un tournoi vide se supprime sans confirmation — elle doit rester rare pour rester lue.
+
+    « Vide » se juge sur ce que le décompte nomme : le tournoi porte ici un **départ** (`_id_cree`)
+    et part quand même, les créneaux étant de la configuration qui se ressaisit (arbitrage du
+    19/09/2026).
+    """
+    service, departs, _, _, _ = _service_complet()
+    tid = _id_cree(service, departs)
+    service.supprimer(tid)
+    assert service.lister() == []
+
+
+def test_supprimer_un_tournoi_peuple_est_signale() -> None:
+    """CA : un tournoi peuplé est **signalé** (409), et il survit au signalement."""
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    tournois.descendance = _peuple(archers=42)
+    with pytest.raises(TournoiPeuple):
+        service.supprimer(tid)
+    assert service.consulter(tid).id == tid
+
+
+def test_le_signalement_chiffre_chaque_nature() -> None:
+    """CA : le message nomme les **natures et leurs nombres**, pas « des données existent »."""
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    tournois.descendance = _peuple(
+        archers=42, inscriptions=118, fleches=720, series=12, duels=8, forfaits=2, barrages=1
+    )
+    with pytest.raises(TournoiPeuple) as leve:
+        service.supprimer(tid)
+    message = str(leve.value)
+    for nombre in ("42", "118", "720", "12", "8", "2", "1"):
+        assert nombre in message, f"le décompte tait {nombre} : {message}"
+    for nature in ("archer", "inscription", "flèche", "série", "duel", "forfait", "barrage"):
+        assert nature in message, f"le décompte ne nomme pas « {nature} » : {message}"
+
+
+def test_le_signalement_ne_nomme_que_les_natures_presentes() -> None:
+    """CA : une nature absente ne figure pas au message — « 0 duel » n'est pas un impact."""
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    tournois.descendance = _peuple(archers=3)
+    with pytest.raises(TournoiPeuple) as leve:
+        service.supprimer(tid)
+    message = str(leve.value)
+    assert "archer" in message
+    for absente in ("duel", "barrage", "forfait", "remboursement"):
+        assert absente not in message, f"« {absente} » annoncé alors qu'il n'y en a pas : {message}"
+
+
+def test_le_signalement_chiffre_la_somme_encaissee() -> None:
+    """CA (arbitrage 19/09/2026) : les remboursements partent avec le reste, mais **chiffrés**.
+
+    Supprimer le tournoi emporte le registre lui-même : aucun poste ne peut être ouvert, donc la
+    seule protection est d'annoncer l'argent qui disparaît — en euros, lisibles par un bénévole.
+    """
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    tournois.descendance = _peuple(remboursements=3, montant_encaisse_centimes=4550)
+    with pytest.raises(TournoiPeuple) as leve:
+        service.supprimer(tid)
+    message = str(leve.value)
+    assert "3" in message and "remboursement" in message
+    assert "45,50" in message and "€" in message, f"somme encaissée non chiffrée : {message}"
+
+
+def test_la_confirmation_explicite_supprime() -> None:
+    """CA : après confirmation explicite, la suppression s'exécute."""
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    tournois.descendance = _peuple(archers=42, inscriptions=118)
+    service.supprimer(tid, autoriser_suppression_peuplee=True)
+    assert service.lister() == []
+
+
+@pytest.mark.parametrize("depuis", [StatutTournoi.EN_COURS, StatutTournoi.EN_PAUSE])
+def test_un_tournoi_vivant_reste_non_supprimable_meme_confirme(depuis: StatutTournoi) -> None:
+    """CA : les refus d'état **ne deviennent pas confirmables** — ce n'est pas la même question."""
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    _amener(service, tid, depuis)
+    tournois.descendance = _peuple(archers=42)
+    with pytest.raises(TournoiEnCoursNonSupprimable):
+        service.supprimer(tid, autoriser_suppression_peuplee=True)
+    assert service.consulter(tid).statut is depuis
+
+
+def test_un_tournoi_archive_reste_non_supprimable_meme_confirme() -> None:
+    """CA : le verrou de lecture seule d'un archivé ne se lève pas non plus par confirmation."""
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    _amener(service, tid, StatutTournoi.ARCHIVE)
+    tournois.descendance = _peuple(archers=42)
+    with pytest.raises(TournoiArchiveNonModifiable):
+        service.supprimer(tid, autoriser_suppression_peuplee=True)
+
+
+def test_le_signalement_precede_la_garde_d_etat_jamais_l_inverse() -> None:
+    """Un `en cours` peuplé doit rendre le refus **définitif**, pas le signalement confirmable.
+
+    Ordre des gardes : se tromper ici apprendrait à l'admin qu'un tournoi en cours se supprime
+    « en confirmant » — exactement ce que le CA refuse.
+    """
+    service, departs, _, _, tournois = _service_complet()
+    tid = _id_cree(service, departs)
+    _amener(service, tid, StatutTournoi.EN_COURS)
+    tournois.descendance = _peuple(archers=42)
+    with pytest.raises(TournoiEnCoursNonSupprimable):
+        service.supprimer(tid)

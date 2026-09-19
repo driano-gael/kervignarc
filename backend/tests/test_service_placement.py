@@ -39,7 +39,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.phase import PhaseId
 from domain.placement import Affectation, CiblePlacee, PlanDeCibles, RaisonConflit
 from domain.serie import Serie, Volee
-from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -83,6 +83,11 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        # Vide par défaut : ces tests ne portent pas sur la suppression (E01US026). Le dépôt
+        # partagé de `conftest.py` la rend réglable pour ceux qui en ont besoin.
+        return DescendanceTournoi()
 
 
 class FauxGabaritRepository:

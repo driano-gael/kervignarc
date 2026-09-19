@@ -70,7 +70,8 @@ règle côté suppression de départ : seules les payées **de tarif > 0** ouvre
   de langage (confirmation chiffrée `DepartEnCoursNonConfirme`, audit `PAIEMENT`↔`REMBOURSEMENT`).
   Front : onglet « Remboursements » de l'écran Paiements + dialogue de confirmation à la désinscription
   payée.
-- **Périmètre borné aux deux déclencheurs du CA — 3ᵉ chemin exclu, différé (DETTE-018).** La
+- **Périmètre borné aux deux déclencheurs du CA — 3ᵉ chemin exclu, différé (DETTE-018,
+  **refermée le 19/09/2026 par E01US026** : le 3ᵉ chemin ouvre désormais son remboursement).** La
   suppression d'une **fiche archer** (`ArcherRepositorySQL.supprimer`) purge aussi ses inscriptions en
   cascade : c'est un **troisième** chemin d'effacement d'une inscription payée, **hors** du CA écrit.
   Il n'ouvre **pas** de remboursement — l'étendre ajouterait un déclencheur hors CA **et** toucherait la
@@ -89,7 +90,9 @@ règle côté suppression de départ : seules les payées **de tarif > 0** ouvre
   à `EntreeAudit`/`Forfait`) — la date vient exclusivement du port `Horloge` (jamais d'une entrée
   utilisateur), simplicité assumée (règle 12) ; le round-trip UTC est réattaché à la relecture comme
   pour l'audit. Le **report** ne ré-inscrit pas (intention seulement) : une US ultérieure pourra
-  l'outiller. La **purge liée à la suppression d'un tournoi** reste non tranchée (DETTE-001, comme
+  l'outiller. La **purge liée à la suppression d'un tournoi** était alors non tranchée — ADR-0077
+  l'a tranchée depuis, et E01US026 a choisi d'**effacer** les remboursements en chiffrant la somme,
+  le registre ne survivant pas au tournoi (DETTE-001, comme
   `forfait`/`entree_audit` ; la table `remboursement` y est ajoutée).
 - **Dette signalée (remède structurel, non traité ici — DETTE-017)** : la constante `_AUTEUR_ADMIN =
   "Administrateur"` atteint son **3ᵉ site** (`application.paiements`, `application.placement`,

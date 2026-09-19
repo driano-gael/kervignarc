@@ -1,7 +1,7 @@
 """Agrégat **Club** — portée **globale**, hors tournoi : il n'a pas de `tournoi_id`.
 
 C'est ce qui réalise le « réutilisable entre tournois » : un club **survit** à la suppression d'un
-tournoi, il n'appartient pas à sa descendance — **exception explicite** à `DETTE-001`, dont
+tournoi, il n'appartient pas à sa descendance — **exception explicite** à `ADR-0077`, dont
 l'inventaire de cascade est énuméré au registre. ⚠️ **L'unicité du nom n'est pas vérifiée ici**
 (règle d'ensemble, portée par le service) ; en revanche, **ce qui fait que deux noms désignent le
 même club** est du métier : c'est `cle_nom`.

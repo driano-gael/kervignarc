@@ -317,12 +317,20 @@ async def annuler_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
     status_code=204,
     dependencies=[Depends(exiger_admin)],
 )
-async def supprimer_tournoi(tournoi_id: int, request: Request) -> Response:
-    """Supprime un tournoi (**action admin**) : refusé (409) s'il est en cours.
+async def supprimer_tournoi(
+    tournoi_id: int, request: Request, autoriser_suppression_peuplee: bool = False
+) -> Response:
+    """Supprime un tournoi **et sa descendance** (**action admin**) — E01US026, ADR-0077.
 
-    L'écriture passe par la file (ADR-0005) ; renvoie 204 sans contenu en cas de succès.
+    Deux 409 de natures **opposées** : `tournoi_en_cours_non_supprimable` est un refus **définitif**
+    que rien ne lève, `tournoi_peuple` un **signalement** chiffré que le client lève avec
+    `autoriser_suppression_peuplee`. ⚠️ Le drapeau est en **paramètre de requête** et non dans le
+    corps, comme pour l'archer engagé : un `DELETE` n'a pas de corps par convention, et des
+    intermédiaires le suppriment. L'écriture passe par la file (ADR-0005) ; 204 sans contenu.
     """
     service: ServiceTournois = request.app.state.service_tournois
     write_queue: WriteQueue = request.app.state.write_queue
-    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(tournoi_id)))
+    await asyncio.wrap_future(
+        write_queue.submit(lambda: service.supprimer(tournoi_id, autoriser_suppression_peuplee))
+    )
     return Response(status_code=204)

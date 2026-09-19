@@ -29,8 +29,9 @@ choisi » — distinction dont l'écran a besoin pour dire *hérité* plutôt qu
 
 La clé étrangère porte `ON DELETE CASCADE`. L'identité suit le tournoi dans la tombe, sans geste
 applicatif : elle n'a pas d'existence propre, et la conserver n'aurait de sens pour personne. Ce
-choix sort explicitement `identite_tournoi` du périmètre de DETTE-001, qui décrit la descendance
-*non tranchée* — ici, elle l'est. Trouvé en revue adversariale : sans la cascade, un tournoi dont on
+choix sort explicitement `identite_tournoi` du périmètre d'ADR-0077, qui décrit la descendance
+*applicative* — ici, la base s'en charge. Trouvé en revue adversariale : sans la cascade, un
+tournoi dont on
 avait seulement effleuré l'écran d'identité ne se supprimait plus, en 500.
 
 ## Descente
@@ -58,7 +59,7 @@ def upgrade() -> None:
     """Crée `identite_tournoi`. Aucune donnée à reprendre (cf. en-tête)."""
     op.create_table(
         "identite_tournoi",
-        # `ON DELETE CASCADE`, et **non** la FK nue que DETTE-001 décrit pour le reste de la
+        # `ON DELETE CASCADE`, et **non** la FK nue que ADR-0077 décrit pour le reste de la
         # descendance : l'identité n'est pas une donnée *du* tournoi, c'est un **composant strict**
         # de son agrégat — une ligne, sans descendance, cosmétique, qui n'a aucun sens sans lui.
         # C'est le traitement que le schéma réserve déjà à cette population (`volee.serie_id`,

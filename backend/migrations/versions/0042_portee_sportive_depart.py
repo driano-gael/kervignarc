@@ -33,7 +33,7 @@ silence (ADR-0075, « ce qui a été écarté »). Le tournoi reste atteignable 
    de toute façon invalide — la migration doit produire un schéma cohérent, pas le constater.
    Le créneau est reconnaissable (tarif nul, horaire par défaut) et l'organisateur l'ajuste.
 
-Les phases **orphelines** (dont le tournoi n'existe plus — DETTE-001, FK sans `ON DELETE`) sont
+Les phases **orphelines** (dont le tournoi n'existe plus — ADR-0077, FK sans `ON DELETE`) sont
 supprimées : elles ne peuvent être rattachées à aucun créneau, et une FK `NOT NULL` ne les
 tolérerait pas. Idem pour les barrages.
 
@@ -135,7 +135,7 @@ def _basculer(connexion: sa.Connection, table: str) -> None:
             {"depart": depart_id, "tournoi": tournoi_id},
         )
 
-    # Orphelines : tournoi disparu (DETTE-001 — FK sans `ON DELETE`). Aucun créneau ne peut les
+    # Orphelines : tournoi disparu (ADR-0077 — FK sans `ON DELETE`). Aucun créneau ne peut les
     # accueillir, et la contrainte `NOT NULL` qui suit les refuserait. Leur descendance
     # (`forfait`, `placement_tableau`) part avec elles par `ON DELETE CASCADE`.
     connexion.execute(sa.text(f"DELETE FROM {table} WHERE depart_id IS NULL"))

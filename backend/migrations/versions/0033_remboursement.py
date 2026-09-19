@@ -9,8 +9,8 @@ qu'une FK. `motif` (`depart_supprime`/`desinscription`) et `statut`
 (`a_rembourser`/`rembourse`/`reporte`) stockent la valeur d'énum telle quelle. `traite_le` est
 nullable (rempli au traitement).
 
-Seule FK : `tournoi_id`, **sans `ON DELETE`** (DETTE-001, comme `forfait`/`entree_audit`) — la purge
-liée au tournoi relève de sa politique de suppression, non tranchée.
+Seule FK : `tournoi_id`, **sans `ON DELETE`** (ADR-0077, comme `forfait`/`entree_audit`) — la purge
+liée au tournoi relève de sa politique de suppression (applicative, ADR-0077).
 
 Revision ID: 0033_remboursement
 Revises: 0032_depart_horaire_hhmm

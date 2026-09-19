@@ -111,7 +111,8 @@ E12US001) mais ne détermine **jamais** à quelle cible un score est rattaché �
   préparation — son code reste listé et rattachable. Sans conséquence tant que la **saisie** n'existe
   pas (E04US002) ; la réconciliation poste ↔ plan (suppression/régénération) relève de **E09US008**
   (« régénérable »), qui possède déjà la gestion des codes. Édge connu, non silencieux.
-- **−** FK `poste.tournoi_id` **sans `ON DELETE`** (DETTE-001, purge non tranchée) : élargit la dette
+- **−** FK `poste.tournoi_id` **sans `ON DELETE`** (DETTE-001, purge alors non tranchée ;
+  applicative depuis ADR-0077) : élargit la dette
   existante d'une table, sans contournement local.
 - **⚠ Dépendance en avant — cycle de vie à 7 statuts** : la garde de révocation s'appuie sur le seul
   `StatutTournoi.TERMINE` du cycle **actuel à 3 statuts** (brouillon/en_cours/terminé). L'entretien de

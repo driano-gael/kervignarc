@@ -8,7 +8,7 @@ E03US004 (ADR-0024). Le plan de cibles cesse d'être recalculé à la demande (E
 **matérialisé** pour être ajustable (glisser-déposer, réserve, échange). Une ligne = un inscrit
 **posé** sur une case (`inscription_id` en clé primaire) ; un inscrit **sans** ligne est en réserve.
 
-**`ON DELETE CASCADE`**, à rebours de DETTE-001 : donnée dérivée, reconstructible et feuille — sa
+**`ON DELETE CASCADE`**, à rebours d'ADR-0077 : donnée dérivée, reconstructible et feuille — sa
 disparition suit celle de l'inscription/du départ (cf. ADR-0024). Pas de backfill : les départs
 existants n'ont pas de plan matérialisé tant que l'admin ne le génère pas (tout en réserve).
 """

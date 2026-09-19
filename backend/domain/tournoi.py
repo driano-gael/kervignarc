@@ -272,3 +272,43 @@ def _lieu_normalise(lieu: str | None) -> str | None:
         return None
     lieu_normalise = lieu.strip()
     return lieu_normalise or None
+
+
+@dataclass(frozen=True)
+class DescendanceTournoi:
+    """Ce qu'un tournoi emporterait s'il était supprimé — un décompte, pas des entités (ADR-0077).
+
+    ⚠️ **Ne compte que ce qui se perd, jamais la configuration** : départs, catégories, blasons et
+    gabarits partent aussi, mais se ressaisissent — les inclure ferait surgir la confirmation sur
+    un tournoi d'essai où il n'y a rien à perdre, et un garde-fou trop fréquent cesse d'être lu
+    (arbitrage du commanditaire, 19/09/2026 ; `stories/` E01US026, puce « CA — vide »).
+    """
+
+    archers: int = 0
+    inscriptions: int = 0
+    fleches: int = 0
+    series: int = 0
+    duels: int = 0
+    forfaits: int = 0
+    barrages: int = 0
+    remboursements: int = 0
+    # Somme encaissée **effacée sans contrepartie** : supprimer le tournoi emporte le registre des
+    # remboursements lui-même (`remboursement.tournoi_id` est sa seule FK), donc il n'y a nulle part
+    # où ouvrir un poste. Le montant est annoncé à la confirmation faute de pouvoir être tracé
+    # (ADR-0077 § Conséquences ; à distinguer de DETTE-018, où le registre, lui, survit).
+    montant_encaisse_centimes: int = 0
+
+    def est_vide(self) -> bool:
+        """Vrai si la suppression ne perd rien d'irrécupérable — aucune confirmation à demander."""
+        return not any(
+            (
+                self.archers,
+                self.inscriptions,
+                self.fleches,
+                self.series,
+                self.duels,
+                self.forfaits,
+                self.barrages,
+                self.remboursements,
+            )
+        )

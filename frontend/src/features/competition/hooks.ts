@@ -107,10 +107,17 @@ export function useModifierTournoi() {
 // par la frise de l'accueil (E14US001, `useTransitionnerTournoi`), qui couvre les 7 statuts d'un
 // seul geste. `terminer` garde sa voie dédiée côté complétude (message chiffré d'avertissement).
 
+interface SupprimerTournoiVariables {
+  id: number
+  // Confirmation après un 409 `tournoi_peuple` : emporte toute la descendance du tournoi.
+  autoriserSuppressionPeuplee?: boolean
+}
+
 export function useSupprimerTournoi() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => supprimerTournoi(id),
+    mutationFn: ({ id, autoriserSuppressionPeuplee }: SupprimerTournoiVariables) =>
+      supprimerTournoi(id, autoriserSuppressionPeuplee),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
   })
 }

@@ -17,9 +17,9 @@ mouvements dans une seule revision, parce qu'ils sont les deux faces d'une meme 
   plus au tournoi. Aucune donnee reelle a preserver (jalon J1, pre-production) ; le `downgrade`
   recree la colonne nullable mais ne restaure aucune valeur.
 
-**DETTE-001 (docs/dette.md) elargie.** `depart.tournoi_id` est une FK **de la descendance du
+**ADR-0077 (regime des FK) elargi.** `depart.tournoi_id` est une FK **de la descendance du
 tournoi**, sans `ON DELETE CASCADE` ni suppression applicative equivalente : elle rejoint la
-politique de suppression d'un tournoi non tranchee. La ligne du registre est elargie plutot que
+politique de suppression d'un tournoi. La ligne du registre est elargie plutot que
 contournee ici. La contrainte est **nommee** (`fk_depart_tournoi_id`) : SQLite ne sait pas cibler
 une contrainte anonyme au downgrade (meme raison qu'en 0014/0015).
 """
@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("horaire", sa.String(), nullable=True),
         sa.Column("tarif_centimes", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        # DETTE-001 (docs/dette.md) : FK sans ON DELETE — enfant de la descendance de `tournoi`.
+        # ADR-0077 : FK sans ON DELETE — enfant de la descendance de `tournoi`.
         sa.ForeignKeyConstraint(["tournoi_id"], ["tournoi.id"], name="fk_depart_tournoi_id"),
         sa.UniqueConstraint("tournoi_id", "numero", name="uq_depart_tournoi_numero"),
     )

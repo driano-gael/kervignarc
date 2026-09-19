@@ -25,7 +25,7 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import Phase, TypePhase
-from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
@@ -62,6 +62,11 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        # Vide par défaut : ces tests ne portent pas sur la suppression (E01US026). Le dépôt
+        # partagé de `conftest.py` la rend réglable pour ceux qui en ont besoin.
+        return DescendanceTournoi()
 
 
 @dataclass

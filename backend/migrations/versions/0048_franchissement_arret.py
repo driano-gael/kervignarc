@@ -38,7 +38,7 @@ Deux documents JSON (`tours_a_finir`, `phases_arretees`) plutôt que deux tables
 volumes sont de quelques lignes par créneau, rien ne les interroge autrement que « pour cet arrêt »,
 et la règle 12 dit où mettre la rigueur — au moteur métier, pas à l'outillage.
 
-⚠️ **`ON DELETE CASCADE` absent, comme partout** (`DETTE-001`) : cette table est un descendant du
+⚠️ **`ON DELETE CASCADE` absent, comme partout** (`ADR-0077`) : cette table est un descendant du
 départ par la phase, et la politique de suppression de la descendance du tournoi n'est pas tranchée.
 Ne pas la contourner ici serait la seule façon de la traiter un jour d'un seul geste.
 

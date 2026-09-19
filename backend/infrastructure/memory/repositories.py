@@ -29,7 +29,7 @@ from domain.placement import Affectation
 from domain.ports import DepartRepository, DerouleRepository
 from domain.remboursement import Remboursement
 from domain.serie import Serie
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 from infrastructure.erreurs import InfrastructureError
 
 
@@ -78,6 +78,15 @@ class InMemoryTournoiRepository(_AllocateurId):
         self._items[tournoi.id] = tournoi
         return tournoi
 
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        """Toujours **vide** : une simulation n'a rien à protéger, et ce dépôt ne voit qu'elle.
+
+        Même parti que les no-op d'audit du module (ADR-0054) : ce dépôt ne tient que des tournois
+        et ne peut donc compter personne. Un décompte inventé ferait surgir une confirmation sur un
+        tournoi qu'on vient de fabriquer pour le jeter.
+        """
+        return DescendanceTournoi()
+
     def supprimer(self, tournoi_id: TournoiId) -> None:
         self._items.pop(tournoi_id, None)
 
@@ -114,6 +123,16 @@ class InMemoryArcherRepository(_AllocateurId):
 
     def supprimer(self, archer_id: ArcherId) -> None:
         self._items.pop(archer_id, None)
+
+    def supprimer_avec_remboursements(
+        self, archer_id: ArcherId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime l'archer ; les remboursements sont **ignorés** en simulation.
+
+        Même parti que `InMemoryDepartRepository.supprimer_avec_remboursements` : une simulation ne
+        touche à aucune caisse, et un poste fictif n'aurait aucun sens à relire.
+        """
+        self.supprimer(archer_id)
 
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
         self._items.pop(perdant_id, None)

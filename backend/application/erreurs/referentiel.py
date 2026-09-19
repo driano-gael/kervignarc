@@ -60,6 +60,19 @@ class TournoiEnCoursNonSupprimable(ApplicationError):
     code = "tournoi_en_cours_non_supprimable"
 
 
+class TournoiPeuple(ApplicationError):
+    """Suppression suspendue : le tournoi porte des données qui se perdraient (E01US026) → 409.
+
+    **Un signalement, pas un refus** — même protocole qu'`ArcherEngage` (ADR-0016) porté un cran
+    plus haut (ADR-0077) : l'admin tranche via `autoriser_suppression_peuplee`, et le message
+    **chiffre** chaque nature. ⚠️ Rien à voir avec `TournoiEnCoursNonSupprimable`, qui reste un
+    refus **définitif** : un tournoi qu'on est en train de tirer ne se supprime pas, confirmé ou
+    non — ce n'est pas la même question.
+    """
+
+    code = "tournoi_peuple"
+
+
 class LogoIntrouvable(ApplicationError):
     """Aucun logo à l'emplacement demandé (E16US006) → 404.
 

@@ -94,6 +94,7 @@ from application.erreurs.referentiel import (
     RemboursementIntrouvable,
     TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
+    TournoiPeuple,
     TournoiSansDepart,
     TournoiSansPhase,
 )
@@ -211,6 +212,7 @@ __all__ = [
     "TournoiArchiveNonModifiable",
     "TournoiEnCoursNonSupprimable",
     "TournoiIntrouvable",
+    "TournoiPeuple",
     "TournoiSansDepart",
     "TournoiSansPhase",
     "TransitionStatutInvalide",
