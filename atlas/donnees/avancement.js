@@ -4,6 +4,16 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "104",
+   "introduite_par": [
+    "E16US012",
+    "E01US026"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "101",
    "introduite_par": [
     "E16US016"
@@ -106,39 +116,6 @@ window.ATLAS.avancement = {
    "severite": "majeur"
   },
   {
-   "identifiant": "001",
-   "introduite_par": [
-    "E01US002",
-    "E01US004",
-    "E01US005",
-    "E01US006",
-    "E01US008",
-    "E01US009",
-    "E02US002",
-    "E02US004",
-    "E02US009",
-    "E10US003",
-    "E04US001",
-    "E10US005",
-    "E04US002",
-    "E04US015",
-    "E08US005",
-    "E06US003",
-    "E05US033",
-    "E05US034",
-    "E01US025",
-    "E02US010",
-    "E02US003",
-    "E02US005"
-   ],
-   "ouverte": true,
-   "resorption_us": [
-    "E01US026",
-    "E02US003"
-   ],
-   "severite": "majeur"
-  },
-  {
    "identifiant": "006",
    "introduite_par": [
     "E02US002",
@@ -170,7 +147,8 @@ window.ATLAS.avancement = {
    ],
    "ouverte": true,
    "resorption_us": [
-    "E12US007"
+    "E12US007",
+    "E01US026"
    ],
    "severite": "majeur"
   },
@@ -247,15 +225,6 @@ window.ATLAS.avancement = {
    "ouverte": true,
    "resorption_us": [],
    "severite": "mineur"
-  },
-  {
-   "identifiant": "018",
-   "introduite_par": [
-    "E08US005"
-   ],
-   "ouverte": true,
-   "resorption_us": [],
-   "severite": "majeur"
   },
   {
    "identifiant": "019",
@@ -914,7 +883,7 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [],
-  "derniere": "E16US016"
+  "derniere": "E01US026"
  },
  "epics": [
   {
@@ -1627,10 +1596,10 @@ window.ATLAS.avancement = {
     "0026",
     "0077"
    ],
-   "dettes_introduites": [
+   "dettes_introduites": [],
+   "dettes_resorbees": [
     "001"
    ],
-   "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
    "etat": "✅",
@@ -1664,9 +1633,7 @@ window.ATLAS.avancement = {
    "adr": [
     "0019"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
@@ -1683,9 +1650,7 @@ window.ATLAS.avancement = {
    "adr": [
     "0020"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
@@ -1700,9 +1665,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
@@ -1738,9 +1701,7 @@ window.ATLAS.avancement = {
    "adr": [
     "0060"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
@@ -1759,9 +1720,7 @@ window.ATLAS.avancement = {
     "0045",
     "0046"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
@@ -2079,7 +2038,6 @@ window.ATLAS.avancement = {
     "0077"
    ],
    "dettes_introduites": [
-    "001",
     "025",
     "026",
     "047",
@@ -2100,14 +2058,22 @@ window.ATLAS.avancement = {
    "titre_story": "Le départ est la portée sportive, le déroulé se définit une fois"
   },
   {
-   "adr": [],
-   "dettes_introduites": [],
+   "adr": [
+    "0057",
+    "0075",
+    "0077"
+   ],
+   "dettes_introduites": [
+    "104"
+   ],
    "dettes_resorbees": [
-    "001"
+    "001",
+    "007",
+    "018"
    ],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E01US026",
    "sections": [
     "Résorptions de dette planifiées (arbitrages du 07/08/2026)"
@@ -2142,7 +2108,6 @@ window.ATLAS.avancement = {
     "0015"
    ],
    "dettes_introduites": [
-    "001",
     "006"
    ],
    "dettes_resorbees": [],
@@ -2167,12 +2132,10 @@ window.ATLAS.avancement = {
     "0109"
    ],
    "dettes_introduites": [
-    "001",
     "006",
     "007"
    ],
    "dettes_resorbees": [
-    "001",
     "013"
    ],
    "epic": "02",
@@ -2192,9 +2155,7 @@ window.ATLAS.avancement = {
     "0017",
     "0018"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "02",
    "epic_titre": "Inscriptions & clubs",
@@ -2214,7 +2175,6 @@ window.ATLAS.avancement = {
     "0057"
    ],
    "dettes_introduites": [
-    "001",
     "006"
    ],
    "dettes_resorbees": [],
@@ -2273,7 +2233,6 @@ window.ATLAS.avancement = {
     "0077"
    ],
    "dettes_introduites": [
-    "001",
     "007"
    ],
    "dettes_resorbees": [
@@ -2295,10 +2254,10 @@ window.ATLAS.avancement = {
     "0077",
     "0096"
    ],
-   "dettes_introduites": [
+   "dettes_introduites": [],
+   "dettes_resorbees": [
     "001"
    ],
-   "dettes_resorbees": [],
    "epic": "02",
    "epic_titre": "Inscriptions & clubs",
    "etat": "✅",
@@ -2490,9 +2449,7 @@ window.ATLAS.avancement = {
     "0034",
     "0042"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "04",
    "epic_titre": "Saisie des scores en temps réel",
@@ -2520,7 +2477,6 @@ window.ATLAS.avancement = {
     "0055"
    ],
    "dettes_introduites": [
-    "001",
     "065"
    ],
    "dettes_resorbees": [
@@ -2588,9 +2544,7 @@ window.ATLAS.avancement = {
     "0050",
     "0051"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [
     "014"
    ],
@@ -3170,7 +3124,6 @@ window.ATLAS.avancement = {
     "0109"
    ],
    "dettes_introduites": [
-    "001",
     "031",
     "054",
     "064",
@@ -3179,6 +3132,7 @@ window.ATLAS.avancement = {
     "096"
    ],
    "dettes_resorbees": [
+    "001",
     "031"
    ],
    "epic": "05",
@@ -3200,11 +3154,11 @@ window.ATLAS.avancement = {
     "0093"
    ],
    "dettes_introduites": [
-    "001",
     "031",
     "075"
    ],
    "dettes_resorbees": [
+    "001",
     "031",
     "074"
    ],
@@ -3283,7 +3237,6 @@ window.ATLAS.avancement = {
     "0070"
    ],
    "dettes_introduites": [
-    "001",
     "028",
     "081"
    ],
@@ -3547,10 +3500,8 @@ window.ATLAS.avancement = {
     "0057"
    ],
    "dettes_introduites": [
-    "001",
     "016",
-    "017",
-    "018"
+    "017"
    ],
    "dettes_resorbees": [],
    "epic": "08",
@@ -3696,9 +3647,7 @@ window.ATLAS.avancement = {
     "0042",
     "0057"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "10",
    "epic_titre": "Accès & rôles",
@@ -3741,9 +3690,7 @@ window.ATLAS.avancement = {
     "0057",
     "0105"
    ],
-   "dettes_introduites": [
-    "001"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "10",
    "epic_titre": "Accès & rôles",
@@ -4456,7 +4403,8 @@ window.ATLAS.avancement = {
    "dettes_introduites": [
     "082",
     "083",
-    "084"
+    "084",
+    "104"
    ],
    "dettes_resorbees": [],
    "epic": "16",
@@ -4812,7 +4760,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 141,
+  "livrees": 142,
   "vivantes": 177
  },
  "sections": [
@@ -6095,7 +6043,7 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    1,
+    2,
     4
    ],
    "compteur_ecrit": null,
@@ -6114,7 +6062,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E01US026",
      "titre": "Supprimer un tournoi : signaler puis confirmer"
     },

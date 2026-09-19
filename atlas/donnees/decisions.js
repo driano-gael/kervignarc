@@ -2796,12 +2796,60 @@ window.ATLAS.decisions = {
      "type": "voisin"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/application/remboursements.py",
+     "existe": true,
+     "symboles": [
+      "marquer_rembourse",
+      "marquer_reporte"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/remboursement.py",
+     "existe": true,
+     "symboles": [
+      "MotifRemboursement",
+      "archer_supprime",
+      "depart_supprime",
+      "desinscription",
+      "StatutRemboursement",
+      "Remboursement.creer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/",
+     "existe": true,
+     "symboles": [
+      "InscriptionRepositorySQL.supprimer_avec_remboursement",
+      "DepartRepositorySQL.supprimer_avec_remboursements",
+      "ArcherRepositorySQL.supprimer_avec_remboursements",
+      "DELETE",
+      "commit"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
+    },
+    {
+     "chemin": "frontend/src/features/paiements/Paiements.tsx",
+     "existe": true,
+     "symboles": [
+      "LIBELLE_MOTIF"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
    "titre": "Registre de remboursements : mouvement d'argent né d'un effacement",
    "us": [
+    "E01US026",
     "E02US005",
     "E02US009",
     "E08US002",
@@ -4039,6 +4087,7 @@ window.ATLAS.decisions = {
     "E00US028",
     "E00US030",
     "E01US025",
+    "E01US026",
     "E03US012",
     "E05US026",
     "E05US029",
@@ -4195,7 +4244,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-08-07",
    "date_brute": "2026-08-07",
-   "extrait": "Le tournoi suit le protocole de l'archer engagé (ADR-0016) : on signale, l'admin confirme, puis on détruit — en cascade applicative, jamais par ON DELETE CASCADE en base. 1. Un tournoi vide se supprime sans rien demander. Aucun signalement inutile : la confirmation doit rester rare pour rester lue. 2. Un tournoi peuplé est signalé en 409, avec un décompte chiffré de ce qui partira — archers, inscriptions, scores, séries, duels, forfaits, barrages, remboursements. « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » (D-16) : le message nomme les natures et leurs nombres, il ne dit pas « des données existent ». 3. L'admin confirme explicitement […]",
+   "extrait": "Le tournoi suit le protocole de l'archer engagé (ADR-0016) : on signale, l'admin confirme, puis on détruit — en cascade applicative, jamais par ON DELETE CASCADE en base. 1. Un tournoi vide se supprime sans rien demander. Aucun signalement inutile : la confirmation doit rester rare pour rester lue. 2. Un tournoi peuplé est signalé en 409, avec un décompte chiffré de ce qui partira — archers, inscriptions, flèches tirées (et non « scores » : l'agrégat Score n'a plus d'écrivain, DETTE-011), séries, duels, forfaits, barrages, postes, scoreurs, actes au journal d'audit, inscriptions payées et remboursements. « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » […]",
    "fichier": "docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md",
    "identifiant": "0077",
    "liens": [
@@ -4218,7 +4267,87 @@ window.ATLAS.decisions = {
      "type": "us"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/tournois.py",
+     "existe": true,
+     "symboles": [
+      "supprimer_tournoi",
+      "DELETE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/tournois.py",
+     "existe": true,
+     "symboles": [
+      "_signaler_descendance",
+      "TournoiPeuple"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "TournoiRepository.compter_descendance",
+      "supprimer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tournoi.py",
+     "existe": true,
+     "symboles": [
+      "DescendanceTournoi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/referentiel.py",
+     "existe": true,
+     "symboles": [
+      "TournoiRepositorySQL.supprimer",
+      "compter_descendance",
+      "_purger_descendance_des_archers",
+      "_purger_descendance_des_departs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_tournoi_repository.py",
+     "existe": true,
+     "symboles": [
+      "test_aucune_table_neuve_n_echappe_a_l_inventaire",
+      "Base.metadata",
+      "test_aucune_fk_de_la_descendance_ne_cascade_en_base"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tournois/Tournois.tsx",
+     "existe": true,
+     "symboles": [
+      "DialogueConfirmation",
+      "danger"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -4226,6 +4355,7 @@ window.ATLAS.decisions = {
    "us": [
     "E01US002",
     "E01US025",
+    "E01US026",
     "E02US003",
     "E02US009",
     "E02US010"
