@@ -9,8 +9,10 @@ catégorie, facultatif (`NULL` = aucun), avec une FK vers `blason.id`. Exploité
 (EPIC-03). SQLite ne sait pas ajouter une contrainte par `ALTER TABLE` : on passe par le mode
 **batch** d'Alembic (recréation de la table). Correspond au modèle ORM `CategorieORM`.
 
-DETTE-001 (docs/dette.md) : la FK est posée **sans** `ON DELETE CASCADE`, comme le reste de la
-descendance du tournoi ; la politique de suppression reste à trancher dans l'US dédiée.
+ADR-0077 : la FK est posée **sans** `ON DELETE CASCADE`, comme le reste de la
+descendance du tournoi ;
+la purge est **applicative**
+(`TournoiRepositorySQL.supprimer`, ADR-0077).
 """
 
 from __future__ import annotations

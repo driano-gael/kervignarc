@@ -7,6 +7,7 @@
 // même si le lien temps réel est momentanément coupé.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ErreurApi } from '../../shared/api/client'
 import {
   ajouterArcher,
   type AnnonceBarrage,
@@ -107,11 +108,37 @@ export function useModifierTournoi() {
 // par la frise de l'accueil (E14US001, `useTransitionnerTournoi`), qui couvre les 7 statuts d'un
 // seul geste. `terminer` garde sa voie dédiée côté complétude (message chiffré d'avertissement).
 
-export function useSupprimerTournoi() {
+interface SupprimerTournoiVariables {
+  id: number
+  // Confirmation après un 409 `tournoi_peuple` : emporte toute la descendance du tournoi.
+  autoriserSuppressionPeuplee?: boolean
+}
+
+// Le 409 `tournoi_peuple` n'est **pas une panne** : c'est la question posée à l'admin. Le hook la
+// remonte par `surSignalement` au lieu de la laisser dans `error`, pour que l'appelant tienne
+// l'ouverture du dialogue dans son propre état — `error` est remis à `null` au rejeu, ce qui
+// refermait le dialogue au moment même de la confirmation (revue E01US026, axe C1).
+interface EchosSuppressionTournoi {
+  surSignalement: (message: string) => void
+  surFin: () => void
+}
+
+export function useSupprimerTournoi(echos?: EchosSuppressionTournoi) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => supprimerTournoi(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
+    mutationFn: ({ id, autoriserSuppressionPeuplee }: SupprimerTournoiVariables) =>
+      supprimerTournoi(id, autoriserSuppressionPeuplee),
+    onSuccess: () => {
+      echos?.surFin()
+      return queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS })
+    },
+    onError: (erreur) => {
+      if (erreur instanceof ErreurApi && erreur.code === 'tournoi_peuple') {
+        echos?.surSignalement(erreur.message)
+        return
+      }
+      echos?.surFin()
+    },
   })
 }
 

@@ -41,7 +41,7 @@ from domain.paiement import RecapPaiement
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie, Volee
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxDepartRepository,
     FauxForfaitRepository,
@@ -79,6 +79,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         raise NotImplementedError
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class FauxPlacementRepository:

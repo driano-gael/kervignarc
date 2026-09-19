@@ -5,12 +5,13 @@ désinscription).
 La ligne **survit** à la disparition de l'inscription/du départ : pas de FK vers eux (souvent
 détruits), on fige des **instantanés textuels** (`archer_prenom`, `archer_nom`, `creneau`) et le
 `montant_centimes` encaissé — comme `entree_audit`/`forfait` figent le **nom** de l'auteur plutôt
-qu'une FK. `motif` (`depart_supprime`/`desinscription`) et `statut`
+qu'une FK. `motif` (`archer_supprime`/`depart_supprime`/`desinscription`) et `statut`
 (`a_rembourser`/`rembourse`/`reporte`) stockent la valeur d'énum telle quelle. `traite_le` est
 nullable (rempli au traitement).
 
-Seule FK : `tournoi_id`, **sans `ON DELETE`** (DETTE-001, comme `forfait`/`entree_audit`) — la purge
-liée au tournoi relève de sa politique de suppression, non tranchée.
+Seule FK : `tournoi_id`, **sans `ON DELETE`** (comme `forfait`/`entree_audit`) — purge
+**applicative** (ADR-0077). ⚠️ Le registre **ne survit pas** au tournoi : c'est pourquoi sa
+suppression *efface* les postes au lieu d'en ouvrir, en chiffrant la somme (E01US026).
 
 Revision ID: 0033_remboursement
 Revises: 0032_depart_horaire_hhmm

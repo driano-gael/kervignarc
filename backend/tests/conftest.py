@@ -65,7 +65,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation
 from domain.remboursement import Remboursement, RemboursementId
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -140,6 +140,7 @@ class FauxArcherRepository:
     def __init__(self) -> None:
         self._archers: dict[int, Archer] = {}
         self._sequence = 0
+        self.remboursements_ouverts: list[Remboursement] = []
 
     def ajouter(self, archer: Archer) -> Archer:
         self._sequence += 1
@@ -168,6 +169,15 @@ class FauxArcherRepository:
         return archer
 
     def supprimer(self, archer_id: ArcherId) -> None:
+        del self._archers[archer_id]
+
+    def supprimer_avec_remboursements(
+        self, archer_id: ArcherId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        # Les postes ouverts sont **conservés** (et non simplement comptés) : c'est le motif, le
+        # montant et l'instantané du nom qui font la valeur du registre — un faux qui n'en
+        # garderait que le nombre laisserait passer un remboursement anonyme ou à 0 €.
+        self.remboursements_ouverts.extend(remboursements)
         del self._archers[archer_id]
 
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
@@ -961,11 +971,18 @@ DATE_TOURNOI = datetime.date(2026, 3, 14)
 
 
 class FauxTournoiRepository:
-    """Repository en mémoire conforme au port `TournoiRepository`."""
+    """Repository en mémoire conforme au port `TournoiRepository`.
+
+    `descendance` est **réglable** : le service ne sait pas compter lui-même (c'est une requête
+    d'infrastructure, port `compter_descendance`), donc un test de signalement règle ce qu'il veut
+    voir annoncé. Vide par défaut — tous les tests antérieurs à E01US026 supposent un tournoi qui
+    part sans confirmation.
+    """
 
     def __init__(self) -> None:
         self._tournois: dict[int, Tournoi] = {}
         self._sequence = 0
+        self.descendance = DescendanceTournoi()
 
     def ajouter(self, tournoi: Tournoi) -> Tournoi:
         self._sequence += 1
@@ -983,6 +1000,9 @@ class FauxTournoiRepository:
         assert tournoi.id in self._tournois, "Tournoi à mettre à jour absent."
         self._tournois[tournoi.id] = tournoi
         return tournoi
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return self.descendance
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]

@@ -588,6 +588,12 @@ def create_app(
         categorie_repository,
         inscription_repository,
         serie_repository,
+        # E01US026 (résorbe DETTE-018) : supprimer une fiche archer efface ses inscriptions payées,
+        # qui deviennent des remboursements à traiter — d'où le **tarif** du créneau (départs) et
+        # l'**instant** d'ouverture (horloge). Troisième chemin branché sur le registre, après la
+        # désinscription et la suppression de départ.
+        depart_repository,
+        HorlogeSysteme(),
     )
     # Classement de qualification (E06US001) : lit les **séries** de saisie, plus les catégories
     # pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail flèche par

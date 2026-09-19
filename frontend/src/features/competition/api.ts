@@ -233,8 +233,11 @@ export function terminerTournoi(id: number): Promise<Tournoi> {
   return fetchJson<Tournoi>(`/api/v1/tournois/${id}/terminer`, { method: 'POST' })
 }
 
-export function supprimerTournoi(id: number): Promise<void> {
-  return fetchJson<void>(`/api/v1/tournois/${id}`, { method: 'DELETE' })
+export function supprimerTournoi(id: number, autoriserSuppressionPeuplee = false): Promise<void> {
+  // Drapeau en **paramètre de requête** et non dans le corps : un `DELETE` n'a pas de corps par
+  // convention HTTP, et des intermédiaires le suppriment (même parti que la suppression d'archer).
+  const parametres = autoriserSuppressionPeuplee ? '?autoriser_suppression_peuplee=true' : ''
+  return fetchJson<void>(`/api/v1/tournois/${id}${parametres}`, { method: 'DELETE' })
 }
 
 export function ajouterArcher(tournoiId: number, entree: NouvelArcher): Promise<Archer> {

@@ -9,8 +9,9 @@ le **barème de qualification** là où le modèle de données l'attend (`config
 n'exploite qu'une phase de type `qualification` par tournoi ; `ordre` et `statut` sont conformes au
 modèle cible mais non exploités avant le moteur (EPIC-05). Correspond au modèle ORM `PhaseORM`.
 
-DETTE-001 (docs/dette.md) : la FK `tournoi_id` est posée **sans** `ON DELETE CASCADE`, comme le
-reste de la descendance du tournoi ; la politique de suppression reste à trancher dans l'US dédiée.
+ADR-0077 : la FK `tournoi_id` est posée **sans** `ON DELETE CASCADE`, comme le
+reste de la descendance du tournoi ;
+la purge est **applicative**, dans `TournoiRepositorySQL.supprimer` (ADR-0077).
 """
 
 from __future__ import annotations

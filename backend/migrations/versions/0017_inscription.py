@@ -13,7 +13,7 @@ Contrainte `UNIQUE(archer_id, depart_id)` (`uq_inscription_archer_depart`) : un 
 qu'une fois sur un meme creneau (le refus fonctionnel, `DejaInscrit` -> 409, est porte en amont par
 le service).
 
-**DETTE-001 (docs/dette.md) elargie.** L'inscription porte **deux** FK de la descendance du tournoi,
+**ADR-0077 (regime des FK) elargi.** L'inscription porte **deux** FK de la descendance du tournoi,
 sans `ON DELETE CASCADE` : `archer_id` (-> archer.id) et `depart_id` (-> depart.id). La purge en
 cascade est **applicative et maitrisee** (`ArcherRepositorySQL.supprimer` et
 `DepartRepositorySQL.supprimer` effacent les inscriptions liees dans leur transaction) ; la cascade
@@ -43,7 +43,7 @@ def upgrade() -> None:
         sa.Column("depart_id", sa.Integer(), nullable=False),
         sa.Column("paye", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.PrimaryKeyConstraint("id"),
-        # DETTE-001 (docs/dette.md) : deux FK sans ON DELETE — descendance du tournoi via archer ET
+        # ADR-0077 : deux FK sans ON DELETE — descendance du tournoi via archer ET
         # via depart. Cascade applicative maitrisee cote adapters ; ne pas contourner ici.
         sa.ForeignKeyConstraint(["archer_id"], ["archer.id"], name="fk_inscription_archer_id"),
         sa.ForeignKeyConstraint(["depart_id"], ["depart.id"], name="fk_inscription_depart_id"),

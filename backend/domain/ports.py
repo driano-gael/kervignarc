@@ -41,7 +41,7 @@ from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId
 from domain.serie import Serie
 from domain.supervision import ActivitePoste
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 
 
 class TournoiRepository(Protocol):
@@ -67,8 +67,24 @@ class TournoiRepository(Protocol):
         """Met à jour un tournoi déjà persisté (édition, transition de statut) et le renvoie."""
         ...
 
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        """Compte ce que la suppression du tournoi emporterait (ADR-0077).
+
+        ⚠️ **La purge est exhaustive, le décompte ne l'est pas — et l'écart est la décision.**
+        Le décompte ne retient que ce qui **ne se ressaisit pas** (ADR-0077 § Tranché, point 2) ; la
+        configuration part sans être annoncée. Une table neuve rejoint donc **toujours** la purge,
+        et le décompte **si sa perte est irrécupérable**. Le critère et la liste nominative des
+        exclus vivent sur `DescendanceTournoi`.
+        """
+        ...
+
     def supprimer(self, tournoi_id: TournoiId) -> None:
-        """Supprime le tournoi d'identifiant donné (existence garantie par l'appelant)."""
+        """Supprime le tournoi **et toute sa descendance**, en une transaction (ADR-0077).
+
+        Existence et confirmation (`TournoiPeuple`) garanties par l'appelant. ⚠️ La cascade est
+        **applicative, jamais `ON DELETE CASCADE`** : une cascade SQL armerait une purge silencieuse
+        sur tout autre chemin, là où la décision se prend en amont (ADR-0077 §5).
+        """
         ...
 
 
@@ -115,17 +131,30 @@ class ArcherRepository(Protocol):
         """Supprime l'archer, **ses scores et ses inscriptions** (E02US003, E02US009).
 
         ⚠️ La purge fait partie du contrat, dans **une seule transaction** : `score.archer_id` et
-        `inscription.archer_id` sont des FK **sans `ON DELETE`** (DETTE-001), et deux transactions
+        `inscription.archer_id` sont des FK **sans `ON DELETE`** (ADR-0077), et deux transactions
         successives laisseraient un archer dépouillé de ses flèches. Existence et confirmation
         (`ArcherEngage`) garanties par l'appelant. Un archer qui **abandonne** ne passe pas par
         ici : c'est un forfait tracé (ADR-0050), qui préserve ses flèches.
         """
         ...
 
+    def supprimer_avec_remboursements(
+        self, archer_id: ArcherId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime l'archer (et sa descendance) **et** ouvre les remboursements — une transaction.
+
+        Variante de `supprimer` pour un archer dont des inscriptions **payées** vont être effacées
+        (E01US026, résorbe DETTE-018) : troisième réalisation de la couture d'ADR-0057, après
+        `InscriptionRepository.supprimer_avec_remboursement` et
+        `DepartRepository.supprimer_avec_remboursements`. Liste vide tolérée, mais le service
+        appelle alors `supprimer`.
+        """
+        ...
+
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
         """Fusionne deux fiches d'un doublon (E02US005) : réassigne inscriptions, scores et séries
         au gagnant, puis **supprime** le perdant — en **une seule transaction** (FK sans
-        `ON DELETE`, DETTE-001). Miroir de `supprimer`, qui purge là où celle-ci réattribue.
+        `ON DELETE`, ADR-0077). Miroir de `supprimer`, qui purge là où celle-ci réattribue.
 
         L'appelant garantit deux archers distincts du même tournoi dont **pas les deux** n'ont de
         série. ⚠️ Collision `UNIQUE(archer_id, depart_id)` à résoudre dans l'adapter : l'inscription
@@ -205,7 +234,7 @@ class DepartRepository(Protocol):
 
         Existence et confirmation (`DepartAvecInscriptions`) garanties par l'appelant. La purge est
         au contrat, en **une seule transaction** : `inscription.depart_id` est une FK **sans
-        `ON DELETE`** (DETTE-001). Même patron que `ArcherRepository.supprimer`.
+        `ON DELETE`** (ADR-0077). Même patron que `ArcherRepository.supprimer`.
         """
         ...
 

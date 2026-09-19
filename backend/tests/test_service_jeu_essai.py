@@ -139,6 +139,8 @@ def _atteler() -> Attelage:
         categorie_repo,
         inscription_repo,
         serie_repo,
+        depart_repo,
+        _horloge(),
     )
     service_inscriptions = ServiceInscriptions(
         inscription_repo, archer_repo, depart_repo, _horloge()

@@ -450,9 +450,25 @@ vide) : `test_supprimer_un_termine` est en `xfail` depuis.
 confirmer** ». Décision : [ADR-0077](../docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md).
 
 - **CA — un tournoi vide se supprime sans rien demander.** La confirmation doit rester rare pour
-  rester lue.
+  rester lue. **« Vide » = aucun archer, aucune inscription, aucune flèche tirée, aucune série,
+  aucun duel, aucun forfait, aucun barrage, aucun poste enrôlé, aucun scoreur, aucun acte au
+  journal d'audit, aucune inscription payée, aucun remboursement** *(arbitrage du commanditaire,
+  19/09/2026)*. Ne comptent **pas** : créneaux, catégories, blasons, gabarits, déroulé composé et
+  identité visuelle — de la **configuration** qui se ressaisit. Un tournoi monté puis abandonné
+  avant la première inscription part donc d'un clic.
+  ⚠️ **Le critère est « est-ce que ça se ressaisit ? », pas « est-ce de la configuration ? »**
+  *(corrigé en revue, 19/09/2026)* : postes et scoreurs portent des codes tirés au hasard, donc les
+  QR déjà imprimés ne se retrouvent pas ; le journal d'audit est une trace que rien ne reconstitue.
+  Une première version les laissait dehors, et un tournoi entièrement **préparé** la veille partait
+  sur un seul clic.
+  ⚠️ Le § Contexte d'ADR-0077 dit « depuis E02US010 plus aucun tournoi `prêt` n'est vide » : c'est
+  vrai du **500**, pas du **signalement** — les deux phrases ne parlaient pas du même « vide ».
 - **CA — un tournoi peuplé est signalé (409) avec un décompte chiffré** de ce qui partira : archers,
-  inscriptions, scores, séries, duels, forfaits, barrages, remboursements. Le message **nomme les
+  inscriptions, **flèches tirées**, séries, duels, forfaits, barrages, postes, scoreurs, actes au
+  journal d'audit, inscriptions payées et remboursements. ⚠️ **« flèches tirées » et non
+  « scores »** *(arbitrage tranché le 19/09/2026)* : l'agrégat `Score` du walking skeleton n'a plus
+  aucun écrivain (`DETTE-011`), le décompte porte sur les **volées** — validées ou non, sans quoi
+  une fin de journée non validée annonçait « 0 flèche » pour 7 200 qui partaient. Le message **nomme les
   natures et leurs nombres** — « une alerte qui ne chiffre pas son impact est un clic de plus, pas
   une protection » (`D-16`).
 - **CA — la confirmation est explicite**, puis la suppression s'exécute **en une transaction**.
@@ -471,9 +487,23 @@ confirmer** ». Décision : [ADR-0077](../docs/adr/0077-supprimer-un-tournoi-sig
 - **Notes — réutiliser les trois adapters existants** qui connaissent déjà la descendance d'`archer`
   (`supprimer`, `fusionner`, cascades partielles d'E02US003/E02US009) plutôt que d'en écrire un
   quatrième : une table ajoutée demain serait sinon oubliée dans l'un des quatre.
-- **Notes — `remboursement` est à trancher dans l'US** : effacer une somme encaissée sans ouvrir de
-  remboursement est précisément ce que décrit `DETTE-018`. Le décompte doit le **dire** ; reste à
-  décider si la suppression ouvre des remboursements ou les efface avec le reste.
+- **CA — l'argent part avec le reste, mais il est chiffré en euros, en deux sommes distinctes** :
+  l'**encaissé** (inscriptions payées au tarif du créneau) et le **reste à rendre** (registre des
+  remboursements, postes déjà traités exclus). ⚠️ Les confondre — défaut de la 1ʳᵉ version, relevé
+  en revue — faisait annoncer **zéro euro** à un tournoi de 400 payants sans remboursement.
+- **CA — les remboursements partent avec le reste**
+  *(arbitrage du commanditaire, 19/09/2026 ; ferme la Note ci-dessous)*. ⚠️ **Ce n'est pas
+  l'inverse de `DETTE-018`** : le critère qui sépare les deux gestes est « **le registre
+  survit-il ?** ». Supprimer un archer laisse un registre vivant où inscrire la somme à rendre ;
+  supprimer le tournoi emporte le registre lui-même (`remboursement.tournoi_id` est sa seule FK),
+  et un poste ouvert y serait détruit dans la même transaction. Faute de contrepartie possible, la
+  seule protection est d'annoncer l'argent qui disparaît, en euros.
+- **CA — `DETTE-018` se referme dans la même US** *(périmètre élargi par le commanditaire,
+  19/09/2026)* : supprimer une **fiche archer** ouvre désormais un remboursement par inscription
+  payée sur un créneau tarifé (motif `archer_supprime`), 3ᵉ et dernier chemin d'effacement d'une
+  inscription payée. Pris ici parce que c'est **le même code de cascade** que celui de l'US.
+- **Notes — `remboursement` était à trancher dans l'US** *(tranché le 19/09/2026, cf. CA ci-dessus)* :
+  effacer une somme encaissée sans ouvrir de remboursement est précisément ce que décrit `DETTE-018`.
 - **Résorbe** : `DETTE-001`. **Dépend de** : — · **Jalon** : J3 ·
   **ADR** : [ADR-0077](../docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) —
   **étend** [ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)

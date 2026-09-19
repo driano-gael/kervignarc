@@ -20,7 +20,7 @@ from application.erreurs import FormatExportIndisponible, TournoiIntrouvable
 from application.exports import FormatExport, RegistreDeFormats
 from domain.entree_audit import ActionAuditee, EntreeAudit, JournalAudit
 from domain.erreurs import AuteurAuditInvalide
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 
 _DATE = datetime.date(2026, 3, 14)
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
@@ -70,6 +70,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class HorlogeFigee:

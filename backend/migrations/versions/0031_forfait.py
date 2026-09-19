@@ -8,7 +8,7 @@ l'en **sort** ; en duels, un forfait fait **passer l'adversaire**. Les flèches 
 sont **jamais** touchées : l'annulation supprime seulement cette ligne.
 
 `ON DELETE CASCADE` sur `phase_id` (feuille dérivée d'une phase, comme `duel`/`placement_tableau`).
-Les FK `tournoi_id`/`archer_id` restent sans `ON DELETE` (DETTE-001, comme `serie`/`entree_audit`).
+Les FK `tournoi_id`/`archer_id` restent sans `ON DELETE` (ADR-0077, comme `serie`/`entree_audit`).
 
 Revision ID: 0031_forfait
 Revises: 0030_duel

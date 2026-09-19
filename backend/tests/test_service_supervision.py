@@ -25,7 +25,7 @@ from domain.depart import DepartId
 from domain.ecran import Consigne, VueEcran
 from domain.poste import Poste, PosteId, TypePoste
 from domain.supervision import EtatPoste
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 from infrastructure.postes.consignes import RegistreConsignesMemoire
 from infrastructure.postes.presence import RegistrePresenceMemoire
 from infrastructure.postes.sessions import PosteSessionStore
@@ -123,6 +123,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class Montage:

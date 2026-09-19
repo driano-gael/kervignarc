@@ -195,10 +195,5 @@ class ServiceInscriptions:
 
 
 def _libelle_creneau(depart: Depart) -> str:
-    """Instantané textuel d'un créneau pour un remboursement (E08US005) : « Départ n°3 — 09:00 ».
-
-    Figé au moment de l'effacement — le remboursement doit survivre à la disparition du départ, il
-    ne peut pas suivre une FK vers une ligne partie (ADR-0057). Dupliqué à l'identique dans
-    `ServiceDeparts` (2ᵉ occurrence assumée, pas de constante partagée — règle 12).
-    """
-    return f"Départ n°{depart.numero} — {depart.horaire}"
+    """Relaie `Depart.libelle_creneau` — le libellé a un domicile unique depuis E01US026."""
+    return depart.libelle_creneau()

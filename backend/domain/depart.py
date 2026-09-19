@@ -93,6 +93,17 @@ class Depart:
             quota=_quota_valide(quota),
         )
 
+    def libelle_creneau(self) -> str:
+        """Instantané textuel du créneau — « Départ n°3 — 09:00 » (E08US005, ADR-0057).
+
+        ⚠️ **Persisté verbatim** dans `remboursement.creneau` : le poste doit survivre à la
+        disparition du départ, il ne peut pas suivre une FK vers une ligne partie. Trois services
+        l'écrivent (désinscription, suppression de départ, suppression d'archer) et un seul écran
+        le relit — d'où un domicile unique : deux orthographes dans la même colonne d'un registre
+        d'argent ne se rattrapent pas.
+        """
+        return f"Départ n°{self.numero} — {self.horaire}"
+
     def modifier(self, tarif_centimes: int, horaire: str, quota: int | None = None) -> Depart:
         """Renvoie une copie au tarif, à l'horaire et au quota mis à jour (règles de `creer`).
 

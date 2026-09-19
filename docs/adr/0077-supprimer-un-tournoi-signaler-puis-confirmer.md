@@ -7,7 +7,7 @@
   un cran au-dessus : ce qui valait pour l'**archer engagé** vaut pour le **tournoi peuplé**
 - **Complète** : [ADR-0015](0015-signaler-un-doublon-plutot-que-l-interdire.md) (protocole
   « refuser puis confirmer »)
-- **Résorbe** : [DETTE-001](../dette.md) — suppression de tournoi non cascadée
+- **Résorbe** : [DETTE-001](../dette.md) — suppression de tournoi non cascadée (soldée le 19/09/2026 par E01US026, avec DETTE-018)
 - **Introduit par** : arbitrage du commanditaire du 07/08/2026, en revue d'E01US025
 
 ## Contexte et problème
@@ -37,7 +37,9 @@ on détruit — en cascade applicative, jamais par `ON DELETE CASCADE` en base.*
 1. **Un tournoi vide se supprime sans rien demander.** Aucun signalement inutile : la confirmation
    doit rester rare pour rester lue.
 2. **Un tournoi peuplé est signalé en 409**, avec un **décompte chiffré** de ce qui partira —
-   archers, inscriptions, scores, séries, duels, forfaits, barrages, remboursements. « Une alerte
+   archers, inscriptions, **flèches tirées** (et non « scores » : l'agrégat `Score` n'a plus
+   d'écrivain, DETTE-011), séries, duels, forfaits, barrages, **postes**, **scoreurs**, **actes au
+   journal d'audit**, inscriptions payées et remboursements. « Une alerte
    qui ne chiffre pas son impact est un clic de plus, pas une protection » (`D-16`) : le message
    nomme les natures et leurs nombres, il ne dit pas « des données existent ».
 3. **L'admin confirme explicitement** (`autoriser_suppression_peuplee=true`), et la suppression
@@ -83,9 +85,58 @@ on détruit — en cascade applicative, jamais par `ON DELETE CASCADE` en base.*
   est précisément ce que `DETTE-018` décrit. Le décompte doit le **dire**, et l'US devra trancher
   si la suppression d'un tournoi ouvre des remboursements ou les efface avec le reste.
 
+## Tranché à la résorption (E01US026, 19/09/2026)
+
+Deux points que cet ADR laissait ouverts, arbitrés par le commanditaire :
+
+1. **L'argent est effacé avec le reste, mais chiffré** à la confirmation — en **deux sommes
+   distinctes** : l'**encaissé** (inscriptions payées × tarif du créneau) et le **reste à rendre**
+   (registre des remboursements, postes déjà traités exclus). ⚠️ Les confondre était le défaut de la
+   première version : un tournoi de 400 payants sans aucun remboursement annonçait **zéro euro**. ⚠️ Ce n'est **pas** l'inverse de `DETTE-018`, qui, elle, *ouvre* des postes quand
+   on supprime un archer : le critère qui sépare les deux gestes est **« le registre survit-il ? »**.
+   Supprimer un archer laisse un registre vivant où inscrire la somme à rendre ; supprimer le
+   tournoi emporte le registre lui-même (`remboursement.tournoi_id` est sa seule FK), et un poste
+   ouvert y serait détruit dans la même transaction. Sans contrepartie possible, la seule protection
+   est d'**annoncer l'argent qui disparaît**, en euros.
+2. **« Vide » se juge sur ce qui ne se ressaisit pas**, pas sur la descendance entière. Un tournoi
+   qui porte des créneaux, des catégories et des blasons mais **aucun archer** se supprime sans rien
+   demander ; la liste des exclus est **nominative** sur `DescendanceTournoi` (`depart`, `categorie`,
+   `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi`).
+   ⚠️ **Le critère n'est pas « est-ce de la donnée ? » — corrigé en revue.** Une première version
+   calibrée sur les seuls mots du commanditaire laissait dehors les **postes**, les **scoreurs** et
+   le **journal d'audit** : un tournoi entièrement préparé la veille, QR imprimés et collés, partait
+   alors sur **un seul clic**, les codes étant tirés par `secrets`. Ils entrent au décompte. Le § Contexte ci-dessus dit « depuis E02US010, plus aucun tournoi `prêt` n'est vide » —
+   c'est vrai du **500**, pas du **signalement**. Les deux phrases ne parlaient pas du même « vide »,
+   et l'écart se voyait à l'écran : monter puis démonter un tournoi d'essai aurait fait surgir le
+   dialogue à chaque fois, ce qui est exactement la façon d'apprendre à cliquer sans lire (§1).
+
 ## Porté dans le code par
 
-*(à renseigner par l'US de résorption — cet ADR est une décision, la section nommera les modules qui
-l'appliquent : `application/tournois.py` (`ServiceTournois.supprimer`), l'adapter concret portant la
-cascade transactionnelle, `api/v1/tournois.py` pour le 409 et le drapeau de confirmation, et le
-front pour le `<dialog>` de confirmation — [ADR-0072](0072-confirmation-destructrice-dialog-natif.md).)*
+- **`backend/application/tournois.py`** — `ServiceTournois.supprimer(tournoi_id,
+  autoriser_suppression_peuplee=False)` et `_signaler_descendance`, qui lève `TournoiPeuple` en
+  énumérant les natures **présentes** et leurs nombres. ⚠️ Les gardes d'état passent **avant** le
+  signalement : c'est ce qui tient le §4, et un test l'épingle nommément.
+- **`backend/domain/tournoi.py`** — `DescendanceTournoi` (le décompte) et `est_vide()`, qui portent
+  le critère du point 2 ci-dessus.
+- **`backend/domain/ports.py`** — `TournoiRepository.compter_descendance` et le contrat élargi de
+  `supprimer` (cascade applicative, jamais `ON DELETE CASCADE`).
+- **`backend/infrastructure/db/repositories/referentiel.py`** — `TournoiRepositorySQL.supprimer`
+  (cascade transactionnelle) et `compter_descendance`, plus les deux purges partagées
+  `_purger_descendance_des_archers` / `_purger_descendance_des_departs`, qui tiennent le §5 :
+  **une seule liste de tables** pour la suppression d'archer, celle de départ et celle de tournoi.
+- **`backend/tests/test_tournoi_repository.py`** — les deux tests qui rendent la décision
+  **mécanique** plutôt que déclarative : `test_aucune_table_neuve_n_echappe_a_l_inventaire` (toute
+  table rattachée au tournoi doit rejoindre la purge, dérivé de `Base.metadata`) et
+  `test_aucune_fk_de_la_descendance_ne_cascade_en_base` (§5, liste blanche nominative des
+  exceptions). ⚠️ **C'est ce qui remplace la veille de la ligne `DETTE-001`** : pendant treize mois,
+  l'inventaire n'a tenu que parce qu'une revue le relisait — et elle l'a manqué deux fois.
+- **`backend/infrastructure/db/models.py`** — l'en-tête du module énonce le régime « aucune FK de la
+  descendance ne porte `ON DELETE CASCADE`, et c'est une décision ». C'est le seul endroit où il est
+  écrit, exprès : il l'était 45 fois, colonne par colonne, et ces 45 copies disaient « non tranchée ».
+- **`backend/api/v1/tournois.py`** — `supprimer_tournoi`, qui transporte le drapeau en **paramètre
+  de requête** (un `DELETE` n'a pas de corps) et laisse `api/erreurs.py` rendre les deux 409.
+- **`frontend/src/features/tournois/Tournois.tsx`** — le `<dialog>` natif de
+  [ADR-0072](0072-confirmation-destructrice-dialog-natif.md) (`DialogueConfirmation`, ton `danger`),
+  ouvert **par le 409** et non avant : le décompte est rendu par le serveur, jamais recalculé côté
+  client. ⚠️ L'écran portait encore la confirmation *inline* d'avant ADR-0072 ; `Archers.tsx` la
+  porte toujours — même forme, même dette de rendu, et cette US ne l'a pas traitée.

@@ -40,7 +40,7 @@ bout : un bloc ne saute ni ne répète de position, et son index sert la lecture
 poule *n* », requête de tous les appelants.
 
 `ON DELETE CASCADE` sur `phase_id` : donnée dérivée d'une phase, feuille de la descendance — même
-exception à DETTE-001 que `placement_tableau` (ADR-0024) et `duel`.
+exception à ADR-0077 que `placement_tableau` (ADR-0024) et `duel`.
 
 ## Reprise des données et downgrade
 

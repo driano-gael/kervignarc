@@ -24,7 +24,7 @@ from application.erreurs import CodeScoreurInconnu, ScoreurIntrouvable, TournoiI
 from application.scoreurs import ServiceScoreurs
 from domain.erreurs import NomScoreurInvalide
 from domain.scoreur import Scoreur, ScoreurId, normaliser_code
-from domain.tournoi import StatutTournoi, Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, StatutTournoi, Tournoi, TournoiId
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -123,6 +123,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 def _generateur(*codes: str) -> Callable[[], str]:

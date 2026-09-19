@@ -9,7 +9,7 @@ import json
 from collections.abc import Sequence
 from typing import assert_never
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import ColumnElement, Select, delete, func, select, update
 from sqlalchemy import true as sa_true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -34,24 +34,38 @@ from domain.remboursement import (
     RemboursementId,
     StatutRemboursement,
 )
-from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import (
+    DescendanceTournoi,
+    StatutTournoi,
+    Tournoi,
+    TournoiId,
+    TypeTournoi,
+)
 from infrastructure.db.models import (
     ArcherORM,
+    ArretDeCirconstanceORM,
     BarrageORM,
     BarrageTirORM,
     BlasonORM,
     CategorieORM,
     ClubORM,
     DepartORM,
+    DerouleEtapeORM,
+    DuelORM,
+    EntreeAuditORM,
     ForfaitORM,
+    FranchissementArretORM,
     GabaritSalleORM,
     IdentiteVisuelleORM,
     InscriptionORM,
     PhaseORM,
+    PosteORM,
     RemboursementORM,
     ScoreORM,
+    ScoreurORM,
     SerieORM,
     TournoiORM,
+    VoleeORM,
 )
 from infrastructure.db.repositories._mapping import _vers_barrage
 
@@ -62,20 +76,117 @@ from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 
 
-def _purger_descendance_du_depart(session: Session, depart_id: DepartId) -> None:
-    """Supprime ce qui pend au créneau **avant** lui — cascade applicative maîtrisée (DETTE-001).
+def _purger_descendance_des_departs(session: Session, depart_ids: Sequence[DepartId]) -> None:
+    """Supprime ce qui pend aux créneaux **avant** eux — cascade applicative maîtrisée (ADR-0077).
 
-    ⚠️ **Élargi par E01US025** (ADR-0075) : `phase.depart_id` et `barrage.depart_id` sont des FK
-    **sans `ON DELETE`** qui n'existaient pas avant, et sans cette purge supprimer un créneau
-    configuré partait en `IntegrityError` → 500, à la place des refus typés du service. L'ordre
-    suit les dépendances : `barrage_tir` → `barrage` → `phase` → `inscription`. Ce qui pend à la
-    phase porte `ON DELETE CASCADE` — on ne supprime à la main que ce que le schéma n'emporte pas.
+    ⚠️ **L'ordre n'est pas commutatif** et s'y tromper redonne l'`IntegrityError` qu'on corrige :
+    `barrage_tir` → `barrage` → arrêts → `phase` → `inscription`. Ce qui pend à la phase porte
+    `ON DELETE CASCADE` — on ne supprime à la main que ce que le schéma n'emporte pas. Les deux
+    tables d'arrêts ont rejoint la liste en E01US026 : FK *enforced*, un créneau portant un arrêt
+    partait en 500.
     """
-    barrages = select(BarrageORM.id).where(BarrageORM.depart_id == depart_id)
+    phases = select(PhaseORM.id).where(PhaseORM.depart_id.in_(depart_ids))
+    barrages = select(BarrageORM.id).where(BarrageORM.depart_id.in_(depart_ids))
     session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id.in_(barrages)))
-    session.execute(delete(BarrageORM).where(BarrageORM.depart_id == depart_id))
-    session.execute(delete(PhaseORM).where(PhaseORM.depart_id == depart_id))
-    session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
+    session.execute(delete(BarrageORM).where(BarrageORM.depart_id.in_(depart_ids)))
+    session.execute(
+        delete(ArretDeCirconstanceORM).where(ArretDeCirconstanceORM.depart_id.in_(depart_ids))
+    )
+    session.execute(
+        delete(FranchissementArretORM).where(FranchissementArretORM.phase_id.in_(phases))
+    )
+    session.execute(delete(PhaseORM).where(PhaseORM.depart_id.in_(depart_ids)))
+    session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id.in_(depart_ids)))
+
+
+def _purger_enfants_directs_du_tournoi(session: Session, tournoi_id: TournoiId) -> None:
+    """Purge les tables qui pendent **au tournoi lui-même**, une fois archers et départs vidés.
+
+    `identite_visuelle` porte `ON DELETE CASCADE` et partirait seule ; elle est listée quand même —
+    cette liste est ce qu'on relit pour savoir si une table neuve a été oubliée, et une table
+    absente s'y lirait comme « rien à faire » plutôt que comme « la base s'en charge ».
+    """
+    session.execute(delete(DerouleEtapeORM).where(DerouleEtapeORM.tournoi_id == tournoi_id))
+    session.execute(delete(ScoreurORM).where(ScoreurORM.tournoi_id == tournoi_id))
+    session.execute(delete(PosteORM).where(PosteORM.tournoi_id == tournoi_id))
+    session.execute(delete(EntreeAuditORM).where(EntreeAuditORM.tournoi_id == tournoi_id))
+    session.execute(delete(RemboursementORM).where(RemboursementORM.tournoi_id == tournoi_id))
+    session.execute(delete(SerieORM).where(SerieORM.tournoi_id == tournoi_id))
+    session.execute(delete(ForfaitORM).where(ForfaitORM.tournoi_id == tournoi_id))
+    session.execute(delete(IdentiteVisuelleORM).where(IdentiteVisuelleORM.tournoi_id == tournoi_id))
+
+
+def _compte(session: Session, *criteres: ColumnElement[bool]) -> int:
+    """Combien de lignes satisfont ces critères — `count(*)`, jamais un `len()` de lignes lues."""
+    return session.scalar(select(func.count()).where(*criteres)) or 0
+
+
+def _encaisse(session: Session, departs_payes: Select[tuple[int]]) -> int:
+    """La somme **réellement reçue** : une inscription payée vaut le tarif de son créneau.
+
+    ⚠️ **Ce n'est pas la somme du registre de remboursements** — les confondre faisait annoncer
+    zéro euro à un tournoi de 400 payants sans remboursement. Le tarif lu est le **courant**, pas
+    celui encaissé (DETTE-016) : le modèle ne stocke qu'un booléen `paye`.
+    """
+    tarifs: dict[int, int] = {}
+    for depart_id, tarif in session.execute(
+        select(DepartORM.id, DepartORM.tarif_centimes)
+    ).tuples():
+        tarifs[depart_id] = tarif
+    return sum(tarifs.get(depart_id, 0) for depart_id in session.scalars(departs_payes))
+
+
+def _reste_a_rendre(session: Session, tournoi_id: TournoiId) -> int:
+    """Les remboursements **encore dus**, à l'exclusion de ceux déjà traités (E01US026).
+
+    ⚠️ Sommer tous les statuts gonflait l'alerte : un poste `remboursé` est de l'argent **déjà
+    rendu**, l'annoncer comme perdu use la garde qu'ADR-0077 veut préserver.
+    """
+    somme = session.scalar(
+        select(func.coalesce(func.sum(RemboursementORM.montant_centimes), 0)).where(
+            RemboursementORM.tournoi_id == tournoi_id,
+            RemboursementORM.statut == StatutRemboursement.A_REMBOURSER.value,
+        )
+    )
+    return somme or 0
+
+
+def _compter_fleches(session: Session, series: Select[tuple[int]]) -> int:
+    """Les flèches de ces séries, volée par volée — **validées ou non** (E01US026).
+
+    ⚠️ Ne filtrer que les validées sous-comptait : en fin de journée, avant validation, le message
+    annonçait « 0 flèche » alors que 7 200 partaient. Compté en Python car `valeurs` est un
+    document JSON et `json_array_length` est une extension qu'on ne peut supposer compilée
+    (règle 12) ; un document corrompu est **ignoré** — SQLite est à typage dynamique, même parti
+    que `_vers_reglage_podiums`.
+    """
+    fleches = 0
+    for document in session.scalars(select(VoleeORM.valeurs).where(VoleeORM.serie_id.in_(series))):
+        try:
+            valeurs = json.loads(document)
+        except ValueError:
+            continue
+        if isinstance(valeurs, list):
+            fleches += len(valeurs)
+    return fleches
+
+
+def _purger_descendance_des_archers(session: Session, archer_ids: Sequence[ArcherId]) -> None:
+    """Supprime ce qui pend aux archers **avant** eux — même cascade pour un archer ou pour tous.
+
+    ⚠️ **Une seule liste de tables pour les deux appelants** (suppression d'archer E02US003 et
+    suppression de tournoi E01US026) : en tenir deux ferait oublier dans l'une la table qu'une US
+    ajoute à l'autre — c'est l'avertissement d'ADR-0077 sur le « quatrième adapter ».
+    Les **volées** suivent leur série par `ON DELETE CASCADE`, d'où le `DELETE` SQL sur `serie`
+    (un `session.delete` ORM ne déclencherait pas la cascade de la base).
+    """
+    session.execute(delete(ScoreORM).where(ScoreORM.archer_id.in_(archer_ids)))
+    session.execute(delete(InscriptionORM).where(InscriptionORM.archer_id.in_(archer_ids)))
+    session.execute(delete(SerieORM).where(SerieORM.archer_id.in_(archer_ids)))
+    # `forfait` (E04US015) et `barrage_tir` (E06US003) : FK *enforced*, une ligne orpheline rend
+    # l'archer indéracinable (500) — le piège relevé en revue adversariale d'E04US015.
+    session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id.in_(archer_ids)))
+    _supprimer_barrages_des_archers(session, archer_ids)
 
 
 def _vers_reglage_podiums(ligne: TournoiORM) -> ReglagePodiums:
@@ -329,13 +440,75 @@ class TournoiRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour du tournoi.") from exc
 
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        """Compte ce que la suppression emporterait **et ne se ressaisirait pas** (ADR-0077).
+
+        ⚠️ **Plus étroit que la purge, volontairement** : `depart`, `categorie`, `blason`,
+        `gabarit_salle`, `deroule_etape` et `identite_tournoi` partent aussi mais se refont — les
+        compter ferait surgir la confirmation sur un tournoi d'essai (arbitrage du 19/09/2026).
+        Le critère exact et la liste des exclus vivent sur `DescendanceTournoi`.
+        """
+        try:
+            with self._session_factory() as session:
+                departs = select(DepartORM.id).where(DepartORM.tournoi_id == tournoi_id)
+                phases = select(PhaseORM.id).where(PhaseORM.depart_id.in_(departs))
+                series = select(SerieORM.id).where(SerieORM.tournoi_id == tournoi_id)
+                payees = select(InscriptionORM.depart_id).where(
+                    InscriptionORM.depart_id.in_(departs), InscriptionORM.paye
+                )
+                return DescendanceTournoi(
+                    archers=_compte(session, ArcherORM.tournoi_id == tournoi_id),
+                    inscriptions=_compte(session, InscriptionORM.depart_id.in_(departs)),
+                    fleches=_compter_fleches(session, series),
+                    series=_compte(session, SerieORM.tournoi_id == tournoi_id),
+                    duels=_compte(session, DuelORM.phase_id.in_(phases)),
+                    forfaits=_compte(session, ForfaitORM.tournoi_id == tournoi_id),
+                    barrages=_compte(session, BarrageORM.depart_id.in_(departs)),
+                    postes=_compte(session, PosteORM.tournoi_id == tournoi_id),
+                    scoreurs=_compte(session, ScoreurORM.tournoi_id == tournoi_id),
+                    entrees_audit=_compte(session, EntreeAuditORM.tournoi_id == tournoi_id),
+                    inscriptions_payees=_compte(
+                        session,
+                        InscriptionORM.depart_id.in_(departs),
+                        InscriptionORM.paye.is_(sa_true()),
+                    ),
+                    encaisse_centimes=_encaisse(session, payees),
+                    remboursements=_compte(session, RemboursementORM.tournoi_id == tournoi_id),
+                    remboursements_centimes=_reste_a_rendre(session, tournoi_id),
+                )
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec du décompte de la descendance du tournoi.") from exc
+
     def supprimer(self, tournoi_id: TournoiId) -> None:
-        """Supprime le tournoi d'identifiant donné (existence garantie par l'appelant)."""
+        """Supprime le tournoi **et toute sa descendance** en une transaction (ADR-0077).
+
+        ⚠️ **L'ordre n'est pas commutatif** : `inscription` avant archers *et* départs (deux FK),
+        `phase` avant les départs (ADR-0075), `categorie` avant son `blason`, `archer` avant sa
+        `categorie`. S'y tromper redonne l'`IntegrityError` qu'on corrige. `club` et
+        `format_tournoi`, référentiels **globaux**, ne partent pas. Confirmation garantie par
+        l'appelant.
+        """
         try:
             with self._session_factory() as session:
                 ligne = session.get(TournoiORM, tournoi_id)
                 if ligne is None:
                     raise InfrastructureError("Tournoi à supprimer introuvable en base.")
+                depart_ids = list(
+                    session.scalars(select(DepartORM.id).where(DepartORM.tournoi_id == tournoi_id))
+                )
+                archer_ids = list(
+                    session.scalars(select(ArcherORM.id).where(ArcherORM.tournoi_id == tournoi_id))
+                )
+                _purger_descendance_des_archers(session, archer_ids)
+                _purger_descendance_des_departs(session, depart_ids)
+                _purger_enfants_directs_du_tournoi(session, tournoi_id)
+                session.execute(delete(DepartORM).where(DepartORM.tournoi_id == tournoi_id))
+                session.execute(delete(ArcherORM).where(ArcherORM.tournoi_id == tournoi_id))
+                session.execute(delete(CategorieORM).where(CategorieORM.tournoi_id == tournoi_id))
+                session.execute(delete(BlasonORM).where(BlasonORM.tournoi_id == tournoi_id))
+                session.execute(
+                    delete(GabaritSalleORM).where(GabaritSalleORM.tournoi_id == tournoi_id)
+                )
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -445,7 +618,7 @@ class ArcherRepositorySQL:
 
         Existence garantie par le service, qui a déjà obtenu la confirmation de l'admin. **Une
         seule transaction** pour tous les `DELETE`, dans cet ordre : ces FK sont **sans `ON
-        DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. Le `forfait` **doit**
+        DELETE`** (ADR-0077), donc supprimer l'archer d'abord échouerait. Le `forfait` **doit**
         être purgé ici — sa FK est *enforced*, et une ligne orpheline rendait l'archer
         indéracinable (500). Les **volées** suivent leur série par cascade SQLite.
         """
@@ -454,25 +627,37 @@ class ArcherRepositorySQL:
                 ligne = session.get(ArcherORM, archer_id)
                 if ligne is None:
                     raise InfrastructureError("Archer à supprimer introuvable en base.")
-                session.execute(delete(ScoreORM).where(ScoreORM.archer_id == archer_id))
-                session.execute(delete(InscriptionORM).where(InscriptionORM.archer_id == archer_id))
-                # `serie` (E04US002) : `DELETE` SQL, donc la cascade `volee` (ON DELETE CASCADE)
-                # s'applique au niveau base — contrairement à un `session.delete` ORM.
-                session.execute(delete(SerieORM).where(SerieORM.archer_id == archer_id))
-                # `forfait` (E04US015) : même cascade applicative que `serie` — FK enforced, sinon
-                # une ligne orpheline bloque la suppression (revue adversariale E04US015).
-                session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id == archer_id))
-                # `barrage_tir` (E06US003) : **exactement le même piège que `forfait`**, rejoué sur
-                # une table neuve — FK enforced, archer indéracinable sans ce nettoyage. On supprime
-                # le **barrage entier**, pas seulement les tirs : un barrage amputé d'un de ses
-                # tireurs annoncés n'a plus de sens et serait refusé à la relecture (la manche 1
-                # doit couvrir tous les participants). D'où la lecture de `participants_json` — un
-                # archer peut être *annoncé* sans avoir encore tiré, donc sans ligne de tir.
-                _supprimer_barrages_de_l_archer(session, archer_id)
+                _purger_descendance_des_archers(session, [archer_id])
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression de l'archer.") from exc
+
+    def supprimer_avec_remboursements(
+        self, archer_id: ArcherId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime l'archer (descendance comprise) **et** ouvre les remboursements — une
+        transaction.
+
+        Variante de `supprimer` (E01US026, résorbe DETTE-018) : les `remboursements` sont insérés
+        dans la **même** session que les `DELETE`, scellés par un **unique** `commit` — même couture
+        que `DepartRepositorySQL.supprimer_avec_remboursements` (ADR-0057). Jamais une inscription
+        payée effacée sans sa contrepartie au registre.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ArcherORM, archer_id)
+                if ligne is None:
+                    raise InfrastructureError("Archer à supprimer introuvable en base.")
+                for remboursement in remboursements:
+                    session.add(_remboursement_orm(remboursement))
+                _purger_descendance_des_archers(session, [archer_id])
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError(
+                "Échec de suppression de l'archer avec remboursements."
+            ) from exc
 
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
         """Réassigne la descendance du perdant au gagnant, puis supprime le perdant (E02US005).
@@ -730,7 +915,7 @@ class DepartRepositorySQL:
         **Contrat** : existence garantie par l'appelant, qui a déjà obtenu la confirmation de
         l'admin si le départ portait des inscriptions (`DepartAvecInscriptions`). **Une seule
         transaction** pour les deux `DELETE`, dans cet ordre : `inscription.depart_id` est une FK
-        **sans `ON DELETE`** (DETTE-001), donc supprimer le départ d'abord échouerait. Même patron
+        **sans `ON DELETE`** (ADR-0077), donc supprimer le départ d'abord échouerait. Même patron
         que `ArcherRepositorySQL.supprimer` avec les scores — cascade applicative maîtrisée.
         """
         try:
@@ -738,7 +923,7 @@ class DepartRepositorySQL:
                 ligne = session.get(DepartORM, depart_id)
                 if ligne is None:
                     raise InfrastructureError("Départ à supprimer introuvable en base.")
-                _purger_descendance_du_depart(session, depart_id)
+                _purger_descendance_des_departs(session, [depart_id])
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -762,7 +947,7 @@ class DepartRepositorySQL:
                     raise InfrastructureError("Départ à supprimer introuvable en base.")
                 for remboursement in remboursements:
                     session.add(_remboursement_orm(remboursement))
-                _purger_descendance_du_depart(session, depart_id)
+                _purger_descendance_des_departs(session, [depart_id])
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -1351,6 +1536,28 @@ def _barrages_contenant(session: Session, archer_id: int) -> list[BarrageORM]:
         for ligne in session.execute(select(BarrageORM)).scalars()
         if archer_id in json.loads(ligne.participants_json)
     ]
+
+
+def _supprimer_barrages_des_archers(session: Session, archer_ids: Sequence[ArcherId]) -> None:
+    """Supprime les barrages où figure **l'un** de ces archers, tirs compris (E06US003).
+
+    ⚠️ **Un seul parcours, quel que soit le nombre d'archers** : rejouer le scan en boucle pour les
+    400 d'un tournoi tenait 400 parcours **dans la transaction du writer unique**, donc autant
+    d'attente pour les tablettes en salle (règle 7). On supprime le **barrage entier** et pas les
+    seuls tirs : amputé d'un tireur annoncé, il serait refusé à la relecture.
+    """
+    vises = set(archer_ids)
+    cibles = [
+        ligne.id
+        for ligne in session.execute(select(BarrageORM)).scalars()
+        if vises & set(json.loads(ligne.participants_json))
+    ]
+    if cibles:
+        session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id.in_(cibles)))
+        session.execute(delete(BarrageORM).where(BarrageORM.id.in_(cibles)))
+    # Ceinture : un tir dont l'archer ne figure (plus) dans `participants_json` échapperait au
+    # filtre et rebloquerait la suppression en 500. Inatteignable par le service aujourd'hui.
+    session.execute(delete(BarrageTirORM).where(BarrageTirORM.archer_id.in_(archer_ids)))
 
 
 def _supprimer_barrages_de_l_archer(session: Session, archer_id: int) -> None:

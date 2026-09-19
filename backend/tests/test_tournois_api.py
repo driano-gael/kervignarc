@@ -455,17 +455,13 @@ def test_supprimer_un_brouillon(app_tournois: FastAPI, connecter_admin: Connecte
         assert client.get(f"/api/v1/tournois/{cree['id']}").status_code == 404
 
 
-@pytest.mark.xfail(
-    reason="DETTE-001 : supprimer un tournoi **non vide** lève une IntegrityError → 500 (aucune "
-    "FK de la descendance n'a d'ON DELETE CASCADE). Depuis E02US010, un tournoi terminé porte "
-    "toujours ≥ 1 départ (passer prêt l'exige), donc ce chemin est désormais **toujours** non "
-    "vide — le 204 n'est plus atteignable tant que DETTE-001 n'est pas résorbée. Le contrat "
-    "« terminé supprimable » reste vérifié au niveau service (repository factice, sans FK). "
-    "À lever à la résorption de DETTE-001 (cascade maîtrisée ou 409).",
-    strict=True,
-)
 def test_supprimer_un_termine(app_tournois: FastAPI, connecter_admin: ConnecterAdmin) -> None:
-    """Un tournoi terminé est supprimable → 204 (contrat visé ; bloqué par DETTE-001 en l'état)."""
+    """Un tournoi terminé est supprimable → 204. `xfail` levé par E01US026 (DETTE-001 résorbée).
+
+    Ce test portait le défaut : depuis E02US010 un tournoi terminé porte toujours ≥ 1 départ, donc
+    ce chemin passait par une `IntegrityError` → 500. Il n'a **aucun archer** : le tournoi est donc
+    vide au sens du décompte et part sans confirmation.
+    """
     with TestClient(app_tournois) as client:
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
@@ -497,3 +493,98 @@ def test_supprimer_tournoi_introuvable(
         reponse = client.delete("/api/v1/tournois/999")
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "tournoi_introuvable"
+
+
+# --- Supprimer un tournoi peuplé : signaler puis confirmer (E01US026, ADR-0077) ---
+
+
+def _peupler(client: TestClient, tid: int) -> int:
+    """Garnit le tournoi d'un créneau **tarifé**, d'une catégorie, d'un archer et d'une inscription
+    réellement **marquée payée**.
+
+    ⚠️ Le paiement n'est pas décoratif : c'est la seule chose qui fasse traverser toute la pile à la
+    clause en euros du signalement. Sans lui, le calcul du montant n'était vérifié que contre un
+    dépôt factice (relevé en revue, axes B et C1).
+    """
+    _creer_depart(client, tid)
+    depart_id = client.get(f"/api/v1/tournois/{tid}/departs").json()[0]["id"]
+    categorie = client.post(f"/api/v1/tournois/{tid}/categories", json={"libelle": "Senior 1 H"})
+    assert categorie.status_code == 201, categorie.text
+    archer = client.post(
+        f"/api/v1/tournois/{tid}/archers",
+        json={"nom": "Tell", "prenom": "Guillaume", "categorie_id": categorie.json()["id"]},
+    )
+    assert archer.status_code == 201, archer.text
+    archer_id = int(archer.json()["id"])
+    inscription = client.post(
+        f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id}
+    )
+    assert inscription.status_code == 201, inscription.text
+    paiement = client.put(
+        f"/api/v1/tournois/{tid}/paiements/archers/{archer_id}", json={"paye": True}
+    )
+    assert paiement.status_code == 200, paiement.text
+    return archer_id
+
+
+def test_supprimer_un_tournoi_peuple_signale_409_chiffre(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un tournoi peuplé est signalé (409) avec un décompte **chiffré**, et il survit (`D-16`)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        tid = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()[
+            "id"
+        ]
+        _peupler(client, tid)
+        refus = client.delete(f"/api/v1/tournois/{tid}")
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "tournoi_peuple"
+        message = refus.json()["message"]
+        assert "1 archer" in message and "1 inscription" in message, message
+        # Le créneau est à 810 centimes (`_creer_depart`) et l'inscription est payée : la clause
+        # en euros doit traverser la pile entière, pas seulement le service.
+        assert "8,10 €" in message, f"somme encaissée non chiffrée de bout en bout : {message}"
+        assert client.get(f"/api/v1/tournois/{tid}").status_code == 200
+
+
+def test_supprimer_un_tournoi_peuple_confirme_emporte_la_descendance(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Confirmé, la suppression aboutit (204) et **rien ne survit** — ni archer ni inscription.
+
+    Le contrôle porte sur les routes qui lisent la descendance : une ligne orpheline en base ferait
+    lever l'`IntegrityError` ici même, la base de test ayant `PRAGMA foreign_keys=ON`.
+    """
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        tid = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()[
+            "id"
+        ]
+        archer_id = _peupler(client, tid)
+        suppression = client.delete(
+            f"/api/v1/tournois/{tid}", params={"autoriser_suppression_peuplee": True}
+        )
+        assert suppression.status_code == 204, suppression.text
+        assert client.get("/api/v1/tournois").json() == []
+        assert client.get(f"/api/v1/archers/{archer_id}/inscriptions").status_code == 404
+
+
+def test_un_tournoi_en_cours_peuple_reste_un_refus_definitif(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA : la confirmation ne lève **pas** le refus d'état — ce n'est pas la même question."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        tid = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()[
+            "id"
+        ]
+        _peupler(client, tid)
+        assert client.post(f"/api/v1/tournois/{tid}/vers-pret").status_code == 200
+        assert client.post(f"/api/v1/tournois/{tid}/demarrer").status_code == 200
+        refus = client.delete(
+            f"/api/v1/tournois/{tid}", params={"autoriser_suppression_peuplee": True}
+        )
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "tournoi_en_cours_non_supprimable"
+        assert client.get(f"/api/v1/tournois/{tid}").status_code == 200

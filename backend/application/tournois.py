@@ -17,6 +17,7 @@ from application.erreurs import (
     TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
     TournoiIntrouvable,
+    TournoiPeuple,
     TournoiSansDepart,
     TransitionStatutInvalide,
 )
@@ -27,6 +28,7 @@ from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
     MESSAGE_SANS_DEPART,
     MESSAGE_TERMINER_HORS_EN_COURS,
+    DescendanceTournoi,
     StatutTournoi,
     Tournoi,
     TournoiId,
@@ -409,15 +411,19 @@ class ServiceTournois:
             raise TransitionStatutInvalide(message)
         return self._repository.enregistrer(produire(tournoi))
 
-    def supprimer(self, tournoi_id: TournoiId) -> None:
-        """Supprime un tournoi.
+    def supprimer(self, tournoi_id: TournoiId, autoriser_suppression_peuplee: bool = False) -> None:
+        """Supprime un tournoi **et toute sa descendance** (E01US026, ADR-0077).
 
-        Lève `TournoiIntrouvable` si inconnu ; `TournoiEnCoursNonSupprimable` (→ 409) si le tournoi
-        est `en_cours` ou `en_pause` (le terminer/annuler d'abord) ; `TournoiArchiveNonModifiable`
-        (→ 409) s'il est `archivé` (lecture seule). Un `brouillon`, `prêt`, `terminé` ou `annulé`
-        reste supprimable ([ADR-0026] §1).
+        Lève `TournoiIntrouvable` si inconnu ; `TournoiEnCoursNonSupprimable` (→ 409) s'il est
+        `en_cours`/`en_pause` ; `TournoiArchiveNonModifiable` (→ 409) s'il est `archivé`
+        ([ADR-0026] §1). S'il porte des données, lève `TournoiPeuple` (→ 409) avec un décompte
+        chiffré, sauf `autoriser_suppression_peuplee=True` — un **signalement**, pas un refus.
         """
         tournoi = self.consulter(tournoi_id)
+        # ⚠️ Les gardes d'état passent **avant** le signalement, et l'ordre est le CA lui-même : un
+        # tournoi en cours peuplé doit rendre le refus définitif, jamais un signalement que la
+        # confirmation lèverait — sinon l'admin apprend qu'un tournoi en cours se supprime « en
+        # confirmant ». Vérifié par `test_le_signalement_precede_la_garde_d_etat_jamais_l_inverse`.
         if tournoi.statut in {StatutTournoi.EN_COURS, StatutTournoi.EN_PAUSE}:
             raise TournoiEnCoursNonSupprimable(
                 "Un tournoi en cours ou en pause ne peut pas être supprimé ; terminez-le ou "
@@ -428,4 +434,83 @@ class ServiceTournois:
                 "Un tournoi archivé est en lecture seule ; il ne peut pas être supprimé."
             )
         assert tournoi.id is not None, "Un tournoi consulté est persisté."
+        # DETTE-007 : la confirmation est **aveugle**, comme pour l'archer engagé et le départ. Le
+        # décompte annoncé n'est pas revérifié au rejeu — entre le 409 et la confirmation, d'autres
+        # tablettes peuvent saisir, et l'on détruirait plus que le message n'a annoncé.
+        if not autoriser_suppression_peuplee:
+            self._signaler_descendance(tournoi)
         self._repository.supprimer(tournoi.id)
+
+    def _signaler_descendance(self, tournoi: Tournoi) -> None:
+        """Lève `TournoiPeuple` si le tournoi porte des données, en **chiffrant** chaque nature.
+
+        « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection »
+        (`D-16`) : le message énumère les natures **présentes** et leurs nombres — une nature à zéro
+        n'est pas un impact et ne figure pas. Même patron que `ServiceArchers._signaler_engagement`.
+        """
+        assert tournoi.id is not None, "Un tournoi consulté est persisté."
+        descendance = self._repository.compter_descendance(tournoi.id)
+        if descendance.est_vide():
+            return
+        motifs = [
+            _accorde(nombre, singulier, pluriel)
+            for nombre, singulier, pluriel in (
+                (descendance.archers, "archer", "archers"),
+                (descendance.inscriptions, "inscription", "inscriptions"),
+                (descendance.fleches, "flèche tirée", "flèches tirées"),
+                (descendance.series, "série de saisie", "séries de saisie"),
+                (descendance.duels, "duel", "duels"),
+                (descendance.forfaits, "forfait", "forfaits"),
+                (descendance.barrages, "barrage", "barrages"),
+                (descendance.postes, "poste enrôlé", "postes enrôlés"),
+                (descendance.scoreurs, "scoreur", "scoreurs"),
+                (descendance.entrees_audit, "acte au journal", "actes au journal"),
+            )
+            if nombre
+        ]
+        motifs.extend(_motifs_d_argent(descendance))
+        raise TournoiPeuple(
+            f"« {tournoi.nom} » porte {_enumere(motifs)}. Tout sera détruit et rien ne pourra "
+            "être récupéré ; confirmez pour supprimer quand même."
+        )
+
+
+def _accorde(nombre: int, singulier: str, pluriel: str) -> str:
+    """« 1 archer » / « 42 archers » — un message lu par un bénévole qui s'apprête à détruire.
+
+    Accord réel plutôt qu'un « archer(s) » : il doit se lire, pas se décoder (même parti que
+    `ServiceArchers._signaler_engagement`).
+    """
+    return f"{nombre} {singulier if nombre == 1 else pluriel}"
+
+
+def _motifs_d_argent(descendance: DescendanceTournoi) -> list[str]:
+    """Les deux natures **monétaires**, chiffrées en euros et jamais confondues (E01US026).
+
+    ⚠️ `encaisse` est l'argent **reçu** (inscriptions payées), `remboursements` ce qui était déjà
+    déclaré à rendre : les additionner compterait deux fois la même pièce. Aucune contrepartie n'est
+    possible — le registre a `tournoi_id` pour unique FK, donc il part avec le tournoi (à la
+    différence de DETTE-018, où il survit). Chiffrer est tout ce qui reste.
+    """
+    motifs = []
+    if descendance.inscriptions_payees:
+        payees = _accorde(
+            descendance.inscriptions_payees, "inscription payée", "inscriptions payées"
+        )
+        motifs.append(f"{payees} ({_euros(descendance.encaisse_centimes)} encaissés)")
+    if descendance.remboursements:
+        nombre = _accorde(descendance.remboursements, "remboursement", "remboursements")
+        motifs.append(f"{nombre} ({_euros(descendance.remboursements_centimes)} restant à rendre)")
+    return motifs
+
+
+def _euros(centimes: int) -> str:
+    """« 4550 » → « 45,50 € » — le séparateur décimal est la virgule, le lecteur est un bénévole."""
+    return f"{centimes / 100:.2f}".replace(".", ",") + " €"
+
+
+def _enumere(motifs: list[str]) -> str:
+    """Joint les natures en français : « a, b et c » — jamais une liste à virgules jusqu'au bout."""
+    if len(motifs) == 1:
+        return motifs[0]
+    return f"{', '.join(motifs[:-1])} et {motifs[-1]}"

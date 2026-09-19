@@ -14,6 +14,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
 
+# ⚠️ **Aucune FK de la descendance d'un tournoi ne porte `ON DELETE CASCADE`, et c'est une décision,
+# pas un oubli** (ADR-0077) : la purge est **applicative**, dans `TournoiRepositorySQL.supprimer`,
+# parce qu'une cascade en base armerait une purge silencieuse sur tout autre chemin — import,
+# script, futur endpoint. En ajouter une ici contournerait la confirmation, pas seulement la
+# cascade. Les quelques `ON DELETE CASCADE` du fichier sont des exceptions motivées sur place.
+# Une table neuve rattachée au tournoi s'ajoute à cette purge **et**, si sa perte est
+# irrécupérable, au décompte (`compter_descendance`) — deux tests mécaniques le vérifient.
+
 
 class TournoiORM(Base):
     """Table `tournoi` — persistance de l'agrégat `Tournoi`.
@@ -66,8 +74,6 @@ class DepartORM(Base):
     __table_args__ = (UniqueConstraint("tournoi_id", "numero", name="uq_depart_tournoi_numero"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     numero: Mapped[int] = mapped_column(nullable=False)
     horaire: Mapped[str] = mapped_column(nullable=False)
@@ -81,7 +87,7 @@ class ClubORM(Base):
     """Table `club` — persistance de l'agrégat `Club` (E02US001).
 
     **Aucune FK vers `tournoi`** : le référentiel est global, la table n'est pas dans la descendance
-    de `tournoi` (DETTE-001 ne la concerne pas). ⚠️ `nom` est `UNIQUE` **exact** — il n'attrape que
+    de `tournoi` (ADR-0077 ne la concerne pas). ⚠️ `nom` est `UNIQUE` **exact** — il n'attrape que
     les homonymes au caractère près ; le refus fonctionnel, plus large, vit dans `ServiceClubs`
     (`cle_nom` replie espaces, casse et accents). Écart assumé : le writer unique garantit qu'aucune
     écriture ne le contourne.
@@ -107,8 +113,6 @@ class CategorieORM(Base):
     # d'une année sur l'autre) d'une **copie** appartenant à un tournoi (E01US023, ADR-0060) — même
     # patron que `gabarit_salle` depuis E01US008. Avant E01US023 la colonne était obligatoire : d'où
     # un atelier qui promettait « hors tournoi » sans pouvoir le tenir (DETTE-023, résorbée).
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
-    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
     # `ffta` (issue du préchargement officiel) ou `utilisateur` — ce qui permet les deux listes
     # séparées que le commanditaire demande, et la copie plutôt que l'écrasement d'un officiel.
@@ -122,8 +126,6 @@ class CategorieORM(Base):
     sexe: Mapped[str | None] = mapped_column(nullable=True)
     # Blason par défaut, facultatif (E01US006). La suppression d'un blason référencé est refusée
     # côté service (409, `BlasonReference`).
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — lien latéral au sein de la
-    # descendance du tournoi, à traiter dans la même politique de suppression, non tranchée.
     blason_id: Mapped[int | None] = mapped_column(ForeignKey("blason.id"), nullable=True)
     # Hauteur du centre de l'or (sol → centre), en cm (E03US001, ADR-0022) : 130 par défaut, 110
     # pour les U11. Pilote la contrainte de placement « une butte, une hauteur ». Renseignée pour
@@ -148,8 +150,6 @@ class BlasonORM(Base):
     # d'une année sur l'autre) d'une **copie** appartenant à un tournoi (E01US023, ADR-0060) — même
     # patron que `gabarit_salle` depuis E01US008. Avant E01US023 la colonne était obligatoire : d'où
     # un atelier qui promettait « hors tournoi » sans pouvoir le tenir (DETTE-023, résorbée).
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
-    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
     origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
     nom: Mapped[str] = mapped_column(nullable=False)
@@ -173,8 +173,6 @@ class GabaritSalleORM(Base):
     nom: Mapped[str] = mapped_column(nullable=False)
     nb_cibles: Mapped[int] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — l'instance appartient à la
-    # descendance du tournoi, à traiter dans la même politique de suppression, non tranchée.
     tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
 
 
@@ -183,7 +181,7 @@ class FormatTournoiORM(Base):
 
     **Aucune FK vers `tournoi`** : un format n'existe qu'en bibliothèque (patrimoine du club), sa
     « copie » dans un tournoi étant les lignes de `phase` produites par son application. Hors
-    descendance de `tournoi`, donc hors DETTE-001 — même régime que `club`. La **séquence de
+    descendance de `tournoi`, donc hors ADR-0077 — même régime que `club`. La **séquence de
     modèles de phases** est dans `config` (JSON), même forme que `PhaseORM.config` pour que les deux
     se relisent avec les mêmes fonctions. `nom` est `UNIQUE` : la promotion est ainsi idempotente.
     """
@@ -203,22 +201,15 @@ class ArcherORM(Base):
     __tablename__ = "archer"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
-    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     prenom: Mapped[str] = mapped_column(nullable=False)
     cible: Mapped[int | None] = mapped_column(nullable=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — `categorie` appartient, elle, à la
-    # descendance du tournoi (contrairement à `club` ci-dessous), donc cette FK relève bien de la
-    # politique de suppression non tranchée. E02US002 élargit la ligne existante du registre.
+    # E02US002 élargit la ligne existante du registre.
     categorie_id: Mapped[int] = mapped_column(ForeignKey("categorie.id"), nullable=False)
     # Club de rattachement, **facultatif** : `NULL` = club encore *inconnu*, jamais « aucun club »
     # (ADR-0014). L'anomalie est signalée à l'écran, pas comblée par un club sentinelle ; la
     # suppression d'un club référencé est refusée côté service (409, `ClubReference`).
-    #
-    # **Hors périmètre de DETTE-001** : elle pointe vers `club`, qui n'est PAS dans la descendance
-    # de `tournoi` — c'est le sens inverse qu'elle contraint, et ce cas-là est tranché.
     club_id: Mapped[int | None] = mapped_column(ForeignKey("club.id"), nullable=True)
     # Handicap (E05US015) : deux colonnes, jamais une seule — le handicap **officiel** entretenu par
     # le club, et la **surcharge** qui le prime pour cette édition (demande du commanditaire,
@@ -235,9 +226,6 @@ class ScoreORM(Base):
     __tablename__ = "score"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant indirect de `tournoi` via
-    # `archer`, donc concerné par la même politique de suppression, non tranchée ; ne pas
-    # contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     points: Mapped[int] = mapped_column(nullable=False)
 
@@ -262,9 +250,8 @@ class InscriptionORM(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : **deux** FK sans ON DELETE CASCADE — enfant indirect du tournoi
-    # via `archer` **et** via `depart`. La purge en cascade est applicative et maîtrisée
-    # (`ArcherRepositorySQL.supprimer` et `DepartRepositorySQL.supprimer`) ; ne pas contourner ici.
+    # La purge en cascade est applicative et maîtrisée (`ArcherRepositorySQL.supprimer` et
+    # `DepartRepositorySQL.supprimer`) ; ne pas contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     paye: Mapped[bool] = mapped_column(nullable=False, default=False)
@@ -275,7 +262,7 @@ class PlacementORM(Base):
 
     Une ligne = un inscrit **posé** ; `inscription_id` en clé primaire. Un inscrit **sans** ligne
     est *en réserve* — l'absence de ligne *est* l'information. `depart_id` est dénormalisé pour lire
-    le plan d'un départ sans jointure. ⚠️ **`ON DELETE CASCADE`**, à rebours de DETTE-001 :
+    le plan d'un départ sans jointure. ⚠️ **`ON DELETE CASCADE`**, à rebours d'ADR-0077 :
     `placement` est de la donnée **dérivée, reconstructible et feuille**, pas de la donnée saisie
     qui remonte l'arbre du tournoi. Les FK sont *enforced* (`engine.py`).
     """
@@ -362,8 +349,6 @@ class PhaseORM(Base):
     __table_args__ = (UniqueConstraint("depart_id", "ordre", name="uq_phase_depart_ordre"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant du départ depuis ADR-0075, donc
-    # petit-enfant du tournoi ; même politique de suppression non tranchée, ne pas contourner ici.
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     # `ordre` est la **clé de jointure** vers la définition (`deroule_etape` du tournoi de ce
     # départ) : c'est lui, et non un `etape_id`, parce que le déroulé s'édite par rang — un
@@ -387,8 +372,6 @@ class DerouleEtapeORM(Base):
     __table_args__ = (UniqueConstraint("tournoi_id", "ordre", name="uq_deroule_tournoi_ordre"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 : FK sans ON DELETE CASCADE — enfant direct du tournoi, même politique de
-    # suppression non tranchée que le reste de sa descendance.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     ordre: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False)
@@ -414,8 +397,6 @@ class FranchissementArretORM(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 : FK sans ON DELETE CASCADE — descendant du départ par la phase, même politique de
-    # suppression non tranchée que le reste de la descendance du tournoi ; ne pas contourner ici.
     phase_id: Mapped[int] = mapped_column(ForeignKey("phase.id"), nullable=False)
     apres_tour: Mapped[int] = mapped_column(nullable=False)
     etat: Mapped[str] = mapped_column(nullable=False)
@@ -454,8 +435,6 @@ class ArretDeCirconstanceORM(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 : FK sans ON DELETE CASCADE — descendance du tournoi, même politique de suppression
-    # non tranchée que le reste ; ne pas contourner ici.
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     phase_id: Mapped[int] = mapped_column(ForeignKey("phase.id"), nullable=False)
     apres_tour: Mapped[int] = mapped_column(nullable=False)
@@ -474,8 +453,6 @@ class ScoreurORM(Base):
     __tablename__ = "scoreur"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
@@ -494,8 +471,6 @@ class PosteORM(Base):
     __tablename__ = "poste"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     cible_index: Mapped[int | None] = mapped_column(nullable=True)
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
@@ -513,7 +488,7 @@ class SerieORM(Base):
 
     **Une série par `(phase, archer)`** (E05US025, ADR-0082) : un déroulé peut compter plusieurs
     qualifications. Les volées vivent dans `volee` ; le **cumul** n'est pas stocké, il se recalcule.
-    Deux FK **sans `ON DELETE`** (DETTE-001) — c'est de la donnée **saisie** —, la cascade
+    Deux FK **sans `ON DELETE`** (ADR-0077) — c'est de la donnée **saisie** —, la cascade
     `archer` → `serie` étant réalisée **applicativement** par `ArcherRepositorySQL.supprimer`.
     """
 
@@ -528,21 +503,16 @@ class SerieORM(Base):
     __table_args__ = (UniqueConstraint("phase_id", "archer_id", name="uq_serie_phase_archer"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
-    #
     # ⚠️ **Conservé bien que dérivable** (phase -> depart -> tournoi) : c'est la portée que lisent
     # les vues d'ensemble, et la jointure à chaque lecture coûterait plus qu'elle ne rapporte. Ce
     # n'est plus une clé, seulement un cadre — l'unicité est descendue à la phase.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant indirect du tournoi via
-    # `archer`. La cascade est **applicative et maîtrisée** (`ArcherRepositorySQL.supprimer`), à
-    # l'image de `score.archer_id`/`inscription.archer_id` ; ne pas contourner ici.
+    # La cascade est **applicative et maîtrisée** (`ArcherRepositorySQL.supprimer`), à l'image de
+    # `score.archer_id`/`inscription.archer_id` ; ne pas contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     # `ON DELETE CASCADE`, à l'image de `duel.phase_id` : les flèches d'une phase supprimée n'ont
-    # plus d'existence sportive. C'est le même parti que le tableau de duels, dont la suppression
-    # emporte les rencontres — et non celui de DETTE-001, qui concerne la descendance du *tournoi*,
-    # dont la politique de purge n'est pas tranchée.
+    # plus d'existence sportive. Même parti que le tableau de duels, dont la suppression emporte
+    # les rencontres — et non celui du **tournoi**, dont la purge est applicative (ADR-0077).
     phase_id: Mapped[int] = mapped_column(
         ForeignKey("phase.id", ondelete="CASCADE"), nullable=False
     )
@@ -555,7 +525,7 @@ class VoleeORM(Base):
     marqueurs `saisie_par` / `validee_par` — ce dernier non `NULL` dit que la volée **compte**, le
     verrou d'écriture exigeant en plus `correction_ouverte_par IS NULL` (ADR-0109). `created_at` est
     une **métadonnée de persistance**, hors du domaine, **préservée par numéro** à travers le purge
-    + réinsertion. ⚠️ `ON DELETE CASCADE` sur `serie_id`, à rebours de DETTE-001 : une volée est un
+    + réinsertion. ⚠️ `ON DELETE CASCADE` sur `serie_id`, à rebours d'ADR-0077 : une volée est un
     **composant strict** de son agrégat."""
 
     __tablename__ = "volee"
@@ -621,8 +591,6 @@ class EntreeAuditORM(Base):
     __tablename__ = "entree_audit"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     action: Mapped[str] = mapped_column(nullable=False)
     auteur: Mapped[str] = mapped_column(nullable=False)
@@ -638,7 +606,7 @@ class ForfaitORM(Base):
     Un forfait par `(tournoi, archer, phase)`. `declare_par` est le **nom** du déclarant (pas une
     FK) : la déclaration survit à la suppression du scoreur. L'annulation (`D-15`) **supprime** la
     ligne — les flèches ne sont jamais touchées. `ON DELETE CASCADE` sur `phase_id`, les autres FK
-    restant sans `ON DELETE` (DETTE-001). ⚠️ `archer_id` est purgé par la **cascade applicative** de
+    restant sans `ON DELETE` (ADR-0077). ⚠️ `archer_id` est purgé par la **cascade applicative** de
     `ArcherRepositorySQL` — l'oublier bloque la suppression d'un archer forfaitaire.
     """
 
@@ -650,10 +618,8 @@ class ForfaitORM(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi (dénormalisé
-    # pour `par_tournoi`), à traiter à la suppression du tournoi ; ne pas contourner.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
-    # DETTE-001 : FK sans ON DELETE CASCADE — enfant indirect via `archer` (cf. `serie.archer_id`).
+    # `serie.archer_id`).
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     phase_id: Mapped[int] = mapped_column(
         ForeignKey("phase.id", ondelete="CASCADE"), nullable=False
@@ -676,8 +642,6 @@ class RemboursementORM(Base):
     __tablename__ = "remboursement"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     archer_prenom: Mapped[str] = mapped_column(nullable=False)
     archer_nom: Mapped[str] = mapped_column(nullable=False)
@@ -702,12 +666,9 @@ class BarrageORM(Base):
     __tablename__ = "barrage"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
-    # Portée sportive : le barrage départage une place dans le classement **d'un départ**
-    # (E01US025, ADR-0075, migration 0042) — c'était `tournoi_id`.
+    # Portée sportive : le barrage départage une place dans le classement **d'un départ** (E01US025,
+    # ADR-0075, migration 0042) — c'était `tournoi_id`.
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
-    # DETTE-001 : FK sans ON DELETE CASCADE — lien latéral dans la descendance du tournoi.
     phase_id: Mapped[int | None] = mapped_column(ForeignKey("phase.id"), nullable=True)
     portee: Mapped[str] = mapped_column(nullable=False)
     reference: Mapped[str | None] = mapped_column(nullable=True)
@@ -729,12 +690,10 @@ class BarrageTirORM(Base):
     __tablename__ = "barrage_tir"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 : FK sans ON DELETE CASCADE — enfant du barrage, purgé avec lui par le repository.
     barrage_id: Mapped[int] = mapped_column(ForeignKey("barrage.id"), nullable=False)
     manche: Mapped[int] = mapped_column(nullable=False)
-    # DETTE-001 : enfant **indirect** via `archer`, comme `forfait.archer_id`. FK *enforced* : la
-    # cascade applicative de `ArcherRepositorySQL.supprimer`/`fusionner` la traite explicitement,
-    # sans quoi l'archer devient indéracinable (500).
+    # FK *enforced* : la cascade applicative de `ArcherRepositorySQL.supprimer`/`fusionner` la
+    # traite explicitement, sans quoi l'archer devient indéracinable (500).
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     score: Mapped[int | None] = mapped_column(nullable=True)
     distance_au_centre: Mapped[int | None] = mapped_column(nullable=True)
@@ -755,10 +714,10 @@ class IdentiteVisuelleORM(Base):
     __tablename__ = "identite_tournoi"
 
     # `ON DELETE CASCADE` : composant **strict** de l'agrégat tournoi (une ligne, sans descendance,
-    # cosmétique), au même titre que `volee.serie_id` — et non la descendance non tranchée de
-    # DETTE-001. Sans cela, la ligne d'identité — qui naît au premier réglage et n'est jamais
-    # retirée — rendait le tournoi définitivement indéracinable (`PRAGMA foreign_keys=ON`).
-    # Clé primaire **et** étrangère : au plus une identité par tournoi, tenu par le schéma.
+    # cosmétique), au même titre que `volee.serie_id` — et non la descendance purgée à la main.
+    # ⚠️ Sans cela, la ligne d'identité — qui naît au premier réglage et n'est jamais retirée —
+    # rendait le tournoi définitivement indéracinable (`PRAGMA foreign_keys=ON`). Clé primaire
+    # **et** étrangère : au plus une identité par tournoi, tenu par le schéma.
     tournoi_id: Mapped[int] = mapped_column(
         ForeignKey("tournoi.id", ondelete="CASCADE"), primary_key=True
     )

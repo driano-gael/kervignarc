@@ -10,8 +10,10 @@ ajustable propre à ce tournoi). SQLite ne sait pas ajouter une contrainte par `
 passe par le mode **batch** d'Alembic (recréation de la table). Correspond au modèle ORM
 `GabaritSalleORM`.
 
-DETTE-001 (docs/dette.md) : la FK est posée **sans** `ON DELETE CASCADE`, comme le reste de la
-descendance du tournoi ; la politique de suppression reste à trancher dans l'US dédiée.
+ADR-0077 : la FK est posée **sans** `ON DELETE CASCADE`, comme le reste de la
+descendance du tournoi ;
+la purge est **applicative**
+(`TournoiRepositorySQL.supprimer`, ADR-0077).
 """
 
 from __future__ import annotations

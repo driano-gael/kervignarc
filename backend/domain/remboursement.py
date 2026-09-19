@@ -24,10 +24,13 @@ class MotifRemboursement(str, Enum):
     """Pourquoi une somme encaissée est devenue un remboursement à traiter.
 
     `(str, Enum)` : la valeur est un slug stable, stocké tel quel en base (comme `ActionAuditee`).
-    Les deux motifs sont les **deux déclencheurs** du CA — l'inscription payée détruite l'a été soit
-    par la suppression de son **départ** (ADR-0018), soit par une **désinscription** individuelle.
+    Trois déclencheurs — l'inscription payée détruite l'a été par la suppression de son **départ**
+    (ADR-0018), par une **désinscription** individuelle, ou par la suppression de la **fiche
+    archer** (E01US026, résorbe DETTE-018). ⚠️ Ce troisième chemin manquait depuis E08US005 : une
+    somme encaissée pouvait s'effacer sans poste au registre.
     """
 
+    ARCHER_SUPPRIME = "archer_supprime"
     DEPART_SUPPRIME = "depart_supprime"
     DESINSCRIPTION = "desinscription"
 

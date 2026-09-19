@@ -31,9 +31,9 @@ premier tournoi joue sur cette application, une colonne NOT NULL non retro-rempl
 ecran de correction livre avant la migration. Cette revision est un cas de jalon J1, pas un
 patron.
 
-**DETTE-001 (docs/dette.md) elargie.** `archer.categorie_id` est une FK **de la descendance du
+**ADR-0077 (regime des FK) elargi.** `archer.categorie_id` est une FK **de la descendance du
 tournoi** — contrairement a `archer.club_id` pose par 0014, qui pointe vers le referentiel global
-des clubs. Elle rejoint donc la politique de suppression d'un tournoi non tranchee, et la ligne du
+des clubs. Elle rejoint donc la politique de suppression d'un tournoi, et la ligne du
 registre est elargie plutot que contournee localement.
 """
 

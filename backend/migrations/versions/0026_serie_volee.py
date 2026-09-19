@@ -9,9 +9,9 @@ qualification d'un archer — une par archer (`UNIQUE(tournoi_id, archer_id)`) ;
 table **enfant** (une ligne par volée : `numero`, `valeurs` en JSON, marqueurs `saisie_par` /
 `validee_par`). Correspondent aux modèles ORM `SerieORM` / `VoleeORM`.
 
-Profil DETTE-001 : `serie.tournoi_id` **et** `serie.archer_id` sont des FK **sans `ON DELETE`** —
-donnée saisie de la descendance du tournoi, purge à traiter dans la politique de suppression non
-tranchée (la cascade `archer` → `serie` est applicative, `ArcherRepositorySQL.supprimer`).
+Profil ADR-0077 : `serie.tournoi_id` **et** `serie.archer_id` sont des FK **sans `ON DELETE`** —
+donnée saisie de la descendance du tournoi, purge **applicative** (`ArcherRepositorySQL.supprimer`
+pour la cascade `archer` → `serie`, `TournoiRepositorySQL.supprimer` pour le tournoi entier).
 `volee.serie_id` fait **exception** (`ON DELETE CASCADE`), comme `placement` : composant strict de
 l'agrégat `Serie`, dont le cycle de vie suit sa série (cf. docstring de `VoleeORM`).
 """
@@ -30,14 +30,14 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Crée `serie` (FK tournoi + archer, DETTE-001) puis `volee` (enfant, `serie_id` CASCADE)."""
+    """Crée `serie` (FK tournoi + archer, ADR-0077) puis `volee` (enfant, `serie_id` CASCADE)."""
     op.create_table(
         "serie",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("tournoi_id", sa.Integer(), nullable=False),
         sa.Column("archer_id", sa.Integer(), nullable=False),
-        # DETTE-001 (docs/dette.md) : FK sans ON DELETE — descendance du tournoi (tournoi direct,
-        # archer indirect via `archer`) ; cascade `archer -> serie` applicative, non tranchée ici.
+        # ADR-0077 : FK sans ON DELETE — descendance du tournoi (tournoi direct,
+        # archer indirect via `archer`) ; cascade `archer -> serie` applicative (ADR-0077).
         sa.ForeignKeyConstraint(["tournoi_id"], ["tournoi.id"]),
         sa.ForeignKeyConstraint(["archer_id"], ["archer.id"]),
         sa.PrimaryKeyConstraint("id"),

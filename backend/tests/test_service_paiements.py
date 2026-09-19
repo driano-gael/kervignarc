@@ -27,7 +27,7 @@ from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.entree_audit import ActionAuditee
 from domain.inscription import Inscription
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxClubRepository,
@@ -65,6 +65,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class HorlogeFigee:

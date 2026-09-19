@@ -93,7 +93,7 @@ erDiagram
 
 > **Référentiel global (E02US001).** Seule table **sans** `tournoi_id` : les clubs sont réutilisés
 > d'une compétition à l'autre. Elle n'appartient donc pas à la descendance de `TOURNOI` — supprimer
-> un tournoi ne touche pas aux clubs, et [DETTE-001](dette.md) ne la concerne pas.
+> un tournoi ne touche pas aux clubs, et [ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) ne la concerne pas.
 >
 > **`UNIQUE` = garde-fou d'intégrité, pas la règle fonctionnelle.** La contrainte SQL est **exacte**
 > (elle n'attrape que les homonymes au caractère près). Le refus présenté à l'utilisateur est plus
@@ -205,7 +205,7 @@ erDiagram
 > l'insertion tiennent dans la même commande en file. La détection fine et la fusion sont à
 > **E02US005**.
 >
-> `club_id` est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK
+> `club_id` est **hors du périmètre de [ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md)**, à la différence des autres FK
 > d'`ARCHER` (`tournoi_id`, `categorie_id`) : elle pointe vers `CLUB`, qui n'est pas dans la
 > descendance de `TOURNOI`. Supprimer un tournoi (donc ses archers) ne la viole jamais — c'est le
 > sens inverse qu'elle contraint, et ce cas-là est **tranché** par le service, comme l'est déjà
@@ -230,7 +230,7 @@ erDiagram
 > que porteront les **sommes** d'EPIC-08/09 (montant par archer = somme des tarifs de ses départs), là
 > où un REAL dériverait. Le tarif est **obligatoire** : l'état « non défini » qu'avait le tarif du
 > tournoi disparaît (on ne crée pas un créneau sans prix) ; `0` = gratuit reste distinct. FK
-> `depart → tournoi` **sans `ON DELETE`** → [DETTE-001](dette.md).
+> `depart → tournoi` **sans `ON DELETE`** → [ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md).
 
 ### INSCRIPTION
 | Champ | Type | Contraintes |
@@ -251,7 +251,7 @@ erDiagram
 > `montant_du_centimes`/`paye` sur `DEPART` ; seul `paye` — un **fait** propre à l'inscription, non
 > dérivable — vit ici. Les **sommes** d'EPIC-08 (montant par archer = somme des tarifs de ses départs)
 > se calculent par jointure `INSCRIPTION → DEPART`.
-> **Deux FK sans `ON DELETE`** (`archer_id`, `depart_id`) → [DETTE-001](dette.md) : la suppression
+> **Deux FK sans `ON DELETE`** (`archer_id`, `depart_id`) → [ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) : la suppression
 > d'un archer (E02US003) **et** celle d'un départ (E02US009) purgent les inscriptions par **cascade
 > applicative** dans la transaction de l'adapter, jamais par `ON DELETE CASCADE` en base.
 
@@ -272,7 +272,7 @@ erDiagram
 > (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5).
 > Sa « copie » dans un tournoi n'est pas une ligne de cette table, ce sont les lignes de `PHASE`
 > produites par son application. La table n'appartient donc **pas** à la descendance de `TOURNOI` —
-> même régime que `CLUB`, et DETTE-001 ne la concerne pas.
+> même régime que `CLUB`, et ADR-0077 ne la concerne pas.
 >
 > **Pourquoi une table neuve** plutôt qu'un `tournoi_id` nullable sur `PHASE`, comme pour `CATEGORIE`
 > et `BLASON` : le barème n'est pas une entité (il vit dans `PHASE.config`), et l'invariant d'une
@@ -296,7 +296,7 @@ inscrit **sans** ligne est en **réserve**.
 | cible_index | INTEGER | rang de la cible dans le gabarit (1-based) |
 | position | TEXT | `A`\|`B`\|`C`\|`D`\|`E`… — lettres, **non bornées à D** (capacité de cible non bornée, cf. `CIBLE` ; le **code** plafonne encore à 4 → [DETTE-010](dette.md), résorption E01US019) |
 
-> **`ON DELETE CASCADE` assumé** (à rebours de DETTE-001) : donnée **dérivée, reconstructible et
+> **`ON DELETE CASCADE` assumé** (à rebours d'ADR-0077) : donnée **dérivée, reconstructible et
 > feuille** — l'auto la régénère, sa disparition suit celle de l'inscription/du départ (ADR-0024).
 >
 > **Cible par `cible_index`, pas FK → CIBLE** : le gabarit (E01US008) porte ses cibles/capacités en
@@ -332,7 +332,7 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > `(phase_id, cible_index, position)` — la non-double-occupation est tenue par le **service** (comme
 > `PLACEMENT`) ; une pose devenue **orpheline** (inscription qui n'est plus duelliste du 1er tour après
 > un recalcul du classement) est **masquée en lecture** et **purgée à l'écriture** (ADR-0048, arbitrage
-> de revue). **`ON DELETE CASCADE` assumé** (exception DETTE-001, comme `PLACEMENT`) : donnée dérivée,
+> de revue). **`ON DELETE CASCADE` assumé** (exception ADR-0077, comme `PLACEMENT`) : donnée dérivée,
 > reconstructible, feuille — elle suit la phase ou l'inscription.
 
 ### PLACEMENT_PAR_BLOC (E05US023, [ADR-0083](adr/0083-le-contrat-de-phase-jouable.md) §3)
@@ -360,7 +360,7 @@ imparfait et la migration différée.
 > `PLACEMENT`/`PLACEMENT_TABLEAU` où elle l'est par le service, parce que l'unité posée est un bloc
 > et non une personne. `UNIQUE (phase_id, groupe_numero, rang)` tient l'autre bout : un bloc est une
 > **suite** ordonnée, deux couloirs ne peuvent pas partager le même rang. **`ON DELETE CASCADE`
-> assumé** (exception DETTE-001, comme ses deux sœurs) : donnée dérivée, reconstructible, feuille.
+> assumé** (exception ADR-0077, comme ses deux sœurs) : donnée dérivée, reconstructible, feuille.
 > La pose est **grossière par construction** — on repose tout le plan — parce que la contiguïté d'un
 > bloc est l'invariant du format et qu'un déplacement unitaire la casserait.
 
@@ -456,8 +456,8 @@ imparfait et la migration différée.
 
 ### SERIE (E04US002, clé descendue à la phase en E05US025)
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
-| archer_id | INTEGER | FK → ARCHER, NOT NULL (DETTE-001) |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (ADR-0077) |
+| archer_id | INTEGER | FK → ARCHER, NOT NULL (ADR-0077) |
 | phase_id | INTEGER | FK → PHASE, NOT NULL, **ON DELETE CASCADE** (E05US025) |
 | — | — | **UNIQUE(phase_id, archer_id)** — une feuille par archer **et par phase de tir** |
 
@@ -487,7 +487,7 @@ imparfait et la migration différée.
 > `phase → depart → tournoi`. Un consommateur qui indexerait `par_tournoi` par `archer_id` n'en
 > garderait qu'une au hasard : c'est `par_phase` qu'il lui faut.
 >
-> `tournoi_id` et `archer_id` restent **sans `ON DELETE`** = **DETTE-001** (donnée saisie de la
+> `tournoi_id` et `archer_id` restent **sans `ON DELETE`** → **ADR-0077** (donnée saisie de la
 > descendance du tournoi ; la cascade `archer → serie` est **applicative**,
 > `ArcherRepositorySQL.supprimer`). `phase_id`, lui, **cascade** : une phase supprimée emporte ses
 > feuilles, comme le reste de sa descendance sportive.
@@ -519,7 +519,7 @@ imparfait et la migration différée.
 > « qui a fait quoi, quand » se lit dans `EntreeAudit` — pas ici. *(Le mot **rang** a été retiré de cette
 > ligne en revue : le glossaire le réserve à la **position finale d'un archer**.)* Aucune reprise à la
 > migration `0055` — les volées d'avant restent à `NULL`, donc écrasables comme elles l'étaient. Le total n'est pas stocké (cumul recalculé).
-> `serie_id` en **`ON DELETE CASCADE`** — **hors** DETTE-001, comme `PLACEMENT` (feuille auto-cascadée).
+> `serie_id` en **`ON DELETE CASCADE`** — **hors** ADR-0077, comme `PLACEMENT` (feuille auto-cascadée).
 > `created_at` est une **métadonnée de persistance** (comme l'`id`), **hors** de l'agrégat domaine
 > `Volee` : posée par le repository via le port `Horloge` (UTC) et **préservée par numéro** au
 > travers du purge + réinsertion (réécrire une série ne réinitialise pas le « quand »). Défaut SQL
@@ -552,8 +552,8 @@ imparfait et la migration différée.
 
 ### FORFAIT (E04US015) — abandon / disqualification
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI (DETTE-001 ; dénormalisé pour `par_tournoi`) |
-| archer_id | INTEGER | FK → ARCHER (DETTE-001 ; purgé/réassigné par cascade applicative) |
+| tournoi_id | INTEGER | FK → TOURNOI (ADR-0077 ; dénormalisé pour `par_tournoi`) |
+| archer_id | INTEGER | FK → ARCHER (ADR-0077 ; purgé/réassigné par cascade applicative) |
 | phase_id | INTEGER | FK → PHASE, **ON DELETE CASCADE** |
 | nature | TEXT | `abandon`\|`disqualification` (`NatureForfait`) |
 | declare_par | TEXT | NOT NULL — le **nom** du déclarant (pas une FK) |
@@ -569,7 +569,7 @@ imparfait et la migration différée.
 > **flèches sont préservées** (≠ suppression, [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)) :
 > l'annulation (réversibilité `D-15`) **supprime** la ligne, jamais les résultats. Co-écrit sa trace
 > d'audit `FORFAIT` en une transaction (ADR-0035). `ON DELETE CASCADE` sur `phase_id` (feuille, comme
-> `DUEL`) ; FK `tournoi_id`/`archer_id` sans `ON DELETE` (DETTE-001, `archer_id` couvert par la cascade
+> `DUEL`) ; FK `tournoi_id`/`archer_id` sans `ON DELETE` (ADR-0077, `archer_id` couvert par la cascade
 > applicative de `ArcherRepositorySQL.supprimer`/`fusionner`, comme `serie`).
 
 ### CLASSEMENT
@@ -581,7 +581,7 @@ imparfait et la migration différée.
 
 ### SCOREUR (E10US003)
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (ADR-0077) |
 | nom | TEXT | NOT NULL |
 | code | TEXT | NOT NULL, **UNIQUE global** (login par code seul) |
 
@@ -592,8 +592,8 @@ imparfait et la migration différée.
 ### BARRAGE (E06US003) — tir de départage d'une place
 
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI (DETTE-001) |
-| phase_id | INTEGER | FK → PHASE, nullable (DETTE-001, lien latéral) |
+| tournoi_id | INTEGER | FK → TOURNOI (ADR-0077) |
+| phase_id | INTEGER | FK → PHASE, nullable (ADR-0077, lien latéral) |
 | portee | TEXT | `qualification`\|`poule`\|`big_shoot_off` (`PorteeBarrage`) |
 | reference | TEXT | nullable — numéro de poule ou de manche |
 | rang_dispute | INTEGER | nullable — **nul** en Big Shoot Off (il désigne un sortant, pas une place) |
@@ -613,9 +613,9 @@ juge dès qu'une volée validée en retard arrive. Même parti que `phase.source
 ### BARRAGE_TIR (E06US003) — une flèche, par manche et par archer
 
 | id | INTEGER | PK |
-| barrage_id | INTEGER | FK → BARRAGE (DETTE-001 ; purgé avec le barrage) |
+| barrage_id | INTEGER | FK → BARRAGE (ADR-0077 ; purgé avec le barrage) |
 | manche | INTEGER | NOT NULL — 1, 2, … (« on répète jusqu'à résolution », §8.2) |
-| archer_id | INTEGER | FK → ARCHER (DETTE-001 ; purgé/réassigné par cascade applicative) |
+| archer_id | INTEGER | FK → ARCHER (ADR-0077 ; purgé/réassigné par cascade applicative) |
 | score | INTEGER | nullable — **`NULL` = ABSENT** (B.6.5.2.4, déclaré perdant) |
 | distance_au_centre | INTEGER | nullable — dixièmes de mm ; `NULL` = **non mesurée**, pas zéro |
 
@@ -633,7 +633,7 @@ de moteur (DETTE-028).
 
 ### POSTE (E04US001 ; élargi E07US004)
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (ADR-0077) |
 | type | TEXT | NOT NULL, `cible` \| `ecran` (`server_default 'cible'`, E07US004) |
 | cible_index | INTEGER | **NULL** pour un écran ; rang 1-based de la cible dans le plan sinon |
 | libelle | TEXT | NULL sauf pour un **écran** (sa place dans le gymnase, ≤ 60 car.) |
@@ -685,7 +685,7 @@ de moteur (DETTE-028).
 
 ### AUDIT_LOG (E10US005) — table `entree_audit`
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (ADR-0077) |
 | action | TEXT | NOT NULL — `validation`\|`correction_score`\|`forfait` (`ActionAuditee`) |
 | auteur | TEXT | NOT NULL — le **nom** de qui a agi (pas une FK vers `scoreur`) |
 | horodatage | DATETIME | NOT NULL — instant de l'acte, en **UTC** (aware, garanti par le domaine) |
@@ -703,12 +703,12 @@ de moteur (DETTE-028).
 
 ### REMBOURSEMENT (E08US005) — somme encaissée à rendre
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) — **seule** FK |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (ADR-0077) — **seule** FK |
 | archer_prenom | TEXT | NOT NULL — **instantané** (pas une FK : survit à la disparition de l'archer) |
 | archer_nom | TEXT | NOT NULL — instantané |
 | creneau | TEXT | NOT NULL — instantané du départ (« Départ n°3 — 09:00 »), le départ a souvent disparu |
 | montant_centimes | INTEGER | NOT NULL, **> 0** — tarif encaissé figé (centimes entiers, ADR-0012) |
-| motif | TEXT | NOT NULL — `depart_supprime`\|`desinscription` (`MotifRemboursement`) |
+| motif | TEXT | NOT NULL — `archer_supprime`\|`depart_supprime`\|`desinscription` (`MotifRemboursement`) |
 | statut | TEXT | NOT NULL — `a_rembourser`\|`rembourse`\|`reporte` (`StatutRemboursement`) |
 | cree_le | DATETIME | NOT NULL — ouverture, en **UTC** (aware, garanti par le domaine) |
 | traite_le | DATETIME | nullable — instant du traitement (`None` tant qu'à traiter) |
@@ -719,7 +719,7 @@ de moteur (DETTE-028).
 > **instantanés textuels** (comme `entree_audit`/`forfait` figent le **nom** de l'auteur). Ouverture
 > **atomique** avec le `DELETE` (`supprimer_avec_remboursement(s)`) ; traitement (`rembourse`/`reporte`)
 > **audité** (`REMBOURSEMENT`, une transaction, ADR-0035) et **terminal**. Seule FK `tournoi_id` sans
-> `ON DELETE` (DETTE-001, comme `entree_audit`).
+> `ON DELETE` (ADR-0077, comme `entree_audit`).
 >
 > **Limite connue (DETTE-016)** : `montant_centimes` fige le **tarif courant du départ au moment de
 > l'effacement**, or le modèle ne stocke **pas** la somme réellement versée (seul le booléen `paye` de
@@ -858,7 +858,9 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
 > - `MEMBRE_EQUIPE` (`equipe_id` FK, `archer_id` FK) — composition ; contrainte **configurable**, défaut FFTA §6.3/§7 (3 archers, ou mixte 2 H/F).
 > - `MATCH` opposera des **participants** (`participant_A/B` = archer **ou** équipe), pas des archers en dur (CDC technique §5). Un tournoi individuel est le cas où chaque participant **est** un archer.
 >
-> Élargit [DETTE-001](dette.md) (FK `equipe.tournoi_id`, `membre_equipe.*` sans `ON DELETE`).
+> Entre dans le régime d'[ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) :
+> FK `equipe.tournoi_id`, `membre_equipe.*` **sans `ON DELETE`**, à ajouter à la purge applicative
+> (`TournoiRepositorySQL.supprimer`) **et** à l'inventaire de `test_tournoi_repository.py`.
 
 ## Enums de référence
 

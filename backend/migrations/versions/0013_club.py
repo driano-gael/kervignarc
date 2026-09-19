@@ -8,7 +8,7 @@ Table `club` (E02US001) : référentiel des clubs d'appartenance des archers. `n
 obligatoire et **unique**.
 
 Première table **hors descendance de `tournoi`** : aucune FK vers `tournoi`, car le référentiel
-est réutilisé d'une compétition à l'autre. Elle n'est donc pas concernée par DETTE-001
+est réutilisé d'une compétition à l'autre. Elle n'est donc pas concernée par ADR-0077
 (politique de suppression d'un tournoi non vide) — supprimer un tournoi ne touche pas aux clubs.
 
 L'unicité `UNIQUE` est **exacte** (garde-fou d'intégrité) ; le refus fonctionnel du doublon est

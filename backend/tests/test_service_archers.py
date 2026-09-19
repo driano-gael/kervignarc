@@ -9,6 +9,7 @@ restent ici — ce module est leur seul consommateur.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from dataclasses import replace
 from typing import NamedTuple
@@ -45,9 +46,10 @@ from domain.erreurs import (
 from domain.inscription import Inscription
 from domain.phase import PhaseId
 from domain.poste import Poste
+from domain.remboursement import MotifRemboursement
 from domain.score import Score
 from domain.serie import Serie, Volee
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -56,9 +58,11 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    HorlogeFigee,
 )
 
 _DATE = datetime.date(2026, 3, 14)
+_INSTANT = datetime.datetime(2026, 3, 14, 9, 30, tzinfo=datetime.UTC)
 
 
 # E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
@@ -105,6 +109,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class FauxScoreRepository:
@@ -217,6 +224,7 @@ class Montage(NamedTuple):
     categories: FauxCategorieRepository
     tournois: FauxTournoiRepository
     inscriptions: FauxInscriptionRepository
+    departs: FauxDepartRepository
     tournoi_id: TournoiId
     categorie_id: CategorieId
 
@@ -305,7 +313,17 @@ def _monter() -> Montage:
     categorie = categories.ajouter(Categorie.creer(tournoi.id, "Senior 1 H"))
     assert categorie.id is not None
     return Montage(
-        archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions, series),
+        archers=ServiceArchers(
+            tournois,
+            archers,
+            scores,
+            clubs,
+            categories,
+            inscriptions,
+            series,
+            departs,
+            HorlogeFigee(_INSTANT),
+        ),
         classement=ServiceClassement(
             tournois,
             archers,
@@ -323,6 +341,7 @@ def _monter() -> Montage:
         categories=categories,
         tournois=tournois,
         inscriptions=inscriptions,
+        departs=departs,
         tournoi_id=tournoi.id,
         categorie_id=categorie.id,
     )
@@ -1127,12 +1146,11 @@ def test_signalement_d_engagement_inscription_accorde_au_singulier() -> None:
 
 
 def test_signalement_d_engagement_alerte_sur_les_payees_a_rembourser() -> None:
-    """Une inscription **payée** détruite par la suppression d'archer est signalée « à rembourser ».
+    """Une inscription **payée** détruite par la suppression d'archer est annoncée au signalement.
 
-    DETTE-018 : la suppression d'archer purge ses inscriptions sans ouvrir de remboursement
-    (E08US005 ne couvre que désinscription + suppression de départ). Faute de création automatique
-    sur ce chemin, le signalement **alerte** au moins l'admin qu'il y a des sommes à rembourser — on
-    ne fait pas disparaître d'argent en silence. Une inscription non payée n'ajoute pas la clause.
+    Depuis E01US026 la clause ne se contente plus d'alerter : elle **annonce ce qui va se passer**
+    — un remboursement sera ouvert pour chacune (DETTE-018 résorbée). Une inscription non payée
+    n'ajoute pas la clause.
     """
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
@@ -1142,7 +1160,7 @@ def test_signalement_d_engagement_alerte_sur_les_payees_a_rembourser() -> None:
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
     assert "dont 1 payée" in leve.value.message
-    assert "à rembourser" in leve.value.message
+    assert "un remboursement sera ouvert" in leve.value.message
 
 
 def test_supprimer_archer_inscrit_confirme_efface_l_archer() -> None:
@@ -1399,3 +1417,67 @@ def test_fusionner_passe_si_une_seule_fiche_a_tire() -> None:
 # Le contenu du classement (cumul, départage, catégories) et son refus de tournoi inconnu sont
 # désormais couverts par `test_service_classement` et `test_domain_classement` : depuis E06US001, le
 # classement dérive des séries de saisie (E04US002), pas de l'agrégat `Score` que pilote ce service.
+
+
+# --- Une somme encaissée n'est jamais effacée sans contrepartie (E01US026, résorbe DETTE-018) ---
+
+
+def _inscrire_et_payer(m: Montage, archer_id: int, depart_id: int = 1) -> None:
+    """Inscrit l'archer sur un créneau **tarifé** et marque l'inscription payée."""
+    inscription = m.inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+    assert inscription.id is not None
+    m.inscriptions.enregistrer(dataclasses.replace(inscription, paye=True))
+
+
+def test_supprimer_un_archer_paye_ouvre_son_remboursement() -> None:
+    """Le 3ᵉ chemin d'effacement d'une inscription payée ouvre enfin un poste au registre.
+
+    La règle est celle d'E08US005 — « jamais une somme encaissée effacée sans contrepartie » — dont
+    la suppression de **fiche archer** était restée hors du périmètre (DETTE-018) : elle alertait
+    sans rien ouvrir.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _inscrire_et_payer(m, archer.id)
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    (rembourse,) = m.inscrits.remboursements_ouverts
+    assert rembourse.motif is MotifRemboursement.ARCHER_SUPPRIME
+    assert rembourse.montant_centimes == 800
+    assert (rembourse.archer_prenom, rembourse.archer_nom) == ("Jean", "Robin")
+
+
+def test_supprimer_un_archer_non_paye_n_ouvre_rien() -> None:
+    """Sans somme encaissée, rien à rendre : pas de poste fantôme au registre."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    assert m.inscrits.remboursements_ouverts == []
+
+
+def test_un_creneau_gratuit_n_ouvre_pas_de_remboursement() -> None:
+    """Un créneau à tarif nul marqué « payé » ne doit rien rendre — le montant serait invalide."""
+    m = _monter()
+    gratuit = m.departs.ajouter(
+        Depart.creer(tournoi_id=m.tournoi_id, numero=2, tarif_centimes=0, horaire="14:00")
+    )
+    assert gratuit.id is not None
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _inscrire_et_payer(m, archer.id, gratuit.id)
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    assert m.inscrits.remboursements_ouverts == []
+
+
+def test_le_remboursement_fige_le_creneau_detruit() -> None:
+    """L'instantané textuel du créneau doit survivre à ce qui disparaît (`Remboursement`)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _inscrire_et_payer(m, archer.id)
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    (rembourse,) = m.inscrits.remboursements_ouverts
+    assert "1" in rembourse.creneau and "09:00" in rembourse.creneau
+    assert rembourse.cree_le == _INSTANT

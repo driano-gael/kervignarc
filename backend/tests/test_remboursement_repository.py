@@ -141,6 +141,36 @@ def test_supprimer_depart_avec_remboursements_purge_et_ouvre_les_postes(tmp_path
         db.engine.dispose()
 
 
+def test_supprimer_archer_avec_remboursements_purge_et_ouvre_les_postes(tmp_path: Path) -> None:
+    """3ᵉ et dernier chemin d'effacement d'une inscription payée (E01US026, résorbe DETTE-018).
+
+    ⚠️ Le jumeau de ce test côté **service** n'apporte pas la même preuve : sa doublure range les
+    postes dans une liste Python, donc elle ne dit rien de l'`INSERT`, ni du `commit` unique, ni du
+    round-trip `motif='archer_supprime'` → `MotifRemboursement` à la relecture (relevé en revue,
+    axe B). C'est ce dernier `assert` qui vaut : il relit l'énumération depuis la base.
+    """
+    db, tournoi_id, archer_id, depart_id = _base(tmp_path)
+    try:
+        audit = AuditRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
+        archers = ArcherRepositorySQL(db.session_factory)
+        remboursements = RemboursementRepositorySQL(db.session_factory, audit)
+        inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+
+        archers.supprimer_avec_remboursements(
+            archer_id, [_remboursement(tournoi_id, MotifRemboursement.ARCHER_SUPPRIME)]
+        )
+
+        assert archers.par_id(archer_id) is None  # l'archer est parti
+        assert inscriptions.par_archer(archer_id) == []  # cascade des inscriptions
+        postes = remboursements.par_tournoi(tournoi_id)
+        assert len(postes) == 1
+        assert postes[0].motif is MotifRemboursement.ARCHER_SUPPRIME
+        assert postes[0].statut is StatutRemboursement.A_REMBOURSER
+    finally:
+        db.engine.dispose()
+
+
 def test_par_id_relit_l_instant_utc(tmp_path: Path) -> None:
     """`par_id` relit un poste avec ses dates **UTC aware** (round-trip fidèle, comme l'audit)."""
     db, tournoi_id, archer_id, depart_id = _base(tmp_path)

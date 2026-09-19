@@ -5,8 +5,8 @@ Revises: 0022_placement
 Create Date: 2026-07-18
 
 Table `scoreur` (E10US003) : les scoreurs d'un tournoi (nom + code individuel). Enfant du tournoi
-(`tournoi_id`), comme `depart` : FK **sans `ON DELETE`** (DETTE-001, purge à traiter dans la
-politique de suppression du tournoi, non tranchée).
+(`tournoi_id`), comme `depart` : FK **sans `ON DELETE`** (ADR-0077, purge applicative,
+dans `TournoiRepositorySQL.supprimer`).
 
 `code` est `UNIQUE` **global** (pas par tournoi) : le scoreur ouvre sa session par son seul code,
 qui doit désigner un scoreur sans ambiguïté d'un tournoi à l'autre. Unicité **exacte** (garde-fou

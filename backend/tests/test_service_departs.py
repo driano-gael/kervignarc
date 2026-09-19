@@ -30,7 +30,7 @@ from domain.depart import DepartId
 from domain.erreurs import TarifDepartInvalide
 from domain.inscription import Inscription
 from domain.remboursement import MotifRemboursement, StatutRemboursement
-from domain.tournoi import StatutTournoi, Tournoi, TournoiId
+from domain.tournoi import DescendanceTournoi, StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxDepartRepository,
@@ -93,6 +93,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class Montage(NamedTuple):

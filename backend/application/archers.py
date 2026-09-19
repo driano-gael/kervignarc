@@ -27,12 +27,15 @@ from domain.ports import (
     ArcherRepository,
     CategorieRepository,
     ClubRepository,
+    DepartRepository,
+    Horloge,
     InscriptionRepository,
     ScoreRepository,
     SerieRepository,
     TournoiRepository,
 )
 from domain.poste import Poste, TypePoste
+from domain.remboursement import MotifRemboursement, Remboursement
 from domain.score import Score
 from domain.serie import Serie
 from domain.tournoi import TournoiId
@@ -50,6 +53,8 @@ class ServiceArchers:
         categories: CategorieRepository,
         inscriptions: InscriptionRepository,
         series: SerieRepository,
+        departs: DepartRepository,
+        horloge: Horloge,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
@@ -61,6 +66,12 @@ class ServiceArchers:
         # saisie réelle (E04US002) écrit des `Serie`/`Volee`, jamais `Score`. `_scores` ne sert
         # plus qu'au `saisir_score` du walking skeleton (endpoint sans appelant — DETTE-011).
         self._series = series
+        # E01US026 (résorbe DETTE-018) : ouvrir un remboursement demande le **tarif** du créneau
+        # effacé et un **instant** de création — deux ports de plus, jamais un autre service
+        # (règle 2). L'horloge est un port parce que lire l'heure est un effet de bord qui rendrait
+        # le service non déterministe en test (règle 9).
+        self._departs = departs
+        self._horloge = horloge
 
     def ajouter(
         self,
@@ -219,7 +230,46 @@ class ServiceArchers:
         # avoir saisi, et l'on détruirait plus que le message n'a annoncé.
         if not autoriser_suppression_engage:
             self._signaler_engagement(archer, archer_id)
-        self._archers.supprimer(archer_id)
+        remboursements = self._remboursements_des_payees(archer, archer_id)
+        if remboursements:
+            self._archers.supprimer_avec_remboursements(archer_id, remboursements)
+        else:
+            self._archers.supprimer(archer_id)
+
+    def _remboursements_des_payees(
+        self, archer: Archer, archer_id: ArcherId
+    ) -> list[Remboursement]:
+        """Un `Remboursement` par inscription **payée** sur un créneau **tarifé** (E01US026).
+
+        Troisième et dernier chemin d'effacement d'une inscription payée (DETTE-018), après la
+        désinscription et la suppression de départ. L'instantané (nom de l'archer, libellé du
+        créneau) est figé **maintenant** : il doit survivre à ce qui disparaît. ⚠️ Un créneau
+        **gratuit** marqué payé n'ouvre rien — `Remboursement.creer` refuse un montant nul, et un
+        poste à 0 € ne demanderait rien à personne.
+        """
+        instant = self._horloge.maintenant()
+        remboursements: list[Remboursement] = []
+        for inscription in self._inscriptions.par_archer(archer_id):
+            if not inscription.paye:
+                continue
+            depart = self._departs.par_id(inscription.depart_id)
+            if depart is None or depart.tarif_centimes <= 0:
+                continue
+            remboursements.append(
+                Remboursement.creer(
+                    archer.tournoi_id,
+                    archer_prenom=archer.prenom,
+                    archer_nom=archer.nom,
+                    creneau=depart.libelle_creneau(),
+                    # DETTE-016 : le montant est le **tarif courant**, pas la somme réellement
+                    # encaissée (le modèle ne stocke qu'un booléen `paye`) — faux si le tarif a été
+                    # édité après le paiement. Même écart que sur les deux autres chemins.
+                    montant_centimes=depart.tarif_centimes,
+                    motif=MotifRemboursement.ARCHER_SUPPRIME,
+                    cree_le=instant,
+                )
+            )
+        return remboursements
 
     def placer(self, archer_id: ArcherId, cible: int) -> Archer:
         """Place un archer sur une cible. Lève `ArcherIntrouvable` s'il n'existe pas."""
@@ -310,13 +360,10 @@ class ServiceArchers:
         fleches = self._fleches_validees(archer.tournoi_id, archer_id)
         liste_inscriptions = self._inscriptions.par_archer(archer_id)
         inscriptions = len(liste_inscriptions)
-        # DETTE-018 : la suppression d'archer purge ses inscriptions **sans ouvrir de
-        # remboursement** (E08US005 ne couvre que la désinscription et la suppression de départ).
-        # Faute de mieux, on **alerte** l'admin des sommes à rembourser — la création automatique du
-        # poste n'est portée par aucune US : le registre décrit le remède et l'arbitrage du
-        # 29/07/2026 (différer plutôt qu'étendre la cascade sensible de l'archer). On compte sur
-        # `paye` seul, donc un créneau gratuit marqué payé est **sur-signalé** — tolérable.
-        payees = sum(1 for inscription in liste_inscriptions if inscription.paye)
+        # ⚠️ Compté par le **même filtre** que l'ouverture (créneau tarifé compris) : annoncer
+        # « un remboursement sera ouvert » sur la foi de `paye` seul envoyait l'admin chercher au
+        # registre un poste qui n'existerait pas — une promesse d'action, pas un sur-signalement.
+        payees = len(self._remboursements_des_payees(archer, archer_id))
         if archer.cible is None and fleches == 0 and inscriptions == 0:
             return
         motifs = []
@@ -333,7 +380,7 @@ class ServiceArchers:
             if payees:
                 detail += (
                     f" (dont {payees} payée{'s' if payees > 1 else ''} : "
-                    "sommes à rembourser, E08US005)"
+                    "un remboursement sera ouvert pour chacune)"
                 )
             motifs.append(detail)
         if archer.cible is not None:

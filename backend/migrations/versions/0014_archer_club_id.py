@@ -21,7 +21,7 @@ rend le CA « un club utilise n'est pas supprimable » exercable : sans lui, le 
 garde-fou qu'aucun chemin reel ne pourrait declencher, et aucun test ne pourrait l'exercer
 autrement que contre le vide.
 
-**Hors perimetre de DETTE-001.** Les autres FK d'`archer` pointent vers la descendance de
+**Hors perimetre d'ADR-0077.** Les autres FK d'`archer` pointent vers la descendance de
 `tournoi` ; celle-ci pointe vers `club`, qui n'en fait pas partie. Supprimer un tournoi (donc ses
 archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce cas est tranche par
 le service (refus 409, `ClubReference`), comme l'est deja `categorie.blason_id`.

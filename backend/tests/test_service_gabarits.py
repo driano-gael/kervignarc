@@ -20,7 +20,7 @@ from application.erreurs import (
 from application.gabarits import ServiceGabarits
 from domain.erreurs import CapaciteCibleInvalide, NombreCiblesInvalide, NomGabaritInvalide
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
-from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId, TypeTournoi
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -51,6 +51,9 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
+
+    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
+        return DescendanceTournoi()
 
 
 class FauxGabaritRepository:

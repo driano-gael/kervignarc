@@ -233,7 +233,7 @@ class ServiceDeparts:
         """
         assert depart.id is not None, "Un départ relu est persisté."
         instant = self._horloge.maintenant()
-        creneau = f"Départ n°{depart.numero} — {depart.horaire}"
+        creneau = depart.libelle_creneau()
         remboursements: list[Remboursement] = []
         for inscription in self._inscriptions.par_depart(depart.id):
             if not inscription.paye:

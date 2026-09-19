@@ -600,10 +600,22 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **141 US livrées** (mergées, revues, CI verte) à la date du 18/09/2026 — dont **deux
+- **142 US livrées** (mergées, revues, CI verte) à la date du 19/09/2026 — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E16US016` — **le journal d'audit se
+  autorité sur le compte —, la dernière **livraison** étant `E01US026` — **supprimer un tournoi :
+  voir ce qui partira, puis confirmer** : la suppression d'un tournoi contenant quoi que ce soit
+  finissait en « erreur serveur » depuis les premiers écrans (la plus ancienne anomalie du
+  registre, `DETTE-001`, ouverte treize mois). Elle **aboutit** désormais, après une fenêtre qui
+  **chiffre** ce qui disparaît — archers, inscriptions, flèches, duels, postes enrôlés, scoreurs,
+  actes au journal d'audit — et qui **dit en euros** l'argent reçu comme celui restant à rendre. ⚠️ **La confirmation reste rare exprès** : un tournoi sans aucun
+  archer part d'un clic, parce qu'un garde-fou qui surgit à chaque fois n'est plus lu quand il
+  compte. ⚠️ Un **tournoi en cours de tir** reste impossible à supprimer quoi qu'on confirme — ce
+  n'est pas la même question. Deux arbitrages du commanditaire ont façonné l'US : la définition de
+  « vide » (les créneaux ne comptent pas) et le sort des remboursements (effacés, mais chiffrés).
+  Une **seconde dette** a été refermée dans le même geste, sur sa demande : supprimer une fiche
+  archer payée n'ouvrait aucun remboursement (`DETTE-018`).
+  Avant elle, `E16US016` — **le journal d'audit se
   consulte, et tout sort au tableur** : la trace de qui a fait quoi existait depuis des mois et
   **aucun écran ne la montrait** ; elle a désormais le sien, avec recherche et filtre des
   corrections, et le détail « avant / après » se déplie sur la ligne. Le **format Excel** arrive

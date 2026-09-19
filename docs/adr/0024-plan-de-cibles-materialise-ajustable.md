@@ -70,7 +70,8 @@ gelée mentirait. Un `SANS_BLASON` n'est jamais placé (fraction inconnue).
 - **`ON DELETE CASCADE` sur `placement`**, à rebours de la convention DETTE-001 (« FK sans
   `ON DELETE`, purge applicative »). Justifié : `placement` est de la donnée **dérivée,
   reconstructible et feuille** (régénérable par l'auto), pas de la donnée saisie remontant l'arbre du
-  tournoi comme les cas *non tranchés* de DETTE-001. Cascader sa disparition (désinscription,
+  tournoi comme les cas *alors non tranchés* de DETTE-001 (tranchés depuis par ADR-0077 :
+  cascade applicative). Cascader sa disparition (désinscription,
   suppression d'archer/de départ) est **correct et automatique** — et évite d'étendre les trois
   cascades applicatives existantes. FK enforced (`PRAGMA foreign_keys=ON`).
 
@@ -89,6 +90,7 @@ gelée mentirait. Un `SANS_BLASON` n'est jamais placé (fraction inconnue).
 - **−** « Annuler » **écrase** tout l'ajustement manuel (régénération déterministe) : d'où la
   **confirmation**. Pas d'undo pas-à-pas en E03US004 (backlog si le besoin émerge).
 - **−** Une entorse **locale et argumentée** à DETTE-001 (`ON DELETE CASCADE`) : à ne pas
-  généraliser aux tables de données saisies, dont la politique de cascade reste non tranchée.
+  généraliser aux tables de données saisies, dont la politique de cascade était alors non
+  tranchée — elle l'est depuis par ADR-0077, et reste *applicative*, jamais `ON DELETE`.
 - **Périmètre** : la persistance, les endpoints d'écriture et l'écran d'ajustement (admin, PC, drag
   HTML5 natif — la règle 10 tactile vise les tablettes de saisie, pas cet écran) sont E03US004.
