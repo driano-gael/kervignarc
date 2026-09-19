@@ -22,7 +22,7 @@ from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.ecran import PriseDeControle
-from domain.entree_audit import EntreeAudit
+from domain.entree_audit import EntreeAudit, JournalAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
@@ -1010,6 +1010,19 @@ class GenerateurPalmares(Protocol):
         Les confondre imprimait au mur un podium amputé (E16US014, bloquant de revue). ⚠️ **Passés
         par mot-clé** : deux `Palmares` positionnels s'inversent sans que mypy le voie.
         """
+        ...
+
+
+class GenerateurJournalAudit(Protocol):
+    """Port de rendu du **journal d'audit** en document (E16US016 ; adapter d'infrastructure).
+
+    ⚠️ Ce document n'a **pas** de rendu PDF, et c'est un choix, pas un manque : un journal dépasse
+    couramment le millier de lignes, qu'on dépouille au tableur et jamais sur une page. Le registre
+    câblé le dit tout seul au catalogue (ADR-0101 §5).
+    """
+
+    def journal(self, journal: JournalAudit) -> bytes:
+        """Rend le journal d'un tournoi ; `journal.entrees` peut être vide (tournoi sans acte)."""
         ...
 
 

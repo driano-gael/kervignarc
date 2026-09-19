@@ -111,3 +111,104 @@ def test_consultation_tournoi_inconnu_rend_404(
 
         assert reponse.status_code == 404, reponse.text
         assert reponse.json()["code"] == "tournoi_introuvable"
+
+
+# --- E16US016 : l'export du journal --------------------------------------------------------------
+#
+# Tests écrits **après** l'implémentation : c'est de la frontière API et du câblage, il n'y a pas
+# d'oracle en jeu (règle 9). Ce qu'ils couvrent et qu'aucun test de service ne voit : la route est
+# montée, le type MIME et l'extension dérivent du même format, et la garde admin est bien posée.
+
+_CSV = "text/csv"
+_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _tournoi_avec_deux_traces(app: FastAPI, client: TestClient) -> int:
+    tournoi_id = _creer_tournoi(client)
+    service = app.state.service_audit
+    service.consigner(tournoi_id, ActionAuditee.VALIDATION, "DURAND Jean", "Série 1 — cible 4A")
+    service.consigner(
+        tournoi_id,
+        ActionAuditee.CORRECTION_SCORE,
+        "ROUX Sophie",
+        "Série 1, f2",
+        avant="8",
+        apres="9",
+    )
+    return tournoi_id
+
+
+def test_l_export_rend_un_csv_lisible_par_un_tableur(
+    app_audit: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Défaut CSV, BOM et point-virgule (ADR-0101 §4) — sinon le fichier s'ouvre en bouillie."""
+    with TestClient(app_audit) as client:
+        connecter_admin(client)
+        tournoi_id = _tournoi_avec_deux_traces(app_audit, client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/audit/document")
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.headers["content-type"].startswith(_CSV)
+        # ⚠️ `nosniff` **et** le type qu'il verrouille : l'en-tête seul ne veut rien dire.
+        assert reponse.headers["x-content-type-options"] == "nosniff"
+        assert 'filename="audit-' in reponse.headers["content-disposition"]
+        texte = reponse.content.decode("utf-8-sig")
+        assert "Horodatage;Auteur;Action;Objet;Avant;Après" in texte
+        # ⚠️ « Correction » et non le slug `correction_score` : depuis la revue, l'export
+        # nomme l'acte comme l'écran (règle 3) — l'organisateur comparait deux vocabulaires.
+        assert "ROUX Sophie;Correction;Série 1, f2;8;9" in texte
+
+
+def test_l_export_xlsx_rend_un_classeur(
+    app_audit: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'extension **et** le type MIME viennent du même format (point unique, ADR-0101)."""
+    with TestClient(app_audit) as client:
+        connecter_admin(client)
+        tournoi_id = _tournoi_avec_deux_traces(app_audit, client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/audit/document?format=xlsx")
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.headers["content-type"].startswith(_XLSX)
+        assert f'filename="audit-{tournoi_id}.xlsx"' in reponse.headers["content-disposition"]
+        # Un `.xlsx` est un ZIP : les deux premiers octets le disent sans ouvrir openpyxl.
+        assert reponse.content[:2] == b"PK"
+
+
+def test_l_export_refuse_un_format_non_cable(
+    app_audit: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le PDF n'est pas câblé pour ce document : 400 explicite, jamais un fichier vide."""
+    with TestClient(app_audit) as client:
+        connecter_admin(client)
+        tournoi_id = _tournoi_avec_deux_traces(app_audit, client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/audit/document?format=pdf")
+
+        assert reponse.status_code == 400, reponse.text
+
+
+def test_l_export_est_reserve_a_l_admin(app_audit: FastAPI) -> None:
+    """Même garde que la consultation : un journal de litiges ne s'ouvre pas au public (ADR-0050).
+
+    ⚠️ **Aucune connexion du tout**, et c'est le point : `connecter_admin` pose un en-tête
+    `Authorization`, que `client.cookies.clear()` ne retire pas. Un test de 401 écrit avec ce
+    geste reste vert **la garde retirée** — le défaut relevé en revue d'`E16US007`.
+    """
+    with TestClient(app_audit) as client:
+        reponse = client.get("/api/v1/tournois/1/audit/document")
+
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_l_export_d_un_tournoi_inconnu_rend_404(
+    app_audit: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_audit) as client:
+        connecter_admin(client)
+
+        reponse = client.get("/api/v1/tournois/404/audit/document")
+
+        assert reponse.status_code == 404, reponse.text

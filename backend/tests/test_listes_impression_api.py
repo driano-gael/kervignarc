@@ -213,17 +213,27 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
 
     assert reponse.status_code == 200, reponse.text
     par_identifiant = {entree["identifiant"]: entree for entree in reponse.json()}
-    assert set(par_identifiant) == {"placement", "club-paiement", "feuille-de-marque"}
+    assert set(par_identifiant) == {
+        "placement",
+        "club-paiement",
+        "feuille-de-marque",
+        "palmares",
+        "audit",
+    }
     codes = {
         identifiant: [format_["code"] for format_ in entree["formats"]]
         for identifiant, entree in par_identifiant.items()
     }
     # ⚠️ La feuille de marque est **volontairement** mono-format (elle se remplit au stylo) : c'est
     # ce contraste qui prouve que la liste est par document et non globale (ADR-0101 §5).
+    # ⚠️ Le journal d'audit est le premier document **sans PDF** (E16US016) : c'est lui qui prouve
+    # désormais que le PDF n'est pas un plancher implicite du catalogue.
     assert codes == {
-        "placement": ["pdf", "csv"],
-        "club-paiement": ["pdf", "csv"],
+        "placement": ["pdf", "csv", "xlsx"],
+        "club-paiement": ["pdf", "csv", "xlsx"],
         "feuille-de-marque": ["pdf"],
+        "palmares": ["pdf", "csv", "xlsx"],
+        "audit": ["csv", "xlsx"],
     }
     # ⚠️ ET la même chose lue sur le **câblage réel** : les littéraux ci-dessus disent ce que le
     # produit doit servir, cette assertion dit que le catalogue le DÉRIVE (ADR-0101 §3). Sans elle,
@@ -370,6 +380,8 @@ _CHEMINS_DE_DOCUMENT = {
     "placement": "/api/v1/tournois/{tournoi_id}/listes/placement",
     "club-paiement": "/api/v1/tournois/{tournoi_id}/listes/club-paiement",
     "feuille-de-marque": "/api/v1/tournois/{tournoi_id}/departs/{depart_id}/feuille-de-marque",
+    "palmares": "/api/v1/tournois/{tournoi_id}/palmares/document",
+    "audit": "/api/v1/tournois/{tournoi_id}/audit/document",
 }
 
 

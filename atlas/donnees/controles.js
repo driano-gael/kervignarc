@@ -107,9 +107,9 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 26 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 28 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
-   "sujet": "application"
+   "sujet": "application, infrastructure"
   },
   {
    "code": "portage-non-verifiable",
@@ -263,7 +263,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/listes_impression.py » — introuvable(s) dans le fichier.",
+   "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/grille.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0101"
   },

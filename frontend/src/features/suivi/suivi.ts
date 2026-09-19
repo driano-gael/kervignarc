@@ -8,6 +8,7 @@ import type { PlanDeCibles } from '../placement/api'
 
 // Normalise pour une comparaison tolérante aux accents et à la casse : « Rémy » se retrouve avec
 // « remy ». NFD sépare la lettre de son diacritique, qu'on retire (`̀`–`ͯ`), puis minuscules.
+// `DETTE-103` : 3ᵉ repli casse/accents du front, et les trois divergent.
 function normaliser(texte: string): string {
   return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }

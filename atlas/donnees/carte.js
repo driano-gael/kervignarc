@@ -199,6 +199,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 1,
+    "feature": "audit"
+   },
+   {
+    "clientes": 1,
     "feature": "deroule"
    },
    {
@@ -242,7 +246,7 @@ window.ATLAS.carte = {
     "feature": "validation-qualif"
    }
   ],
-  "features": 50
+  "features": 51
  },
  "matrice": [
   {
@@ -296,7 +300,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 91,
+   "occurrences": 95,
    "source": "infrastructure"
   },
   {
@@ -326,13 +330,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 76,
+   "occurrences": 78,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "infrastructure",
-   "occurrences": 43,
+   "occurrences": 44,
    "source": "api"
   },
   {
@@ -372,7 +376,7 @@ window.ATLAS.carte = {
    "cible": "api",
    "couche_cible": "api",
    "couche_source": "api",
-   "occurrences": 46,
+   "occurrences": 48,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -450,7 +454,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 62,
+   "occurrences": 64,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -630,8 +634,9 @@ window.ATLAS.carte = {
    "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "api",
-   "occurrences": 7,
+   "occurrences": 8,
    "origines": [
+    "backend/api/v1/audit.py",
     "backend/api/v1/big_shoot_off.py",
     "backend/api/v1/colline.py",
     "backend/api/v1/forfaits.py",
@@ -1161,9 +1166,11 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 1,
+   "occurrences": 5,
    "origines": [
-    "backend/infrastructure/tableur/listes_impression.py"
+    "backend/infrastructure/tableur/audit.py",
+    "backend/infrastructure/tableur/listes_impression.py",
+    "backend/infrastructure/tableur/palmares.py"
    ],
    "source": "infrastructure/tableur"
   },
@@ -1246,7 +1253,7 @@ window.ATLAS.carte = {
    "couche_source": "infrastructure",
    "occurrences": 1,
    "origines": [
-    "backend/infrastructure/tableur/listes_impression.py"
+    "backend/infrastructure/tableur/grille.py"
    ],
    "source": "infrastructure/tableur"
   }
@@ -1890,12 +1897,28 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/infrastructure/tableur/audit.py",
+     "nom": "GenerateurJournalAuditTableur"
+    }
+   ],
+   "couche": "domain",
+   "fichier": "backend/domain/ports.py",
+   "hors_domaine": false,
+   "methodes": [
+    "journal"
+   ],
+   "nom": "GenerateurJournalAudit",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/infrastructure/pdf/listes_impression.py",
      "nom": "GenerateurListesImpressionPdf"
     },
     {
      "fichier": "backend/infrastructure/tableur/listes_impression.py",
-     "nom": "GenerateurListesImpressionCsv"
+     "nom": "GenerateurListesImpressionTableur"
     }
    ],
    "couche": "domain",
@@ -1913,6 +1936,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/infrastructure/pdf/palmares.py",
      "nom": "GenerateurPalmaresPdf"
+    },
+    {
+     "fichier": "backend/infrastructure/tableur/palmares.py",
+     "nom": "GenerateurPalmaresTableur"
     }
    ],
    "couche": "domain",
@@ -2411,6 +2438,102 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/archers.py",
+     "nom": "ServiceArchers"
+    },
+    {
+     "fichier": "backend/application/audit.py",
+     "nom": "ServiceAudit"
+    },
+    {
+     "fichier": "backend/application/barrages.py",
+     "nom": "ServiceBarrage"
+    },
+    {
+     "fichier": "backend/application/blasons.py",
+     "nom": "ServiceBlasons"
+    },
+    {
+     "fichier": "backend/application/categories.py",
+     "nom": "ServiceCategories"
+    },
+    {
+     "fichier": "backend/application/clubs.py",
+     "nom": "ServiceClubs"
+    },
+    {
+     "fichier": "backend/application/departs.py",
+     "nom": "ServiceDeparts"
+    },
+    {
+     "fichier": "backend/application/ecrans.py",
+     "nom": "ServiceEcrans"
+    },
+    {
+     "fichier": "backend/application/formats.py",
+     "nom": "ServiceFormats"
+    },
+    {
+     "fichier": "backend/application/gabarits.py",
+     "nom": "ServiceGabarits"
+    },
+    {
+     "fichier": "backend/application/phases.py",
+     "nom": "ServicePhases"
+    },
+    {
+     "fichier": "backend/application/postes.py",
+     "nom": "ServicePostes"
+    },
+    {
+     "fichier": "backend/application/remboursements.py",
+     "nom": "ServiceRemboursements"
+    },
+    {
+     "fichier": "backend/application/scoreurs.py",
+     "nom": "ServiceScoreurs"
+    },
+    {
+     "fichier": "backend/application/tournois.py",
+     "nom": "ServiceTournois"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "FormatTournoiRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "ClubRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "GabaritSalleRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "TournoiRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryGabaritSalleRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryTournoiRepository"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/audit.py",
+   "hors_domaine": true,
+   "methodes": [
+    "lister"
+   ],
+   "nom": "LecteurJournalAudit",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/application/inscriptions.py",
      "nom": "ServiceInscriptions"
     },
@@ -2703,6 +2826,15 @@ window.ATLAS.carte = {
     "par_tournoi"
    ],
    "nom": "RemboursementRepository",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [],
+   "couche": "infrastructure",
+   "fichier": "backend/infrastructure/tableur/grille.py",
+   "hors_domaine": true,
+   "methodes": [],
+   "nom": "RenduTableur",
    "sans_adapter": false
   },
   {
@@ -3025,14 +3157,14 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 178,
+  "aretes_front": 179,
   "enchevetrements": 4,
-  "features": 50,
-  "imports": 951,
-  "imports_entre_couches": 805,
+  "features": 51,
+  "imports": 960,
+  "imports_entre_couches": 812,
   "plus_gros_noeud": 24,
-  "ports": 69,
-  "ports_hors_domaine": 26,
+  "ports": 72,
+  "ports_hors_domaine": 28,
   "ports_sans_adapter": 0,
   "violations": 0
  },

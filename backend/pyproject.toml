@@ -18,6 +18,10 @@ dependencies = [
     # sur le réseau local, les tablettes accèdent au nom sans configurer le routeur. Wheels
     # binaires (cp313), embarquables PyInstaller ; expose py.typed (mypy strict OK).
     "zeroconf==0.150.0",
+    # Rendu xlsx des exports (E16US016, ADR-0101) : le format Excel réclamé par A18, que le CSV ne
+    # couvre pas (une feuille nommée, l'en-tête figé, des montants réellement numériques). Pur
+    # Python, licence MIT, une seule transitive (`et-xmlfile`, MIT) ; embarquable PyInstaller.
+    "openpyxl==3.1.5",
 ]
 
 [project.optional-dependencies]
@@ -72,7 +76,7 @@ pretty = true
 show_error_codes = true
 warn_unreachable = true
 
-# ReportLab (E09US001, ADR-0031) ne publie ni marqueur `py.typed` ni stubs : mypy strict refuserait
+# DETTE-102 — ReportLab (E09US001, ADR-0031) ne publie ni marqueur `py.typed` ni stubs : mypy strict refuserait
 # l'import non typé. On tolère l'absence de types **pour cette lib tierce uniquement**. Portée exacte :
 # les symboles ReportLab deviennent `Any`, donc les *appels* à ReportLab dans `infrastructure/pdf/`
 # ne sont pas type-vérifiés ; la logique **maison** de l'adapter (boucles, f-strings, `_echapper`,
@@ -80,6 +84,16 @@ warn_unreachable = true
 # ciblé sur `reportlab.*`). Pas de paquet de stubs (règle 11) : `types-reportlab` n'est pas officiel.
 [[tool.mypy.overrides]]
 module = ["reportlab.*"]
+ignore_missing_imports = true
+
+# DETTE-102 — openpyxl (E16US016) ne publie pas de marqueur `py.typed` : **même cas, même remède** que
+# ReportLab ci-dessus. Portée exacte : les symboles openpyxl deviennent `Any`, donc les appels
+# openpyxl d'`infrastructure/tableur/` ne sont pas type-vérifiés ; la logique maison du module
+# (typage des cellules, neutralisation, montants) l'est, elle. Le paquet de stubs `types-openpyxl`
+# existe et est officiel (typeshed), au contraire de ReportLab — il est écarté quand même : une
+# dépendance de plus (règle 11) pour type-vérifier une quinzaine d'appels.
+[[tool.mypy.overrides]]
+module = ["openpyxl.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

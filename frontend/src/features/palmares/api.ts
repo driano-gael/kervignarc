@@ -126,13 +126,19 @@ export function getPalmares(tournoiId: number, categorieId?: number): Promise<Pa
   )
 }
 
-// L'URL du PDF — ouverte dans un onglet, pas récupérée en `fetch` : le document est servi `inline`,
+// L'URL du document — ouverte dans un onglet, pas récupérée en `fetch` : il est servi `inline`,
 // et le navigateur sait l'afficher et l'imprimer sans qu'on passe par un blob intermédiaire.
-export function urlPalmaresPdf(tournoiId: number, categorieId?: number): string {
+// ⚠️ Le chemin ne porte plus l'extension (E16US016) : c'est `?format=` qui choisit, comme tout le
+// catalogue d'exports (ADR-0101 §1). L'ancien `/palmares.pdf` n'existe plus côté serveur.
+export function urlPalmaresDocument(
+  tournoiId: number,
+  categorieId?: number,
+  format: string = 'pdf',
+): string {
   const parametres = new URLSearchParams()
   if (categorieId != null) parametres.set('categorie_id', String(categorieId))
-  const suffixe = parametres.toString()
-  return `/api/v1/tournois/${tournoiId}/palmares.pdf${suffixe ? `?${suffixe}` : ''}`
+  parametres.set('format', format)
+  return `/api/v1/tournois/${tournoiId}/palmares/document?${parametres.toString()}`
 }
 
 // Le réglage n'est lu que par l'écran d'admin : portée par défaut, comme `getCloisonnement`. La

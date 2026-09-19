@@ -68,6 +68,7 @@ export function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, Saisi
  * doigt. Même parti que `domain.club.cle_nom` côté serveur.
  */
 export function correspond(nom: string, prenom: string, recherche: string): boolean {
+  // `DETTE-103` : 3ᵉ repli casse/accents du front, et les trois divergent.
   const replier = (texte: string) =>
     texte
       .normalize('NFD')

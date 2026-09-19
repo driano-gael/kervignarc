@@ -16,7 +16,8 @@ from domain.listes_impression import (
     ListePlacement,
     TriPlacement,
 )
-from infrastructure.tableur.listes_impression import GenerateurListesImpressionCsv
+from infrastructure.tableur.grille import rendre_csv
+from infrastructure.tableur.listes_impression import GenerateurListesImpressionTableur
 
 
 def _ligne_placement(nom: str, prenom: str, cible: int, position: str) -> LignePlacement:
@@ -32,6 +33,11 @@ def _ligne_placement(nom: str, prenom: str, cible: int, position: str) -> LigneP
 
 def _texte(octets: bytes) -> str:
     return octets.decode("utf-8-sig")
+
+
+def _csv() -> GenerateurListesImpressionTableur:
+    """L'adapter câblé sur le rendu CSV — le format que ce fichier éprouve."""
+    return GenerateurListesImpressionTableur(rendre_csv)
 
 
 def _lignes(octets: bytes) -> list[str]:
@@ -52,7 +58,7 @@ def test_placement_rend_une_ligne_par_archer_avec_en_tete() -> None:
         ),
     )
 
-    lignes = _lignes(GenerateurListesImpressionCsv().placement(liste))
+    lignes = _lignes(_csv().placement(liste))
 
     assert lignes == [
         "Départ;Cible;Couloir;Nom;Prénom;Catégorie",
@@ -70,7 +76,7 @@ def test_placement_ne_porte_aucun_en_tete_de_document() -> None:
         lignes=(_ligne_placement("Durand", "Marie", 1, "A"),),
     )
 
-    texte = _texte(GenerateurListesImpressionCsv().placement(liste))
+    texte = _texte(_csv().placement(liste))
 
     assert texte.startswith("Départ;")
     assert "Trophée" not in texte
@@ -80,9 +86,7 @@ def test_placement_vide_garde_son_en_tete() -> None:
     """Un fichier à zéro octet se lit comme une panne ; l'en-tête dit « aucun archer placé »."""
     liste = ListePlacement(tournoi="Trophée", depart_numero=None, tri=TriPlacement.CIBLE, lignes=())
 
-    assert _lignes(GenerateurListesImpressionCsv().placement(liste)) == [
-        "Départ;Cible;Couloir;Nom;Prénom;Catégorie"
-    ]
+    assert _lignes(_csv().placement(liste)) == ["Départ;Cible;Couloir;Nom;Prénom;Catégorie"]
 
 
 def test_le_bom_utf8_est_en_tete() -> None:
@@ -94,7 +98,7 @@ def test_le_bom_utf8_est_en_tete() -> None:
         lignes=(_ligne_placement("Martin", "Léo", 1, "A"),),
     )
 
-    octets = GenerateurListesImpressionCsv().placement(liste)
+    octets = _csv().placement(liste)
 
     assert octets.startswith(b"\xef\xbb\xbf")
     assert "Léo" in _texte(octets)
@@ -109,7 +113,7 @@ def test_un_nom_contenant_le_separateur_est_echappe() -> None:
         lignes=(_ligne_placement('Du;rand "le grand"', "Marie", 1, "A"),),
     )
 
-    ligne = _lignes(GenerateurListesImpressionCsv().placement(liste))[1]
+    ligne = _lignes(_csv().placement(liste))[1]
 
     assert '"Du;rand ""le grand"""' in ligne
 
@@ -140,7 +144,7 @@ def test_club_paiement_met_le_club_en_colonne_et_ne_totalise_pas() -> None:
         ),
     )
 
-    lignes = _lignes(GenerateurListesImpressionCsv().club_paiement(liste))
+    lignes = _lignes(_csv().club_paiement(liste))
 
     assert lignes[0] == "Club;Nom;Prénom;Départs;Nb départs;Dû;Payé;Reste;Réglé"
     assert lignes[1] == "Kervignarc;Durand;Marie;1 2;2;16,00;16,00;0,00;payé"
@@ -152,7 +156,7 @@ def test_les_montants_sont_sommables() -> None:
     """Virgule décimale et **aucun symbole** : un « 8,00 € » resterait du texte au tableur."""
     liste = ListeClubPaiement(tournoi="Trophée", groupes=(_groupe("Kervignarc", "Durand", 850, 0),))
 
-    ligne = _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+    ligne = _lignes(_csv().club_paiement(liste))[1]
 
     assert ";8,50;0,00;8,50;" in ligne
     assert "€" not in ligne
@@ -162,7 +166,7 @@ def test_les_numeros_de_depart_ne_contiennent_pas_de_separateur_decimal() -> Non
     """⚠️ Séparés par une **espace**, pas par « , » : une virgule ferait lire « 1,2 » en nombre."""
     liste = ListeClubPaiement(tournoi="Trophée", groupes=(_groupe("Kervignarc", "Durand", 800, 0),))
 
-    assert ";1 2;" in _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+    assert ";1 2;" in _lignes(_csv().club_paiement(liste))[1]
 
 
 # --- Injection de formule (CWE-1236) --------------------------------------------------------------
@@ -175,7 +179,7 @@ def test_un_club_nomme_comme_une_formule_n_est_pas_execute() -> None:
         tournoi="Trophée", groupes=(_groupe('=cmd|"/c calc"!A1', "Durand", 800, 0),)
     )
 
-    ligne = _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+    ligne = _lignes(_csv().club_paiement(liste))[1]
 
     assert ligne.startswith("\"'=cmd")
 
@@ -188,7 +192,7 @@ def test_un_nom_commencant_par_un_signe_est_neutralise() -> None:
         lignes=(_ligne_placement("+33 6 12", "@Marie", 1, "A"),),
     )
 
-    ligne = _lignes(GenerateurListesImpressionCsv().placement(liste))[1]
+    ligne = _lignes(_csv().placement(liste))[1]
 
     assert ";'+33 6 12;'@Marie;" in ligne
 
@@ -202,9 +206,7 @@ def test_un_nom_ordinaire_n_est_pas_touche() -> None:
         lignes=(_ligne_placement("Durand", "Marie", 1, "A"),),
     )
 
-    assert _lignes(GenerateurListesImpressionCsv().placement(liste))[1] == (
-        "1;1;A;Durand;Marie;Sénior Homme"
-    )
+    assert _lignes(_csv().placement(liste))[1] == ("1;1;A;Durand;Marie;Sénior Homme")
 
 
 def test_les_montants_ne_sont_jamais_neutralises() -> None:
@@ -215,7 +217,7 @@ def test_les_montants_ne_sont_jamais_neutralises() -> None:
     """
     liste = ListeClubPaiement(tournoi="Trophée", groupes=(_groupe("Kervignarc", "Durand", 0, 500),))
 
-    ligne = _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+    ligne = _lignes(_csv().club_paiement(liste))[1]
 
     assert ";-5,00;" in ligne
     assert "'-5,00" not in ligne
@@ -238,8 +240,6 @@ def test_un_archer_sans_depart_ni_du_rend_des_cellules_vides() -> None:
         total_paye_centimes=0,
     )
 
-    ligne = _lignes(
-        GenerateurListesImpressionCsv().club_paiement(ListeClubPaiement("Trophée", (groupe,)))
-    )[1]
+    ligne = _lignes(_csv().club_paiement(ListeClubPaiement("Trophée", (groupe,))))[1]
 
     assert ligne == "Kervignarc;Durand;Marie;;0;0,00;0,00;0,00;"

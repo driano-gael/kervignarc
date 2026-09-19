@@ -9,12 +9,15 @@ finirait par contredire l'écran.
 from __future__ import annotations
 
 import asyncio
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from api.dependances import exiger_admin
+from api.documents import reponse_document, reponses_document
+from application.exports import FormatExport
 from application.palmares import RenduPalmares, ServicePalmares
 from domain.classement_clubs import ClassementClubs, classer_clubs
 from domain.palmares import LignePalmares
@@ -314,23 +317,26 @@ async def regler_podiums(
 
 
 @router.get(
-    "/tournois/{tournoi_id}/palmares.pdf",
+    "/tournois/{tournoi_id}/palmares/document",
     response_class=Response,
-    responses={200: {"content": {"application/pdf": {}}}},
+    responses=reponses_document(FormatExport.PDF, FormatExport.CSV, FormatExport.XLSX),
 )
 async def imprimer_palmares(
-    tournoi_id: int, request: Request, categorie_id: int | None = None
+    tournoi_id: int,
+    request: Request,
+    categorie_id: int | None = None,
+    format_: Annotated[FormatExport, Query(alias="format")] = FormatExport.PDF,
 ) -> Response:
-    """Rend le palmarès en PDF — le document affiché au mur et remis aux archers.
+    """Rend le palmarès au format demandé — le document affiché au mur, ou repris au tableur.
 
-    `inline` plutôt que `attachment` : le geste réel est « ouvrir, vérifier, imprimer », et un
-    téléchargement forcé ajoute un aller-retour par le gestionnaire de fichiers. Même parti que
-    les listes d'organisation (E09US003).
+    ⚠️ **Le chemin ne nomme plus le format** (E16US016). Il s'appelait `/palmares.pdf` : y ajouter
+    un format aurait demandé une route par extension, là où le reste du catalogue passe `?format=`
+    (ADR-0101 §1). Route **publique**, comme le palmarès qu'elle rend.
+    `inline` pour le **PDF seul** — cf. le commentaire du corps.
     """
     service: ServicePalmares = request.app.state.service_palmares
-    document = await run_in_threadpool(service.imprimer, tournoi_id, categorie_id)
-    return Response(
-        content=document,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="palmares-{tournoi_id}.pdf"'},
-    )
+    document = await run_in_threadpool(service.imprimer, tournoi_id, categorie_id, format_)
+    # ⚠️ `inline` pour le **PDF seul** : son geste est « ouvrir, vérifier, imprimer au mur ».
+    # Un tableur ne s'affiche pas dans un navigateur — `inline` n'y ferait qu'élargir le sniffing.
+    disposition = "inline" if format_ is FormatExport.PDF else "attachment"
+    return reponse_document(document, format_, f"palmares-{tournoi_id}", disposition=disposition)

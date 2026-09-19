@@ -131,7 +131,7 @@ def test_l_export_pdf_rend_un_document(
         connecter_admin(client)
         tournoi_id, _ = _preparer(app_palmares, client)
 
-        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares.pdf")
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares/document")
 
     assert reponse.status_code == 200, reponse.text
     assert reponse.headers["content-type"] == "application/pdf"
@@ -147,10 +147,14 @@ def test_lecture_publique_sans_authentification(
     with TestClient(app_palmares) as client:
         connecter_admin(client)
         tournoi_id, _ = _preparer(app_palmares, client)
+        # ⚠️ **Les deux** doivent partir : `connecter_admin` pose un en-tête `Authorization`, et
+        # vider les seuls cookies laissait ce test vert sur une route qui ne serait PAS publique —
+        # il prouvait le contraire de son nom (relevé en E16US016).
+        client.headers.pop("Authorization", None)
         client.cookies.clear()
 
         json = client.get(f"/api/v1/tournois/{tournoi_id}/palmares")
-        pdf = client.get(f"/api/v1/tournois/{tournoi_id}/palmares.pdf")
+        pdf = client.get(f"/api/v1/tournois/{tournoi_id}/palmares/document")
 
     assert json.status_code == 200, json.text
     assert pdf.status_code == 200, pdf.text
@@ -462,3 +466,86 @@ def test_le_reglage_vide_se_distingue_a_la_frontiere_de_l_absence_de_base(
     assert club_seul["classement_clubs"]["portees_comptees"] == [], "même absence de base"
     assert rien["classement_clubs"]["portees_reglees"] == [], "le tournoi ne récompense rien"
     assert club_seul["classement_clubs"]["portees_reglees"] == ["club"], "lui, si"
+
+
+# --- E16US016 : le palmarès sort aussi en tableur ------------------------------------------------
+#
+# Tests écrits **après** l'implémentation (frontière API et câblage, règle 9). Ce qu'ils couvrent
+# et qu'aucun test de service ne voit : la route généralisée est montée, et les trois formats
+# annoncés au catalogue répondent réellement.
+
+
+def test_l_export_csv_du_palmares_rend_un_tableau(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares/document?format=csv")
+
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.headers["content-type"].startswith("text/csv")
+    assert ".csv" in reponse.headers["content-disposition"]
+    # ⚠️ `attachment` et non `inline` : un tableur ne s'affiche pas dans un navigateur, et
+    # `inline` n'y élargirait que la surface de sniffing (2ᵉ passe de revue).
+    assert "attachment" in reponse.headers["content-disposition"]
+    assert reponse.headers["x-content-type-options"] == "nosniff"
+    entete = reponse.content.decode("utf-8-sig").splitlines()[0]
+    assert entete == "Rang;Nom;Prénom;Catégorie;Rang catégorie;Club;Rang club;Statut"
+
+
+def test_l_export_xlsx_du_palmares_rend_un_classeur(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares/document?format=xlsx")
+
+    assert reponse.status_code == 200, reponse.text
+    assert ".xlsx" in reponse.headers["content-disposition"]
+    assert "attachment" in reponse.headers["content-disposition"]
+    # Un `.xlsx` est un ZIP : les deux premiers octets le disent sans ouvrir openpyxl.
+    assert reponse.content[:2] == b"PK"
+
+
+def test_le_tableur_du_palmares_respecte_la_restriction_de_categorie(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ Le tableur rend `affiche`, pas `complet` : sans quoi une demande par catégorie sortirait
+    le tournoi entier — le contraire de ce que l'organisateur a demandé.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        tout = client.get(f"/api/v1/tournois/{tournoi_id}/palmares/document?format=csv")
+        aucune = client.get(
+            f"/api/v1/tournois/{tournoi_id}/palmares/document?format=csv&categorie_id=9999"
+        )
+
+    # ⚠️ Le statut d'abord : un corps d'erreur JSON tient sur **une** ligne, donc les deux
+    # assertions suivantes passeraient sur un 404 — le test serait vrai par accident (revue axe B).
+    assert aucune.status_code == 200, aucune.text
+    assert aucune.content.decode("utf-8-sig").startswith("Rang;")
+    assert len(aucune.content.splitlines()) < len(tout.content.splitlines())
+    assert len(aucune.content.splitlines()) == 1
+
+
+def test_le_palmares_refuse_un_format_inconnu(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un format hors énumération est refusé par la frontière, jamais servi en PDF par défaut.
+
+    **400** et non 422 : le dépôt mappe `RequestValidationError` sur 400 (`api/erreurs.py`), le 422
+    étant réservé aux règles **métier** violées.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares/document?format=ods")
+
+    assert reponse.status_code == 400, reponse.text

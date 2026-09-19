@@ -104,6 +104,8 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   inscriptions: 'gestion',
   paiements: 'gestion',
   exports: 'gestion',
+  // E16US016 : consultation du journal — de l'administratif, sur une édition précise.
+  audit: 'gestion',
   archive: 'gestion',
 }
 
@@ -148,6 +150,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   inscriptions: true,
   paiements: true,
   exports: true,
+  audit: true,
   archive: true,
 }
 
@@ -381,6 +384,8 @@ export const OUVRE_UN_ELEMENT: Record<Exclude<DestinationAdminId, 'tournoi'>, bo
   departs: false,
   paiements: false,
   exports: false,
+  // Le dépliage avant/après est **local à la ligne** : rien à porter dans l'adresse (ADR-0100 §5).
+  audit: false,
   archive: false,
 }
 

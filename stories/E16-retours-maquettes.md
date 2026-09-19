@@ -337,9 +337,42 @@
 ### E16US016 — Exports : les formats et les documents qui restent dus
 *En tant qu'*organisateur, *je veux* sortir **le classement** et **le journal d'audit** au format de mon choix, *afin de* les reprendre dans un tableur.
 - **Contexte** : reliquat écrit d'`E16US007` (30/08/2026). Cette fiche existe pour que trois manques constatés au cadrage ne se reperdent pas ; elle n'est **pas** un plan de travail, elle est à découper quand elle sera prise.
-- **CA — le palmarès sort aussi en tableur** : le classement final s'exporte dans les formats du catalogue, pas seulement en PDF. ⚠️ **Arbitrage requis d'abord** : la route est `GET /tournois/{id}/palmares.pdf`, **publique et non authentifiée**, et son chemin **nomme le format**. Lui ajouter un format demande de généraliser le chemin, donc de renommer une route publique. À trancher avec le commanditaire, avec `DETTE-031` en vis-à-vis (chaque lecture reconstruit toutes les phases à tableau — un format de plus multiplie ce coût).
+  ⚠️ **Cadrage du 18/09/2026 — les trois arbitrages que cette fiche réclamait sont rendus**, et le
+  périmètre est **tenu en une US** (commits atomiques par sujet, décision du commanditaire) : les
+  trois CA ci-dessous s'écrivent désormais **au présent de l'indicatif**, ils ne posent plus de
+  question. Le contrôle « déjà livré ? » a été refait dans le code du jour avant de trancher —
+  6ᵉ US d'affilée où il est fait, et cette fois il **confirme** les deux constats d'`E16US007` :
+  `/palmares.pdf` nomme bien son format, et `frontend/src` n'a **aucun** appelant de la route d'audit.
+- **CA — le palmarès sort aussi en tableur** : le classement final s'exporte dans les formats du catalogue, pas seulement en PDF.
+  ⚠️ **Arbitrage rendu le 18/09/2026 : RENOMMAGE FRANC**, pas d'alias. `GET /tournois/{id}/palmares.pdf`
+  **disparaît** au profit du patron d'ADR-0101 — chemin sans extension, format en paramètre de requête,
+  comme `…/listes/placement?format=csv`. La route reste **publique et non authentifiée** (c'est le
+  document remis aux archers) ; seul son chemin change. Le commanditaire a écarté l'alias de
+  compatibilité : nous sommes **avant le jour J**, aucune URL n'est diffusée, et deux chemins pour un
+  même document auraient inauguré une dette pour un risque nul.
+  ⚠️ **`DETTE-031` est en vis-à-vis** (chaque lecture reconstruit toutes les phases à tableau) : un
+  format de plus multiplie ce coût **sur une route ouverte**. À élargir, pas à contourner.
 - **CA — le journal d'audit se CONSULTE, puis s'exporte** : ⚠️ **corrigé en revue le 30/08/2026** — la première rédaction disait la consultation « déjà acquise ». C'est faux côté produit : la route `GET /tournois/{id}/audit` existe et n'a aucune restriction de statut, mais **aucun écran ne l'appelle**. Il faut donc livrer **l'écran** (le CA d'origine, A18, dit « consultable en cours de tournoi ») **puis** l'export.
-- **CA — le format Excel** : `xlsx` était demandé par A18 (*« CSV, EXCEL, PDF… »*) et a été écarté d'`E16US007` faute de dépendance. ⚠️ **Ajout de dépendance = règle 11** : `openpyxl` ou `xlsxwriter` à justifier, auditer (`pip-audit`), documenter — arbitrage du commanditaire, jamais de l'assistant. Une fois tranché, le coût de code est **une entrée de registre et un adapter** : c'est ce que `E16US007` a livré pour que cette US soit petite.
+  ⚠️ **Niveau d'écran arbitré le 18/09/2026** : liste paginée, **filtre par type d'acte**, et
+  **dépliage du avant/après** de chaque entrée.
+  ⚠️ **Ordre tranché le 18/09/2026, en cours d'US : du PLUS RÉCENT au plus ancien.** La 1ʳᵉ
+  rédaction de ce CA disait « chronologique », et le code l'a suivie — mais la fiche de recette
+  écrite dans le même commit disait l'inverse, divergence relevée par deux axes de revue. Le
+  commanditaire a tranché l'**antichronologique** : l'écran sert à retrouver l'acte qui vient
+  d'avoir lieu, et sur les ~1 284 entrées d'une matinée (planche A18) le sens du temps ouvrait 25
+  pages trop tôt. ⚠️ **L'export, lui, reste chronologique** — un journal de preuve se lit dans le
+  sens du temps —, de même que le port `AuditRepository.par_tournoi` : c'est l'**écran** qui
+  retourne, pas la donnée. Le commanditaire a écarté la liste nue
+  (un journal réel fait des centaines de lignes : sans filtre, l'écran ne sert pas le litige en salle
+  qu'A18 vise) **et** la version riche à filtres cumulés auteur/période, qui aurait demandé une route
+  de filtrage serveur pour un besoin non constaté.
+- **CA — le format Excel** : `xlsx` était demandé par A18 (*« CSV, EXCEL, PDF… »*) et a été écarté d'`E16US007` faute de dépendance.
+  ⚠️ **Ajout de dépendance tranché par le commanditaire le 18/09/2026 : `openpyxl`** (règle 11). À
+  déclarer au manifeste (`pyproject.toml` **+** `requirements.txt` régénéré par `pip freeze
+  --exclude-editable`), auditer (`pip-audit`), et documenter dans `docs/dependances.md` — **dans le
+  commit qui l'introduit**. `xlsxwriter` (écriture seule, plus légère) a été présenté et écarté.
+  Le coût de code reste **une entrée de registre et un adapter** : c'est ce qu'`E16US007` a livré pour
+  que cette US soit petite.
 - **Dépend de** : E16US007, E06US004, E10US005 · **Jalon** : J3 · **Origine** : reliquat d'`E16US007`, 30/08/2026
 
 ---

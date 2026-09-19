@@ -114,3 +114,16 @@ def _horodatage_valide(horodatage: datetime.datetime) -> datetime.datetime:
             "L'horodatage d'une entrée d'audit doit être un instant UTC (datetime aware)."
         )
     return horodatage
+
+
+@dataclass(frozen=True)
+class JournalAudit:
+    """Le journal d'un tournoi tel qu'un **document** le porte (E16US016).
+
+    ⚠️ `tournoi` est le **nom**, pas l'identifiant : un fichier détaché de l'écran doit dire de quoi
+    il parle, et un numéro ne le dit à personne. Même parti que `ListePlacement` (E16US007).
+    L'ordre des entrées est celui du journal — le réordonner lui retirerait son seul usage.
+    """
+
+    tournoi: str
+    entrees: tuple[EntreeAudit, ...]

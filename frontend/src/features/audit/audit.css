@@ -1,0 +1,49 @@
+/* Journal d'audit (E16US016). Le tableau lui-même est le `.table` générique d'`App.css` : cet
+   écran n'a besoin que de sa barre de filtres, de sa pagination et du rendu avant/après. */
+
+.audit__barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.audit__compteurs {
+  margin: 0 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* Une correction se repère **à la couleur autant qu'au mot** : c'est la ligne qu'on cherche dans
+   une contestation. ⚠️ `--danger` est l'**ambre** de la charte, pas du rouge (DV-03) — et seule la
+   `color` est posée : `.badge` tire sa bordure de `currentColor`, un fond la ferait diverger. */
+.badge--correction {
+  color: var(--danger);
+}
+
+/* Le journal peut être large : on le fait défiler **lui**, jamais la page (règle des tableaux). */
+.audit__tableau {
+  overflow-x: auto;
+}
+
+.audit__pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.audit__avant-apres {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.audit__avant {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.audit__apres {
+  font-weight: 600;
+}

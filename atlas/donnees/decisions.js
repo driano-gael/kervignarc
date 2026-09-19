@@ -4053,6 +4053,7 @@ window.ATLAS.decisions = {
     "E16US011",
     "E16US014",
     "E16US015",
+    "E16US016",
     "E16US017",
     "E16US019",
     "E16US020"
@@ -8847,6 +8848,12 @@ window.ATLAS.decisions = {
      "type": "us"
     },
     {
+     "cible": "E16US016",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
      "cible": "0031",
      "libelle": "S'appuie sur",
      "sens": "sortant",
@@ -8867,6 +8874,8 @@ window.ATLAS.decisions = {
       "reponse_document",
       "reponses_document",
       "MEDIA_TYPES",
+      "inline",
+      "attachment",
       "test_chaque_format_porte_un_media_type_distinct"
      ],
      "symboles_absents": [
@@ -8879,6 +8888,20 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "FormatExportIndisponible"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/audit.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -8914,6 +8937,31 @@ window.ATLAS.decisions = {
      "symboles": [
       "tri",
       "depart_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/palmares.py",
+     "existe": true,
+     "symboles": [
+      "formats_disponibles",
+      "if",
+      "RegistreDeFormats"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/audit.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -8973,13 +9021,27 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "formats_disponibles",
+      "if",
+      "RegistreDeFormats"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/bootstrap/composition.py",
      "existe": true,
      "symboles": [
       "construire_catalogue",
       "RegistreDeFormats.formats",
       "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne",
-      "FormatExportIndisponible"
+      "FormatExportIndisponible",
+      "if",
+      "formats_disponibles",
+      "RegistreDeFormats"
      ],
      "symboles_absents": [
       "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
@@ -8987,23 +9049,88 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
-     "chemin": "backend/infrastructure/tableur/listes_impression.py",
+     "chemin": "backend/infrastructure/tableur/audit.py",
      "existe": true,
      "symboles": [
-      "GenerateurListesImpressionCsv",
-      "GenerateurListesImpression",
-      "_montant",
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/grille.py",
+     "existe": true,
+     "symboles": [
+      "_cellule_csv",
+      "Montant",
       "_ENTETE_CLUB_PAIEMENT",
       "Club",
-      "_neutraliser",
       "_AMORCES_DE_FORMULE",
+      "_ecrire_ligne_xlsx",
       "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
-      "test_les_montants_ne_sont_jamais_neutralises"
+      "test_les_montants_ne_sont_jamais_neutralises",
+      "Grille",
+      "Cellule",
+      "RenduTableur",
+      "rendre_csv",
+      "rendre_xlsx"
      ],
      "symboles_absents": [
       "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
       "test_les_montants_ne_sont_jamais_neutralises"
      ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/listes_impression.py",
+     "existe": true,
+     "symboles": [
+      "GenerateurListesImpressionTableur",
+      "GenerateurListesImpression",
+      "_cellule_csv",
+      "Montant",
+      "_ENTETE_CLUB_PAIEMENT",
+      "Club",
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/palmares.py",
+     "existe": true,
+     "symboles": [
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_audit.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_exports.py",
+     "existe": true,
+     "symboles": [
+      "ServiceExportAudit",
+      "LecteurJournalAudit",
+      "exiger_admin",
+      "FormatExport.PDF",
+      "test_un_export_peut_n_offrir_aucun_pdf",
+      "test_un_format_non_cable_est_refuse"
+     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {

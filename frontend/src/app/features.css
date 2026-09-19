@@ -15,6 +15,7 @@
 @import '../features/competition/barrages.css';
 @import '../features/palmares/palmares.css';
 @import '../features/tableaux/tableaux.css';
+@import '../features/audit/audit.css';
 @import '../shared/duels/rencontre.css';
 @import '../shared/ui/bandeau-pause.css';
 @import '../shared/ui/qr.css';

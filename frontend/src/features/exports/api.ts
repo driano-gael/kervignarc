@@ -50,6 +50,14 @@ export function cheminFeuilleDeMarque(tournoiId: number, departId: number): stri
   return `/api/v1/tournois/${tournoiId}/departs/${departId}/feuille-de-marque`
 }
 
+export function cheminPalmares(tournoiId: number): string {
+  return `/api/v1/tournois/${tournoiId}/palmares/document`
+}
+
+export function cheminAudit(tournoiId: number): string {
+  return `/api/v1/tournois/${tournoiId}/audit/document`
+}
+
 // Joint le format au chemin, que celui-ci porte déjà des paramètres ou non.
 export function avecFormat(chemin: string, format: string): string {
   return `${chemin}${chemin.includes('?') ? '&' : '?'}format=${encodeURIComponent(format)}`

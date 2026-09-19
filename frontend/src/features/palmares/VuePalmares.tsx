@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import type { ClassementClubs as ClassementClubsDto, LignePalmares, Podium } from './api'
-import { urlPalmaresPdf } from './api'
+import { urlPalmaresDocument } from './api'
 import { usePalmares } from './hooks'
 import {
   baseDuDecompte,
@@ -65,7 +65,7 @@ export function VuePalmares({
               l'imprimer sans blob intermédiaire — et le lien reste utilisable au clic droit. */}
           <a
             className="bouton bouton--secondaire"
-            href={urlPalmaresPdf(tournoiId, categorieId)}
+            href={urlPalmaresDocument(tournoiId, categorieId)}
             target="_blank"
             rel="noreferrer"
           >
