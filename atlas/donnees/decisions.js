@@ -4486,7 +4486,11 @@ window.ATLAS.decisions = {
       "ModelePhase.d_etape",
       "FormatTournoi.verifier_applicable",
       "FormatTournoi.etapes_ordonnees",
-      "FormatTournoi.appliquer"
+      "FormatTournoi.appliquer",
+      "verifier_applicable",
+      "EtapeDeroule",
+      "Phase.__post_init__",
+      "ServiceFormats.appliquer"
      ],
      "symboles_absents": [],
      "verifiable": true

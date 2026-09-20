@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import logging
 from collections.abc import Sequence
 
 import pytest
@@ -52,6 +53,7 @@ from tests.conftest import (
     identite_d_etape,
     poser_phase_factice,
 )
+from tests.test_service_feuille_de_marque import _CaptureWarnings
 
 _DATE = datetime.date(2026, 3, 14)
 # Identifiants de créneau **volontairement distincts** de celui du tournoi (qui vaut 1) : les
@@ -552,6 +554,49 @@ def test_un_tableau_illisible_ne_fait_pas_tomber_le_suivi(ctx: Contexte) -> None
 
     assert bloc.duels_joues == 0
     assert bloc.duels_attendus == 7
+
+
+def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx: Contexte) -> None:
+    """La tolérance de `vues_par_rangs` ne doit pas être **silencieuse** (2ᵉ passe, E05US022).
+
+    Une phase qui prélève dans une étape absente du déroulé s'affiche dégradée — c'est voulu, un
+    écran de salle ne tombe pas —, mais sans trace serveur l'organisateur n'a **aucun** moyen de
+    remonter la cause : il voit un bloc vide et rien d'autre. Le journal est le seul recours.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    orpheline = dataclasses.replace(
+        _tableau_ed(ctx.depart_id, 2, StatutPhase.A_VENIR),
+        sources=(
+            SourcePhase(
+                etape_source_id=identite_d_etape(99),
+                rang_debut=1,
+                rang_fin=8,
+                nature=NatureSource.RANGS,
+            ),
+        ),
+    )
+    ctx.ajouter_phase(orpheline, 2)
+
+    # ⚠️ **Pas `caplog`** : il capte par propagation vers la racine, que d'autres tests
+    # reconfigurent via `create_app` — le test devient alors vert seul et rouge en suite. Handler
+    # posé sur le logger lui-même, patron déjà éprouvé par `test_service_feuille_de_marque`.
+    logger = logging.getLogger("application.suivi_deroule")
+    capture = _CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        suivi = ctx.service.pour_depart(ctx.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    assert len(suivi.avancement.blocs) == 2, "le suivi reste servi, dégradé"
+    assert any(
+        "absente du déroulé" in message for message in capture.messages
+    ), "la dégradation doit laisser une trace serveur"
 
 
 # --- Portée : le suivi est celui d'un créneau, jamais du tournoi (ADR-0075) ----------------------

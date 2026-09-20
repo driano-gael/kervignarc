@@ -154,8 +154,9 @@ def test_upgrade_supprime_l_avancement_orphelin(tmp_path: Path) -> None:
     """Un avancement dont le rang n'a aucune étape disparaît : `etape_id` est `NOT NULL`.
 
     Il était déjà invisible à toute lecture — les deux adapters l'écartent de l'assemblage —, donc
-    rien d'observable n'est perdu. C'est le seul cas de suppression de la reprise, et il est
-    annoncé par la fiche fonctionnelle.
+    rien d'observable n'est perdu. ⚠️ **Ce n'est pas le seul retrait de la reprise** : un
+    prélèvement dont le rang ne se résout pas disparaît lui aussi (test ci-dessous). Les deux sont
+    annoncés par la fiche fonctionnelle et comptés au journal d'Alembic.
     """
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     cfg = _config(url)
@@ -270,5 +271,133 @@ def test_l_aller_retour_restitue_les_rangs_et_les_ancres(tmp_path: Path) -> None
             {"nature": "rangs", "rang_debut": 1, "rang_fin": 8, "ordre_source": 2}
         ]
         assert configs[52]["sources"] == [{"rang_debut": 1, "rang_fin": 4, "ordre_source": 1}]
+    finally:
+        engine.dispose()
+
+
+def _preparer(tmp_path: Path) -> tuple[Config, sa.Engine]:
+    """Base migrée jusqu'à `0055` et semée — le préambule commun des tests ci-dessous."""
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    cfg = _config(url)
+    command.upgrade(cfg, _AVANT)
+    engine = sa.create_engine(url)
+    with engine.begin() as conn:
+        _semer(conn)
+    return cfg, engine
+
+
+def test_upgrade_purge_les_trois_tables_filles_de_l_avancement_orphelin(tmp_path: Path) -> None:
+    """Supprimer la phase 99 sans purger ses filles **casserait l'intégrité référentielle**.
+
+    Aucune des trois FK n'est `ON DELETE CASCADE`, et Alembic tourne sans `PRAGMA foreign_keys` :
+    la suppression passerait en silence et la base sortirait de la migration dans un état que son
+    propre runtime (`engine.py`, FK actives) refuse. `barrage.phase_id` étant **nullable**, la
+    ligne survit détachée — un barrage est un tir réellement effectué.
+    """
+    cfg, engine = _preparer(tmp_path)
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO franchissement_arret (phase_id, apres_tour, etat) "
+                    "VALUES (99, 1, 'ouvert')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO arret_de_circonstance (depart_id, phase_id, apres_tour, portee) "
+                    "VALUES (1, 99, 1, 'depart')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO barrage "
+                    "(id, phase_id, portee, participants_json, cree_le, depart_id) "
+                    "VALUES (7, 99, 'phase', '[]', '2026-09-20T09:00:00', 1)"
+                )
+            )
+
+        command.upgrade(cfg, _APRES)
+
+        with engine.connect() as conn:
+            # ⚠️ Filtré sur le parent `phase` : le décor insère des parents **fictifs** (tournoi,
+            # depart), FK désactivées côté Alembic, donc un `foreign_key_check` nu remonte le
+            # décor lui-même. C'est bien la phase disparue que ce test surveille.
+            manquements = [
+                violation
+                for violation in conn.execute(sa.text("PRAGMA foreign_key_check")).all()
+                if violation[2] == "phase"
+            ]
+            franchissements = conn.execute(
+                sa.text("SELECT COUNT(*) FROM franchissement_arret")
+            ).scalar_one()
+            arrets = conn.execute(
+                sa.text("SELECT COUNT(*) FROM arret_de_circonstance")
+            ).scalar_one()
+            # `scalar_one` : la ligne doit **exister** (sinon le barrage a été supprimé, pas
+            # détaché) et son `phase_id` valoir `None`.
+            barrage = conn.execute(
+                sa.text("SELECT phase_id FROM barrage WHERE id = 7")
+            ).scalar_one_or_none()
+        assert manquements == [], "aucune ligne ne doit pointer une phase disparue"
+        assert (franchissements, arrets) == (0, 0)
+        assert barrage is None, "le barrage survit, détaché"
+    finally:
+        engine.dispose()
+
+
+def test_upgrade_rend_une_liste_vide_quand_le_seul_prelevement_est_irresoluble(
+    tmp_path: Path,
+) -> None:
+    """Retirer **le dernier** prélèvement laisse `sources == []`, pas une clé disparue.
+
+    C'est le cas limite du retrait (correctif de revue) : l'étape devient une phase **sans
+    peuplement**, état parfaitement légal que l'organisateur peut corriger à l'écran. Une `config`
+    qui perdrait la clé serait tout aussi lisible, mais le contrat écrit par la reprise est bien
+    « le prélèvement est retiré », pas « la clé est retirée » — et c'est ce que relit l'adapter.
+    """
+    cfg, engine = _preparer(tmp_path)
+    try:
+        with engine.begin() as conn:
+            _etape(
+                conn,
+                45,
+                tournoi=1,
+                ordre=5,
+                config={
+                    "sources": [
+                        {"nature": "rangs", "ordre_source": 9, "rang_debut": 1, "rang_fin": 2}
+                    ]
+                },
+            )
+
+        command.upgrade(cfg, _APRES)
+
+        assert _configs(engine)[45]["sources"] == []
+    finally:
+        engine.dispose()
+
+
+def test_upgrade_leve_l_unicite_du_rang_dans_le_deroule(tmp_path: Path) -> None:
+    """Deux étapes au **même rang** deviennent insérables : `uq_deroule_tournoi_ordre` est levée.
+
+    C'est l'arbitrage du commanditaire du 20/09/2026 (ADR-0078 § Conséquences) : le rang n'étant
+    plus qu'un affichage, le second verrou coûtait la manœuvre de garage en négatif sans rien
+    protéger. Sans ce test, la ligne 3 de la migration n'était vérifiée **par rien** — et son
+    oubli n'aurait fait rougir aucune suite, seulement rallongé `reordonner` le jour où il faut
+    permuter deux rangs.
+    """
+    cfg, engine = _preparer(tmp_path)
+    try:
+        command.upgrade(cfg, _APRES)
+
+        with engine.begin() as conn:
+            _etape(conn, 46, tournoi=1, ordre=1, config={})
+
+        with engine.connect() as conn:
+            au_rang_1 = conn.execute(
+                sa.text("SELECT COUNT(*) FROM deroule_etape WHERE tournoi_id = 1 AND ordre = 1")
+            ).scalar_one()
+        assert au_rang_1 == 2
     finally:
         engine.dispose()

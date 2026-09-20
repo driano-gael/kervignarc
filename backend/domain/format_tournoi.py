@@ -54,6 +54,16 @@ rien à résoudre, tandis qu'un prélèvement non résolu lève `SourceIntrouvab
 peut donc pas produire un ancrage faux — seulement un refus bruyant.
 """
 
+_DEPART_A_BLANC = 0
+"""Créneau fictif de la pose à blanc : `instancier` n'a besoin que d'un entier, jamais relu."""
+
+_IDENTITE_A_BLANC = 1_000_000
+"""Base des identités que la pose à blanc de `verifier_applicable` invente (ADR-0078).
+
+Hors de portée de toute identité réelle, et **distincte du rang** : la pose à blanc ne doit pas
+valider sous la coïncidence que cette US retire partout ailleurs.
+"""
+
 PRESET_CLUB_NB_VOLEES = 5
 PRESET_CLUB_NB_FLECHES_PAR_VOLEE = 3
 
@@ -428,9 +438,20 @@ class FormatTournoi:
         # ne se lèvent qu'à la construction. Sans cette répétition, `appliquer` détruisait le
         # déroulé **puis** échouait, laissant le tournoi sans phases ni barème — ce que
         # « instancier avant de détruire » (E01US024) existe pour empêcher.
-        factices: dict[int, EtapeDerouleId] = {etape.ordre: etape.ordre for etape in self.etapes}
+
+        # ⚠️ Identités factices **décalées des rangs** : y mettre `ordre` recréerait localement
+        # la coïncidence que toute l'US décorrèle, et masquerait le jour où un invariant d'étape
+        # lirait la valeur d'une ancre. La table s'enrichit **après** la pose, comme le service.
+        factices: dict[int, EtapeDerouleId] = {}
         for modele in self.etapes_ordonnees:
-            modele.pour_tournoi(tournoi_id, factices)
+            etape = modele.pour_tournoi(tournoi_id, factices)
+            # ⚠️ **Et l'INSTANCIATION à blanc, pas seulement l'étape** (2ᵉ passe, axe D) : les
+            # quatre gardes de `DETTE-078` — un réglage de poules, de Big Shoot Off, de système
+            # suisse ou une profondeur posés sur un type qui ne les lit pas — vivent sur
+            # `Phase.__post_init__`, donc à `instancier`. Sans cette seconde moitié, quatre cas sur
+            # neuf échappaient au contrôle et `appliquer` détruisait le déroulé **avant** de lever.
+            etape.instancier(_DEPART_A_BLANC)
+            factices[modele.ordre] = _IDENTITE_A_BLANC + modele.ordre
 
     @property
     def etapes_ordonnees(self) -> tuple[ModelePhase, ...]:

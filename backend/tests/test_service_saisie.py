@@ -740,6 +740,11 @@ def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
                 # discriminante. Sans elles, le service la traite comme une qualification de tête
                 # (qui accueille tout le monde) et le décor ne prouverait rien.
                 sources=(SourcePhase.par_rangs(identite_d_etape(1)),),
+                # ⚠️ **Le rattachement, sans quoi le décor et le code se confortaient sur la
+                # MAUVAISE clé** (2ᵉ passe de revue) : `populations` était indexé par rang et
+                # `_admet` interrogeait par rang, si bien que le 4ᵉ appelant resté sur `ordre`
+                # restait vert ici tout en cassant la fourche en production.
+                etape_id=identite_d_etape(ordre),
             ).demarrer()
         )
         for ordre in (2, 3)
@@ -750,7 +755,10 @@ def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
     # reste commun aux trois tours), et c'est aussi ce qui donne un créneau à la saisie admin.
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     m.placer(autre.id, _DEPART, cible_index=1, position="B")
-    m.populations.populations = {2: [m.archer_id], 3: [autre.id]}
+    m.populations.populations = {
+        identite_d_etape(2): [m.archer_id],
+        identite_d_etape(3): [autre.id],
+    }
     # ⚠️ La qualification de **tête** admet tout le monde, comme en production : c'est ce qui rend
     # le départage entre phases admissibles non trivial — et c'est le défaut qu'un premier
     # correctif avait laissé passer (il rendait la tête pour tout le monde tant qu'elle était

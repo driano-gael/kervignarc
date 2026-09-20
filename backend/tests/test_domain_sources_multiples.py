@@ -31,6 +31,8 @@ from domain.phase import (
     SequencePhases,
     SourcePhase,
     TypePhase,
+    anomalies_sequence,
+    vues_par_rangs,
 )
 from domain.tournoi import TournoiId
 from tests.conftest import identite_d_etape
@@ -396,3 +398,31 @@ def test_des_prelevements_denombrables_depassant_l_effectif_sont_refuses_malgre_
     )
     with pytest.raises(EffectifIncompatible):
         SequencePhases((qualif, tableau))
+
+
+def test_deux_ancres_perdues_ne_fabriquent_pas_un_faux_recoupement() -> None:
+    """Deux prélèvements visant deux étapes **différentes et absentes** ne se recoupent pas.
+
+    Correctif de 2ᵉ passe de revue (axe adversarial). `projeter_sur_les_rangs(tolerante=True)`
+    effondre toute ancre irrésoluble sur `RANG_INTROUVABLE` : le contrôle de recoupement, qui
+    regroupe **par phase source**, les jugeait alors comme venant de la même source et rendait un
+    `SourcesQuiSeRecoupent` **factuellement faux** — servi tel quel sur la route publique de suivi
+    du déroulé, à côté de deux messages nommant « la phase 0 ». Leur vrai défaut est déjà dit par
+    `SourceIntrouvable`, une fois par prélèvement.
+    """
+    perdue = Phase.creer(
+        TOURNOI,
+        1,
+        TypePhase.ELIMINATION_DIRECTE,
+        sources=(
+            SourcePhase(etape_source_id=identite_d_etape(8), rang_debut=1, rang_fin=4),
+            SourcePhase(etape_source_id=identite_d_etape(9), rang_debut=1, rang_fin=4),
+        ),
+        etape_id=identite_d_etape(1),
+    )
+
+    anomalies = list(anomalies_sequence(vues_par_rangs([perdue])))
+
+    erreurs = [type(anomalie.erreur) for anomalie in anomalies]
+    assert erreurs.count(SourceIntrouvable) == 2, "une par prélèvement perdu"
+    assert SourcesQuiSeRecoupent not in erreurs, "deux ancres perdues ne sont pas la même source"

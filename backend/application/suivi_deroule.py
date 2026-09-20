@@ -21,7 +21,15 @@ from application.erreurs import ApplicationError, DepartIntrouvable
 from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
-from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId, TypePhase, vues_par_rangs
+from domain.phase import (
+    RANG_INTROUVABLE,
+    TYPES_EN_TABLEAU,
+    Phase,
+    PhaseId,
+    TypePhase,
+    VueParRangs,
+    vues_par_rangs,
+)
 from domain.ports import (
     DepartRepository,
     InscriptionRepository,
@@ -38,6 +46,26 @@ from domain.tableau import Match, Tableau
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
+
+
+def _tracer_les_ancres_perdues(depart_id: DepartId, vues: Sequence[VueParRangs]) -> None:
+    """Journalise les prélèvements que la projection **tolérante** n'a pas su résoudre.
+
+    ⚠️ La tolérance de `vues_par_rangs` est délibérée — un créneau incomplet s'affiche dégradé
+    plutôt qu'en erreur —, mais sans trace elle est **silencieuse** : l'écran de salle montre un
+    bloc vide et rien côté serveur ne dit pourquoi. Le journal est le seul endroit où un
+    organisateur puisse remonter la cause (correctif de 2ᵉ passe de revue, E05US022).
+    """
+    perdues = sum(
+        1 for vue in vues for source in vue.sources if source.ordre_source == RANG_INTROUVABLE
+    )
+    if perdues:
+        _logger.warning(
+            "Suivi du départ %s : %s prélèvement(s) désignent une étape absente du déroulé ; "
+            "les blocs concernés s'affichent dégradés.",
+            depart_id,
+            perdues,
+        )
 
 
 class LecteurAvancementDePhase(Protocol):
@@ -200,7 +228,9 @@ class ServiceSuiviDeroule:
         tournoi_id = depart.tournoi_id
         phases = sorted(self._phases.par_depart(depart_id), key=lambda phase: phase.ordre)
         effectif = self._engages.nb_engages_du_depart(depart_id)
-        projection = projeter(vues_par_rangs(phases), effectif)
+        vues = vues_par_rangs(phases)
+        _tracer_les_ancres_perdues(depart_id, vues)
+        projection = projeter(vues, effectif)
         par_ordre = {phase.ordre: phase for phase in phases}
         blocs = tuple(
             avancement_bloc(

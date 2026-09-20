@@ -16,6 +16,7 @@ import dataclasses
 import pytest
 
 from domain.bareme import BaremeQualification
+from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import (
     FormatSansEtape,
     NomFormatInvalide,
@@ -26,8 +27,8 @@ from domain.erreurs import (
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
-from domain.phase import SourceModele, StatutPhase, TypePhase
-from tests.conftest import appliquer_en_memoire
+from domain.phase import SourceModele, SourcePhase, StatutPhase, TypePhase
+from tests.conftest import appliquer_en_memoire, identite_d_etape
 
 TOURNOI = 7
 
@@ -368,3 +369,57 @@ def test_le_preset_club_n_est_pas_marque_officiel() -> None:
 
     assert preset.origine is OrigineBrique.UTILISATEUR
     assert preset.etapes[0].bareme == BaremeQualification.creer(5, 3)
+
+
+def test_la_promotion_redescend_les_prelevements_sur_les_rangs() -> None:
+    """**Le sens retour de la conversion** (ADR-0078 §4), qu'aucun test n'exerçait.
+
+    Le CA ajouté le 20/09/2026 dit que la traduction va dans les **deux** sens : appliquer un
+    format ancre les prélèvements sur des identités, promouvoir un déroulé les redescend sur des
+    rangs — un format de bibliothèque n'ayant aucune identité à citer (ADR-0060 §5). Les décors de
+    promotion existants ne portaient **aucune source**, donc `id_vers_ordre` n'était jamais
+    exercé : un `d_etape` resté sur la table vide aurait produit des formats aux prélèvements
+    perdus, sans un seul rouge.
+    """
+    qualif = EtapeDeroule(
+        tournoi_id=TOURNOI,
+        ordre=1,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.preset_ffta_18m(),
+        validation=GrainValidation.fin_de_serie(),
+        id=identite_d_etape(1),
+    )
+    tableau = EtapeDeroule(
+        tournoi_id=TOURNOI,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 8),),
+        id=identite_d_etape(2),
+    )
+
+    promu = FormatTournoi.de_deroule("L'an dernier", [qualif, tableau])
+
+    # Le **rang**, pas l'identité : 1, et surtout pas `identite_d_etape(1)`.
+    assert promu.etapes[1].sources == (SourceModele.par_rangs(1, 1, 8),)
+
+
+def test_promouvoir_puis_reappliquer_rend_le_meme_ancrage() -> None:
+    """L'aller-retour prouve que les deux traductions sont **réciproques** — « une seule traduction
+    sert les deux sens » est le CA, et c'est ce qui le vérifie."""
+    depart = FormatTournoi.creer(
+        "Aller",
+        [
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+                effectif=8,
+            ),
+        ],
+    )
+
+    etapes = appliquer_en_memoire(depart, TOURNOI)
+    retour = FormatTournoi.de_deroule("Retour", list(etapes))
+
+    assert retour.etapes[1].sources == depart.etapes[1].sources

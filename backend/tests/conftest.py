@@ -659,10 +659,10 @@ class FauxDerouleRepository:
         # ADR-0078, avec plus de force : l'identité d'étape **est** l'ancre d'un prélèvement et la
         # clé de jointure d'un avancement. Un décor où l'étape de rang 1 reçoit l'identifiant 1
         # rend **vert par coïncidence** tout code resté sur le rang — c'est exactement ce qui a
-        # laissé passer trois bloquants à la revue d'E05US022 (`palmares`, `completude`, la clé du
-        # cache de `saisie_duels`), sous 4376 tests verts. 200 pour ne pas heurter les `PhaseId`,
-        # qui partent de 100.
-        self._sequence = 200
+        # laissé passer quatre bloquants à la revue d'E05US022 (`palmares`, `completude`,
+        # `saisie`, la clé du cache de `saisie_duels`), sous 4376 tests verts. **9 000** : au-dessus
+        # des `PhaseId` (100+) et de toute identité conventionnelle d'`identite_d_etape`.
+        self._sequence = 9_000
 
     def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
         """Persiste l'étape ; un `id` **déjà fourni est préservé** (même règle que les phases)."""
@@ -695,15 +695,25 @@ class FauxDerouleRepository:
         self._items.pop(etape_id, None)
 
 
-def identite_d_etape(ordre: int) -> EtapeDerouleId:
+def identite_d_etape(ordre: int, tournoi_id: TournoiId = 1) -> EtapeDerouleId:
     """L'identité conventionnelle de l'étape de ce rang, **dans les décors de test** (ADR-0078).
 
-    ⚠️ **Volontairement différente du rang** : si les deux coïncidaient, un décor passerait aussi
-    bien avec l'ancien ancrage par rang qu'avec le nouveau, et ne prouverait donc rien. Un test qui
-    confond les deux échoue ici, au lieu de passer par accident.
-    """
-    return 100 + ordre
+    ⚠️ **Trois espaces disjoints, et la contrainte est celle-là** (2ᵉ passe de revue) : les
+    `PhaseId` partent de 100 (`FauxPhaseRepository`), les identités conventionnelles de 3 100, et
+    `FauxDerouleRepository` alloue au-dessus de tout cela. La première rédaction rendait
+    `100 + ordre`, donc `phase.id == phase.etape_id` dans tout décor courant — la coïncidence même
+    que cette fonction existe pour interdire, déplacée d'un cran vers `DETTE-044`.
 
+    ⚠️ **Le tournoi entre dans l'identité, et ce n'est pas décoratif** : sans lui, deux tournois
+    d'un même test se donnaient la même identité au même rang, l'étape du second **écrasait**
+    celle du premier dans le magasin, et les phases du premier créneau disparaissaient
+    silencieusement de `par_depart` (l'assemblage joint sur `etape_id`).
+    """
+    return 3_000 + 100 * tournoi_id + ordre
+
+
+_RANG_BRULE = 900
+"""Rang de l'étape éphémère qui décale l'auto-incrément SQL — voir `poser_phase_sql`."""
 
 PREMIERE_IDENTITE_SIMULEE = 1_000
 """Base des identités que `appliquer_en_memoire` invente — hors de portée des identifiants réels.
@@ -775,7 +785,7 @@ def poser_phase_factice(
                 # alloue dans l'ordre de pose et `etape.id == etape.ordre`, si bien qu'un lecteur
                 # resté sur le rang passe **vert par coïncidence**. Trois bloquants d'E05US022
                 # avaient traversé 4376 tests ainsi. Un décor cite donc `identite_d_etape(N)`.
-                id=identite_d_etape(phase.ordre),
+                id=identite_d_etape(phase.ordre, depart.tournoi_id),
                 ordre=phase.ordre,
                 type=phase.type,
                 bareme=phase.bareme,
@@ -853,10 +863,25 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
     depart = DepartRepositorySQL(session_factory).par_id(phase.depart_id)
     assert depart is not None, "Le décor doit avoir créé le créneau avant d'y poser une phase."
     deroules = DerouleEtapeRepositorySQL(session_factory)
-    etape = next(
-        (e for e in deroules.par_tournoi(depart.tournoi_id) if e.ordre == phase.ordre), None
-    )
+    deja_posees = deroules.par_tournoi(depart.tournoi_id)
+    etape = next((e for e in deja_posees if e.ordre == phase.ordre), None)
     if etape is None:
+        # ⚠️ **Le pendant SQL d'`identite_d_etape`** (2ᵉ passe de revue E05US022) : sur une base
+        # neuve SQLite alloue 1, 2, 3…, si bien que l'étape de rang 1 recevait l'identité 1 et que
+        # tout l'étage d'intégration restait **vert par coïncidence** devant la confusion rang /
+        # identité qui a coûté quatre bloquants à cette US. On brûle donc un identifiant sur une
+        # étape éphémère du **même** tournoi — un tournoi jetable violerait la clé étrangère —,
+        # supprimée **après** la vraie pose : la supprimer avant rendrait son `rowid` (SQLite le
+        # réattribue, la table n'est pas `AUTOINCREMENT`). Décalage résiduel : `id == ordre + 1`.
+        brulee = (
+            None
+            if deja_posees
+            else deroules.ajouter(
+                EtapeDeroule(
+                    tournoi_id=depart.tournoi_id, ordre=_RANG_BRULE, type=TypePhase.PLACEMENT
+                )
+            )
+        )
         etape = deroules.ajouter(
             EtapeDeroule(
                 tournoi_id=depart.tournoi_id,
@@ -903,6 +928,8 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
             )
         )
+        if brulee is not None and brulee.id is not None:
+            deroules.supprimer(brulee.id)
     return PhaseRepositorySQL(session_factory).ajouter(
         dataclasses.replace(etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id)
     )

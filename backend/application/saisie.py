@@ -821,10 +821,14 @@ class ServiceSaisie:
         pour une réponse acquise. Best-effort : le filet couvre `ApplicationError` **et**
         `DomainError`, sans quoi un déroulé incohérent faisait tomber la saisie en 500.
         """
-        if not phase.sources:
+        if not phase.sources or phase.etape_id is None:
             return True
         try:
-            source = resoudre(phase.ordre)
+            # ⚠️ **Par l'identité de l'étape** (ADR-0078) — 4ᵉ appelant du résolveur, oublié au
+            # premier correctif de revue. Passer le rang rendait `False` pour **toutes** les
+            # qualifications, donc `admises` vide, donc le repli destructeur décrit plus bas :
+            # les archers de la *basse* écrivant dans la feuille de la *haute* (E05US025).
+            source = resoudre(phase.etape_id)
         except (ApplicationError, DomainError):
             return False
         if source is None:

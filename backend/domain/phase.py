@@ -404,9 +404,9 @@ def ancrer_sur_les_etapes(
 RANG_INTROUVABLE = 0
 """Le rang d'une ancre que la table ne résout pas — hors de toute séquence, donc introuvable.
 
-⚠️ **La valeur importe** : aucune séquence ne commence à 0, donc `_anomalies_sources` rendra
-`SourceIntrouvable` **affichée** plutôt qu'un défaut d'ordre. C'est le pendant exact de
-l'`ordreOrphelin` du front (`features/deroule/sequence.ts`).
+⚠️ **La valeur importe** : aucune séquence ne commence à 0, donc `_anomalies_sources` localise
+`SourceIntrouvable` sur la phase plutôt que de rendre un défaut d'ordre. Même intention que
+l'`ordreOrphelin` du front, **valeur opposée** : lui prend `taille + 1`.
 """
 
 
@@ -939,11 +939,15 @@ def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
         for source in phase.sources:
             phase_source = par_ordre.get(source.ordre_source)
             if phase_source is None:
+                # ⚠️ La sentinelle ne se montre pas à l'organisateur : « une phase d'ordre 0 » ne
+                # veut rien dire pour lui. Même formulation que le front (« d'une phase retirée »).
+                motif = (
+                    "par une phase retirée du déroulé"
+                    if source.ordre_source == RANG_INTROUVABLE
+                    else f"par une phase d'ordre {source.ordre_source}, qui n'existe pas"
+                )
                 yield Anomalie(
-                    SourceIntrouvable(
-                        f"La phase {phase.ordre} est alimentée par une phase d'ordre "
-                        f"{source.ordre_source}, qui n'existe pas dans la séquence."
-                    ),
+                    SourceIntrouvable(f"La phase {phase.ordre} est alimentée {motif}."),
                     phase.ordre,
                 )
                 # Les contrôles suivants déréférencent la phase source : sans elle, ils n'ont pas
@@ -1003,7 +1007,13 @@ def _anomalies_recoupements(
     sautait quand cet effectif valait `None` — le cas par défaut —, si bien que deux plages
     entièrement bornées passaient sans examen (cf. `SourcePhase.intervalle`).
     """
-    doublons = [s for s in phase.sources if phase.sources.count(s) > 1]
+
+    # ⚠️ Les ancres **non résolues** sortent du contrôle : elles s'effondrent toutes sur
+    # `RANG_INTROUVABLE`, donc deux prélèvements visant deux étapes *différentes* et absentes
+    # deviennent égaux après projection — d'où un doublon puis un recouvrement, tous deux faux,
+    # servis sur la route publique de suivi. `SourceIntrouvable` les dit déjà, une fois chacun.
+    ancrees = tuple(s for s in phase.sources if s.ordre_source != RANG_INTROUVABLE)
+    doublons = [s for s in ancrees if ancrees.count(s) > 1]
     if doublons:
         yield Anomalie(
             SourcesQuiSeRecoupent(
@@ -1012,11 +1022,11 @@ def _anomalies_recoupements(
             ),
             phase.ordre,
         )
-    for ordre_source in sorted({source.ordre_source for source in phase.sources}):
+    for ordre_source in sorted({s.ordre_source for s in ancrees}):
         etape_source = par_ordre.get(ordre_source)
         effectif_source = None if etape_source is None else etape_source.effectif
         intervalles: list[tuple[int, int]] = []
-        for source in phase.sources:
+        for source in ancrees:
             if source.ordre_source != ordre_source:
                 continue
             intervalle = source.intervalle(effectif_source)

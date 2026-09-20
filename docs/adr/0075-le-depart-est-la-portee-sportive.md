@@ -159,7 +159,7 @@ appliquées dans l'US qui porte cet ADR :
 - `backend/infrastructure/db/repositories/moteur.py` + migration `0042`
 - `backend/tests/test_portee_sportive.py` (garde-fou mécanique)
 
-## Portée de la règle
+## Portée de la règle « Porté dans le code par » — tranchée le 08/08/2026
 
 > **Réouverture du 20/09/2026 — [ADR-0078](0078-la-sequence-s-ancre-sur-l-identite-de-l-etape.md)**
 > (E05US022). Décision appliquée par le moteur sportif et par la portée : elle entre au critère.
@@ -171,7 +171,7 @@ appliquées dans l'US qui porte cet ADR :
 >
 > ⚠️ **[ADR-0085](0085-une-phase-decerne-ses-rangs-si-rien-ne-preleve-dedans.md) est rouvert par
 > ricochet** : sa *Décision* §1 prescrivait de lire le graphe des sources « sur `ordre` et non sur
-> l'identité ». ADR-0078 inverse ce choix ; §1 est amendé en conséquence. « Porté dans le code par » — tranchée le 08/08/2026
+> l'identité ». ADR-0078 inverse ce choix ; §1 est amendé en conséquence.
 
 *(Cette section **borne** la règle que le présent ADR a fait naître le 06/08/2026 et que
 `CLAUDE.md` § Workflow énonce. Elle vit ici, et non seulement dans `CLAUDE.md`, pour qu'un lecteur
@@ -268,7 +268,16 @@ le code par » a été re-vérifiée symbole par symbole à cette occasion), **`
 le code par », elle a été écrite à cette occasion. ⚠️ Il figurait déjà parmi les « au moins cinq
 autres candidats » que le paragraphe `0050` ci-dessus énumérait sans porteur — c'est la 2ᵉ fois que
 cette liste de candidats est confirmée par les faits plutôt que par un audit, ce que `DETTE-091`
-porte), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). Et **`0077`** (E01US026, 19/09/2026 — l'ADR portait le placeholder *« à renseigner par l'US de résorption »* ; sa section « Porté dans le code par » a été écrite à cette occasion, **et deux points laissés ouverts ont été tranchés** dans sa *Conséquences* : le sort des remboursements et la définition de « vide ». Il entre au critère — la décision est appliquée par la **portée tournoi** et par la cascade transactionnelle de l'adapter. ⚠️ **`0057`** est rouvert dans le même diff — sa *Conséquences* disait « 3ᵉ chemin exclu, différé », ce que `DETTE-018` refermée rend faux — et il n'avait **aucune** section : elle a été écrite à cette occasion, nommant les **trois** réalisations de sa couture). Et **`0104`** (E06US009, 19/09/2026 — **décision 9** ajoutée : le classement des clubs se compte **par créneau**, `N` départs faisant `N` lauréats, ce qui retire de son § Contexte la promesse d'un club « le plus performant **de la journée** » ; sa section « Porté dans le code par » a été réécrite, et une phrase qui prêtait à `SectionPalmares` une garde de type qu'elle n'a pas a été corrigée en revue), **`0103`** une fois de plus dans le même diff (les symboles qu'elle nommait sont descendus de `PalmaresReponse` sur `SectionPalmaresReponse`, et son « Ce qui reste à surveiller » désignait `DETTE-045`, désormais résorbée). La liste dérive à
+porte), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). Et **`0077`** (E01US026, 19/09/2026 — l'ADR portait le placeholder *« à renseigner par l'US de résorption »* ; sa section « Porté dans le code par » a été écrite à cette occasion, **et deux points laissés ouverts ont été tranchés** dans sa *Conséquences* : le sort des remboursements et la définition de « vide ». Il entre au critère — la décision est appliquée par la **portée tournoi** et par la cascade transactionnelle de l'adapter. ⚠️ **`0057`** est rouvert dans le même diff — sa *Conséquences* disait « 3ᵉ chemin exclu, différé », ce que `DETTE-018` refermée rend faux — et il n'avait **aucune** section : elle a été écrite à cette occasion, nommant les **trois** réalisations de sa couture). Et **`0104`** (E06US009, 19/09/2026 — **décision 9** ajoutée : le classement des clubs se compte **par créneau**, `N` départs faisant `N` lauréats, ce qui retire de son § Contexte la promesse d'un club « le plus performant **de la journée** » ; sa section « Porté dans le code par » a été réécrite, et une phrase qui prêtait à `SectionPalmares` une garde de type qu'elle n'a pas a été corrigée en revue), **`0103`** une fois de plus dans le même diff (les symboles qu'elle nommait sont descendus de `PalmaresReponse` sur `SectionPalmaresReponse`, et son « Ce qui reste à surveiller » désignait `DETTE-045`, désormais résorbée). Et **`0078`** (E05US022, 20/09/2026 — la séquence
+s'ancre sur l'identité de l'étape : décision appliquée par le moteur sportif **et** par la portée,
+donc au critère. Trois points rouverts — son §5 sur-promettait, son §4 ne nommait qu'un sens de
+conversion, et un §3 d'amendement constate que `FormatTournoi.appliquer` ne peut plus être pure ;
+sa section « Porté dans le code par » a été écrite à cette occasion, en ouvrant chaque module.
+⚠️ **Inscrit en 2ᵉ passe de revue, par l'axe adversarial** : la 1ʳᵉ passe avait ajouté un chapeau
+en tête de cette section **sans toucher la liste nominative** — soit la **cinquième** occurrence du
+mode de panne que les paragraphes ci-dessous décrivent quatre fois. Un chapeau ne vaut pas une
+inscription), et **`0085`** par ricochet (sa *Décision* §1 prescrivait de lire le graphe des
+sources « sur `ordre` et non sur l'identité » ; `0078` inverse ce choix). La liste dérive à
 chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
 `CLAUDE.md`.
 

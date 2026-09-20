@@ -28,8 +28,14 @@ from application.erreurs import (
 from application.formats import ServiceFormats
 from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import Depart
-from domain.erreurs import DomainError, PhaseQualificationIncomplete, ProfondeurInvalide
+from domain.erreurs import (
+    ArretProgrammeInvalide,
+    ConfigurationBigShootOffInvalide,
+    PhaseQualificationIncomplete,
+    ProfondeurInvalide,
+)
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
 from domain.phase import (
@@ -319,7 +325,51 @@ def test_appliquer_refuse_un_brouillon_sans_detruire_le_deroule_en_place(ctx: Co
         ],
     )
 
-    with pytest.raises(DomainError):
+    # ⚠️ `ArretProgrammeInvalide`, pas `DomainError` : le décor pose **aussi** une source, et un
+    # `pytest.raises` large passerait au vert sur un refus venu d'ailleurs — c'est-à-dire sans
+    # prouver que l'invariant d'étape est bien évalué à blanc (correctif de 2ᵉ passe).
+    with pytest.raises(ArretProgrammeInvalide):
+        ctx.service.appliquer(ctx.tournoi_id, _id(brouillon.id))
+
+    assert ctx.deroules.par_tournoi(ctx.tournoi_id) == avant_etapes, "le déroulé est intact"
+    assert ctx.phases.par_tournoi(ctx.tournoi_id) == avant_phases, "les avancements aussi"
+
+
+def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire(
+    ctx: Contexte,
+) -> None:
+    """Les **quatre gardes de `DETTE-078`** entrent aussi dans la pose à blanc (2ᵉ passe, axe D).
+
+    Elles vivent sur `Phase.__post_init__`, pas sur `EtapeDeroule` : elles ne se déclenchent donc
+    qu'à `instancier`, que `ServiceFormats.appliquer` exécute **après** avoir supprimé le déroulé
+    en place. Le test jumeau ci-dessus choisit un `arrets`, cas couvert par les invariants
+    d'`EtapeDeroule` : il laissait croire la classe fermée alors que quatre cas sur neuf
+    détruisaient encore le tournoi avant de lever.
+    """
+    en_place = ctx.service.creer("En place", [_qualification(ordre=1, effectif=16)])
+    ctx.service.appliquer(ctx.tournoi_id, _id(en_place.id))
+    avant_etapes = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    avant_phases = ctx.phases.par_tournoi(ctx.tournoi_id)
+    assert avant_etapes and avant_phases
+
+    brouillon = ctx.service.creer(
+        "Brouillon",
+        [
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.PLACEMENT,
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+                # ⚠️ **Pas d'`effectif`** : avec lui, `EtapeDeroule` refuserait déjà le réglage
+                # (trop de rescapés au rang 1) et le test ne pincerait plus la garde de `Phase`.
+                # Un réglage de Big Shoot Off sur un placement est licite au format (ADR-0063),
+                # accepté par l'étape, et refusé à l'**instanciation**.
+                big_shoot_off=ConfigurationBigShootOff(eliminations=(2,)),
+            ),
+        ],
+    )
+
+    with pytest.raises(ConfigurationBigShootOffInvalide):
         ctx.service.appliquer(ctx.tournoi_id, _id(brouillon.id))
 
     assert ctx.deroules.par_tournoi(ctx.tournoi_id) == avant_etapes, "le déroulé est intact"

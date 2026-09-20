@@ -165,7 +165,10 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
 - **`backend/domain/format_tournoi.py`** — `ModelePhase.sources` reste en `SourceModele` (§3) ;
   `ModelePhase.pour_tournoi` et `ModelePhase.d_etape` **sont** les deux sens de la conversion (§4) ;
   `FormatTournoi.verifier_applicable` et `FormatTournoi.etapes_ordonnees` ont remplacé
-  `FormatTournoi.appliquer`.
+  `FormatTournoi.appliquer`. ⚠️ `verifier_applicable` **pose ET instancie à blanc** : les
+  invariants d'`EtapeDeroule` et les quatre gardes de `Phase.__post_init__` (`DETTE-078`) ne se
+  lèvent qu'à la construction, et `ServiceFormats.appliquer` détruit le déroulé en place avant de
+  poser le neuf. Sans les deux moitiés, un format invalide laissait le tournoi sans phases.
 - **`backend/domain/ports.py`** — `PhaseRepository.reordonner` a **disparu** ;
   `DerouleRepository.reordonner` est devenu `enregistrer_plusieurs` (§5, amendé ci-dessous).
 - **`backend/application/formats.py`** (`ServiceFormats.appliquer`) et

@@ -249,8 +249,9 @@ class ServicePhases:
         ]
         verifier_sequence(vues_du_deroule(reordonnees))  # valide l'ordre demandé
         # **En un bloc, pas étape par étape** : le rang n'est plus qu'un affichage (ADR-0078), mais
-        # une panne au milieu laisserait tout de même une numérotation trouée à l'écran. Ce n'est
-        # donc plus un contournement d'unicité — c'est une unité de travail (DETTE-025).
+        # une panne au milieu laisserait tout de même une numérotation trouée à l'écran. ⚠️ Ce
+        # geste **n'est plus un site de `DETTE-025`** depuis ADR-0078 — une seule écriture,
+        # atomique —, d'où l'absence de jeton : un `grep` de résorption n'a rien à trouver ici.
         return self._deroules.enregistrer_plusieurs(reordonnees)
 
     def supprimer(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> None:

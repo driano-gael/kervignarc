@@ -87,8 +87,13 @@ class Scenario:
         qualif = poser_phase_sql(
             db.session_factory, Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
         )
-        assert qualif.id is not None
+        assert qualif.id is not None and qualif.etape_id is not None
         self.qualif_id = qualif.id
+        # ⚠️ **Deux identifiants, et ils ne valent plus la même chose** (E05US022, ADR-0078) : la
+        # feuille de marque et les barrages pendent à l'**avancement** (`PhaseId`), mais l'atelier
+        # de composition adresse la **définition** (`EtapeDerouleId`). Le décor confondait les
+        # deux, vert tant que SQLite allouait 1 des deux côtés.
+        self.etape_id = qualif.etape_id
         for valeurs in (("10", "10", "10"), ("10", "9", "8"), ("10", "9", "8")):
             archer = archers.ajouter(
                 Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=categorie.id)
@@ -139,7 +144,7 @@ def _rangs(client: TestClient, tournoi_id: int) -> dict[int, int | None]:
 def _regler_le_seuil(client: TestClient, scenario: Scenario, jusqu_au: int | None) -> None:
     """Règle (ou efface) le seuil de barrage sur la phase de qualification."""
     reponse = client.put(
-        f"/api/v1/tournois/{scenario.depart_id}/phases/{scenario.qualif_id}",
+        f"/api/v1/tournois/{scenario.tournoi_id}/phases/{scenario.etape_id}",
         json={"type": "qualification", "sources": [], "barrage_jusqu_au": jusqu_au},
     )
     assert reponse.status_code == 200, reponse.text

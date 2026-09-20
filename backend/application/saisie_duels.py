@@ -416,7 +416,7 @@ class ServiceSaisieDuels:
         tournoi_id: TournoiId,
         phase_id: PhaseId,
         _chaine: tuple[PhaseId, ...] = (),
-        _cache: dict[int, ClassementSource | None] | None = None,
+        _cache: dict[EtapeDerouleId, ClassementSource | None] | None = None,
     ) -> tuple[Tableau, dict[int, LigneClassement]]:
         """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression).
 
@@ -446,38 +446,38 @@ class ServiceSaisieDuels:
         # **diamant** (une super-finale nourrie par le principal *et* la consolante, tous deux nés
         # du même tableau), la phase commune était reconstruite une fois par chemin — coût
         # exponentiel en profondeur, là où le registre et l'ADR annonçaient « fois la profondeur ».
-        cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
+        cache: dict[EtapeDerouleId, ClassementSource | None] = {} if _cache is None else _cache
         classement = self._classements.pour_depart(phase.depart_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
         # Le classement du départ vient d'être calculé : on l'installe au cache pour que la source
-        # visant la qualification ne le recalcule pas (`ServiceClassement.pour_depart` n'est pas
-        # mémoïsé — 7 accès repository, cf. `DETTE-031`). Sans ça, tout déroulé composé depuis
-        # E01US024 le payait **deux fois** par reconstruction, sur le thread écrivain unique.
-        # Sous `if phase.sources` : sans source déclarée, `preleves` n'appelle jamais le résolveur
-        # et l'entrée de cache est pure perte — un SELECT de plus par saisie de manche, sur le
-        # thread écrivain unique, pour le cas de la quasi-totalité des phases (relevé en revue).
-        qualification = next(
+        # visant la qualification ne le recalcule pas (`pour_depart` n'est pas mémoïsé — 7 accès
+        # repository, `DETTE-031`). Sous `if phase.sources` : sans source déclarée, `preleves`
+        # n'appelle jamais le résolveur et l'entrée serait pure perte.
+
+        # ⚠️ **La qualification de TÊTE, donc sans source** (2ᵉ passe de revue) : la valeur posée
+        # est le classement du **créneau entier**, ce que le résolveur ne rend que pour elle. Une
+        # qualification *prélevée* (ADR-0082) rend une tranche ; l'amorcer ainsi court-circuiterait
+        # sa vraie résolution, sans erreur ni signal. ⚠️ `not p.sources` est une **garde de
+        # défense** qu'aucun test ne pince : `par_depart` est trié par rang des deux côtés, donc la
+        # tête sort la première dès qu'elle existe (cf. la docstring du test homonyme).
+        tete = next(
             (
                 p
                 for p in self._phases.par_depart(phase.depart_id)
-                if p.type is TypePhase.QUALIFICATION
+                if p.type is TypePhase.QUALIFICATION and not p.sources
             ),
             None,
         )
-        # ⚠️ **Amorcé par l'identité, et estampillé** (ADR-0078, correctif de revue). La clé
-        # était restée le **rang** alors que le résolveur lit par identité : la mémoïsation ne
-        # prenait plus (double reconstruction sur le thread écrivain unique, `DETTE-031`) et, pire,
-        # une étape dont l'identifiant valait `1` récupérait le classement de la **qualification**
-        # — un tableau ensemencé avec la mauvaise population, sans erreur ni signal.
+        # ⚠️ **Amorcé par l'identité, et estampillé** (ADR-0078, correctif de revue). La clé était
+        # restée le **rang** alors que le résolveur lit par identité : la mémoïsation ne prenait
+        # plus (`DETTE-031`), et l'entrée fausse ci-dessus dormait faute d'être jamais lue.
         if (
             phase.sources
-            and qualification is not None
-            and qualification.etape_id is not None
-            and qualification.etape_id not in cache
+            and tete is not None
+            and tete.etape_id is not None
+            and tete.etape_id not in cache
         ):
-            cache[qualification.etape_id] = ClassementSource(
-                classement=classement, ordre=qualification.ordre
-            )
+            cache[tete.etape_id] = ClassementSource(classement=classement, ordre=tete.ordre)
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
@@ -507,7 +507,7 @@ class ServiceSaisieDuels:
         tournoi_id: TournoiId,
         depart_id: DepartId,
         _chaine: tuple[PhaseId, ...] = (),
-        _cache: dict[int, ClassementSource | None] | None = None,
+        _cache: dict[EtapeDerouleId, ClassementSource | None] | None = None,
     ) -> ResolveurClassement:
         """De quoi lire le classement de **n'importe quelle** phase amont de ce créneau (E05US024).
 
@@ -517,7 +517,7 @@ class ServiceSaisieDuels:
         d'E05US020 (plan de 8 pour un tableau de 4) est ce qui arrive quand la règle est recopiée.
         **Mémoïsé sur toute la descente** : coût linéaire en nombre de **phases**, pas de chemins.
         """
-        cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
+        cache: dict[EtapeDerouleId, ClassementSource | None] = {} if _cache is None else _cache
 
         def resoudre(etape_id: EtapeDerouleId) -> ClassementSource | None:
             if etape_id not in cache:
@@ -534,7 +534,7 @@ class ServiceSaisieDuels:
         depart_id: DepartId,
         etape_id: EtapeDerouleId,
         chaine: tuple[PhaseId, ...],
-        cache: dict[int, ClassementSource | None],
+        cache: dict[EtapeDerouleId, ClassementSource | None],
     ) -> ClassementSource | None:
         """Le classement produit **dans ce créneau** par l'étape désignée, ou `None`.
 
@@ -557,7 +557,7 @@ class ServiceSaisieDuels:
         depart_id: DepartId,
         phase: Phase,
         chaine: tuple[PhaseId, ...],
-        cache: dict[int, ClassementSource | None],
+        cache: dict[EtapeDerouleId, ClassementSource | None],
     ) -> ClassementSource | None:
         """Le classement de cette phase, selon son type — sans l'estampille de rang.
 

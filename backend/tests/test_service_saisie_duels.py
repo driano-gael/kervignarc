@@ -36,6 +36,7 @@ from domain.duel import ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.phase import IssueTour, Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import (
@@ -872,3 +873,48 @@ def test_le_tableau_reste_lisible_pendant_la_pause() -> None:
     etat = service.etat_tableau(monde.tournoi_id, monde.phase_id)
 
     assert etat.duels, "le tableau doit rester consultable pendant la pause"
+
+
+def test_le_cache_n_amorce_que_la_qualification_de_tete() -> None:
+    """**Une qualification PRÉLEVÉE ne s'amorce pas avec le classement du créneau entier.**
+
+    Correctif de 2ᵉ passe de revue, et trou ouvert par le correctif de la 1ʳᵉ : la valeur pré-posée
+    au cache est `pour_depart`, c'est-à-dire **tout le créneau** — ce que le résolveur ne rend que
+    pour une qualification **sans source**. Une qualification prélevée (licite, ADR-0082) rend une
+    tranche, avec son `rang_premier`. Tant que la clé était le rang, l'entrée n'était jamais lue et
+    la valeur fausse dormait ; réparer la clé l'a **activée**.
+
+    ⚠️ **Ce test pince la valeur, pas le garde-fou.** Retirer `not p.sources` de l'amorçage le
+    laisse vert, et il faut le savoir : les deux adapters rendent `par_depart` **trié par rang**,
+    et le domaine interdit une source à la phase de rang 1, donc dès qu'une qualification de tête
+    existe le `next(...)` la trouve la première — avec ou sans le filtre. Le filtre ne devient
+    déterminant que sur un déroulé **sans** qualification de tête (rang 1 non qualificatif, la
+    qualification prélevée derrière), configuration qu'aucun décor du dépôt ne sait monter
+    aujourd'hui. Ce qui est vérifié ici est l'invariant qui compte : une qualification prélevée
+    rend **une tranche**.
+    """
+    monde = _Monde()
+    for rang in range(8):
+        monde.inscrire_classe(("10", "10", str(max(1, 10 - rang))))
+    # Une seconde qualification, **prélevée** dans la première : c'est elle que le `next(...)`
+    # d'origine pouvait retenir, et l'amorcer avec le créneau entier était faux.
+    prelevee = monde.phases.ajouter(
+        Phase(
+            depart_id=monde.depart_id,
+            ordre=3,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(1, 3),
+            validation=GrainValidation.fin_de_serie(),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 4),),
+            etape_id=identite_d_etape(3),
+        )
+    )
+    assert prelevee.etape_id is not None
+
+    service = monde.service()
+    resolveur = service.resolveur_de_classement(monde.tournoi_id, monde.depart_id)
+    source = resolveur(prelevee.etape_id)
+
+    assert source is not None
+    # La tranche, pas le créneau : 4 prélevés sur 8 inscrits.
+    assert len(source.classement.lignes) == 4

@@ -97,6 +97,7 @@ def _reecrire_sources(
     lignes = list(
         connexion.execute(sa.text("SELECT id, tournoi_id, config FROM deroule_etape")).fetchall()
     )
+    retires = 0
     for etape_id, tournoi_id, brut in lignes:
         config = json.loads(brut)
         sources = _brutes(config)
@@ -104,11 +105,16 @@ def _reecrire_sources(
             continue
         config.pop("source", None)
         reecrites = [resoudre(tournoi_id, source) for source in sources]
-        config["sources"] = [source for source in reecrites if source is not None]
+        gardees = [source for source in reecrites if source is not None]
+        retires += len(reecrites) - len(gardees)
+        config["sources"] = gardees
         connexion.execute(
             sa.text("UPDATE deroule_etape SET config = :config WHERE id = :id"),
             {"config": json.dumps(config), "id": etape_id},
         )
+    if retires:
+        # Une perte de donnee, donc une trace — au meme titre que les avancements orphelins.
+        _JOURNAL.info("0056 : %s prelevement(s) sans etape resoluble retire(s).", retires)
 
 
 def upgrade() -> None:
@@ -133,14 +139,21 @@ def upgrade() -> None:
     if orphelines:
         # Déjà invisibles à toute lecture (écartées comme orphelines par les deux adapters) : les
         # supprimer est ce qui rend la colonne `NOT NULL` tenable sans inventer de rattachement.
-        # ⚠️ `franchissement_arret` pend à `phase` **sans** `ON DELETE CASCADE`, et Alembic tourne
-        # sans `PRAGMA foreign_keys` : sans cette purge, la suppression laisserait des lignes
-        # pendantes que rien ne signalerait jamais (correctif de revue).
+        # ⚠️ **Les TROIS tables filles, pas une** (2ᵉ passe de revue : la 1ʳᵉ rédaction n'en
+        # purgeait qu'une, sur un raisonnement qui valait pour les trois). Aucune n'a d'`ON DELETE
+        # CASCADE`, et Alembic tourne sans `PRAGMA foreign_keys` : la base serait sortie de la
+        # migration dans un état que son propre runtime (`engine.py`, FK actives) juge invalide.
+        # `barrage.phase_id` étant **nullable**, on le détache au lieu de le supprimer — un
+        # barrage est un tir réellement effectué, on ne le perd pas avec un avancement fantôme.
+        orphelines_sql = "(SELECT id FROM phase WHERE etape_id IS NULL)"
         connexion.execute(
-            sa.text(
-                "DELETE FROM franchissement_arret WHERE phase_id IN "
-                "(SELECT id FROM phase WHERE etape_id IS NULL)"
-            )
+            sa.text(f"DELETE FROM franchissement_arret WHERE phase_id IN {orphelines_sql}")
+        )
+        connexion.execute(
+            sa.text(f"DELETE FROM arret_de_circonstance WHERE phase_id IN {orphelines_sql}")
+        )
+        connexion.execute(
+            sa.text(f"UPDATE barrage SET phase_id = NULL WHERE phase_id IN {orphelines_sql}")
         )
         connexion.execute(sa.text("DELETE FROM phase WHERE etape_id IS NULL"))
         _JOURNAL.info("0056 : %s avancement(s) orphelin(s) supprimé(s).", orphelines)
@@ -149,7 +162,9 @@ def upgrade() -> None:
     def vers_identite(tournoi_id: int, source: dict[str, Any]) -> dict[str, Any] | None:
         ancre = source.pop("ordre_source", None)
         if ancre is None:
-            return source
+            # Un prélèvement sans ancre ne désigne rien et rendrait la `config` illisible :
+            # même traitement qu'une ancre non résoluble (2ᵉ passe de revue).
+            return None
         etape_id = par_tournoi.get(tournoi_id, {}).get(int(ancre))
         if etape_id is None:
             # ⚠️ **Rang sans étape : on RETIRE le prélèvement** (correctif de revue). Il ne
@@ -182,7 +197,7 @@ def downgrade() -> None:
     def vers_rang(_tournoi_id: int, source: dict[str, Any]) -> dict[str, Any] | None:
         ancre = source.pop("etape_source_id", None)
         if ancre is None:
-            return source
+            return None  # symétrique de l'aller
         ordre = rangs.get(int(ancre))
         # Même règle qu'à l'aller : une ancre qui ne se résout pas fait retirer le prélèvement.
         return None if ordre is None else {**source, "ordre_source": ordre}
