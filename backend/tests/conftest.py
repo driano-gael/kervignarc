@@ -744,10 +744,12 @@ _RANG_BRULE = 900
 _IDENTITE_BRULEE = 20_000
 """Identité de cette étape éphémère : **au-dessus de toutes les autres bandes**.
 
-⚠️ 20 000, pas 5 000 : la bande conventionnelle d'`identite_d_etape` court jusqu'à 8 999 et
-l'allocateur en mémoire démarre à 9 000. Une allocation SQL partie de 5 001 les recoupait dès la
-101ᵉ étape — inatteignable en pratique, et c'est exactement la forme du « vert par coïncidence »
-que cette US a payé quatre bloquants (3ᵉ passe de revue).
+⚠️ 20 000, pas 5 000 : la bande conventionnelle d'`identite_d_etape` court de 3 100 à 8 999 et
+l'allocateur en mémoire démarre à 9 000. Une allocation SQL partie de 5 001 recoupait la bande
+conventionnelle **dès sa première étape** — `identite_d_etape(1, 20)` vaut exactement 5 001, et
+le tournoi 20 est dans la plage que l'assertion de bande autorise. C'est la forme même du « vert
+par coïncidence » que cette US a payé quatre bloquants (chiffre rectifié en 5ᵉ passe : la
+rédaction de la 3ᵉ annonçait « la 101ᵉ étape », et c'était faux).
 
 ⚠️ La hauteur est le sujet. Brûler **un** identifiant ne donnait que `id == ordre + 1` : un
 lecteur resté sur le rang ne tombait pas dans le vide, il tombait sur l'étape **voisine** — une
@@ -948,9 +950,10 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
         # ⚠️ **Le pendant SQL d'`identite_d_etape`** : sur une base neuve SQLite alloue 1, 2, 3…,
         # si bien que l'étape de rang 1 recevait l'identité 1 et que tout l'étage d'intégration
         # restait **vert par coïncidence** devant la confusion rang / identité qui a coûté quatre
-        # bloquants à cette US. Le `finally` ci-dessous est ce qui empêche l'étape éphémère de
-        # survivre à un échec de la vraie pose.
-        brulee = decaler_les_identites_sql(session_factory, depart.tournoi_id)
+        # bloquants à cette US. ⚠️ **L'étape se construit AVANT la brûlure, et la pose est sous
+        # `finally`** : `EtapeDeroule.__post_init__` lance cinq contrôles que `Phase` ne lance
+        # pas, donc un décor sous `pytest.raises` laissait l'éphémère derrière lui — et comme
+        # elle devient le `MAX(id)`, plus rien ne la nettoyait ensuite (5ᵉ passe de revue).
         nouvelle = EtapeDeroule(
             tournoi_id=depart.tournoi_id,
             ordre=phase.ordre,
@@ -995,6 +998,7 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
             # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
             # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
         )
+        brulee = decaler_les_identites_sql(session_factory, depart.tournoi_id)
         try:
             etape = deroules.ajouter(nouvelle)
         finally:

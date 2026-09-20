@@ -1481,7 +1481,7 @@ def test_une_qualification_prelevee_sans_etape_ne_reclame_plus_personne() -> Non
     soit, et la flèche part ailleurs.
     """
     m = Montage()
-    haute, _basse, _autre = _monter_la_fourche(m)
+    haute, basse, _autre = _monter_la_fourche(m)
     amputee = m.phases.par_id(haute)
     assert amputee is not None
     m.phases.enregistrer(dataclasses.replace(amputee, etape_id=None))
@@ -1491,3 +1491,13 @@ def test_une_qualification_prelevee_sans_etape_ne_reclame_plus_personne() -> Non
     assert (
         m.series.par_archer(haute, m.archer_id) is None
     ), "une phase prélevée sans étape ne réclame plus personne"
+    # ⚠️ **Et la flèche n'est pas perdue** : sans cette seconde moitié, un service qui n'écrirait
+    # nulle part passerait tout autant. Elle atterrit **quelque part** dans le créneau, par le
+    # repli « la phase en cours » — laquelle exactement n'est pas l'objet de ce test.
+    ecrite = [
+        phase.id
+        for phase in m.phases.par_depart(_DEPART)
+        if phase.id is not None and m.series.par_archer(phase.id, m.archer_id) is not None
+    ]
+    assert ecrite, "la saisie retombe sur le repli, elle ne disparaît pas"
+    assert haute not in ecrite and basse not in ecrite

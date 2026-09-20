@@ -4044,6 +4044,15 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/formats.py",
+     "existe": true,
+     "symboles": [
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [
@@ -4391,12 +4400,8 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/application/bareme_qualification.py",
      "existe": true,
-     "symboles": [
-      "_decaler_dun_cran"
-     ],
-     "symboles_absents": [
-      "_decaler_dun_cran"
-     ],
+     "symboles": [],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4419,14 +4424,11 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/phases.py",
      "existe": true,
      "symboles": [
-      "_remapper",
-      "_realigner_avancements",
-      "PhaseSourceReferencee"
+      "PhaseSourceReferencee",
+      "ServicePhases.ajouter",
+      "ServicePhases.modifier"
      ],
-     "symboles_absents": [
-      "_remapper",
-      "_realigner_avancements"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4474,7 +4476,9 @@ window.ATLAS.decisions = {
       "EtapeDeroule.instancier",
       "etape_id",
       "table_des_rangs",
-      "vues_du_deroule"
+      "vues_du_deroule",
+      "EtapeDeroule.verifier_instanciable",
+      "Phase.__post_init__"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4491,7 +4495,6 @@ window.ATLAS.decisions = {
       "FormatTournoi.etapes_ordonnees",
       "verifier_applicable",
       "EtapeDeroule",
-      "Phase.__post_init__",
       "ServiceFormats.appliquer"
      ],
      "symboles_absents": [],
@@ -4519,12 +4522,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PhaseRepository",
-      "DerouleRepository.reordonner",
+      "DerouleRepository",
       "enregistrer_plusieurs"
      ],
-     "symboles_absents": [
-      "DerouleRepository.reordonner"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4534,12 +4535,9 @@ window.ATLAS.decisions = {
       "PhaseORM.etape_id",
       "deroule_etape.id",
       "uq_phase_depart_etape",
-      "PhaseORM.ordre",
-      "uq_deroule_tournoi_ordre"
+      "PhaseORM"
      ],
-     "symboles_absents": [
-      "uq_deroule_tournoi_ordre"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4584,6 +4582,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "decaler_les_identites_sql",
       "poser_phase_sql",
+      "PhaseId",
+      "EtapeDerouleId",
       "deroule_etape"
      ],
      "symboles_absents": [],

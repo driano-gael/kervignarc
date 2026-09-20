@@ -161,14 +161,18 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
   concrète entre dans les contrôles de séquence. `Phase.etape_id` y est déclaré ; `Phase.ordre`
   subsiste comme **rang d'affichage**, dérivé de l'étape et non persisté.
 - **`backend/domain/deroule_etape.py`** — `EtapeDeroule.instancier`, qui pose `etape_id` sur
-  l'avancement, plus `table_des_rangs` et `vues_du_deroule`.
+  l'avancement, plus `table_des_rangs` et `vues_du_deroule`. ⚠️ **Et
+  `EtapeDeroule.verifier_instanciable`**, la garde que **tout site écrivant une étape doit
+  appeler avant d'écrire** : quatre gardes de type vivent sur `Phase.__post_init__`, donc ne se
+  lèvent qu'à l'instanciation (ex-`DETTE-0`+`78`, résorbée le 20/09/2026). C'est une convention
+  que rien ne mécanise — un quatrième site d'écriture ne serait attrapé par aucun outil.
 - **`backend/domain/format_tournoi.py`** — `ModelePhase.sources` reste en `SourceModele` (§3) ;
   `ModelePhase.pour_tournoi` et `ModelePhase.d_etape` **sont** les deux sens de la conversion (§4) ;
   `FormatTournoi.verifier_applicable` et `FormatTournoi.etapes_ordonnees` ont remplacé la
-  méthode unique de matérialisation, supprimée (§3). ⚠️ `verifier_applicable` **pose ET instancie à blanc** : les
-  invariants d'`EtapeDeroule` et les quatre gardes de `Phase.__post_init__` (`DETTE-078`) ne se
-  lèvent qu'à la construction, et `ServiceFormats.appliquer` détruit le déroulé en place avant de
-  poser le neuf. Sans les deux moitiés, un format invalide laissait le tournoi sans phases.
+  méthode unique de matérialisation, supprimée (§3). ⚠️ `verifier_applicable` **pose ET vérifie
+  l'instanciabilité** : les invariants d'`EtapeDeroule` et les quatre gardes de type ne se lèvent
+  qu'à la construction, et `ServiceFormats.appliquer` détruit le déroulé en place avant de poser
+  le neuf. Sans les deux moitiés, un format invalide laissait le tournoi sans phases.
 - **`backend/migrations/versions/0056_ancrage_par_identite.py`** — la reprise : `phase.etape_id`
   rempli par la jointure d'hier, les `config` réécrites, `uq_deroule_tournoi_ordre` levée.
   ⚠️ Avant de supprimer un avancement orphelin, elle **supprime sept de ses huit tables filles**
@@ -178,20 +182,27 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
   moteur sans le `PRAGMA foreign_keys=ON` de `infrastructure/db/engine.py`.
 - **`backend/tests/conftest.py`** — `identite_d_etape(ordre, tournoi_id)` et
   `decaler_les_identites_sql` : **décor habilitant, et un garde partiel**. Les deux retirent la
-  coïncidence identité ↔ rang qui masquait les violations ailleurs ; le seul organe qui *garde*
-  est l'`assert etape.id != etape.ordre` de `poser_phase_sql`, et il ne voit que ce qui passe par
-  lui — un décor qui écrit `deroule_etape` lui-même recoïncide sans un rouge (`DETTE-044`).
+  coïncidence identité ↔ rang qui masquait les violations ailleurs. Deux organes *gardent* :
+  l'`assert etape.id != etape.ordre` de `poser_phase_sql`, qui ne voit que ce qui passe par lui,
+  et l'assertion de **disjonction** `PhaseId` ↔ `EtapeDerouleId` du contrat de conformité de
+  ports, plus forte mais locale. Un décor qui écrit `deroule_etape` lui-même hors de ces deux
+  chemins recoïncide sans un rouge (`DETTE-044`).
 - **`backend/domain/ports.py`** — la méthode de réordonnancement de `PhaseRepository` a
-  **disparu** ;
-  `DerouleRepository.reordonner` est devenu `enregistrer_plusieurs` (§5, amendé ci-dessous).
+  **disparu** ; celle de `DerouleRepository` est devenue `enregistrer_plusieurs` (§5, amendé
+  ci-dessous). ⚠️ Les deux noms supprimés ne sont **pas** répétés ici : le contrôle d'atlas
+  cherche les symboles d'une entrée par présence de texte dans le module, donc les citer les
+  ferait passer pour présents (même piège qu'ADR-0075 ; `DETTE-068` élargie).
 - **`backend/application/formats.py`** (`ServiceFormats.appliquer`) et
   **`backend/application/simulation_format.py`** — les **deux** sites qui matérialisent un format :
   ils posent les étapes dans l'ordre des rangs et enrichissent la table au fur et à mesure.
   ⚠️ Jumeaux : les faire diverger ferait simuler un déroulé dont les prélèvements ne sont pas ceux
   du vrai.
-- **`backend/application/phases.py`** — `_remapper` et `_realigner_avancements` ont **disparu** ;
-  la garde `PhaseSourceReferencee` compare désormais des identités.
-- **`backend/application/bareme_qualification.py`** — `_decaler_dun_cran` a **disparu** : insérer
+- **`backend/application/phases.py`** — les deux fonctions de remappage et de réalignement des
+  avancements ont **disparu** ; la garde `PhaseSourceReferencee` compare désormais des identités.
+  ⚠️ `ServicePhases.ajouter` et `ServicePhases.modifier` appellent `verifier_instanciable()`
+  **avant** d'écrire — deux des trois porteurs de la convention ci-dessus.
+- **`backend/application/bareme_qualification.py`** — la fonction de décalage d'un cran a
+  **disparu** (même raison de ne pas la nommer qu'à l'entrée précédente) : insérer
   la qualification en tête ne décale plus qu'un rang.
 - **`backend/application/prelevement.py`** et **`backend/application/saisie_duels.py`** — le
   résolveur de classement (`ResolveurClassement`, `_classement_de_l_etape`) est indexé sur
@@ -199,9 +210,9 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
 - **`backend/application/palmares.py`** et **`backend/application/routage.py`** — les deux lectures
   du graphe des sources (« rien ne prélève ici » ; « où vont les perdants ») comparent des
   identités.
-- **`backend/infrastructure/db/models.py`** — `PhaseORM.etape_id` (FK vers `deroule_etape.id`),
-  `uq_phase_depart_etape`, et la disparition de `PhaseORM.ordre` comme de
-  `uq_deroule_tournoi_ordre`.
+- **`backend/infrastructure/db/models.py`** — `PhaseORM.etape_id` (FK vers `deroule_etape.id`) et
+  `uq_phase_depart_etape`. La colonne de rang de `PhaseORM` et l'unicité `(tournoi, ordre)` du
+  déroulé ont disparu — noms non répétés, même raison qu'aux entrées précédentes.
 - **`backend/infrastructure/db/repositories/moteur.py`** — `_source_json` (le **seul** endroit du
   dépôt où les deux ancres se croisent), `_vers_sources_d_etape` / `_vers_sources_de_modele`, et
   `PhaseRepositorySQL._etapes` / `_assembler`, qui joignent par identité.

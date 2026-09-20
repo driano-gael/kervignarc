@@ -778,40 +778,62 @@ def test_un_titre_trop_long_est_refuse_a_la_frontiere(
         assert refus.status_code == 400, refus.text
 
 
+@pytest.mark.parametrize(
+    ("type_licite", "reglage"),
+    [
+        ("placement", {"suisse": {"nb_rondes": 3}}),
+        ("placement", {"poules": {"taille_visee": 4}}),
+        ("placement", {"big_shoot_off": {"eliminations": [2]}}),
+        # ⚠️ Pas un placement ici : le placement **monte** un tableau, donc une profondeur y est
+        # licite. Même arbitrage que dans `test_service_formats._mal_regle`.
+        ("echauffement", {"profondeur": {"nom": "top_n", "jusqu_au": 4}}),
+    ],
+    ids=["suisse", "poules", "big_shoot_off", "profondeur"],
+)
 def test_un_reglage_pose_sur_le_mauvais_type_est_refuse_sans_rien_persister(
-    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+    app_phases: FastAPI,
+    connecter_admin: ConnecterAdmin,
+    type_licite: str,
+    reglage: dict[str, object],
 ) -> None:
-    """`DETTE-078` résorbée : le refus arrive **avant** l'écriture, à l'ajout **et** à l'édition.
+    """Le refus arrive **avant** l'écriture, à l'ajout **et** à l'édition (E05US022).
 
     Les quatre gardes concernées (`profondeur`, `poules`, `big_shoot_off`, `suisse` posés sur un
     type qui ne les lit pas) vivent sur `Phase.__post_init__`. Avant le correctif : l'ajout
     laissait une **étape orpheline** qui brûlait un rang, et l'édition répondait **200** puis
     faisait tomber chaque lecture en 422 — un tournoi existant devenait illisible.
+
+    ⚠️ Le 422 vient bien du **domaine** et non de Pydantic : la frontière rend 400 sur une
+    requête malformée (cf. `test_un_titre_trop_long_est_refuse_a_la_frontiere`). Le test traverse
+    donc réellement le service.
     """
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
 
         refus = client.post(
-            f"/api/v1/tournois/{tournoi_id}/phases",
-            json={"type": "placement", "suisse": {"nb_rondes": 3}},
+            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": type_licite, **reglage}
         )
         assert refus.status_code == 422, refus.text
         assert (
             client.get(f"/api/v1/tournois/{tournoi_id}/phases").json() == []
         ), "un refus ne doit laisser aucune étape derrière lui"
 
-        creee = client.post(f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "placement"})
+        creee = client.post(f"/api/v1/tournois/{tournoi_id}/phases", json={"type": type_licite})
         assert creee.status_code == 201, creee.text
         etape_id = int(creee.json()["id"])
 
         refus_edition = client.put(
             f"/api/v1/tournois/{tournoi_id}/phases/{etape_id}",
-            json={"type": "placement", "sources": [], "suisse": {"nb_rondes": 3}},
+            json={"type": type_licite, "sources": [], **reglage},
         )
         assert refus_edition.status_code == 422, refus_edition.text
-        # La lecture doit rester possible : c'est elle que la persistance d'un réglage fantôme
-        # faisait tomber en 422, sur toutes les surfaces à la fois.
+        # La définition se relit (elle n'a pas bougé) — et surtout **l'avancement du créneau**,
+        # qui est la surface qui tombait : c'est elle qui passe par `instancier`, la définition
+        # non. Sans cette seconde lecture, le test épingle la mauvaise route.
         relue = client.get(f"/api/v1/tournois/{tournoi_id}/phases")
         assert relue.status_code == 200, relue.text
-        assert relue.json()[0]["suisse"] is None
+        assert all(relue.json()[0][cle] is None for cle in reglage)
+        creneau = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()[0]["id"]
+        avancement = client.get(f"/api/v1/departs/{creneau}/phases")
+        assert avancement.status_code == 200, avancement.text

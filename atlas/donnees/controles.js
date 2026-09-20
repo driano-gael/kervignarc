@@ -173,30 +173,6 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce DerouleRepository.reordonner dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0078"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _decaler_dun_cran dans « backend/application/bareme_qualification.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0078"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _remapper, _realigner_avancements dans « backend/application/phases.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0078"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce uq_deroule_tournoi_ordre dans « backend/infrastructure/db/models.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0078"
-  },
-  {
-   "code": "portage-symbole-absent",
    "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0080"
@@ -336,6 +312,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 55
+  "signaux": 51
  }
 };

@@ -555,16 +555,6 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
-   "identifiant": "078",
-   "introduite_par": [
-    "E05US027",
-    "E05US022"
-   ],
-   "ouverte": true,
-   "resorption_us": [],
-   "severite": "✅ résorbée le 20/09/2026 (E05US022)"
-  },
-  {
    "identifiant": "079",
    "introduite_par": [
     "E05US027"
@@ -628,9 +618,7 @@ window.ATLAS.avancement = {
     "E16US008"
    ],
    "ouverte": true,
-   "resorption_us": [
-    "E05US022"
-   ],
+   "resorption_us": [],
    "severite": "mineur"
   },
   {
@@ -2854,12 +2842,11 @@ window.ATLAS.avancement = {
     "0085"
    ],
    "dettes_introduites": [
-    "044",
-    "078"
+    "044"
    ],
    "dettes_resorbees": [
     "026",
-    "091"
+    "078"
    ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
@@ -3011,7 +2998,6 @@ window.ATLAS.avancement = {
     "064",
     "065",
     "066",
-    "078",
     "079"
    ],
    "dettes_resorbees": [

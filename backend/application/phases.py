@@ -31,7 +31,6 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import DepartId
 from domain.deroule_etape import (
-    DEPART_A_BLANC,
     EtapeDeroule,
     EtapeDerouleId,
     vues_du_deroule,
@@ -166,11 +165,10 @@ class ServicePhases:
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence(vues_du_deroule([*existantes, nouvelle]))
-        # ⚠️ **Instanciation à blanc, avant l'écriture** (`DETTE-078`, résorbée le 20/09/2026) :
-        # quatre gardes — `profondeur`, `poules`, `big_shoot_off`, `suisse` posés sur un type qui
-        # ne les lit pas — vivent sur `Phase.__post_init__`, donc ne se levaient qu'**après** que
-        # l'étape avait rejoint le déroulé. Même remède que `FormatTournoi.verifier_applicable`.
-        nouvelle.instancier(DEPART_A_BLANC)
+        # ⚠️ **Avant l'écriture** (E05US022) : cinq gardes de `Phase` vivent
+        # sur `Phase.__post_init__`, donc ne se levaient qu'**après** que l'étape avait rejoint le
+        # déroulé. Même remède que `FormatTournoi.verifier_applicable`.
+        nouvelle.verifier_instanciable()
         posee = self._deroules.ajouter(nouvelle)
         for depart_id in self._creneaux(tournoi_id):
             self._phases.ajouter(posee.instancier(depart_id))
@@ -230,12 +228,11 @@ class ServicePhases:
         )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
         verifier_sequence(vues_du_deroule([*autres, modifiee]))
-        # ⚠️ **Instanciation à blanc, avant l'écriture** (`DETTE-078`, résorbée le 20/09/2026) :
-        # `vues_du_deroule` ne porte ni `profondeur`, ni `poules`, ni `big_shoot_off`, ni
-        # `suisse` — les quatre gardes qui vivent sur `Phase.__post_init__` ne se levaient donc
-        # **jamais** ici. Un retypage gardant son réglage répondait 200, persistait, et faisait
-        # tomber **chaque lecture** ultérieure en 422 : suivi, pilotage, affichage public.
-        modifiee.instancier(DEPART_A_BLANC)
+        # ⚠️ **Avant l'écriture** (E05US022) : `vues_du_deroule` ne porte ni `profondeur`,
+        # ni `poules`, ni `big_shoot_off`, ni `suisse`, donc les quatre gardes de
+        # `Phase.__post_init__` ne se levaient **jamais** ici. Un retypage gardant son réglage
+        # répondait 200, persistait, et faisait tomber **chaque lecture** en 422.
+        modifiee.verifier_instanciable()
         return self._deroules.enregistrer(modifiee)
 
     def reordonner(

@@ -17,6 +17,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import logging
+import re
 from collections.abc import Sequence
 
 import pytest
@@ -600,7 +601,7 @@ def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx:
     assert len(suivi.avancement.blocs) == 2, "le suivi reste servi, dégradé"
     assert capture.messages == [
         f"Suivi du départ {ctx.depart_id} : la phase 2 est alimentée par une étape absente "
-        "du déroulé ; bloc dégradé."
+        "du déroulé ; son bloc s'affiche dégradé."
     ], "une seule trace, au singulier, nommant le créneau ET le rang — et pas une par appel"
 
 
@@ -668,11 +669,14 @@ def test_une_ancre_perdue_de_plus_se_signale_et_la_reparation_reouvre_le_signal(
         logger.setLevel(niveau)
         logger.disabled = desactive
 
-    assert [m.split(" : ")[1] for m in capture.messages] == [
-        "la phase 2 est alimentée par une étape absente du déroulé ; bloc dégradé.",
-        "les phases 2, 3 sont alimentées par une étape absente du déroulé ; bloc dégradé.",
-        "la phase 2 est alimentée par une étape absente du déroulé ; bloc dégradé.",
-        "la phase 2 est alimentée par une étape absente du déroulé ; bloc dégradé.",
+    # ⚠️ **Les rangs, pas la phrase** : le libellé exact est épinglé par le test jumeau, qui
+    # existe pour ça. Le recopier quatre fois de plus ferait réécrire trois tests à chaque
+    # retouche de formulation — et il y en a déjà eu deux en deux passes de revue.
+    assert [re.findall(r"\d+", m.split(" : ")[1]) for m in capture.messages] == [
+        ["2"],
+        ["2", "3"],
+        ["2"],
+        ["2"],
     ], "aggravation, allègement, puis rechute après retour à la normale"
 
 

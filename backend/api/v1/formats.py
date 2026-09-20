@@ -67,11 +67,14 @@ class SourceDTO(BaseModel):
 
     # ⚠️ **Aucune borne Pydantic ici, délibérément** — même convention que le DTO jumeau
     # (`api/v1/phases.SourceDTO`) : la frontière ne doit pas devenir un second lieu d'invariants
-    # (règle 6). Une borne `ge=1` a été posée puis **retirée** en 4ᵉ passe de revue : ce DTO sert
-    # aussi la **réponse** (`de_agregat`), si bien qu'un format déjà stocké avec `ordre_source: 0`
-    # — persistable, un format s'enregistre en brouillon (ADR-0063) — faisait tomber tout
-    # `GET /formats` en 500, sans écran pour le réparer. Un rang hors séquence est diagnostiqué
-    # par le domaine, comme n'importe quel autre.
+    # (règle 6). Une borne `ge=1` posée puis **retirée** en 4ᵉ passe de revue : ce DTO sert aussi
+    # la **réponse** (`de_agregat`), si bien qu'un format déjà stocké à `ordre_source: 0` —
+    # persistable, ADR-0063 — faisait tomber tout `GET /formats` en 500, sans écran pour le
+    # réparer. Le domaine le diagnostique comme tout rang hors séquence.
+
+    # ⚠️ Deux imprécisions assumées : le libellé rendu dit « une phase retirée du **déroulé** »
+    # même en bibliothèque, et les ancres non résolues sortent du contrôle de recoupement.
+
     ordre_source: int
     nature: NatureSource = NatureSource.RANGS
     rang_debut: int = 1

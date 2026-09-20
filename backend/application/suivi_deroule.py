@@ -197,19 +197,25 @@ class ServiceSuiviDeroule:
         if rangs:
             self._ancres_perdues_signalees[depart_id] = rangs
         else:
-            # Un créneau redevenu sain **sort** du dictionnaire : le garder ferait grossir d'une
-            # entrée par créneau lu, et le prochain défaut y serait bien vu comme un changement.
+            # Un créneau redevenu sain **sort** du dictionnaire. Pure hygiène : la comparaison
+            # d'entrée retombe sur le `()` par défaut, donc y laisser `()` donnerait le même
+            # comportement — le dictionnaire est de toute façon borné par le nombre de créneaux
+            # **ayant connu un défaut**, pas par le nombre de lectures.
             self._ancres_perdues_signalees.pop(depart_id, None)
             return
-        sujet = (
-            f"la phase {rangs[0]} est alimentée"
+        sujet, queue = (
+            (f"la phase {rangs[0]} est alimentée", "son bloc s'affiche dégradé")
             if len(rangs) == 1
-            else f"les phases {', '.join(map(str, rangs))} sont alimentées"
+            else (
+                f"les phases {', '.join(map(str, rangs))} sont alimentées",
+                "leurs blocs s'affichent dégradés",
+            )
         )
         _logger.warning(
-            "Suivi du départ %s : %s par une étape absente du déroulé ; bloc dégradé.",
+            "Suivi du départ %s : %s par une étape absente du déroulé ; %s.",
             depart_id,
             sujet,
+            queue,
         )
 
     def brancher_lecteur_avancement(

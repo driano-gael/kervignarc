@@ -400,7 +400,7 @@ def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire
     fabriquer: Callable[[TypePhase], ModelePhase],
     erreur: type[Exception],
 ) -> None:
-    """Les **quatre gardes de `DETTE-078`** entrent aussi dans la pose à blanc (2ᵉ passe, axe D).
+    """Les **quatre gardes de type** entrent aussi dans la pose à blanc (2ᵉ passe, axe D).
 
     Elles vivent sur `Phase.__post_init__`, pas sur `EtapeDeroule` : elles ne se déclenchent donc
     qu'à `instancier`, que `ServiceFormats.appliquer` exécute **après** avoir supprimé le déroulé

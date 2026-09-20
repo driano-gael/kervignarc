@@ -20,7 +20,6 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
 from domain.deroule_etape import (
-    DEPART_A_BLANC,
     EtapeDeroule,
     EtapeDerouleId,
     table_des_rangs,
@@ -448,12 +447,11 @@ class FormatTournoi:
         factices: dict[int, EtapeDerouleId] = {}
         for modele in self.etapes_ordonnees:
             etape = modele.pour_tournoi(tournoi_id, factices)
-            # ⚠️ **Et l'INSTANCIATION à blanc, pas seulement l'étape** (2ᵉ passe, axe D) : les
-            # quatre gardes de `DETTE-078` — un réglage de poules, de Big Shoot Off, de système
-            # suisse ou une profondeur posés sur un type qui ne les lit pas — vivent sur
-            # `Phase.__post_init__`, donc à `instancier`. Sans cette seconde moitié, quatre cas sur
-            # neuf échappaient au contrôle et `appliquer` détruisait le déroulé **avant** de lever.
-            etape.instancier(DEPART_A_BLANC)
+            # ⚠️ **Et l'instanciabilité, pas seulement l'étape** (2ᵉ passe, axe D) : les quatre
+            # gardes de type vivent sur `Phase.__post_init__`. Sans cette seconde moitié,
+            # quatre cas sur neuf échappaient au contrôle et la matérialisation détruisait le
+            # déroulé en place **avant** de lever.
+            etape.verifier_instanciable()
             factices[modele.ordre] = _IDENTITE_A_BLANC + modele.ordre
 
     @property

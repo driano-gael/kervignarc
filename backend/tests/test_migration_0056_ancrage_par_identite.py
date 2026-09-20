@@ -262,12 +262,16 @@ def _preparer(tmp_path: Path) -> tuple[Config, sa.Engine]:
 def _tables_filles(engine: sa.Engine) -> set[str]:
     """Les tables qui portent une clé étrangère vers `phase`, **lues sur le schéma**.
 
-    ⚠️ **Au schéma `0055`**, celui que cette migration reçoit — une fille ajoutée par une
-    migration **postérieure** ne la concerne pas. Dans cette limite, l'assertion de couverture
-    rougit si une fille du schéma n'est pas semée : c'est ce qui fait de `_accrocher_les_filles`
-    un décor d'invariant et non une liste du jour. La 3ᵉ passe avait cru tenir cet invariant avec
-    une liste écrite à la main — et c'est une liste écrite à la main qui avait produit le
-    bloquant qu'elle corrigeait.
+    ⚠️ **Première génération seulement, et au schéma `0055`** — celui que cette migration
+    reçoit ; une fille ajoutée par une migration **postérieure** ne la concerne pas. Les
+    petites-filles ne sont pas dérivées : il n'y en a que deux, `volee` (sous `serie`, purgée et
+    assertée à part) et `barrage_tir` (sous `barrage`, qui est détachée et non supprimée). Une
+    table ajoutée demain sous une fille échapperait aux deux garde-fous, le `foreign_key_check`
+    du test ne retenant que les violations de parent `phase`. Dans cette limite, l'assertion de
+    couverture rougit si une fille du schéma n'est pas semée : c'est ce qui fait de
+    `_accrocher_les_filles` un décor d'invariant et non une liste du jour. La 3ᵉ passe avait cru
+    tenir cet invariant avec une liste écrite à la main — et c'est une liste écrite à la main qui
+    avait produit le bloquant qu'elle corrigeait.
     """
     inspecteur = sa.inspect(engine)
     return {

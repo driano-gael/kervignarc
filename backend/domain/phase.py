@@ -619,13 +619,12 @@ class Phase:
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
             )
-        # ⚠️ **Quatre gardes vivent sur `Phase`, pas sur l'étape** — `profondeur` ci-dessus,
-        # `poules` ci-dessus, `big_shoot_off` et `suisse` ci-dessous ; `colline` et `decoupage`,
-        # eux, sont portés par `EtapeDeroule.__post_init__`. Elles ne se lèvent donc qu'à
-        # `instancier()`, **après** l'écriture de l'étape. C'est pourquoi les trois sites qui
-        # écrivent instancient **à blanc** avant (`DEPART_A_BLANC`, ex-`DETTE-078`, résorbée le
-        # 20/09/2026). ⚠️ Retirer une de ces trois poses rouvre le défaut sans rien faire rougir
-        # d'autre que son test d'API dédié.
+        # ⚠️ **CINQ gardes vivent sur `Phase`, pas sur l'étape** : `profondeur` et `poules`
+        # ci-dessus, `big_shoot_off`, `suisse` et `barrage_jusqu_au` ci-dessous — `colline` et
+        # `decoupage` sont portés par `EtapeDeroule`. Elles ne se lèvent donc qu'à `instancier()`,
+        # **après** l'écriture de l'étape : d'où l'appel à `verifier_instanciable()` aux trois
+        # sites qui écrivent (E05US022). Retirer l'un d'eux ne fait rougir que son test dédié —
+        # d'API pour les deux de `ServicePhases`, de service pour celui du format.
         if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
             # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
             # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le

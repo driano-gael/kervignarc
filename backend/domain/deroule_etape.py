@@ -45,13 +45,11 @@ from domain.tournoi import TournoiId
 EtapeDerouleId = int
 """Identifiant technique d'une étape de déroulé, attribué par la persistance."""
 
-DEPART_A_BLANC = DepartId(0)
-"""Créneau fictif des **instanciations à blanc** : `EtapeDeroule.instancier(DEPART_A_BLANC)`.
+_DEPART_A_BLANC = DepartId(0)
+"""Créneau fictif des instanciations à blanc — **privé** : ce n'est pas un créneau.
 
-⚠️ Quatre gardes (`profondeur`, `poules`, `big_shoot_off`, `suisse` posés sur un type qui ne les
-lit pas) vivent sur `Phase.__post_init__`, pas sur l'étape : seule une instanciation les lève.
-Les appelants qui **écrivent** doivent donc instancier à blanc **avant** (DETTE-078, résorbée le
-20/09/2026). `Phase.__post_init__` ne lit jamais `depart_id`, la valeur est donc inerte.
+`Phase.__post_init__` ne lit jamais `depart_id`, donc la valeur est inerte ; l'exposer inviterait
+à la prendre pour un identifiant licite et à persister une phase rattachée au néant.
 """
 
 
@@ -261,7 +259,7 @@ class EtapeDeroule:
             # `Phase.__post_init__`, donc à `instancier()`, c'est-à-dire **après** que l'étape a
             # rejoint le déroulé. Le poser ici le rend antérieur à toute écriture. Les quatre
             # réglages voisins vivent toujours sur `Phase` ; ce sont les trois sites d'écriture
-            # qui instancient à blanc pour eux (`DEPART_A_BLANC`, ex-`DETTE-078`).
+            # qui appellent `verifier_instanciable` pour eux.
             raise ConfigurationCollineInvalide(
                 "Un réglage de colline ne se pose que sur une phase de type « colline »."
             )
@@ -321,6 +319,17 @@ class EtapeDeroule:
             decoupage=self.decoupage,
             statut=StatutPhase.A_VENIR,
         )
+
+    def verifier_instanciable(self) -> None:
+        """Lève si cette étape ne pourra pas s'instancier — **à appeler avant d'écrire**.
+
+        ⚠️ **Cinq** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
+        `big_shoot_off`, `suisse` posés sur un type qui ne les lit pas, plus `barrage_jusqu_au`.
+        Sans cet appel, une étape invalide **rejoint le déroulé** puis fait tomber chaque lecture
+        (E05US022). Une **méthode**, et non un `instancier(...)` dont on jette le résultat : un
+        résultat perdu se lit comme du code mort, et un nettoyage le supprimerait sans rougir.
+        """
+        self.instancier(_DEPART_A_BLANC)
 
     def avec_ordre(self, ordre: int) -> EtapeDeroule:
         """Renvoie une copie à un nouveau rang dans le déroulé (réordonnancement)."""
