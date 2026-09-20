@@ -434,6 +434,17 @@ window.ATLAS.historique = {
    "us": []
   }
  ],
+ "enchainer-les-phases-de-revue": [
+  {
+   "adr": [],
+   "date": "2026-09-20",
+   "motif": "chore(conventions): versionner deux conventions de conduite de revue",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "44b240744f",
+   "us": []
+  }
+ ],
  "erreurs-typees-par-couche": [
   {
    "adr": [],

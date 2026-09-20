@@ -74,6 +74,17 @@ python backend/porte.py            # la CI en entier, en SEQUENTIEL (~13 min) �
 cd backend && python run_dev.py        # --no-build réutilise frontend/dist/
 ```
 
+**Une porte qui tourne s'annonce.** <!--regle:annoncer-la-porte-en-cours--> Elle s'exécute en tâche de fond, sa sortie ne parvient
+pas à l'utilisateur, et un passage complet dure une quinzaine de minutes : sans un mot, il n'a que
+la parole de l'assistant. Deux lignes dans le texte **visible** — au **lancement** (« porte complète
+en cours, ~13 min »), puis au **retour** le verdict **et le chemin du journal**, `.porte/<n>/`, qui
+porte un `.txt` par vérification. ⚠️ **L'exit du shell n'est pas le verdict** : un `echo EXIT=$?`
+final masque le code de `porte.py`, et une notification a déjà annoncé « exit 0 » sur une porte à
+deux rouges — c'est le tableau `n/m · x rouge(s)` qui fait foi. Pour voir tourner en direct,
+l'utilisateur dispose du préfixe `!` (`! python backend/porte.py --rapide`), qui exécute dans sa
+session. *(Demandé le 20/09/2026 : « j'ai un doute à chaque fois, l'exécution de la porte n'est pas
+visible dans la console ».)*
+
 **L'étage rapide se lance à chaque étape d'implémentation**, l'étage complet **une fois**, avant la
 revue — et **jamais pendant** : les deux se disputent les cœurs de la machine, et c'est ce qui a
 produit la seule porte à 40 minutes de [`docs/metriques-revue.md`](docs/metriques-revue.md).
@@ -284,6 +295,14 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   l'utilisateur qui merge**, puis dit « c'est mergé ».
   *(La disponibilité de `gh` est un **fait de poste** — l'utilisateur développe sur plusieurs
   machines. Elle ne s'inscrit donc jamais ici : ce fichier voyage, le poste non.)*
+- **Les phases d'une revue s'enchaînent sans pause de confirmation.** <!--regle:enchainer-les-phases-de-revue--> Porte mécanique → synthèse →
+  correctifs → porte → commit → push → passe suivante → PR se déroulent **d'un trait**. Un « la
+  porte est verte, je commite ? » n'apprend rien à l'utilisateur et lui coûte un tour : il lit le
+  récit **à la fin**. Ne remonter que ce qui relève vraiment des trois cas ci-dessous.
+  ⚠️ **Un arbitrage de périmètre reste un arbitrage** : le cas qui a produit cette règle
+  (un CA rétréci en cours de revue pour qu'il épouse le code livré) devait bien être posé, et l'a
+  été. Ce qui ne devait pas l'être, c'est la pause entre deux phases. *(Demandé le 20/09/2026, en
+  3ᵉ passe d'`E06US009` : « arrête de m'attendre pour toutes ces phases là ».)*
 - **Autonomie par défaut, main rendue sur trois cas seulement.** <!--regle:autonomie-par-defaut-main-rendue-sur-trois-cas-seulement--> L'assistant fait avancer le code de
   bout en bout ; il ne **rend la main que** :
   1. **Zone critique** — action difficilement réversible ou à fort impact : suppression de branches
