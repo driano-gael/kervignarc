@@ -140,6 +140,16 @@ def app_poules(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
+def _etape_de_rang(client: object, tournoi_id: int, rang: int) -> int:
+    """L'identité de l'étape à ce rang, lue sur l'API (ADR-0078).
+
+    Une charge utile ne peut plus citer « la phase 2 » : elle cite une identité, que seule la
+    lecture du déroulé donne. Le rang reste ce que le **décor** décrit, d'où cette traduction.
+    """
+    phases = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()  # type: ignore[attr-defined]
+    return int(next(p for p in phases if p["ordre"] == rang)["id"])
+
+
 def _scoreur(
     client: TestClient, tournoi_id: int, connecter_admin: ConnecterAdmin
 ) -> dict[str, str]:
@@ -544,7 +554,14 @@ def test_un_tableau_aval_est_ensemence_par_ce_que_les_poules_ont_qualifie(
             f"/api/v1/tournois/{scn.tournoi_id}/phases",
             json={
                 "type": "elimination_directe",
-                "sources": [{"ordre_source": 2, "nature": "rangs", "rang_debut": 1, "rang_fin": 2}],
+                "sources": [
+                    {
+                        "etape_source_id": _etape_de_rang(client, scn.tournoi_id, 2),
+                        "nature": "rangs",
+                        "rang_debut": 1,
+                        "rang_fin": 2,
+                    }
+                ],
             },
         )
         assert ajout.status_code == 201, ajout.text
@@ -585,7 +602,14 @@ def test_un_prelevement_dans_des_poules_non_jouees_est_mis_en_attente(
             f"/api/v1/tournois/{scn.tournoi_id}/phases",
             json={
                 "type": "elimination_directe",
-                "sources": [{"ordre_source": 2, "nature": "rangs", "rang_debut": 1, "rang_fin": 2}],
+                "sources": [
+                    {
+                        "etape_source_id": _etape_de_rang(client, scn.tournoi_id, 2),
+                        "nature": "rangs",
+                        "rang_debut": 1,
+                        "rang_fin": 2,
+                    }
+                ],
             },
         )
         assert ajout.status_code == 201, ajout.text

@@ -26,7 +26,8 @@ from domain.erreurs import (
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
-from domain.phase import SourcePhase, StatutPhase, TypePhase
+from domain.phase import SourceModele, StatutPhase, TypePhase
+from tests.conftest import appliquer_en_memoire
 
 TOURNOI = 7
 
@@ -69,18 +70,21 @@ def test_un_format_existe_sans_aucun_tournoi() -> None:
 
 
 def test_appliquer_cree_une_phase_par_etape_dans_l_ordre() -> None:
-    phases = FormatTournoi.creer(
-        "Deux étapes",
-        [
-            _qualification(ordre=1, effectif=16),
-            ModelePhase(
-                ordre=2,
-                type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
-                effectif=8,
-            ),
-        ],
-    ).appliquer(TOURNOI)
+    phases = appliquer_en_memoire(
+        FormatTournoi.creer(
+            "Deux étapes",
+            [
+                _qualification(ordre=1, effectif=16),
+                ModelePhase(
+                    ordre=2,
+                    type=TypePhase.ELIMINATION_DIRECTE,
+                    sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+                    effectif=8,
+                ),
+            ],
+        ),
+        TOURNOI,
+    )
 
     assert [phase.ordre for phase in phases] == [1, 2]
     assert [phase.type for phase in phases] == [
@@ -91,7 +95,7 @@ def test_appliquer_cree_une_phase_par_etape_dans_l_ordre() -> None:
 
 def test_les_etapes_appliquees_sont_rattachees_au_tournoi() -> None:
     """`tournoi_id` **naît** à l'application — il n'existait pas au modèle de bibliothèque."""
-    etapes = _format().appliquer(TOURNOI)
+    etapes = appliquer_en_memoire(_format(), TOURNOI)
 
     assert all(etape.tournoi_id == TOURNOI for etape in etapes)
 
@@ -104,7 +108,7 @@ def test_le_statut_naît_a_l_instanciation_dans_un_creneau() -> None:
     en crée l'**avancement** dans un créneau. Ce sont ces deux natures que l'ADR sépare — et les
     tenir ensemble était précisément ce qui laissait les copies diverger.
     """
-    (etape,) = _format().appliquer(TOURNOI)
+    (etape,) = appliquer_en_memoire(_format(), TOURNOI)
 
     phase = etape.instancier(depart_id=7)
 
@@ -116,7 +120,7 @@ def test_le_statut_naît_a_l_instanciation_dans_un_creneau() -> None:
 
 def test_les_etapes_appliquees_ne_sont_pas_persistees() -> None:
     """L'application est **pure** : c'est le service qui décide d'écrire (aucun `id` attribué)."""
-    assert all(phase.id is None for phase in _format().appliquer(TOURNOI))
+    assert all(phase.id is None for phase in appliquer_en_memoire(_format(), TOURNOI))
 
 
 def test_appliquer_transporte_bareme_grain_effectif_et_source() -> None:
@@ -124,10 +128,13 @@ def test_appliquer_transporte_bareme_grain_effectif_et_source() -> None:
     grain = GrainValidation.toutes_les_n_volees(4)
     bareme = BaremeQualification.creer(nb_volees=10, nb_fleches_par_volee=6)
 
-    (phase,) = FormatTournoi.creer(
-        "Transport",
-        [ModelePhase.qualification(bareme, validation=grain, effectif=24)],
-    ).appliquer(TOURNOI)
+    (phase,) = appliquer_en_memoire(
+        FormatTournoi.creer(
+            "Transport",
+            [ModelePhase.qualification(bareme, validation=grain, effectif=24)],
+        ),
+        TOURNOI,
+    )
 
     assert phase.bareme == bareme
     assert phase.validation == grain
@@ -138,8 +145,8 @@ def test_appliquer_deux_fois_donne_des_phases_independantes() -> None:
     """Deux tournois assemblés depuis le **même** format ne partagent rien (CA « copie »)."""
     format_tournoi = _format()
 
-    (phase_a,) = format_tournoi.appliquer(1)
-    (phase_b,) = format_tournoi.appliquer(2)
+    (phase_a,) = appliquer_en_memoire(format_tournoi, 1)
+    (phase_b,) = appliquer_en_memoire(format_tournoi, 2)
 
     assert phase_a.tournoi_id == 1
     assert phase_b.tournoi_id == 2
@@ -152,7 +159,7 @@ def test_appliquer_deux_fois_donne_des_phases_independantes() -> None:
 def test_ajuster_une_phase_appliquee_n_altere_pas_le_format() -> None:
     """La promesse centrale de l'US, côté format : la copie s'ajuste, le modèle ne bouge pas."""
     format_tournoi = _format()
-    (etape,) = format_tournoi.appliquer(TOURNOI)
+    (etape,) = appliquer_en_memoire(format_tournoi, TOURNOI)
 
     dataclasses.replace(etape, bareme=BaremeQualification.creer(3, 3))
 
@@ -162,7 +169,7 @@ def test_ajuster_une_phase_appliquee_n_altere_pas_le_format() -> None:
 def test_modifier_le_format_n_altere_pas_les_phases_deja_appliquees() -> None:
     """Le sens inverse, qui est la raison d'être de la copie : l'archive ne doit pas bouger."""
     format_tournoi = _format()
-    (etape,) = format_tournoi.appliquer(TOURNOI)
+    (etape,) = appliquer_en_memoire(format_tournoi, TOURNOI)
 
     format_tournoi.modifier(
         "Renommé",
@@ -214,7 +221,7 @@ def test_de_deroule_capture_la_regle_et_oublie_le_rattachement() -> None:
     aucun. Ce test garde donc son intention (« ce qui appartient à l'édition ne devient pas une
     propriété du format ») en la portant sur ce qui reste séparable : le `tournoi_id`.
     """
-    (etape,) = _format().appliquer(TOURNOI)
+    (etape,) = appliquer_en_memoire(_format(), TOURNOI)
 
     promu = FormatTournoi.de_deroule("Le format de l'an dernier", [etape])
 
@@ -258,7 +265,7 @@ def test_un_format_sans_etape_s_enregistre_mais_ne_s_applique_pas() -> None:
 
     assert "format_sans_etape" in _codes(vide)
     with pytest.raises(FormatSansEtape):
-        vide.appliquer(TOURNOI)
+        appliquer_en_memoire(vide, TOURNOI)
 
 
 def test_un_nom_vide_reste_refuse_a_l_enregistrement() -> None:
@@ -278,7 +285,7 @@ def test_des_ordres_non_contigus_s_enregistrent_mais_ne_s_appliquent_pas() -> No
 
     assert "sequence_ordre_invalide" in _codes(troue)
     with pytest.raises(SequenceOrdreInvalide):
-        troue.appliquer(TOURNOI)
+        appliquer_en_memoire(troue, TOURNOI)
 
 
 def test_une_source_posterieure_s_enregistre_mais_ne_s_applique_pas() -> None:
@@ -288,7 +295,7 @@ def test_une_source_posterieure_s_enregistre_mais_ne_s_applique_pas() -> None:
             ModelePhase(
                 ordre=1,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
+                sources=(SourceModele(ordre_source=2, rang_debut=1, rang_fin=8),),
             ),
             _qualification(ordre=2),
         ],
@@ -296,7 +303,7 @@ def test_une_source_posterieure_s_enregistre_mais_ne_s_applique_pas() -> None:
 
     assert "source_apres_phase" in _codes(en_avant)
     with pytest.raises(SourceApresPhase):
-        en_avant.appliquer(TOURNOI)
+        appliquer_en_memoire(en_avant, TOURNOI)
 
 
 def test_un_modele_de_qualification_sans_bareme_se_compose_mais_ne_s_applique_pas() -> None:
@@ -308,7 +315,7 @@ def test_un_modele_de_qualification_sans_bareme_se_compose_mais_ne_s_applique_pa
 
     assert "phase_qualification_incomplete" in _codes(brouillon)
     with pytest.raises(PhaseQualificationIncomplete):
-        brouillon.appliquer(TOURNOI)
+        appliquer_en_memoire(brouillon, TOURNOI)
 
 
 def test_un_format_qui_decrirait_une_phase_impossible_echoue_a_l_application() -> None:
@@ -333,7 +340,7 @@ def test_un_format_qui_decrirait_une_phase_impossible_echoue_a_l_application() -
 
     assert "grain_incompatible_avec_type_phase" in _codes(impossible)
     with pytest.raises(Exception) as echec:
-        impossible.appliquer(TOURNOI)
+        appliquer_en_memoire(impossible, TOURNOI)
     assert echec.typename == "GrainIncompatibleAvecTypePhase"
 
 

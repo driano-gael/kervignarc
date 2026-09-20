@@ -61,6 +61,7 @@ from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
+from domain.format_tournoi import FormatTournoi
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
@@ -567,7 +568,9 @@ class FauxPhaseRepository:
             if depart is None:
                 continue
             deroule = self._deroules.par_tournoi(depart.tournoi_id)
-            etape = next((e for e in deroule if e.ordre == phase.ordre), None)
+            # ⚠️ Par **identité** (ADR-0078), comme les deux adapters réels : c'est justement
+            # ce que les tests de conformité de port vérifient.
+            etape = next((e for e in deroule if e.id == phase.etape_id), None)
             if etape is not None:
                 assemblees.append(
                     dataclasses.replace(
@@ -612,7 +615,10 @@ class FauxPhaseRepository:
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
         phases = [p for p in self._phases.values() if p.depart_id == depart_id]
-        return self._assembler(sorted(phases, key=lambda p: p.ordre))
+        # ⚠️ **Assembler PUIS trier** (ADR-0078) : le rang vit sur l'étape, et la copie gardée
+        # en magasin se périme dès qu'on renumérote. Trier avant l'assemblage rendait l'ordre
+        # d'hier. L'adapter SQL fait le même geste, par une jointure.
+        return sorted(self._assembler(phases), key=lambda p: p.ordre)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         """Vue transverse : les phases de **tous** les départs, triées (départ, ordre).
@@ -626,7 +632,7 @@ class FauxPhaseRepository:
         )
         connus = {d.id for d in self._departs.par_tournoi(tournoi_id)}
         phases = [p for p in self._phases.values() if p.depart_id in connus]
-        return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
+        return sorted(self._assembler(phases), key=lambda p: (p.depart_id, p.ordre))
 
     def enregistrer(self, phase: Phase) -> Phase:
         """Met à jour l'**avancement** ; la définition passée est ignorée (contrat du port)."""
@@ -634,12 +640,6 @@ class FauxPhaseRepository:
         self._phases[phase.id] = phase
         assemblee = self._assembler_une(phase)
         return phase if assemblee is None else assemblee
-
-    def reordonner(self, phases: list[Phase]) -> None:
-        """Réaligne les rangs du lot ; seul l'`ordre` bouge, comme les deux adapters réels."""
-        for phase in phases:
-            assert phase.id in self._phases
-            self._phases[phase.id] = dataclasses.replace(self._phases[phase.id], ordre=phase.ordre)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         del self._phases[phase_id]
@@ -676,7 +676,7 @@ class FauxDerouleRepository:
         self._items[etape.id] = etape
         return etape
 
-    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+    def enregistrer_plusieurs(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
         """Réécrit le lot d'un coup (contrat « ou tout, ou rien » de `DerouleRepository`)."""
         for etape in etapes:
             assert etape.id in self._items
@@ -685,6 +685,47 @@ class FauxDerouleRepository:
 
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         self._items.pop(etape_id, None)
+
+
+def identite_d_etape(ordre: int) -> EtapeDerouleId:
+    """L'identité conventionnelle de l'étape de ce rang, **dans les décors de test** (ADR-0078).
+
+    ⚠️ **Volontairement différente du rang** : si les deux coïncidaient, un décor passerait aussi
+    bien avec l'ancien ancrage par rang qu'avec le nouveau, et ne prouverait donc rien. Un test qui
+    confond les deux échoue ici, au lieu de passer par accident.
+    """
+    return 100 + ordre
+
+
+PREMIERE_IDENTITE_SIMULEE = 1_000
+"""Base des identités que `appliquer_en_memoire` invente — hors de portée des identifiants réels.
+
+⚠️ **Délibérément éloignée des rangs** (ADR-0078) : si une identité simulée valait le rang, un
+décor passerait aussi bien avec l'ancien ancrage et ne prouverait rien du nouveau.
+"""
+
+
+def appliquer_en_memoire(
+    format_tournoi: FormatTournoi, tournoi_id: TournoiId
+) -> tuple[EtapeDeroule, ...]:
+    """Rejoue ce que `ServiceFormats.appliquer` fait, **sans persistance** (ADR-0078 §4).
+
+    Ancrer un prélèvement demande l'identité de l'étape visée, que seul le dépôt attribue : depuis
+    ADR-0078, `FormatTournoi` ne peut donc plus rendre un déroulé complet d'un seul appel, et les
+    tests de domaine qui le faisaient passent par ici. Les identités sont **inventées**, dans le
+    même ordre que la pose réelle — ce qui suffit à éprouver le transport, jamais la transaction.
+
+    ⚠️ **Jumeau de la boucle de `ServiceFormats.appliquer`** : les deux doivent poser dans l'ordre
+    des rangs et n'enrichir la table qu'**après** avoir instancié l'étape courante. S'ils
+    divergeaient, ce décor validerait un ancrage que la production ne produit pas.
+    """
+    format_tournoi.verifier_applicable()
+    ordre_vers_id: dict[int, EtapeDerouleId] = {}
+    etapes: list[EtapeDeroule] = []
+    for rang, modele in enumerate(format_tournoi.etapes_ordonnees, start=0):
+        etapes.append(modele.pour_tournoi(tournoi_id, ordre_vers_id))
+        ordre_vers_id[modele.ordre] = PREMIERE_IDENTITE_SIMULEE + rang
+    return tuple(etapes)
 
 
 def poser_phase_factice(

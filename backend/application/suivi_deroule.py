@@ -21,7 +21,7 @@ from application.erreurs import ApplicationError, DepartIntrouvable
 from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
-from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId, TypePhase
+from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId, TypePhase, vues_par_rangs
 from domain.ports import (
     DepartRepository,
     InscriptionRepository,
@@ -200,7 +200,7 @@ class ServiceSuiviDeroule:
         tournoi_id = depart.tournoi_id
         phases = sorted(self._phases.par_depart(depart_id), key=lambda phase: phase.ordre)
         effectif = self._engages.nb_engages_du_depart(depart_id)
-        projection = projeter(phases, effectif)
+        projection = projeter(vues_par_rangs(phases), effectif)
         par_ordre = {phase.ordre: phase for phase in phases}
         blocs = tuple(
             avancement_bloc(

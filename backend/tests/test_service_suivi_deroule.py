@@ -27,7 +27,15 @@ from domain.depart import Depart, DepartId
 from domain.deroule import projeter
 from domain.grain_validation import GrainValidation
 from domain.participant import Participant
-from domain.phase import NatureSource, Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
+from domain.phase import (
+    NatureSource,
+    Phase,
+    PhaseId,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+    vues_par_rangs,
+)
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
@@ -208,7 +216,9 @@ def _tableau_ed(depart_id: int, ordre: int, statut: StatutPhase) -> Phase:
         depart_id=depart_id,
         ordre=ordre,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8, nature=NatureSource.RANGS),),
+        sources=(
+            SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=8, nature=NatureSource.RANGS),
+        ),
         effectif=8,
     )
     if statut is StatutPhase.EN_COURS:
@@ -232,7 +242,7 @@ def test_la_projection_est_celle_de_l_atelier(ctx: Contexte) -> None:
 
     suivi = ctx.service.pour_depart(ctx.depart_id)
 
-    attendue = projeter(ctx.phases.par_depart(ctx.depart_id), 8)
+    attendue = projeter(vues_par_rangs(ctx.phases.par_depart(ctx.depart_id)), 8)
     assert suivi.projection == attendue
     assert suivi.effectif == 8
 
@@ -358,7 +368,7 @@ def test_un_tableau_alimente_par_une_tranche_haute_compte_correctement() -> None
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(ordre_source=1, rang_debut=9, rang_fin=16, nature=NatureSource.RANGS),
+            SourcePhase(etape_source_id=1, rang_debut=9, rang_fin=16, nature=NatureSource.RANGS),
         ),
         effectif=8,
     ).demarrer()
@@ -398,7 +408,7 @@ def test_une_phase_ne_se_termine_jamais_avant_sa_finale() -> None:
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(ordre_source=1, rang_debut=1, rang_fin=32, nature=NatureSource.RANGS),
+            SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=32, nature=NatureSource.RANGS),
         ),
         effectif=32,
     ).demarrer()
@@ -476,7 +486,9 @@ def test_un_exempt_n_est_pas_un_duel_joue() -> None:
         depart_id=ctx.depart_id,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=6, nature=NatureSource.RANGS),),
+        sources=(
+            SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=6, nature=NatureSource.RANGS),
+        ),
         effectif=6,
     ).demarrer()
     ctx.ajouter_phase(phase, 2)

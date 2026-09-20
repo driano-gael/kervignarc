@@ -21,7 +21,7 @@ from application.erreurs import (
 )
 from application.phases import ServicePhases
 from domain.depart import Depart
-from domain.erreurs import EffectifIncompatible, SourceApresPhase
+from domain.erreurs import EffectifIncompatible, SourceApresPhase, SourceIntrouvable
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
@@ -148,14 +148,16 @@ def test_ajouter_leve_si_tournoi_inconnu() -> None:
 def test_ajouter_une_phase_avec_source_incoherente_ne_persiste_rien() -> None:
     """Une source qui vise une phase postérieure est rejetée (cohérence de séquence, 422)."""
     service, tournoi_id = _service()
-    service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)  # ordre 1
-    with pytest.raises(SourceApresPhase):
+    premiere = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)  # ordre 1
+    assert premiere.id is not None
+    # ⚠️ **Une étape qui n'existe pas** : l'identité `premiere.id + 1` n'est attribuée à personne,
+    # donc le prélèvement ne désigne rien. C'était « se référencer soi-même » quand l'ancre était
+    # un rang — le cas est le même, il se dit autrement depuis ADR-0078.
+    with pytest.raises(SourceIntrouvable):
         service.ajouter(
             tournoi_id,
             TypePhase.PLACEMENT,
-            sources=(
-                SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),
-            ),  # se référence lui-même
+            sources=(SourcePhase(etape_source_id=premiere.id + 1, rang_debut=1, rang_fin=8),),
         )
     assert len(service.lister(tournoi_id)) == 1  # rien ajouté
 
@@ -173,13 +175,13 @@ def test_modifier_change_type_source_effectif() -> None:
         tournoi_id,
         p2.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
+        sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
     assert modifiee.type is TypePhase.ELIMINATION_DIRECTE
     assert modifiee.effectif == 16
-    assert modifiee.sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
+    assert modifiee.sources == (SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),)
     assert modifiee.ordre == 2  # préservé
     _ = p1
 
@@ -195,7 +197,7 @@ def test_modifier_effectif_incompatible_est_refuse() -> None:
             tournoi_id,
             p2.id,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),  # 8 prélevés
+            sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=8),),  # 8 prélevés
             effectif=16,  # mais 16 attendus
         )
 
@@ -221,21 +223,27 @@ def test_reordonner_reassigne_les_ordres() -> None:
     assert ordres == {p2.id: 1, p1.id: 2}
 
 
-def test_reordonner_remappe_les_sources() -> None:
-    """La source suit la phase qu'elle désignait, même après permutation (DETTE-015)."""
+def test_reordonner_ne_touche_pas_aux_sources() -> None:
+    """**Le prélèvement ne bouge pas, et c'est tout l'objet d'ADR-0078.**
+
+    Avant cette US, réordonner devait **réécrire** l'ancre de chaque source pour qu'elle suive la
+    phase déplacée ; le test jumeau s'appelait `test_reordonner_remappe_les_sources`. L'ancre étant
+    désormais l'**identité** de l'étape, il n'y a plus rien à réécrire — et donc plus rien à
+    oublier. Ce test échoue si quelqu'un réintroduit un remappage : la source serait modifiée.
+    """
     service, tournoi_id = _service()
     a = service.ajouter(tournoi_id, TypePhase.PLACEMENT, effectif=40)  # ordre 1
     b = service.ajouter(tournoi_id, TypePhase.PLACEMENT)  # ordre 2
-    assert b.id is not None
+    assert a.id is not None and b.id is not None
     # b tire des 16 premiers de a.
+    source = SourcePhase(etape_source_id=a.id, rang_debut=1, rang_fin=16)
     service.modifier(
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
+        sources=(source,),
         effectif=16,
     )
-    assert a.id is not None
     # On insère une nouvelle phase, puis on réordonne a, b, c → c, a, b : a passe en 2, b en 3.
     c = service.ajouter(tournoi_id, TypePhase.PLACEMENT)
     assert c.id is not None
@@ -245,8 +253,8 @@ def test_reordonner_remappe_les_sources() -> None:
     par_id = {p.id: p for p in reordonnees}
     assert par_id[a.id].ordre == 2
     assert par_id[b.id].ordre == 3
-    # La source de b désigne toujours a — désormais en ordre 2.
-    assert par_id[b.id].sources == (SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16),)
+    # La source de b désigne toujours a, **à l'identique** : ni réécrite, ni à réécrire.
+    assert par_id[b.id].sources == (source,)
 
 
 def test_reordonner_qui_place_la_source_apres_la_consommatrice_est_refuse() -> None:
@@ -258,7 +266,7 @@ def test_reordonner_qui_place_la_source_apres_la_consommatrice_est_refuse() -> N
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
+        sources=(SourcePhase(etape_source_id=a.id, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
@@ -303,7 +311,7 @@ def test_supprimer_une_phase_source_d_une_autre_est_refuse() -> None:
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
+        sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
@@ -311,18 +319,24 @@ def test_supprimer_une_phase_source_d_une_autre_est_refuse() -> None:
         service.supprimer(tournoi_id, a.id)  # a alimente b
 
 
-def test_supprimer_recompacte_et_remappe_la_source_restante() -> None:
-    """Retirer une phase avant une source décale l'ancre de celle-ci d'un cran (DETTE-015)."""
+def test_supprimer_recompacte_les_rangs_sans_toucher_a_la_source() -> None:
+    """Retirer une phase **avant** une source recompacte les rangs, et la source ne bouge pas.
+
+    Jumeau du test de réordonnancement, sur l'autre geste qui renumérote. Le test d'avant
+    ADR-0078 s'appelait `test_supprimer_recompacte_et_remappe_la_source_restante` : il vérifiait
+    que l'ancre descendait d'un cran. Elle n'a plus de cran à descendre.
+    """
     service, tournoi_id = _service()
     filler = service.ajouter(tournoi_id, TypePhase.PLACEMENT)  # ordre 1, sans source
     a = service.ajouter(tournoi_id, TypePhase.PLACEMENT, effectif=40)  # ordre 2
     b = service.ajouter(tournoi_id, TypePhase.PLACEMENT)  # ordre 3
     assert filler.id is not None and a.id is not None and b.id is not None
+    source = SourcePhase(etape_source_id=a.id, rang_debut=1, rang_fin=16)
     service.modifier(
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16),),  # b ← a (ordre 2)
+        sources=(source,),  # b ← a
         effectif=16,
     )
 
@@ -331,7 +345,7 @@ def test_supprimer_recompacte_et_remappe_la_source_restante() -> None:
     par_id = {p.id: p for p in service.lister(tournoi_id)}
     assert par_id[a.id].ordre == 1
     assert par_id[b.id].ordre == 2
-    assert par_id[b.id].sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
+    assert par_id[b.id].sources == (source,)
 
 
 def test_supprimer_leve_si_phase_inconnue() -> None:

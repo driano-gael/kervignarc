@@ -76,14 +76,16 @@ def test_composer_editer_et_lister(app_phases: FastAPI, connecter_admin: Connect
             f"{base}/{elim_id}",
             json={
                 "type": "elimination_directe",
-                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}],
+                "sources": [
+                    {"etape_source_id": qualif.json()["id"], "rang_debut": 1, "rang_fin": 16}
+                ],
                 "effectif": 16,
             },
         )
         assert modifiee.status_code == 200, modifiee.text
         assert modifiee.json()["sources"] == [
             {
-                "ordre_source": 1,
+                "etape_source_id": qualif.json()["id"],
                 "nature": "rangs",
                 "rang_debut": 1,
                 "rang_fin": 16,
@@ -183,13 +185,13 @@ def test_source_incoherente_422(app_phases: FastAPI, connecter_admin: ConnecterA
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "placement", "effectif": 32})
+        amont_id = client.post(base, json={"type": "placement", "effectif": 32}).json()["id"]
 
         reponse = client.post(
             base,
             json={
                 "type": "elimination_directe",
-                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 40}],
+                "sources": [{"etape_source_id": amont_id, "rang_debut": 1, "rang_fin": 40}],
             },
         )
         assert reponse.status_code == 422
@@ -209,7 +211,7 @@ def test_supprimer_source_referencee_409(
             f"{base}/{conso['id']}",
             json={
                 "type": "elimination_directe",
-                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}],
+                "sources": [{"etape_source_id": source["id"], "rang_debut": 1, "rang_fin": 16}],
                 "effectif": 16,
             },
         )
@@ -337,15 +339,22 @@ def test_une_phase_se_compose_de_plusieurs_sources_de_natures_differentes(
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "elimination_directe", "effectif": 8})
+        amont_id = client.post(base, json={"type": "elimination_directe", "effectif": 8}).json()[
+            "id"
+        ]
 
         reponse = client.post(
             base,
             json={
                 "type": "placement",
                 "sources": [
-                    {"ordre_source": 1, "nature": "issue_de_tour", "tour": 2, "issue": "perdants"},
-                    {"ordre_source": 1, "nature": "reste"},
+                    {
+                        "etape_source_id": amont_id,
+                        "nature": "issue_de_tour",
+                        "tour": 2,
+                        "issue": "perdants",
+                    },
+                    {"etape_source_id": amont_id, "nature": "reste"},
                 ],
             },
         )
@@ -366,13 +375,15 @@ def test_une_plage_a_fin_ouverte_fait_l_aller_retour(
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "elimination_directe", "effectif": 120})
+        amont_id = client.post(base, json={"type": "elimination_directe", "effectif": 120}).json()[
+            "id"
+        ]
 
         reponse = client.post(
             base,
             json={
                 "type": "placement",
-                "sources": [{"ordre_source": 1, "rang_debut": 33, "rang_fin": None}],
+                "sources": [{"etape_source_id": amont_id, "rang_debut": 33, "rang_fin": None}],
             },
         )
         assert reponse.status_code == 201, reponse.text
@@ -387,7 +398,9 @@ def test_une_source_mal_formee_rend_422_avec_son_code(
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "elimination_directe", "effectif": 8})
+        amont_id = client.post(base, json={"type": "elimination_directe", "effectif": 8}).json()[
+            "id"
+        ]
 
         reponse = client.post(
             base,
@@ -395,7 +408,7 @@ def test_une_source_mal_formee_rend_422_avec_son_code(
                 "type": "placement",
                 "sources": [
                     {
-                        "ordre_source": 1,
+                        "etape_source_id": amont_id,
                         "nature": "issue_de_tour",
                         "tour": 2,
                         "issue": "gagnants",
@@ -415,15 +428,17 @@ def test_deux_sources_qui_se_recoupent_rendent_422_avec_leur_code(
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "elimination_directe", "effectif": 64})
+        amont_id = client.post(base, json={"type": "elimination_directe", "effectif": 64}).json()[
+            "id"
+        ]
 
         reponse = client.post(
             base,
             json={
                 "type": "placement",
                 "sources": [
-                    {"ordre_source": 1, "rang_debut": 1, "rang_fin": 32},
-                    {"ordre_source": 1, "rang_debut": 16, "rang_fin": 48},
+                    {"etape_source_id": amont_id, "rang_debut": 1, "rang_fin": 32},
+                    {"etape_source_id": amont_id, "rang_debut": 16, "rang_fin": 48},
                 ],
             },
         )
@@ -445,12 +460,14 @@ def test_l_ancienne_forme_source_est_refusee_et_n_efface_rien(
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "elimination_directe", "effectif": 64})
+        amont_id = client.post(base, json={"type": "elimination_directe", "effectif": 64}).json()[
+            "id"
+        ]
         creee = client.post(
             base,
             json={
                 "type": "placement",
-                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}],
+                "sources": [{"etape_source_id": amont_id, "rang_debut": 1, "rang_fin": 16}],
                 "effectif": 16,
             },
         )
@@ -460,7 +477,7 @@ def test_l_ancienne_forme_source_est_refusee_et_n_efface_rien(
             f"{base}/{phase_id}",
             json={
                 "type": "placement",
-                "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 16},
+                "source": {"etape_source_id": amont_id, "rang_debut": 1, "rang_fin": 16},
                 "effectif": 16,
             },
         )
@@ -477,14 +494,17 @@ def test_trop_de_sources_est_refuse(app_phases: FastAPI, connecter_admin: Connec
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        client.post(base, json={"type": "elimination_directe", "effectif": 64})
+        amont_id = client.post(base, json={"type": "elimination_directe", "effectif": 64}).json()[
+            "id"
+        ]
 
         reponse = client.post(
             base,
             json={
                 "type": "placement",
                 "sources": [
-                    {"ordre_source": 1, "rang_debut": r, "rang_fin": r} for r in range(1, 20)
+                    {"etape_source_id": amont_id, "rang_debut": r, "rang_fin": r}
+                    for r in range(1, 20)
                 ],
             },
         )

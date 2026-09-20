@@ -35,6 +35,7 @@ from domain.phase import (
     grain_par_defaut,
     produit_un_classement,
 )
+from tests.conftest import identite_d_etape
 
 
 def _phase(
@@ -50,13 +51,14 @@ def _phase(
         validation=validation or GrainValidation.fin_de_serie(),
         statut=StatutPhase.A_VENIR,
         id=3,
+        etape_id=identite_d_etape(1),
     )
 
 
 def test_qualification_cree_la_premiere_phase() -> None:
     """`qualification` crée une phase qualification, ordre 1, statut à venir, non persistée."""
     bareme = BaremeQualification.preset_ffta_18m()
-    phase = Phase.qualification(depart_id=7, bareme=bareme)
+    phase = Phase.qualification(depart_id=7, bareme=bareme, etape_id=identite_d_etape(1))
     assert phase.depart_id == 7
     assert phase.ordre == 1
     assert phase.type is TypePhase.QUALIFICATION
@@ -67,7 +69,9 @@ def test_qualification_cree_la_premiere_phase() -> None:
 
 def test_qualification_applique_le_preset_fin_de_serie_par_defaut() -> None:
     """Sans grain explicite, la qualification valide en fin de série (`D-11`)."""
-    phase = Phase.qualification(depart_id=7, bareme=BaremeQualification.preset_ffta_18m())
+    phase = Phase.qualification(
+        depart_id=7, bareme=BaremeQualification.preset_ffta_18m(), etape_id=identite_d_etape(1)
+    )
 
     assert phase.validation == GrainValidation.fin_de_serie()
 
@@ -77,6 +81,7 @@ def test_qualification_accepte_un_grain_explicite() -> None:
         depart_id=7,
         bareme=BaremeQualification.preset_ffta_18m(),
         validation=GrainValidation.toutes_les_n_volees(2),
+        etape_id=identite_d_etape(1),
     )
 
     assert phase.validation == GrainValidation.toutes_les_n_volees(2)
@@ -93,14 +98,18 @@ def test_grain_par_defaut_de_l_elimination_directe_est_fin_de_duel() -> None:
 
 def test_elimination_directe_accepte_le_grain_fin_de_duel() -> None:
     """Le grain `fin de duel` est **admis** pour l'élimination directe (E04US013)."""
-    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(
+        depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(2)
+    )
     modifiee = phase.avec_validation(GrainValidation.fin_de_duel())
     assert modifiee.validation == GrainValidation.fin_de_duel()
 
 
 def test_elimination_directe_refuse_un_grain_de_serie() -> None:
     """« Fin de série » n'a pas de sens pour un duel : seul `fin de duel` est admis (E04US013)."""
-    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(
+        depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(2)
+    )
     with pytest.raises(GrainIncompatibleAvecTypePhase):
         phase.avec_validation(GrainValidation.fin_de_serie())
 
@@ -143,6 +152,7 @@ def test_une_qualification_refuse_le_grain_fin_de_duel() -> None:
             depart_id=7,
             bareme=BaremeQualification.preset_ffta_18m(),
             validation=GrainValidation.fin_de_duel(),
+            etape_id=identite_d_etape(1),
         )
 
 
@@ -208,7 +218,9 @@ def test_le_grain_fin_de_duel_reste_declare_pour_le_moteur() -> None:
 
 def test_creer_une_phase_generique_sans_bareme() -> None:
     """Une phase d'élimination directe n'a **pas** de barème de qualification (ADR-0045 §2)."""
-    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(
+        depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(2)
+    )
 
     assert phase.type is TypePhase.ELIMINATION_DIRECTE
     assert phase.ordre == 2
@@ -228,16 +240,25 @@ def test_une_qualification_sans_bareme_est_refusee() -> None:
     """L'invariant « qualification ⇒ barème + grain » ferme le seul cas dangereux du barème
     facultatif (ADR-0045 §2)."""
     with pytest.raises(PhaseQualificationIncomplete):
-        Phase(depart_id=7, ordre=1, type=TypePhase.QUALIFICATION)
+        Phase(
+            depart_id=7,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            etape_id=identite_d_etape(1),
+        )
 
 
 def test_un_effectif_nul_ou_negatif_est_refuse() -> None:
     with pytest.raises(EffectifPhaseInvalide):
-        Phase.creer(depart_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=0)
+        Phase.creer(
+            depart_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=0, etape_id=identite_d_etape(2)
+        )
 
 
 def test_un_effectif_declare_est_conserve() -> None:
-    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=16)
+    phase = Phase.creer(
+        depart_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=16, etape_id=identite_d_etape(2)
+    )
 
     assert phase.effectif == 16
 
@@ -247,7 +268,9 @@ def test_un_effectif_declare_est_conserve() -> None:
 
 def test_transitions_de_statut_enchainent_a_venir_en_cours_terminee() -> None:
     """Les transitions sont **pures** : chacune renvoie une copie au nouveau statut."""
-    phase = Phase.creer(depart_id=7, ordre=1, type=TypePhase.PLACEMENT)
+    phase = Phase.creer(
+        depart_id=7, ordre=1, type=TypePhase.PLACEMENT, etape_id=identite_d_etape(1)
+    )
 
     en_cours = phase.demarrer()
     assert en_cours.statut is StatutPhase.EN_COURS
@@ -258,7 +281,9 @@ def test_transitions_de_statut_enchainent_a_venir_en_cours_terminee() -> None:
 
 def test_mettre_en_pause_puis_reprendre_est_reversible() -> None:
     """`en_pause` gèle la phase (ADR-0045 §1) ; `reprendre` la ramène `en_cours`, sans perte."""
-    en_cours = Phase.creer(depart_id=7, ordre=1, type=TypePhase.PLACEMENT).demarrer()
+    en_cours = Phase.creer(
+        depart_id=7, ordre=1, type=TypePhase.PLACEMENT, etape_id=identite_d_etape(1)
+    ).demarrer()
 
     en_pause = en_cours.mettre_en_pause()
     assert en_pause.statut is StatutPhase.EN_PAUSE
@@ -274,7 +299,7 @@ def test_le_statut_en_pause_de_phase_existe() -> None:
 
 
 def test_une_source_prelève_une_plage_de_rangs() -> None:
-    source = SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+    source = SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=16)
 
     assert source.effectif_selectionne == 16
 
@@ -282,13 +307,13 @@ def test_une_source_prelève_une_plage_de_rangs() -> None:
 def test_une_plage_de_rangs_vide_est_refusee() -> None:
     """« source vide » du CA : des rangs 8 à 4 ne prélèvent personne."""
     with pytest.raises(PlageSourceVide):
-        SourcePhase(ordre_source=1, rang_debut=8, rang_fin=4)
+        SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=8, rang_fin=4)
 
 
 def test_un_rang_de_debut_inferieur_a_un_est_refuse() -> None:
     """« rangs inexistants » (volet indépendant de la séquence) : le premier rang est 1."""
     with pytest.raises(RangSourceInvalide):
-        SourcePhase(ordre_source=1, rang_debut=0, rang_fin=16)
+        SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=0, rang_fin=16)
 
 
 # --- E05US001 : cohérence de la séquence (ADR-0045 §3) -----------------------------------------
@@ -303,6 +328,7 @@ def _qualification(effectif: int | None = None) -> Phase:
         bareme=BaremeQualification.preset_ffta_18m(),
         validation=GrainValidation.fin_de_serie(),
         effectif=effectif,
+        etape_id=identite_d_etape(1),
     )
 
 
@@ -318,8 +344,9 @@ def test_une_sequence_ordonnee_et_bien_sourcee_est_valide() -> None:
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=16),),
         effectif=16,
+        etape_id=identite_d_etape(2),
     )
 
     sequence = SequencePhases(phases=(qualif, elim))
@@ -329,7 +356,9 @@ def test_une_sequence_ordonnee_et_bien_sourcee_est_valide() -> None:
 
 def test_un_trou_dans_les_ordres_est_refuse() -> None:
     qualif = _qualification()
-    elim = Phase.creer(depart_id=7, ordre=3, type=TypePhase.ELIMINATION_DIRECTE)
+    elim = Phase.creer(
+        depart_id=7, ordre=3, type=TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(3)
+    )
 
     with pytest.raises(SequenceOrdreInvalide):
         SequencePhases(phases=(qualif, elim))
@@ -337,7 +366,9 @@ def test_un_trou_dans_les_ordres_est_refuse() -> None:
 
 def test_un_doublon_dans_les_ordres_est_refuse() -> None:
     qualif = _qualification()
-    autre = Phase.creer(depart_id=7, ordre=1, type=TypePhase.PLACEMENT)
+    autre = Phase.creer(
+        depart_id=7, ordre=1, type=TypePhase.PLACEMENT, etape_id=identite_d_etape(1)
+    )
 
     with pytest.raises(SequenceOrdreInvalide):
         SequencePhases(phases=(qualif, autre))
@@ -349,7 +380,8 @@ def test_une_source_vers_une_phase_inexistante_est_refusee() -> None:
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=5, rang_debut=1, rang_fin=8),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(5), rang_debut=1, rang_fin=8),),
+        etape_id=identite_d_etape(2),
     )
 
     with pytest.raises(SourceIntrouvable):
@@ -363,7 +395,8 @@ def test_une_source_vers_une_phase_non_anterieure_est_refusee() -> None:
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=8),),
+        etape_id=identite_d_etape(2),
     )
 
     with pytest.raises(SourceApresPhase):
@@ -377,7 +410,8 @@ def test_prelever_au_dela_de_l_effectif_de_la_source_est_refuse() -> None:
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=40),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=40),),
+        etape_id=identite_d_etape(2),
     )
 
     with pytest.raises(RangsSourceInexistants):
@@ -391,8 +425,9 @@ def test_un_effectif_consommateur_incompatible_avec_la_source_est_refuse() -> No
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8),),
         effectif=16,
+        etape_id=identite_d_etape(2),
     )
 
     with pytest.raises(EffectifIncompatible):
@@ -407,8 +442,9 @@ def test_prelever_plus_que_l_effectif_declare_est_aussi_refuse() -> None:
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=20),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=20),),
         effectif=16,
+        etape_id=identite_d_etape(2),
     )
 
     with pytest.raises(EffectifIncompatible):
@@ -422,7 +458,8 @@ def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif
         depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=999),),
+        sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=999),),
+        etape_id=identite_d_etape(2),
     )
 
     assert len(SequencePhases(phases=(qualif, elim)).phases) == 2
@@ -449,8 +486,13 @@ def _qualification_sourcee(
         type=TypePhase.QUALIFICATION,
         bareme=BaremeQualification.creer(15, 3),
         validation=GrainValidation.fin_de_serie(),
-        sources=(SourcePhase(ordre_source=1, rang_debut=rang_debut, rang_fin=rang_fin),),
+        sources=(
+            SourcePhase(
+                etape_source_id=identite_d_etape(1), rang_debut=rang_debut, rang_fin=rang_fin
+            ),
+        ),
         effectif=effectif,
+        etape_id=identite_d_etape(ordre),
     )
 
 
@@ -523,7 +565,10 @@ def test_une_seconde_qualification_sans_bareme_reste_refusee() -> None:
                     depart_id=7,
                     ordre=2,
                     type=TypePhase.QUALIFICATION,
-                    sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=6),),
+                    sources=(
+                        SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=6),
+                    ),
+                    etape_id=identite_d_etape(2),
                 ),
             )
         )
@@ -563,7 +608,9 @@ def test_une_phase_de_big_shoot_off_porte_son_nombre_de_sortants() -> None:
     """CA « réglages à l'atelier » : la liste des sortants vit sur la phase, comme la taille des
     poules (E05US023). L'atelier la règle, le service la lit le jour J."""
     phase = replace(
-        Phase.creer(depart_id=7, ordre=2, type=TypePhase.BIG_SHOOT_OFF),
+        Phase.creer(
+            depart_id=7, ordre=2, type=TypePhase.BIG_SHOOT_OFF, etape_id=identite_d_etape(2)
+        ),
         big_shoot_off=ConfigurationBigShootOff(eliminations=(4, 2, 1)),
     )
     assert phase.big_shoot_off is not None
@@ -573,7 +620,12 @@ def test_une_phase_de_big_shoot_off_porte_son_nombre_de_sortants() -> None:
 def test_une_phase_de_big_shoot_off_peut_n_etre_pas_encore_reglee() -> None:
     """Le type se choisit **avant** ses paramètres : l'atelier doit pouvoir enregistrer un déroulé
     en cours de composition. C'est le service du jour J qui exigera le réglage, pas l'agrégat."""
-    assert Phase.creer(depart_id=7, ordre=2, type=TypePhase.BIG_SHOOT_OFF).big_shoot_off is None
+    assert (
+        Phase.creer(
+            depart_id=7, ordre=2, type=TypePhase.BIG_SHOOT_OFF, etape_id=identite_d_etape(2)
+        ).big_shoot_off
+        is None
+    )
 
 
 def test_un_autre_type_ne_porte_pas_de_nombre_de_sortants() -> None:
@@ -582,7 +634,12 @@ def test_un_autre_type_ne_porte_pas_de_nombre_de_sortants() -> None:
     plus personne ne croit active."""
     with pytest.raises(ConfigurationBigShootOffInvalide):
         replace(
-            Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE),
+            Phase.creer(
+                depart_id=7,
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                etape_id=identite_d_etape(2),
+            ),
             big_shoot_off=ConfigurationBigShootOff(eliminations=(1,)),
         )
 
@@ -595,9 +652,9 @@ def test_l_echauffement_n_admet_aucun_grain_de_validation() -> None:
     with pytest.raises(GrainIncompatibleAvecTypePhase):
         grain_par_defaut(TypePhase.ECHAUFFEMENT)
     with pytest.raises(GrainIncompatibleAvecTypePhase):
-        Phase.creer(depart_id=7, ordre=2, type=TypePhase.ECHAUFFEMENT).avec_validation(
-            GrainValidation.fin_de_serie()
-        )
+        Phase.creer(
+            depart_id=7, ordre=2, type=TypePhase.ECHAUFFEMENT, etape_id=identite_d_etape(2)
+        ).avec_validation(GrainValidation.fin_de_serie())
 
 
 def test_seul_l_echauffement_ne_produit_pas_de_classement() -> None:
@@ -615,12 +672,15 @@ def test_on_ne_preleve_pas_de_rangs_dans_un_echauffement() -> None:
     with pytest.raises(PhaseSansClassementPrelevee):
         SequencePhases(
             (
-                Phase.creer(depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(
+                    depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT, etape_id=identite_d_etape(1)
+                ),
                 Phase.creer(
                     depart_id=7,
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
-                    sources=(SourcePhase.par_rangs(1, 1, 8),),
+                    sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 8),),
+                    etape_id=identite_d_etape(2),
                 ),
             )
         )
@@ -631,30 +691,40 @@ def test_succeder_a_un_echauffement_par_le_reste_est_licite() -> None:
     sans quoi une phase d'échauffement serait un cul-de-sac dans le déroulé."""
     sequence = SequencePhases(
         (
-            Phase.creer(depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+            Phase.creer(
+                depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT, etape_id=identite_d_etape(1)
+            ),
             Phase(
                 depart_id=7,
                 ordre=2,
                 type=TypePhase.QUALIFICATION,
-                sources=(SourcePhase.le_reste(1),),
+                sources=(SourcePhase.le_reste(identite_d_etape(1)),),
                 bareme=BaremeQualification(nb_volees=5, nb_fleches_par_volee=3),
                 validation=GrainValidation.fin_de_serie(),
+                etape_id=identite_d_etape(2),
             ),
         )
     )
-    assert sequence.phases[1].sources[0].ordre_source == 1
+    assert sequence.phases[1].sources[0].etape_source_id == identite_d_etape(1)
 
 
 def test_preleve_des_rangs_dans_un_type_classant_reste_licite() -> None:
     """Le nouveau contrôle ne doit pas déborder sur les types qui, eux, classent bien."""
     sequence = SequencePhases(
         (
-            Phase.creer(depart_id=7, ordre=1, type=TypePhase.POULES, effectif=16),
+            Phase.creer(
+                depart_id=7,
+                ordre=1,
+                type=TypePhase.POULES,
+                effectif=16,
+                etape_id=identite_d_etape(1),
+            ),
             Phase.creer(
                 depart_id=7,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_rangs(1, 1, 8),),
+                sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 8),),
+                etape_id=identite_d_etape(2),
             ),
         )
     )
@@ -672,12 +742,19 @@ def test_on_ne_preleve_pas_non_plus_une_issue_de_tour_dans_un_echauffement() -> 
     with pytest.raises(PhaseSansClassementPrelevee):
         SequencePhases(
             (
-                Phase.creer(depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(
+                    depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT, etape_id=identite_d_etape(1)
+                ),
                 Phase.creer(
                     depart_id=7,
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
-                    sources=(SourcePhase.par_issue_de_tour(1, tour=1, issue=IssueTour.GAGNANTS),),
+                    sources=(
+                        SourcePhase.par_issue_de_tour(
+                            identite_d_etape(1), tour=1, issue=IssueTour.GAGNANTS
+                        ),
+                    ),
+                    etape_id=identite_d_etape(2),
                 ),
             )
         )
@@ -687,9 +764,21 @@ def test_un_seuil_de_barrage_nul_est_refuse() -> None:
     """« Aucun barrage » se dit en ne réglant rien ; un 0 accepté laisserait croire à l'organisateur
     qu'il a désactivé une option qu'il vient en fait de régler (E06US003)."""
     with pytest.raises(SeuilDeBarrageInvalide):
-        Phase.creer(1, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, barrage_jusqu_au=0)
+        Phase.creer(
+            1,
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            barrage_jusqu_au=0,
+            etape_id=identite_d_etape(2),
+        )
 
 
 def test_un_seuil_de_barrage_positif_est_conserve() -> None:
-    phase = Phase.creer(1, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, barrage_jusqu_au=8)
+    phase = Phase.creer(
+        1,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        barrage_jusqu_au=8,
+        etape_id=identite_d_etape(2),
+    )
     assert phase.barrage_jusqu_au == 8

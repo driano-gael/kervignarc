@@ -7,8 +7,14 @@
 import type { SourcePhase } from './api'
 
 // Décrit **un** prélèvement en clair, selon sa nature.
-export function decrireSource(source: SourcePhase): string {
-  const provenance = `de la phase ${source.ordre_source}`
+//
+// ⚠️ **`rangs` traduit l'identité de l'étape en rang d'affichage** (ADR-0078) : une source désigne
+// son amont par identité, mais l'organisateur lit « la phase 2 ». Une étape absente de la table —
+// séquence en cours d'édition, phase retirée — se dit « d'une phase retirée » plutôt que de rendre
+// un identifiant technique ou un « undefined ».
+export function decrireSource(source: SourcePhase, rangs: ReadonlyMap<number, number>): string {
+  const rang = rangs.get(source.etape_source_id)
+  const provenance = rang === undefined ? "d'une phase retirée" : `de la phase ${rang}`
   if (source.nature === 'reste') return `le reste ${provenance}`
   if (source.nature === 'issue_de_tour') {
     const cote = source.issue === 'perdants' ? 'perdants' : 'gagnants'
@@ -21,9 +27,16 @@ export function decrireSource(source: SourcePhase): string {
 }
 
 // Décrit le peuplement complet d'une phase (ou son absence).
-export function decrireSources(sources: SourcePhase[]): string {
+export function decrireSources(sources: SourcePhase[], rangs: ReadonlyMap<number, number>): string {
   if (sources.length === 0) return 'alimentée par les inscriptions'
-  return sources.map(decrireSource).join(', puis ')
+  return sources.map((source) => decrireSource(source, rangs)).join(', puis ')
+}
+
+/** La table identité → rang d'un déroulé, lue sur lui-même (pendant de `table_des_rangs`). */
+export function rangsParEtape(
+  phases: readonly { id: number; ordre: number }[],
+): Map<number, number> {
+  return new Map(phases.map((phase) => [phase.id, phase.ordre]))
 }
 
 // Une phase que le formulaire de cet écran sait éditer **sans rien perdre** : au plus un

@@ -4383,13 +4383,215 @@ window.ATLAS.decisions = {
      "type": "amende"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/application/bareme_qualification.py",
+     "existe": true,
+     "symboles": [
+      "_decaler_dun_cran"
+     ],
+     "symboles_absents": [
+      "_decaler_dun_cran"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/formats.py",
+     "existe": true,
+     "symboles": [
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "_remapper",
+      "_realigner_avancements",
+      "PhaseSourceReferencee"
+     ],
+     "symboles_absents": [
+      "_remapper",
+      "_realigner_avancements"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/prelevement.py",
+     "existe": true,
+     "symboles": [
+      "ResolveurClassement",
+      "_classement_de_l_etape",
+      "ClassementSource.ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "ResolveurClassement",
+      "_classement_de_l_etape",
+      "ClassementSource.ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/simulation_format.py",
+     "existe": true,
+     "symboles": [
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.instancier",
+      "etape_id",
+      "table_des_rangs",
+      "table_des_identites",
+      "vues_du_deroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.sources",
+      "SourceModele",
+      "ModelePhase.pour_tournoi",
+      "ModelePhase.d_etape",
+      "FormatTournoi.verifier_applicable",
+      "FormatTournoi.etapes_ordonnees",
+      "FormatTournoi.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "Prelevement",
+      "SourceModele",
+      "SourcePhase",
+      "ancrer_sur_les_etapes",
+      "projeter_sur_les_rangs",
+      "VueParRangs",
+      "vues_par_rangs",
+      "Phase.etape_id",
+      "Phase.ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "PhaseRepository.reordonner",
+      "DerouleRepository.reordonner",
+      "enregistrer_plusieurs"
+     ],
+     "symboles_absents": [
+      "PhaseRepository.reordonner",
+      "DerouleRepository.reordonner"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "PhaseORM.etape_id",
+      "deroule_etape.id",
+      "uq_phase_depart_etape",
+      "PhaseORM.ordre",
+      "uq_deroule_tournoi_ordre"
+     ],
+     "symboles_absents": [
+      "uq_deroule_tournoi_ordre"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_source_json",
+      "_vers_sources_d_etape",
+      "_vers_sources_de_modele",
+      "PhaseRepositorySQL._etapes",
+      "_assembler"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/memory/repositories.py",
+     "existe": true,
+     "symboles": [
+      "InMemoryPhaseRepository._etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0056_ancrage_par_identite.py",
+     "existe": true,
+     "symboles": [
+      "phase.etape_id",
+      "config"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/patrimoine/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
    "titre": "La séquence s'ancre sur l'identité de l'étape, pas sur son rang",
    "us": [
-    "E05US001"
+    "E01US024",
+    "E05US001",
+    "E05US022"
    ]
   },
   {
@@ -4566,7 +4768,9 @@ window.ATLAS.decisions = {
       "_classement_de_l_ordre",
       "_decor"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_classement_de_l_ordre"
+     ],
      "verifiable": true
     },
     {
@@ -4728,7 +4932,9 @@ window.ATLAS.decisions = {
       "ClassementSource",
       "rang_premier"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_classement_de_l_ordre"
+     ],
      "verifiable": true
     },
     {
@@ -4941,7 +5147,9 @@ window.ATLAS.decisions = {
       "preleves",
       "tranche"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_classement_de_l_ordre"
+     ],
      "verifiable": true
     },
     {
@@ -5237,6 +5445,7 @@ window.ATLAS.decisions = {
       "classement_lisible"
      ],
      "symboles_absents": [
+      "_classement_de_l_ordre",
       "brancher_poules"
      ],
      "verifiable": true

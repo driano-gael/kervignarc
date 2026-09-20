@@ -31,7 +31,7 @@ from domain.depart import Depart
 from domain.erreurs import PhaseQualificationIncomplete, ProfondeurInvalide
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
-from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
+from domain.phase import Phase, SourceModele, StatutPhase, TypePhase, grain_par_defaut
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
@@ -252,7 +252,7 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
             ModelePhase(
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
                 effectif=8,
             ),
         ],
@@ -608,7 +608,7 @@ def test_appliquer_transporte_la_profondeur_du_format_vers_les_phases(ctx: Conte
             ModelePhase(
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
                 effectif=8,
                 profondeur=ProfondeurClassement.integrale(),
             ),

@@ -27,6 +27,7 @@ from domain.classement import Classement
 from domain.contrat_phase import TYPES_JOUES
 from domain.depart import Depart, DepartId
 from domain.deroule import ProjectionDeroule
+from domain.deroule_etape import EtapeDerouleId
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
 from domain.inscription import Inscription
 from domain.phase import TypePhase
@@ -292,8 +293,15 @@ def _fonder(
     # **Un déroulé, puis son avancement** (ADR-0076) : le format définit les étapes du tournoi
     # simulé, et le créneau unique reçoit une instance par étape. La simulation n'a qu'un départ —
     # on simule un déroulé, pas une logistique de journée.
-    for etape in format_tournoi.appliquer(tournoi.id):
-        posee = harnais.deroules.ajouter(etape)
+    # ⚠️ **Même geste qu'à `ServiceFormats.appliquer`, et il doit le rester** (ADR-0078 §4) : les
+    # étapes se posent dans l'ordre, chacune s'ancrant sur l'identité des précédentes. Un jumeau
+    # qui divergerait ferait simuler un déroulé dont les prélèvements ne sont pas ceux du vrai.
+    format_tournoi.verifier_applicable()
+    ordre_vers_id: dict[int, EtapeDerouleId] = {}
+    for modele in format_tournoi.etapes_ordonnees:
+        posee = harnais.deroules.ajouter(modele.pour_tournoi(tournoi.id, ordre_vers_id))
+        assert posee.id is not None, "Le magasin in-memory attribue un identifiant."
+        ordre_vers_id[posee.ordre] = posee.id
         harnais.phases.ajouter(posee.instancier(depart.id))
     return tournoi
 

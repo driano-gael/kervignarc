@@ -2,13 +2,14 @@
 (ADR-0076). Avec une définition unique, la divergence entre créneaux n'est plus improbable : elle
 est **impossible**.
 
-⚠️ **`Phase` reste l'objet du moteur** et porte toujours sa définition **en mémoire** : le
-repository l'assemble depuis l'étape de même `ordre`. Les modules qui lisent `phase.bareme`
-ignorent cette couture, et c'est voulu — la jointure est l'affaire de l'adapter (ADR-0003).
+⚠️ **`Phase` reste l'objet du moteur** et porte sa définition **en mémoire** : le repository
+l'assemble depuis l'étape que la phase **désigne** (`phase.etape_id`, ADR-0078). La jointure est
+l'affaire de l'adapter (ADR-0003), et ses lecteurs l'ignorent.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 
 from domain.arret_programme import (
@@ -31,6 +32,8 @@ from domain.phase import (
     SourcePhase,
     StatutPhase,
     TypePhase,
+    VueParRangs,
+    projeter_sur_les_rangs,
     verifier_coherence_etape,
 )
 from domain.politiques import ProfondeurClassement
@@ -47,11 +50,10 @@ EtapeDerouleId = int
 class EtapeDeroule:
     """Une étape du déroulé **d'un tournoi** — sa définition, sans avancement ni créneau.
 
-    C'est `ModelePhase` (le contenu d'un format) doté d'un tournoi et d'une identité : le format
-    décrit un déroulé *réutilisable*, cette étape le déroulé *de cette édition*. Les invariants
-    sont ceux d'une phase, par la **même** fonction (`verifier_coherence_etape`). Satisfait
-    structurellement `domain.phase.EtapeSequencee` : la séquence 1..N se valide sur les étapes,
-    seule la **portée** ayant changé (ADR-0045 §3).
+    C'est `ModelePhase` doté d'un tournoi et d'une identité : le format décrit un déroulé
+    *réutilisable*, cette étape le déroulé *de cette édition*. Mêmes invariants qu'une phase, par
+    la **même** fonction (`verifier_coherence_etape`), ADR-0045 §3. ⚠️ **Ne satisfait plus
+    `EtapeSequencee`** (ADR-0078) : ancrée par identité, elle passe par `vues_du_deroule`.
     """
 
     tournoi_id: TournoiId
@@ -290,12 +292,13 @@ class EtapeDeroule:
 
         C'est ici que `depart_id` et `statut` naissent. La phase porte la définition **recopiée en
         mémoire**, jamais persistée en double (ADR-0076). ⚠️ `decoupage` est recopié, `arrets` ne
-        l'est pas : le découpage décide de l'avancement que le moteur **lit sur la phase**, alors
-        que les arrêts ne sont lus que par `ServiceArretsProgrammes`, qui adresse le déroulé par
-        rang — les faire voyager fermerait un cycle d'import.
+        l'est pas : les arrêts ne sont lus que par `ServiceArretsProgrammes`, et les faire voyager
+        fermerait un cycle d'import. ⚠️ **`etape_id` rattache l'avancement à sa définition**
+        (ADR-0078) ; `ordre` ne voyage plus que pour l'affichage.
         """
         return Phase(
             depart_id=depart_id,
+            etape_id=self.id,
             ordre=self.ordre,
             type=self.type,
             bareme=self.bareme,
@@ -319,6 +322,44 @@ class EtapeDeroule:
     def avec_sources(self, sources: tuple[SourcePhase, ...]) -> EtapeDeroule:
         """Renvoie une copie aux prélèvements remplacés."""
         return replace(self, sources=sources)
+
+
+def table_des_rangs(etapes: Iterable[EtapeDeroule]) -> dict[EtapeDerouleId, int]:
+    """La correspondance **identité → rang** d'un déroulé, lue sur lui-même (ADR-0078 §4).
+
+    Sert partout où l'on redescend d'un ancrage par identité vers un ancrage par rang : la
+    promotion en format, et la vue que le déroulé se donne pour entrer dans le moteur. ⚠️ Une
+    étape **non persistée** n'y figure pas : un prélèvement qui la viserait est introuvable, ce
+    qui est le comportement voulu — on ne prélève pas dans une étape qui n'existe pas encore.
+    """
+    return {etape.id: etape.ordre for etape in etapes if etape.id is not None}
+
+
+def table_des_identites(etapes: Iterable[EtapeDeroule]) -> dict[int, EtapeDerouleId]:
+    """La correspondance **rang → identité**, réciproque de `table_des_rangs`."""
+    return {etape.ordre: etape.id for etape in etapes if etape.id is not None}
+
+
+def vues_du_deroule(etapes: Sequence[EtapeDeroule]) -> tuple[VueParRangs, ...]:
+    """Projette un déroulé sur ses rangs, pour les **contrôles de séquence** (ADR-0078 §4).
+
+    Jumelle de `domain.phase.vues_par_rangs`, qui fait le même geste sur les avancements. Deux
+    fonctions et non une : ce sont deux agrégats distincts, et les réunir derrière un protocole
+    coûterait plus de lecture que les huit lignes qu'il économiserait.
+    """
+    rangs = table_des_rangs(etapes)
+    return tuple(
+        VueParRangs(
+            ordre=etape.ordre,
+            type=etape.type,
+            sources=projeter_sur_les_rangs(etape.sources, rangs),
+            effectif=etape.effectif,
+            bareme=etape.bareme,
+            validation=etape.validation,
+            poules=etape.poules,
+        )
+        for etape in etapes
+    )
 
 
 def titre_normalise(titre: str | None) -> str | None:

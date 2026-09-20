@@ -3,8 +3,8 @@
 `SequencePhases` rejette une séquence incohérente à la **construction** (422) ; le service n'en
 réimplémente rien et arbitre les transitions illégales (409/404).
 
-⚠️ **Le réordonnancement et la suppression REMAPPENT les références de source**, ancrées par
-l'`ordre` de la phase amont et non par son identité. C'est `DETTE-026`.
+⚠️ **Réordonner et supprimer ne touchent plus qu'au rang** (ADR-0078) : prélèvements et
+avancements citent des identités, donc il n'y a plus rien à remapper — c'était `DETTE-026`.
 """
 
 # DETTE-057 — le mode d'une poule n'est pas encore porté par un réglage dédié.
@@ -30,7 +30,7 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import DepartId
-from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId, vues_du_deroule
 from domain.phase import (
     Phase,
     PhaseId,
@@ -160,7 +160,7 @@ class ServicePhases:
             titre=titre,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
-        verifier_sequence([*existantes, nouvelle])
+        verifier_sequence(vues_du_deroule([*existantes, nouvelle]))
         posee = self._deroules.ajouter(nouvelle)
         for depart_id in self._creneaux(tournoi_id):
             self._phases.ajouter(posee.instancier(depart_id))
@@ -218,7 +218,7 @@ class ServicePhases:
             arrets=arrets,
         )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
-        verifier_sequence([*autres, modifiee])
+        verifier_sequence(vues_du_deroule([*autres, modifiee]))
         return self._deroules.enregistrer(modifiee)
 
     def reordonner(
@@ -226,9 +226,9 @@ class ServicePhases:
     ) -> list[EtapeDeroule]:
         """Réordonne **l'ensemble** du déroulé selon la liste d'identifiants fournie.
 
-        Chaque étape reçoit un nouvel `ordre` ; les références de source sont **remappées** pour
-        suivre l'étape qu'elles désignaient, et les avancements de chaque créneau réalignés dans la
-        foulée — sinon une phase pointerait la mauvaise définition. Lève
+        Chaque étape reçoit un nouvel `ordre`, et **c'est tout** (ADR-0078) : prélèvements et
+        avancements citent des identités, donc rien d'autre n'a à suivre le déplacement — il
+        fallait auparavant remapper les uns et réaligner les autres. Lève
         `ReordonnancementPhasesInvalide` (409) si la liste ne recouvre pas exactement le déroulé.
         """
         self._exiger_tournoi(tournoi_id)
@@ -243,27 +243,15 @@ class ServicePhases:
             raise ReordonnancementPhasesInvalide(
                 "Réordonner exige la liste complète des étapes du déroulé, chacune une seule fois."
             )
-        # Ancien ordre → nouvel ordre (position dans la liste, 1-indexée).
-        ancien_vers_nouveau = {
-            par_id[etape_id].ordre: rang for rang, etape_id in enumerate(etapes_ordonnees, start=1)
-        }
         reordonnees = [
-            self._remapper(
-                par_id[etape_id], nouvel_ordre=rang, ancien_vers_nouveau=ancien_vers_nouveau
-            )
+            par_id[etape_id].avec_ordre(rang)
             for rang, etape_id in enumerate(etapes_ordonnees, start=1)
         ]
-        verifier_sequence(reordonnees)  # valide l'ordre demandé
-        # **En un bloc, pas étape par étape** : un déroulé n'a qu'une étape par rang, donc tout
-        # échange passerait par un doublon transitoire que la persistance refuse (ADR-0003).
-        #
-        # DETTE-025 : ces **deux** écritures ne forment pas une unité de travail. Une panne entre
-        # elles laisse les étapes renumérotées et les avancements sur leurs anciens rangs, donc
-        # chaque phase pointant la **définition voisine** — un autre barème, sans erreur ni signal.
-        # Ne pas contourner en réordonnant une à une.
-        posees = self._deroules.reordonner(reordonnees)
-        self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
-        return posees
+        verifier_sequence(vues_du_deroule(reordonnees))  # valide l'ordre demandé
+        # **En un bloc, pas étape par étape** : le rang n'est plus qu'un affichage (ADR-0078), mais
+        # une panne au milieu laisserait tout de même une numérotation trouée à l'écran. Ce n'est
+        # donc plus un contournement d'unicité — c'est une unité de travail (DETTE-025).
+        return self._deroules.enregistrer_plusieurs(reordonnees)
 
     def supprimer(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> None:
         """Retire une étape du déroulé et **recompacte** les ordres (1..N sans trou).
@@ -279,71 +267,36 @@ class ServicePhases:
             raise PhaseQualificationNonSupprimable(
                 "La phase de qualification se gère via le barème ; elle ne se supprime pas ici."
             )
+        assert cible.id is not None, "Une étape consultée est persistée."
         restantes = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
-        if any(s.ordre_source == cible.ordre for e in restantes for s in e.sources):
+        if any(s.etape_source_id == cible.id for e in restantes for s in e.sources):
             raise PhaseSourceReferencee(
                 "Cette phase alimente une autre phase de la séquence ; réaffectez-la d'abord."
             )
-        # Recompactage : les ordres au-delà de l'étape retirée descendent d'un cran.
-        ancien_vers_nouveau = {
-            e.ordre: (e.ordre if e.ordre < cible.ordre else e.ordre - 1) for e in restantes
-        }
+        # Recompactage : les ordres au-delà de l'étape retirée descendent d'un cran. **Le rang
+        # seul bouge** (ADR-0078) — ni les prélèvements, ni les avancements n'ont à suivre.
         recompactees = [
-            self._remapper(
-                e,
-                nouvel_ordre=ancien_vers_nouveau[e.ordre],
-                ancien_vers_nouveau=ancien_vers_nouveau,
-            )
-            for e in restantes
+            e.avec_ordre(e.ordre if e.ordre < cible.ordre else e.ordre - 1) for e in restantes
         ]
-        verifier_sequence(recompactees)
-        # ⚠️ **On retire avant de recompacter, et les avancements avant leur étape.** Le rang
-        # étant la clé de jointure vers la définition, décaler les étapes avant d'avoir retiré la
-        # phase supprimée la ferait pointer sur l'étape voisine ; et un tournoi ne portant qu'une
-        # étape par rang, recompacter d'abord écrirait son rang sur sa voisine.
+        verifier_sequence(vues_du_deroule(recompactees))
+        # ⚠️ **Les avancements se retirent par l'identité de leur étape, pas par son rang**
+        # (ADR-0078) : l'ordre des trois écritures n'emporte plus de conséquence, là où il fallait
+        # retirer, réaligner puis recompacter — dans cet ordre exactement (revue E01US025).
         #
-        # Le déroulé a donc, le temps de ces trois gestes, un trou dans sa numérotation — assumé,
-        # rien ne le lit entre-temps (écrivain unique, règle 7).
+        # DETTE-025 : elles ne forment toujours pas une unité de travail, mais ce qu'une panne
+        # laisse derrière elle a changé de nature — une numérotation trouée, non plus un barème
+        # joué de travers.
         for depart_id in self._creneaux(tournoi_id):
             for phase in self._phases.par_depart(depart_id):
-                if phase.ordre == cible.ordre:
+                if phase.etape_id == cible.id:
                     assert phase.id is not None, "Une phase relue est persistée."
                     self._phases.supprimer(phase.id)
-        assert cible.id is not None, "Une étape consultée est persistée."
         self._deroules.supprimer(cible.id)
-        # ⚠️ **Réaligner AVANT de recompacter, jamais après** (revue E01US025).
-        # `_realigner_avancements` relit les phases par `par_depart`, qui **assemble** — et
-        # l'assemblage **écarte silencieusement** toute phase dont le rang n'a plus d'étape.
-        # Recompacter d'abord rendait la dernière phase de chaque créneau invisible : jamais
-        # réalignée, restée en base à son ancien rang, elle faisait heurter `uq_phase_depart_ordre`
-        # à l'ajout suivant — écran d'atelier en 500, définitivement.
-        #
-        # DETTE-025 : même défaut qu'à `reordonner`, sur **trois** écritures ici.
-        self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
-        self._deroules.reordonner(recompactees)
+        self._deroules.enregistrer_plusieurs(recompactees)
 
     def _creneaux(self, tournoi_id: TournoiId) -> list[int]:
         """Les identifiants des créneaux du tournoi — là où les avancements se déclinent."""
         return [d.id for d in self._departs.par_tournoi(tournoi_id) if d.id is not None]
-
-    def _realigner_avancements(
-        self, tournoi_id: TournoiId, ancien_vers_nouveau: dict[int, int]
-    ) -> None:
-        """Fait suivre le rang des phases quand celui de leur étape change.
-
-        Le rang **est** la clé de jointure (ADR-0076) : une phase restée sur son ancien ordre
-        pointerait la définition d'une autre étape, sans la moindre erreur visible. L'écriture se
-        fait **par créneau et en un bloc** — un créneau ne porte qu'un avancement par rang, donc
-        les décaler un à un buterait sur cette unicité dès que deux rangs s'échangent.
-        """
-        for depart_id in self._creneaux(tournoi_id):
-            a_realigner = [
-                phase.avec_ordre(ancien_vers_nouveau[phase.ordre])
-                for phase in self._phases.par_depart(depart_id)
-                if ancien_vers_nouveau.get(phase.ordre, phase.ordre) != phase.ordre
-            ]
-            if a_realigner:
-                self._phases.reordonner(a_realigner)
 
     # --- Cycle de vie (transitions gardées, patron ServiceTournois) ----------------------------
 
@@ -396,27 +349,6 @@ class ServicePhases:
                 f"Cette transition n'est possible que sur une phase {libelle_attendu}."
             )
         return self._phases.enregistrer(muter(phase))
-
-    @staticmethod
-    def _remapper(
-        etape: EtapeDeroule, *, nouvel_ordre: int, ancien_vers_nouveau: dict[int, int]
-    ) -> EtapeDeroule:
-        """Renvoie l'étape à son nouvel ordre, **chacune** de ses sources remappée.
-
-        `# DETTE-026` — les ancres de source sont des `ordre`, non des `id` : déplacer une phase
-        oblige à réécrire les références de toutes celles qui la citent. Depuis E05US010 une phase
-        en porte **plusieurs**, et le remappage vaut pour chacune — sans quoi seule la première
-        suivrait le déplacement. C'est la surface de ce raccourci qui a grandi, pas sa nature.
-        """
-        deplacee = etape.avec_ordre(nouvel_ordre)
-        if not etape.sources:
-            return deplacee
-        return deplacee.avec_sources(
-            tuple(
-                replace(source, ordre_source=ancien_vers_nouveau[source.ordre_source])
-                for source in etape.sources
-            )
-        )
 
     def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
         """Le tournoi doit exister : c'est lui qui porte le **déroulé** (ADR-0076)."""

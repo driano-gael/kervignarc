@@ -123,8 +123,10 @@ class Scenario:
                 statut=statut,
             ),
         )
-        assert phase.id is not None
+        assert phase.id is not None and phase.etape_id is not None
         self.phase_id = phase.id
+        # L'identité de l'**étape** jouée : c'est elle qu'un prélèvement aval cite (ADR-0078).
+        self.etape_id = phase.etape_id
         self._db = db
         self._categorie_id = categorie.id
 
@@ -303,7 +305,9 @@ def test_une_phase_avale_preleve_dans_la_colline(
                 depart_id=scn.depart_id,
                 ordre=3,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2),),
+                sources=(
+                    SourcePhase.par_rangs(etape_source_id=scn.etape_id, rang_debut=1, rang_fin=2),
+                ),
             ),
         )
         assert aval.id is not None

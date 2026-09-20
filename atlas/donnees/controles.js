@@ -173,6 +173,48 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce PhaseRepository.reordonner, DerouleRepository.reordonner dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0078"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _decaler_dun_cran dans « backend/application/bareme_qualification.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0078"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _remapper, _realigner_avancements dans « backend/application/phases.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0078"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce uq_deroule_tournoi_ordre dans « backend/infrastructure/db/models.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0078"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0080"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0081"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0082"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce DecorDeSaisie.VOLEE_COLLECTIVE dans « frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
@@ -191,7 +233,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce brancher_poules dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "message": "annonce _classement_de_l_ordre, brancher_poules dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
   },
@@ -294,6 +336,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 48
+  "signaux": 55
  }
 };

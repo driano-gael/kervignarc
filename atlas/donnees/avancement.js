@@ -141,19 +141,6 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
-   "identifiant": "026",
-   "introduite_par": [
-    "E05US001",
-    "E05US010",
-    "E01US025"
-   ],
-   "ouverte": true,
-   "resorption_us": [
-    "E05US022"
-   ],
-   "severite": "majeur"
-  },
-  {
    "identifiant": "006",
    "introduite_par": [
     "E02US002",
@@ -911,9 +898,11 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0076",
+   "0078",
    "0104"
   ],
-  "derniere": "E06US009"
+  "derniere": "E05US022"
  },
  "epics": [
   {
@@ -2055,6 +2044,7 @@ window.ATLAS.avancement = {
     "0067",
     "0068",
     "0070",
+    "0078",
     "0080",
     "0083",
     "0095",
@@ -2088,7 +2078,6 @@ window.ATLAS.avancement = {
    ],
    "dettes_introduites": [
     "025",
-    "026",
     "047",
     "048",
     "049",
@@ -2638,9 +2627,7 @@ window.ATLAS.avancement = {
     "0045",
     "0078"
    ],
-   "dettes_introduites": [
-    "026"
-   ],
+   "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
@@ -2716,7 +2703,6 @@ window.ATLAS.avancement = {
     "0106"
    ],
    "dettes_introduites": [
-    "026",
     "038",
     "054"
    ],
@@ -2857,14 +2843,16 @@ window.ATLAS.avancement = {
    "titre_story": "Un format connaît son effectif minimum, et le lancement le vérifie"
   },
   {
-   "adr": [],
+   "adr": [
+    "0078"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [
     "026"
    ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E05US022",
    "sections": [
     "Résorptions de dette planifiées (arbitrages du 07/08/2026)"
@@ -4820,7 +4808,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 144,
+  "livrees": 145,
   "vivantes": 178
  },
  "sections": [
@@ -6109,7 +6097,7 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    3,
+    4,
     4
    ],
    "compteur_ecrit": null,
@@ -6134,7 +6122,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E05US022",
      "titre": "Ancrer la séquence sur l'identité de l'étape"
     }

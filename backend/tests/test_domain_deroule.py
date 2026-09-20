@@ -22,7 +22,7 @@ from domain.anomalie import Gravite
 from domain.bareme import BaremeQualification
 from domain.deroule import projeter
 from domain.format_tournoi import ModelePhase
-from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
+from domain.phase import IssueTour, NatureSource, SourceModele, TypePhase
 from domain.poule import ModeDeComposition, ReglageDePoules
 
 
@@ -33,7 +33,7 @@ def _qualification(ordre: int = 1, effectif: int | None = None) -> ModelePhase:
 
 
 def _tableau(
-    ordre: int, sources: tuple[SourcePhase, ...], effectif: int | None = None
+    ordre: int, sources: tuple[SourceModele, ...], effectif: int | None = None
 ) -> ModelePhase:
     return ModelePhase(
         ordre=ordre, type=TypePhase.ELIMINATION_DIRECTE, sources=sources, effectif=effectif
@@ -84,7 +84,7 @@ def test_un_bloc_porte_ce_quon_demande_aux_archers() -> None:
 
 def test_une_sortie_par_prelevement_aval_et_une_entree_par_prelevement_amont() -> None:
     """« Une flèche par sortie » — et le même prélèvement est l'entrée du bloc d'en face."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 32),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 1, 32),))]
 
     projection = projeter(etapes, effectif=120)
 
@@ -102,13 +102,13 @@ def test_plusieurs_fleches_peuvent_entrer_dans_un_bloc() -> None:
     secondaire »."""
     etapes = [
         _qualification(),
-        _tableau(2, (SourcePhase.par_rangs(1, 1, 32),)),
-        _tableau(3, (SourcePhase.par_rangs(1, 33, 64),)),
+        _tableau(2, (SourceModele.par_rangs(1, 1, 32),)),
+        _tableau(3, (SourceModele.par_rangs(1, 33, 64),)),
         _tableau(
             4,
             (
-                SourcePhase.par_issue_de_tour(2, tour=4, issue=IssueTour.GAGNANTS),
-                SourcePhase.par_issue_de_tour(3, tour=5, issue=IssueTour.GAGNANTS),
+                SourceModele.par_issue_de_tour(2, tour=4, issue=IssueTour.GAGNANTS),
+                SourceModele.par_issue_de_tour(3, tour=5, issue=IssueTour.GAGNANTS),
             ),
         ),
     ]
@@ -122,7 +122,7 @@ def test_plusieurs_fleches_peuvent_entrer_dans_un_bloc() -> None:
 
 def test_le_bloc_dune_phase_alimentee_par_rangs_porte_sa_tranche() -> None:
     """« Qui est là » = combien **et quelle tranche de rangs** — c'est le braquet du bloc."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 33, 64),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 33, 64),))]
 
     projection = projeter(etapes, effectif=120)
 
@@ -134,7 +134,7 @@ def test_le_bloc_dune_phase_alimentee_par_rangs_porte_sa_tranche() -> None:
 
 
 def test_un_tableau_de_32_se_deroule_en_cinq_tours() -> None:
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 32),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 1, 32),))]
 
     projection = projeter(etapes, effectif=120)
 
@@ -143,7 +143,7 @@ def test_un_tableau_de_32_se_deroule_en_cinq_tours() -> None:
 
 def test_a_chaque_tour_les_perdants_forment_la_moitie_basse_de_la_plage() -> None:
     """Règle R : les perdants du tour *t* prennent la tranche de rangs basse encore ouverte."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 32),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 1, 32),))]
 
     tours = projeter(etapes, effectif=120).blocs[1].tours
 
@@ -158,7 +158,7 @@ def test_a_chaque_tour_les_perdants_forment_la_moitie_basse_de_la_plage() -> Non
 
 def test_les_braquets_sont_decales_quand_le_tableau_part_dun_rang_intermediaire() -> None:
     """Un tableau des rangs 33-64 rend des rangs 33-64, pas 1-32 : le braquet est **absolu**."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 33, 64),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 33, 64),))]
 
     tours = projeter(etapes, effectif=120).blocs[1].tours
 
@@ -168,7 +168,7 @@ def test_les_braquets_sont_decales_quand_le_tableau_part_dun_rang_intermediaire(
 
 def test_un_tableau_incomplet_joue_moins_de_duels_au_premier_tour_les_byes() -> None:
     """24 duellistes dans un tableau de 32 : 8 duels au tour 1, 8 exemptés — puis 8 duels."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 24),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 1, 24),))]
 
     tours = projeter(etapes, effectif=120).blocs[1].tours
 
@@ -177,7 +177,7 @@ def test_un_tableau_incomplet_joue_moins_de_duels_au_premier_tour_les_byes() -> 
 
 
 def test_un_bloc_sans_effectif_connu_ne_pretend_pas_compter_ses_tours() -> None:
-    etapes = [_qualification(), _tableau(2, (SourcePhase.le_reste(1),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.le_reste(1),))]
 
     projection = projeter(etapes)
 
@@ -190,7 +190,7 @@ def test_un_bloc_sans_effectif_connu_ne_pretend_pas_compter_ses_tours() -> None:
 
 def test_les_archers_quaucune_phase_ne_reprend_sont_comptes_sans_suite() -> None:
     """120 qualifiés, 32 partent au tableau : les 88 autres n'ont pas de suite — c'est visible."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 32),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 1, 32),))]
 
     projection = projeter(etapes, effectif=120)
 
@@ -200,7 +200,7 @@ def test_les_archers_quaucune_phase_ne_reprend_sont_comptes_sans_suite() -> None
 
 def test_une_phase_que_personne_natteint_est_une_anomalie_visible() -> None:
     """Un bloc vide est un trou dans le dessin : il s'affiche, et il s'explique."""
-    etapes = [_qualification(effectif=16), _tableau(2, (SourcePhase.par_rangs(1, 17, 32),))]
+    etapes = [_qualification(effectif=16), _tableau(2, (SourceModele.par_rangs(1, 17, 32),))]
 
     projection = projeter(etapes, effectif=16)
 
@@ -210,7 +210,7 @@ def test_une_phase_que_personne_natteint_est_une_anomalie_visible() -> None:
 
 def test_une_anomalie_est_rattachee_au_bloc_quelle_concerne() -> None:
     """« Pas un message d'erreur abstrait » : l'anomalie sait de quelle phase elle parle."""
-    etapes = [_qualification(effectif=16), _tableau(2, (SourcePhase.par_rangs(1, 17, 32),))]
+    etapes = [_qualification(effectif=16), _tableau(2, (SourceModele.par_rangs(1, 17, 32),))]
 
     projection = projeter(etapes, effectif=16)
 
@@ -225,8 +225,8 @@ def _format_relatif() -> list[ModelePhase]:
     """Qualification, tableau des 32 premiers, et « le reste » en tableau secondaire."""
     return [
         _qualification(),
-        _tableau(2, (SourcePhase.par_rangs(1, 1, 32),)),
-        _tableau(3, (SourcePhase.par_rangs(1, 33, None),)),
+        _tableau(2, (SourceModele.par_rangs(1, 1, 32),)),
+        _tableau(3, (SourceModele.par_rangs(1, 33, None),)),
     ]
 
 
@@ -248,7 +248,7 @@ def test_le_meme_format_sajuste_a_82_sans_etre_retouche() -> None:
 
 def test_une_plage_fermee_qui_deborde_a_effectif_reduit_avertit_sans_bloquer() -> None:
     """« Les rangs 33 à 120 » sur 82 inscrits : le format n'est pas faux — il ne tient pas ici."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 33, 120),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 33, 120),))]
 
     projection = projeter(etapes, effectif=82)
 
@@ -264,7 +264,7 @@ def test_une_plage_fermee_qui_deborde_a_effectif_reduit_avertit_sans_bloquer() -
 
 def test_une_incoherence_structurelle_bloque_quel_que_soit_leffectif() -> None:
     """Une source postérieure est fausse à 120 comme à 82 : elle interdit l'application."""
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(3, 1, 8),)), _tableau(3, ())]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(3, 1, 8),)), _tableau(3, ())]
 
     projection = projeter(etapes, effectif=120)
 
@@ -295,8 +295,8 @@ def test_un_format_vide_ne_projette_aucun_bloc_et_reste_inapplicable() -> None:
 def test_le_reste_prend_ce_quaucune_autre_source_na_pris() -> None:
     etapes = [
         _qualification(),
-        _tableau(2, (SourcePhase.par_rangs(1, 1, 32),)),
-        _tableau(3, (SourcePhase.le_reste(1),)),
+        _tableau(2, (SourceModele.par_rangs(1, 1, 32),)),
+        _tableau(3, (SourceModele.le_reste(1),)),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -309,9 +309,9 @@ def test_les_gagnants_dun_tour_se_comptent_depuis_la_taille_du_tableau() -> None
     """32 duellistes : 16 gagnants au tour 1, 8 au tour 2 — et 16 perdants au tour 1."""
     etapes = [
         _qualification(),
-        _tableau(2, (SourcePhase.par_rangs(1, 1, 32),)),
-        _tableau(3, (SourcePhase.par_issue_de_tour(2, tour=2, issue=IssueTour.GAGNANTS),)),
-        _tableau(4, (SourcePhase.par_issue_de_tour(2, tour=1, issue=IssueTour.PERDANTS),)),
+        _tableau(2, (SourceModele.par_rangs(1, 1, 32),)),
+        _tableau(3, (SourceModele.par_issue_de_tour(2, tour=2, issue=IssueTour.GAGNANTS),)),
+        _tableau(4, (SourceModele.par_issue_de_tour(2, tour=1, issue=IssueTour.PERDANTS),)),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -369,8 +369,8 @@ def test_deux_phases_avales_qui_se_disputent_les_memes_rangs_sont_signalees() ->
     """
     etapes = [
         _qualification(),
-        _tableau(2, (SourcePhase.par_rangs(1, 1, 32),)),
-        _tableau(3, (SourcePhase.par_rangs(1, 32, 64),)),
+        _tableau(2, (SourceModele.par_rangs(1, 1, 32),)),
+        _tableau(3, (SourceModele.par_rangs(1, 32, 64),)),
     ]
 
     projection = projeter(etapes, effectif=64)
@@ -390,7 +390,7 @@ def test_un_effectif_declare_deja_juge_par_le_domaine_nest_pas_signale_deux_fois
         ModelePhase(
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, 1, 16),),
+            sources=(SourceModele.par_rangs(1, 1, 16),),
             effectif=32,
         ),
     ]
@@ -411,7 +411,7 @@ def test_un_effectif_declare_que_les_prelevements_ne_remplissent_pas_est_signale
         ModelePhase(
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.le_reste(1),),
+            sources=(SourceModele.le_reste(1),),
             effectif=16,
         ),
     ]
@@ -427,7 +427,7 @@ def test_un_effectif_declare_que_les_prelevements_ne_remplissent_pas_est_signale
 
 def _poules(
     ordre: int,
-    sources: tuple[SourcePhase, ...] = (),
+    sources: tuple[SourceModele, ...] = (),
     effectif: int | None = None,
     taille_visee: int = 4,
 ) -> ModelePhase:
@@ -463,8 +463,8 @@ def test_un_tableau_nourri_par_des_poules_hors_puissance_de_deux_avertit() -> No
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 12),)),
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 12),)),
+        _poules(2, (SourceModele.par_rangs(1, 1, 12),)),
+        _tableau(3, (SourceModele.par_rangs(2, 1, 12),)),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -483,8 +483,8 @@ def test_un_tableau_nourri_par_un_nombre_pair_de_poules_sans_bye_navertit_pas() 
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 16),), effectif=16, taille_visee=4),  # P = 4
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+        _poules(2, (SourceModele.par_rangs(1, 1, 16),), effectif=16, taille_visee=4),  # P = 4
+        _tableau(3, (SourceModele.par_rangs(2, 1, 16),)),
     ]
 
     assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
@@ -503,8 +503,8 @@ def test_un_nombre_impair_de_poules_avertit_meme_a_effectif_puissance_de_deux() 
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 24),), effectif=24, taille_visee=8),  # P = 3
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+        _poules(2, (SourceModele.par_rangs(1, 1, 24),), effectif=24, taille_visee=8),  # P = 3
+        _tableau(3, (SourceModele.par_rangs(2, 1, 16),)),
     ]
 
     assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
@@ -524,8 +524,8 @@ def test_une_phase_de_poules_non_reglee_avertit_plutot_que_de_se_taire() -> None
     """
     etapes = [
         _qualification(),
-        ModelePhase(ordre=2, type=TypePhase.POULES, sources=(SourcePhase.par_rangs(1, 1, 16),)),
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+        ModelePhase(ordre=2, type=TypePhase.POULES, sources=(SourceModele.par_rangs(1, 1, 16),)),
+        _tableau(3, (SourceModele.par_rangs(2, 1, 16),)),
     ]
 
     assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
@@ -542,8 +542,8 @@ def test_le_departage_inter_poules_rend_l_appariement_indemontrable() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 24),), effectif=24, taille_visee=4),  # P = 6, pair
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+        _poules(2, (SourceModele.par_rangs(1, 1, 24),), effectif=24, taille_visee=4),  # P = 6, pair
+        _tableau(3, (SourceModele.par_rangs(2, 1, 16),)),
     ]
     sans_departage = _codes(projeter(etapes, effectif=120).anomalies)
     assert "choc_de_poule_possible" not in sans_departage
@@ -551,7 +551,7 @@ def test_le_departage_inter_poules_rend_l_appariement_indemontrable() -> None:
     etapes[1] = ModelePhase(
         ordre=2,
         type=TypePhase.POULES,
-        sources=(SourcePhase.par_rangs(1, 1, 24),),
+        sources=(SourceModele.par_rangs(1, 1, 24),),
         effectif=24,
         poules=ReglageDePoules(taille_visee=4, nb_qualifies=4, departage_inter_poules=True),
     )
@@ -569,8 +569,8 @@ def test_un_nombre_impair_de_poules_ne_suffit_pas_si_le_prelevement_est_trop_cou
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=4),  # P = 9
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 8),)),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=4),  # P = 9
+        _tableau(3, (SourceModele.par_rangs(2, 1, 8),)),
     ]
 
     assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
@@ -583,7 +583,7 @@ def test_un_tableau_nourri_par_une_qualification_navertit_jamais() -> None:
     il n'y a pas de poule. Sans cette borne, l'avertissement se déclencherait sur la majorité des
     déroulés existants et ne dirait plus rien.
     """
-    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 12),))]
+    etapes = [_qualification(), _tableau(2, (SourceModele.par_rangs(1, 1, 12),))]
 
     assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
 
@@ -596,8 +596,8 @@ def test_la_phase_de_poules_elle_meme_nest_pas_signalee() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 12),)),
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 12),)),
+        _poules(2, (SourceModele.par_rangs(1, 1, 12),)),
+        _tableau(3, (SourceModele.par_rangs(2, 1, 12),)),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -620,7 +620,7 @@ def test_la_phase_de_poules_elle_meme_nest_pas_signalee() -> None:
 
 def _poules_de_niveau(
     ordre: int,
-    sources: tuple[SourcePhase, ...] = (),
+    sources: tuple[SourceModele, ...] = (),
     effectif: int | None = None,
     taille_visee: int = 4,
 ) -> ModelePhase:
@@ -650,8 +650,8 @@ def test_une_deuxieme_phase_de_poules_au_serpent_est_refusee() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -666,8 +666,8 @@ def test_le_refus_se_colle_a_la_phase_mal_reglee() -> None:
     endroit — le même soin que `choc_de_poule_possible` prend déjà."""
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -688,11 +688,11 @@ def test_la_derogation_leve_le_refus() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
         ModelePhase(
             ordre=3,
             type=TypePhase.POULES,
-            sources=(SourcePhase.par_rangs(2, 1, 36),),
+            sources=(SourceModele.par_rangs(2, 1, 36),),
             effectif=36,
             poules=ReglageDePoules(taille_visee=6, nb_qualifies=4, serpent_assume=True),
         ),
@@ -709,8 +709,8 @@ def test_des_poules_de_niveau_ne_declenchent_aucun_refus() -> None:
     garde-fou n'a rien à dire. C'est même tout son objet — il pousse vers ce réglage-là."""
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules_de_niveau(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules_de_niveau(3, (SourceModele.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -729,7 +729,7 @@ def test_une_premiere_phase_de_poules_au_serpent_ne_declenche_rien() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
     ]
 
     assert "serpent_apres_des_poules" not in _codes(projeter(etapes, effectif=120).anomalies)
@@ -745,7 +745,7 @@ def test_une_phase_de_poules_sans_source_declaree_ne_declenche_rien() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
         _poules(3, effectif=36, taille_visee=6),
     ]
 
@@ -769,8 +769,8 @@ def test_une_source_inerte_ne_declenche_pas_le_refus() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.le_reste(2),), effectif=36, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.le_reste(2),), effectif=36, taille_visee=6),
     ]
 
     assert "serpent_apres_des_poules" not in _codes(projeter(etapes, effectif=120).anomalies)
@@ -787,8 +787,8 @@ def test_une_phase_qui_ne_compose_qu_un_groupe_ne_declenche_pas_le_refus() -> No
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(2, 1, 6),), taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(2, 1, 6),), taille_visee=6),
     ]
 
     projection = projeter(etapes, effectif=120)
@@ -805,8 +805,8 @@ def test_deux_groupes_declenchent_toujours_le_refus() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(2, 1, 12),), taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(2, 1, 12),), taille_visee=6),
     ]
 
     assert "serpent_apres_des_poules" in _codes(projeter(etapes, effectif=120).anomalies)
@@ -817,11 +817,11 @@ def test_le_refus_accorde_son_message_au_nombre_de_sources() -> None:
     que l'organisateur a le plus besoin de savoir quoi corriger (exigence `P-4`)."""
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 18),), effectif=18, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(1, 19, 36),), effectif=18, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 18),), effectif=18, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(1, 19, 36),), effectif=18, taille_visee=6),
         _poules(
             4,
-            (SourcePhase.par_rangs(2, 1, 18), SourcePhase.par_rangs(3, 1, 18)),
+            (SourceModele.par_rangs(2, 1, 18), SourceModele.par_rangs(3, 1, 18)),
             effectif=36,
             taille_visee=6,
         ),
@@ -851,8 +851,8 @@ def test_un_tableau_nourri_par_des_poules_de_niveau_avertit_du_choc() -> None:
     """
     etapes = [
         _qualification(),
-        _poules_de_niveau(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 32),)),
+        _poules_de_niveau(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _tableau(3, (SourceModele.par_rangs(2, 1, 32),)),
     ]
 
     assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
@@ -872,8 +872,8 @@ def test_un_brouillon_a_effectif_nul_se_diagnostique_au_lieu_de_lever() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=0, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(2, 1, 36),), effectif=0, taille_visee=6),
     ]
 
     codes = _codes(projeter(etapes, effectif=120).anomalies)
@@ -894,8 +894,8 @@ def test_un_effectif_declare_ne_couvre_pas_une_fenetre_a_fin_ouverte() -> None:
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _poules(3, (SourcePhase.par_rangs(2, 1, None),), effectif=6, taille_visee=6),
+        _poules(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourceModele.par_rangs(2, 1, None),), effectif=6, taille_visee=6),
     ]
 
     assert "serpent_apres_des_poules" in _codes(projeter(etapes, effectif=120).anomalies)
@@ -915,8 +915,8 @@ def test_un_tableau_qui_preleve_des_groupes_de_niveau_entiers_n_avertit_pas() ->
     """
     etapes = [
         _qualification(),
-        _poules_de_niveau(2, (SourcePhase.par_rangs(1, 1, 32),), effectif=32, taille_visee=8),
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+        _poules_de_niveau(2, (SourceModele.par_rangs(1, 1, 32),), effectif=32, taille_visee=8),
+        _tableau(3, (SourceModele.par_rangs(2, 1, 16),)),
     ]
 
     assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
@@ -931,8 +931,8 @@ def test_le_choc_par_niveau_nomme_les_deux_rangs_en_cause() -> None:
     """
     etapes = [
         _qualification(),
-        _poules_de_niveau(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
-        _tableau(3, (SourcePhase.par_rangs(2, 1, 32),)),
+        _poules_de_niveau(2, (SourceModele.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _tableau(3, (SourceModele.par_rangs(2, 1, 32),)),
     ]
 
     messages = [

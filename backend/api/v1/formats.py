@@ -31,7 +31,7 @@ from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
-from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
+from domain.phase import IssueTour, NatureSource, SourceModele, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ModeDeComposition, ReglageDePoules
 from domain.qualification import DecoupageEnTours
@@ -58,11 +58,11 @@ class GrainDTO(BaseModel):
 class SourceDTO(BaseModel):
     """Un **prélèvement** d'une étape de format (E05US010) — mêmes natures que sur une phase réelle.
 
-    Jumeau assumé de `api/v1/phases.SourceDTO` : les deux routeurs exposent la même notion mais des
-    ressources distinctes (une phase de tournoi / une étape de brique de bibliothèque), et un DTO
-    partagé les coupleraient — la duplication à la frontière est le prix de leur indépendance
-    (déjà tranché à E01US023). Le **domaine**, lui, n'a qu'un seul `SourcePhase` : c'est là que la
-    règle vit, ici il n'y a que du transport.
+    Jumeau assumé de `api/v1/phases.SourceDTO` : deux ressources distinctes (phase de tournoi /
+    étape de bibliothèque), qu'un DTO partagé coupleraient (tranché à E01US023).
+
+    ⚠️ **Plus interchangeables depuis ADR-0078** : ici un **rang**, chez le jumeau une
+    **identité**. Ne pas les réunir — ce serait le champ polymorphe que l'ADR interdit.
     """
 
     ordre_source: int
@@ -72,8 +72,8 @@ class SourceDTO(BaseModel):
     tour: int | None = None
     issue: IssueTour | None = None
 
-    def vers_agregat(self) -> SourcePhase:
-        return SourcePhase(
+    def vers_agregat(self) -> SourceModele:
+        return SourceModele(
             ordre_source=self.ordre_source,
             nature=self.nature,
             rang_debut=self.rang_debut,
@@ -83,7 +83,7 @@ class SourceDTO(BaseModel):
         )
 
     @staticmethod
-    def de_agregat(source: SourcePhase) -> SourceDTO:
+    def de_agregat(source: SourceModele) -> SourceDTO:
         return SourceDTO(
             ordre_source=source.ordre_source,
             nature=source.nature,

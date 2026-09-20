@@ -55,7 +55,15 @@ class SourceDTO(BaseModel):
     deux fois, et la frontière API ne doit pas devenir un second lieu d'invariants (règle 6).
     """
 
-    ordre_source: int
+    etape_source_id: int
+    """L'**étape** où ce prélèvement puise, désignée par son identité (ADR-0078 §2).
+
+    ⚠️ **Le champ jumeau de `api/v1/formats.SourceDTO` s'appelle `ordre_source` et vaut un rang** :
+    un format de bibliothèque décrit un déroulé *type*, dont les étapes n'existent dans aucun
+    tournoi et n'ont donc pas d'identité à citer. Les deux noms diffèrent **exprès**, pour qu'un
+    client sache lequel il tient sans avoir à deviner.
+    """
+
     nature: NatureSource = NatureSource.RANGS
     rang_debut: int = 1
     rang_fin: int | None = None
@@ -65,7 +73,7 @@ class SourceDTO(BaseModel):
     @staticmethod
     def de_agregat(source: SourcePhase) -> SourceDTO:
         return SourceDTO(
-            ordre_source=source.ordre_source,
+            etape_source_id=source.etape_source_id,
             nature=source.nature,
             rang_debut=source.rang_debut,
             rang_fin=source.rang_fin,
@@ -75,7 +83,7 @@ class SourceDTO(BaseModel):
 
     def vers_agregat(self) -> SourcePhase:
         return SourcePhase(
-            ordre_source=self.ordre_source,
+            etape_source_id=self.etape_source_id,
             nature=self.nature,
             rang_debut=self.rang_debut,
             rang_fin=self.rang_fin,

@@ -600,8 +600,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **144 US livrées** (mergées, revues, CI verte) à la date du 19/09/2026 — la dernière à
-  **surface visible** étant `E06US009` — dont **deux
+- **145 US livrées** (mergées, revues, CI verte) à la date du 20/09/2026 — la dernière à
+  **surface visible** étant `E06US009`, la dernière livrée étant `E05US022` (**remède
+  structurel sans surface visible** : la séquence s'ancre sur l'identité de l'étape, un
+  créneau ne peut plus jouer le barème d'une autre étape, `DETTE-026` soldée) — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
   autorité sur le compte —, la dernière **livraison** étant `E06US009` — **un palmarès par

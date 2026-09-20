@@ -377,12 +377,13 @@ imparfait et la migration différée.
 > `PHASE` ne garde que l'**avancement** — propre au créneau. La divergence n'est plus improbable :
 > elle est **impossible**, il n'y a qu'un exemplaire.
 >
-> **La jointure définition ↔ avancement se fait par `ordre`**, pas par une FK `phase.etape_id`. Le
-> déroulé s'édite **par rang**, et un réordonnancement remappe déjà les ordres partout ; une FK
-> dupliquerait l'information tout en pouvant en diverger. ⚠️ La contrepartie est réelle et
-> inscrite au registre (**DETTE-026**) : le rang étant à la fois la clé de la séquence **et** la clé
-> de jointure, tout réordonnancement passe par un état transitoire à rangs dupliqués — d'où le
-> `reordonner` des deux repositories, qui gare les rangs hors de portée avant de les reposer.
+> **La jointure définition ↔ avancement se fait par `phase.etape_id`** (FK), depuis E05US022 /
+> [ADR-0078](adr/0078-la-sequence-s-ancre-sur-l-identite-de-l-etape.md). Elle se faisait par
+> `ordre` jusqu'au 20/09/2026, et c'était **DETTE-026** : le rang portait deux rôles — situer dans
+> la liste **et** apparier définition ↔ avancement —, si bien qu'un rang mal renuméroté faisait
+> jouer à un créneau le barème d'une autre étape, sans erreur ni signal. `etape_id` dit *quoi*,
+> l'`ordre` de l'étape dit *où* ; séparés, aucun des deux ne peut mentir sur l'autre. La colonne
+> `phase.ordre` et la contrainte `uq_deroule_tournoi_ordre` ont disparu (migration `0056`).
 >
 > ⚠️ **Migration 0043** : les définitions sont reprises depuis les phases du **premier départ** de
 > chaque tournoi. Les copies des autres créneaux sont **perdues si elles avaient divergé** — c'est le
@@ -775,8 +776,10 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
     "depth":    { "nom": "un_vers_n" }            // ou { "nom": "top_n", "jusqu_au": 4 }
   },
   "validation": { "grain": "fin_de_duel" },
+  // ⚠️ Sur `deroule_etape`, l'ancre est `etape_source_id` (ADR-0078) ; sur `format_tournoi`,
+  // c'est `ordre_source` — les étapes d'un format n'ont pas d'identité (ADR-0060 §5).
   "sources": [
-    { "nature": "rangs", "ordre_source": 1, "rang_debut": 1, "rang_fin": 128 }
+    { "nature": "rangs", "etape_source_id": 41, "rang_debut": 1, "rang_fin": 128 }
   ],
   "effectif": 128
 }
@@ -784,9 +787,9 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
 // Peuplement composé (E05US010) : plusieurs prélèvements, dont un relatif à l'effectif réel
 {
   "sources": [
-    { "nature": "issue_de_tour", "ordre_source": 2, "tour": 3, "issue": "perdants" },
-    { "nature": "rangs", "ordre_source": 3, "rang_debut": 1, "rang_fin": 1 },
-    { "nature": "reste", "ordre_source": 1 }
+    { "nature": "issue_de_tour", "etape_source_id": 42, "tour": 3, "issue": "perdants" },
+    { "nature": "rangs", "etape_source_id": 43, "rang_debut": 1, "rang_fin": 1 },
+    { "nature": "reste", "etape_source_id": 41 }
   ]
 }
 ```
@@ -797,6 +800,11 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
 > `nature`, et `rang_fin` peut valoir `null` (« et suivants »). La migration `0036` réécrit les deux
 > tables (`phase` **et** `format_tournoi`) et la relecture reste tolérante à l'ancienne forme, filet
 > pour une base restaurée d'une sauvegarde antérieure. DETTE-015 est résorbée.
+>
+> **Historique (résorbé) — l'ancre.** Jusqu'à E05US022, les deux tables écrivaient
+> `ordre_source`, un **rang**. La migration `0056` réécrit les `config` de `deroule_etape` en
+> `etape_source_id` (et normalise au passage l'ancienne forme `config.source` en liste) ;
+> `format_tournoi` garde le rang, ses étapes n'ayant pas d'identité. DETTE-026 est résorbée.
 
 > **Historique (résorbé) — le scoring.** Avant E05US003, l'implémentation écrivait `scoring` **à plat à la racine**
 > (`config.scoring`, forme d'E01US009 sous le périmètre ADR-0011 : une seule phase `qualification`).

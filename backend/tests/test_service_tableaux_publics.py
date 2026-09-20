@@ -311,7 +311,7 @@ def test_un_tableau_illisible_est_omis_sans_emporter_les_autres() -> None:
             monde.depart_id,
             3,
             TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase(ordre_source=1, rang_debut=5, rang_fin=8),),
+            sources=(SourcePhase(etape_source_id=1, rang_debut=5, rang_fin=8),),
         ),
     )
     assert a_venir.id is not None

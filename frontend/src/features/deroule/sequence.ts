@@ -1,10 +1,13 @@
 // Manipulation d'une **séquence d'étapes** de format (E01US024) — logique pure, aucun React.
 //
 // Deux gestes, et le second est ce qui les rend sûrs : réordonner ou retirer une étape **renumérote
-// les ordres**, or `ordre_source` désigne une phase **par son ordre** (`# DETTE-026`) — sans
-// remappage, monter une phase d'un cran fait glisser en silence les prélèvements de ses cadettes.
-// Le backend fait déjà exactement cela (`_remapper`) et **refuse** de retirer une phase encore
-// référencée : c'est la parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
+// les ordres**, or un prélèvement de **format** désigne sa source par son rang — sans remappage,
+// monter une étape d'un cran fait glisser en silence les prélèvements de ses cadettes.
+//
+// ⚠️ **Ce remappage est légitime ici, et le restera** (ADR-0078 §3) : il ne subsiste pas par
+// oubli. Un format de bibliothèque décrit des étapes qui n'existent dans aucun tournoi, donc sans
+// identité à citer — l'ancrage par rang y est correct. C'est l'**édition concrète** qui est passée
+// à l'identité (E05US022), et son jumeau `features/phases` n'a donc plus rien à remapper.
 
 import type { Etape, Source } from '../patrimoine/api'
 import { decrireProfondeur } from '../../shared/phases/profondeur'

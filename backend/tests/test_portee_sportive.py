@@ -141,8 +141,14 @@ def test_la_definition_d_une_etape_n_est_pas_dupliquee_par_depart() -> None:
 
     Le contrôle est **structurel** (les colonnes) et non comportemental : c'est la seule forme qui
     résiste à un code de lecture qu'on réécrirait pour s'accommoder de la colonne fautive.
+
+    ⚠️ **`etape_id` a remplacé `ordre` dans cette liste** (E05US022, ADR-0078), et ce n'est pas un
+    assouplissement : c'est le **rattachement** à la définition, pas un morceau de définition. Le
+    rang, lui, est parti — il vit sur la seule étape. Un `etape_id` ne peut pas diverger d'une
+    copie à l'autre puisqu'il n'y a rien à recopier : il **désigne**. Ce que cette garde interdit
+    reste identique — un type, un barème, une `config` sur `phase`.
     """
-    colonnes_avancement = {"id", "depart_id", "ordre", "statut"}
+    colonnes_avancement = {"id", "depart_id", "etape_id", "statut"}
     colonnes = {colonne.name for colonne in PhaseORM.__table__.columns}
     assert colonnes == colonnes_avancement, (
         "`phase` ne porte que l'avancement d'une étape dans un créneau (ADR-0076) ; sa définition "

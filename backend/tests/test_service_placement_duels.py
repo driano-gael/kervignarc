@@ -52,6 +52,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    identite_d_etape,
 )
 
 _DATE = datetime.date(2026, 3, 14)
@@ -285,7 +286,11 @@ class _Monde:
         self.autre_categorie_id = autre.id
         depart = 1  # un seul « départ » logique ; l'inscription suffit (pas de repo départ ici)
         self.depart_id = depart
-        phase = self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        phase = self.phases.ajouter(
+            Phase.creer(
+                self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(2)
+            )
+        )
         assert phase.id is not None
         self.phase_id = phase.id
         self.inscription_par_archer: dict[int, int] = {}
@@ -314,7 +319,9 @@ class _Monde:
         # `ajouter` suffit (contrairement aux décors qui en ont un, où une phase sans étape serait
         # écartée comme orpheline — ADR-0076).
         posee = self.phases.ajouter(
-            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
+            Phase.qualification(
+                self.depart_id, BaremeQualification.creer(1, 3), etape_id=identite_d_etape(1)
+            )
         )
         assert posee.id is not None
         return posee.id
@@ -494,7 +501,9 @@ def test_phase_qui_n_est_pas_un_tableau_est_refusee() -> None:
     monde = _Monde(capacites=(4,))
     _quatre_archers(monde)
     qualif = monde.phases.ajouter(
-        Phase.qualification(monde.tournoi_id, BaremeQualification.creer(2, 3))
+        Phase.qualification(
+            monde.tournoi_id, BaremeQualification.creer(2, 3), etape_id=identite_d_etape(1)
+        )
     )
     assert qualif.id is not None
     with pytest.raises(PhasePasUnTableau):
@@ -836,12 +845,19 @@ def test_le_plan_de_cibles_honore_les_prelevements_comme_l_arbre() -> None:
     # retomberait sur « tous les archers en lice » — le compte serait alors de 4, donc l'assertion
     # d'effectif **échouerait**, mais celle de parité passerait trivialement (les deux services
     # partageant le même repli). C'est cette seconde qu'on veut discriminante.
-    monde.phases.ajouter(Phase.qualification(monde.depart_id, BaremeQualification.creer(2, 3)))
+    monde.phases.ajouter(
+        Phase.qualification(
+            monde.depart_id, BaremeQualification.creer(2, 3), etape_id=identite_d_etape(1)
+        )
+    )
     phase = monde.phases.par_id(monde.phase_id)
     assert phase is not None
     # Le tableau ne prend que les deux premiers : le plan doit poser deux archers, pas quatre.
     monde.phases._phases[monde.phase_id] = replace(
-        phase, sources=(SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=2),)
+        phase,
+        sources=(
+            SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=2),
+        ),
     )
 
     plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)

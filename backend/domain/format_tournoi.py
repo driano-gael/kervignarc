@@ -9,8 +9,9 @@ l'application.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
+from types import MappingProxyType
 
 from domain.anomalie import Anomalie, Gravite
 from domain.arret_programme import ArretProgramme
@@ -18,7 +19,7 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
-from domain.deroule_etape import EtapeDeroule, titre_normalise
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId, table_des_rangs, titre_normalise
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
@@ -28,9 +29,11 @@ from domain.erreurs import (
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
 from domain.phase import (
-    SourcePhase,
+    SourceModele,
     TypePhase,
+    ancrer_sur_les_etapes,
     grain_par_defaut,
+    projeter_sur_les_rangs,
 )
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
@@ -43,6 +46,14 @@ FormatTournoiId = int
 
 # Preset « format club » du CA d'E01US009 : 5 volées de 3 flèches (les « 15 flèches » du CDC v0.2,
 # qui ne sont **pas** la FFTA — cf. référentiel §10.1).
+SANS_ETAPE_POSEE: Mapping[int, EtapeDerouleId] = MappingProxyType({})
+"""Table de résolution **vide** — le défaut des deux traductions d'ADR-0078 §4.
+
+⚠️ **Un défaut sans danger, et c'est ce qui le rend acceptable** : une étape sans prélèvement n'a
+rien à résoudre, tandis qu'un prélèvement non résolu lève `SourceIntrouvable`. Oublier la table ne
+peut donc pas produire un ancrage faux — seulement un refus bruyant.
+"""
+
 PRESET_CLUB_NB_VOLEES = 5
 PRESET_CLUB_NB_FLECHES_PAR_VOLEE = 3
 
@@ -66,7 +77,7 @@ class ModelePhase:
     # relatives) — exactement le même value object que sur une phase réelle, sérialisé ici dans une
     # **seconde** table (`format_tournoi.config`). C'est ce qui a rendu la migration d'E05US010
     # double ; DETTE-015 est résorbée.
-    sources: tuple[SourcePhase, ...] = ()
+    sources: tuple[SourceModele, ...] = ()
     effectif: int | None = None
     barrage_jusqu_au: int | None = None
     """Jusqu'à quel rang un barrage départage (E06US003, ADR-0066).
@@ -163,14 +174,18 @@ class ModelePhase:
             effectif=effectif,
         )
 
-    def pour_tournoi(self, tournoi_id: TournoiId) -> EtapeDeroule:
+    def pour_tournoi(
+        self,
+        tournoi_id: TournoiId,
+        ordre_vers_id: Mapping[int, EtapeDerouleId] = SANS_ETAPE_POSEE,
+    ) -> EtapeDeroule:
         """Instancie ce modèle en **étape du déroulé** d'un tournoi.
 
-        C'est ici que `tournoi_id` naît. L'étape obtenue est ajustable **sans altérer** le format —
-        même promesse qu'un gabarit appliqué. **Vers le tournoi et non vers un départ** (ADR-0076)
-        : le déroulé se définit une fois, et `EtapeDeroule.instancier` descend ensuite au départ en
-        ne créant qu'un **avancement**. Passe par le constructeur d'`EtapeDeroule`, donc par les
-        mêmes invariants qu'une phase : un format impossible échoue **à l'application**.
+        C'est ici que `tournoi_id` naît. **Vers le tournoi et non vers un départ** (ADR-0076) : le
+        déroulé se définit une fois, `EtapeDeroule.instancier` descendant ensuite au créneau. Passe
+        par le constructeur d'`EtapeDeroule`, donc par les mêmes invariants qu'une phase.
+        ⚠️ **`ordre_vers_id` est le passage d'un monde à l'autre** (ADR-0078 §4) : l'appelant pose
+        les étapes **dans l'ordre**, enrichissant la table au fur et à mesure.
         """
         return EtapeDeroule(
             tournoi_id=tournoi_id,
@@ -178,7 +193,7 @@ class ModelePhase:
             type=self.type,
             bareme=self.bareme,
             validation=self.validation,
-            sources=self.sources,
+            sources=ancrer_sur_les_etapes(self.sources, ordre_vers_id),
             effectif=self.effectif,
             barrage_jusqu_au=self.barrage_jusqu_au,
             profondeur=self.profondeur,
@@ -192,20 +207,21 @@ class ModelePhase:
         )
 
     @staticmethod
-    def d_etape(etape: EtapeDeroule) -> ModelePhase:
+    def d_etape(
+        etape: EtapeDeroule, id_vers_ordre: Mapping[EtapeDerouleId, int] = SANS_ETAPE_POSEE
+    ) -> ModelePhase:
         """Extrait le **modèle** d'une étape de déroulé : on retient la règle, on oublie l'édition.
 
-        Sert à la **promotion** (« ce format est permanent ») : le déroulé d'un tournoi remonte en
-        brique de bibliothèque, le `tournoi_id` étant délibérément perdu. **Depuis une étape et non
-        d'une phase** (ADR-0076) : la définition ne vit plus que là — avant, promouvoir lisait
-        *l'une des N copies*, sans que rien ne garantisse laquelle.
+        Deux emplois, **une** traduction (ADR-0078) : la **promotion** en brique de bibliothèque,
+        et la **vue par rangs** dont le moteur a besoin. **Depuis une étape et non d'une phase**
+        (ADR-0076) : avant, promouvoir lisait *l'une des N copies*, sans garantie de laquelle.
         """
         return ModelePhase(
             ordre=etape.ordre,
             type=etape.type,
             bareme=etape.bareme,
             validation=etape.validation,
-            sources=etape.sources,
+            sources=projeter_sur_les_rangs(etape.sources, id_vers_ordre),
             effectif=etape.effectif,
             barrage_jusqu_au=etape.barrage_jusqu_au,
             profondeur=etape.profondeur,
@@ -395,19 +411,28 @@ class FormatTournoi:
         """
         return replace(self, nom=_nom_valide(nom), origine=OrigineBrique.UTILISATEUR, id=None)
 
-    def appliquer(self, tournoi_id: TournoiId) -> tuple[EtapeDeroule, ...]:
-        """Instancie le format en **déroulé** du tournoi : une séquence 1..N, définie **une fois**.
+    def verifier_applicable(self) -> None:
+        """Refuse un format que le tournoi ne pourrait pas jouer (ADR-0063).
 
-        **Vers le tournoi, plus vers des départs** (ADR-0076) : ce sont les **avancements** qui se
-        déclinent par créneau, et eux ne portent aucun réglage. **C'est ici que l'invariant est
-        tenu** (ADR-0063) : l'enregistrement accepte le brouillon, l'application refuse en **disant
-        pourquoi**. Seules les **bloquantes** arrêtent — une anomalie conjoncturelle n'empêche pas
-        d'appliquer, le déroulé s'adaptant à l'effectif.
+        **C'est ici que l'invariant est tenu** : l'enregistrement accepte le brouillon,
+        l'application refuse en **disant pourquoi**. Seules les **bloquantes** arrêtent — une
+        anomalie conjoncturelle n'empêche pas d'appliquer. ⚠️ **Séparée de la pose depuis
+        ADR-0078** : ancrer demande une identité que seule l'écriture attribue, et ce contrôle
+        doit rester appelable **avant** elle.
         """
         for anomalie in self.anomalies():
             if anomalie.gravite is Gravite.BLOQUANTE:
                 raise anomalie.erreur
-        return tuple(etape.pour_tournoi(tournoi_id) for etape in self.etapes)
+
+    @property
+    def etapes_ordonnees(self) -> tuple[ModelePhase, ...]:
+        """Les étapes **par rang croissant** — l'ordre dans lequel elles doivent être posées.
+
+        ⚠️ Le tri n'est pas cosmétique (ADR-0078 §4) : chaque étape s'ancre sur les identités des
+        précédentes, et une source ne vise jamais qu'une phase **antérieure**. Poser dans le
+        désordre ferait donc chercher une identité pas encore attribuée.
+        """
+        return tuple(sorted(self.etapes, key=lambda etape: etape.ordre))
 
     @staticmethod
     def de_deroule(
@@ -415,15 +440,17 @@ class FormatTournoi:
     ) -> FormatTournoi:
         """Capture le **déroulé d'un tournoi** en format de bibliothèque (**promotion**).
 
-        **Depuis le déroulé, plus depuis les phases d'un départ** (ADR-0076) : tant que la
-        définition était dupliquée par créneau, promouvoir obligeait à choisir *laquelle* des N
-        copies faisait foi. Le `tournoi_id` est perdu — on promeut une **règle**, pas un
-        rattachement. L'exigence d'effectif **remonte** si l'appelant la fournit : elle n'est pas
-        lisible depuis les étapes (le tournoi la porte), d'où le paramètre explicite.
+        **Depuis le déroulé, plus depuis les phases d'un départ** (ADR-0076) : promouvoir
+        obligeait à choisir *laquelle* des N copies faisait foi. Le `tournoi_id` est perdu — on
+        promeut une **règle**. L'exigence d'effectif **remonte** si l'appelant la fournit : elle
+        n'est pas lisible depuis les étapes. ⚠️ **Les prélèvements redescendent sur les rangs**
+        (ADR-0078 §3), table lue sur le déroulé même.
         """
+        retenues = list(etapes)
+        rangs = table_des_rangs(retenues)
         return FormatTournoi.creer(
             nom,
-            [ModelePhase.d_etape(etape) for etape in etapes],
+            [ModelePhase.d_etape(etape, rangs) for etape in retenues],
             effectif_minimum_exige=effectif_minimum_exige,
         )
 

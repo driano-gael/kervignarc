@@ -112,8 +112,10 @@ class Scenario:
                 suisse=ConfigurationSuisse(nb_rondes=nb_rondes),
             ),
         )
-        assert phase.id is not None
+        assert phase.id is not None and phase.etape_id is not None
         self.phase_id = phase.id
+        # L'identité de l'**étape** jouée : c'est elle qu'un prélèvement aval cite (ADR-0078).
+        self.etape_id = phase.etape_id
 
 
 @pytest.fixture
@@ -301,7 +303,9 @@ def test_une_phase_avale_preleve_dans_le_suisse(
                 depart_id=scn.depart_id,
                 ordre=3,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2),),
+                sources=(
+                    SourcePhase.par_rangs(etape_source_id=scn.etape_id, rang_debut=1, rang_fin=2),
+                ),
             ),
         )
         assert aval.id is not None
@@ -427,7 +431,9 @@ def test_un_suisse_consomme_classe_sans_titrer(
                 depart_id=scn.depart_id,
                 ordre=3,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2),),
+                sources=(
+                    SourcePhase.par_rangs(etape_source_id=scn.etape_id, rang_debut=1, rang_fin=2),
+                ),
             ),
         )
 

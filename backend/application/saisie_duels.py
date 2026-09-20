@@ -39,10 +39,11 @@ from domain.classement import LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
+from domain.deroule_etape import EtapeDerouleId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
-from domain.phase import PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import (
     Aggregation,
     Byes,
@@ -506,24 +507,47 @@ class ServiceSaisieDuels:
         """
         cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
 
-        def resoudre(ordre: int) -> ClassementSource | None:
-            if ordre not in cache:
-                cache[ordre] = self._classement_de_l_ordre(
-                    tournoi_id, depart_id, ordre, _chaine, cache
+        def resoudre(etape_id: EtapeDerouleId) -> ClassementSource | None:
+            if etape_id not in cache:
+                cache[etape_id] = self._classement_de_l_etape(
+                    tournoi_id, depart_id, etape_id, _chaine, cache
                 )
-            return cache[ordre]
+            return cache[etape_id]
 
         return resoudre
 
-    def _classement_de_l_ordre(
+    def _classement_de_l_etape(
         self,
         tournoi_id: TournoiId,
         depart_id: DepartId,
-        ordre: int,
+        etape_id: EtapeDerouleId,
         chaine: tuple[PhaseId, ...],
         cache: dict[int, ClassementSource | None],
     ) -> ClassementSource | None:
-        """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
+        """Le classement produit **dans ce créneau** par l'étape désignée, ou `None`.
+
+        ⚠️ **Désignée par identité, estampillée par rang** (ADR-0078). La résolution se fait sur
+        `etape_id` — c'est ce qu'un prélèvement cite, et renuméroter le déroulé ne change donc
+        plus ce qu'une phase aval va lire. Le rang est reposé sur le résultat parce que les
+        messages en ont besoin : « la phase 2 » se dit à l'organisateur, pas un identifiant.
+        """
+        phase = next(
+            (p for p in self._phases.par_depart(depart_id) if p.etape_id == etape_id), None
+        )
+        if phase is None:
+            return None
+        produit = self._classement_produit(tournoi_id, depart_id, phase, chaine, cache)
+        return None if produit is None else replace(produit, ordre=phase.ordre)
+
+    def _classement_produit(
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        phase: Phase,
+        chaine: tuple[PhaseId, ...],
+        cache: dict[int, ClassementSource | None],
+    ) -> ClassementSource | None:
+        """Le classement de cette phase, selon son type — sans l'estampille de rang.
 
         1. **qualification** — le classement de tir du départ (ADR-0075) ;
         2. **élimination directe** — l'arbre reconstruit ; le service s'appelle lui-même ;
@@ -531,9 +555,6 @@ class ServiceSaisieDuels:
         4. **tout autre**, ou aucun lecteur branché — `None` : la phase retombe sur son
            comportement d'avant, le prélèvement reste **inerte** plutôt que faux.
         """
-        phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
-        if phase is None:
-            return None
         if phase.type is TypePhase.QUALIFICATION:
             # Un classement de qualification n'a **aucune plage indécise** : les rangs de tir
             # sont fermes dès que les volées sont validées.
