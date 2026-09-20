@@ -877,10 +877,10 @@ class ServicePilotageSimulation:
             raise TournoiSansDepart(
                 "Cette session n'a aucun créneau : il n'y a rien à rejouer.",
             )
-        # ⚠️ **Un créneau rendu n'est pas un créneau joué** : le harnais écrit toutes ses volées
-        # dans `session.phase_qualif_id`, résolu par `qualification_du_tournoi` (`DETTE-022`,
-        # `DETTE-047`). À N créneaux, seul celui-là porte des scores ; les autres sortent d'ici
-        # avec un classement vide. E06US009 a corrigé la **portée d'affichage**, pas le moteur.
+        # ⚠️ **Un créneau rendu n'est pas un créneau joué** (`DETTE-107`) : le harnais écrit
+        # toutes ses volées dans `session.phase_qualif_id`, résolu par `qualification_du_tournoi`.
+        # Les autres créneaux sortent d'ici **avec leurs inscrits rangés à zéro** — pas vides — et
+        # leur arbre est monté et joué sur ces zéros (mesuré en revue, axe D).
         simules: list[CreneauSimule] = []
         for depart in creneaux:
             assert depart.id is not None, "Le magasin in-memory attribue un identifiant."

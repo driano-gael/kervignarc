@@ -248,6 +248,7 @@ function FormulaireInscription({
 
 // Libellé d'un créneau : « Départ N · horaire · tarif ». `montantOuTarif` est soit le tarif du
 // départ (au choix), soit le montant dû dérivé d'une inscription — les deux sont égaux (ADR-0017).
+// `DETTE-106` — 4ᵉ orthographe : même préfixe que `libelleCreneau`, plus le tarif.
 function libelleDepart(numero: number, horaire: string | null, montantOuTarif: number): string {
   const quand = horaire ?? 'horaire non précisé'
   return `Départ ${numero} · ${quand} · ${decrireTarif(montantOuTarif)}`

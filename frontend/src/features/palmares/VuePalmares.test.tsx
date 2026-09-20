@@ -250,7 +250,9 @@ describe('VuePalmares — un palmarès par créneau (E06US009)', () => {
     // sur « le » palmarès — celle d'avant cette US — aurait tout caché ou tout montré.
     vi.mocked(getPalmares).mockResolvedValue({
       ...PALMARES,
-      sections: [SECTION, { ...APRES_MIDI, classement_vide: true }],
+      // ⚠️ `classement_vide` implique `lignes: []` côté serveur : un décor qui garderait
+      // des lignes décrirait un état que le serveur ne peut pas émettre.
+      sections: [SECTION, { ...APRES_MIDI, classement_vide: true, lignes: [], podiums: [] }],
     })
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 

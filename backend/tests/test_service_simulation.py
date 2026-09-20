@@ -473,7 +473,10 @@ def test_chaque_creneau_simule_ne_porte_que_ses_propres_tableaux() -> None:
 
     resultat = reel.service().simuler(reel.tournoi_id)
 
-    # Chaque créneau porte au plus **son** arbre : jamais celui de l'autre, jamais les deux.
+    # ⚠️ **`== 1`, et non `<= 1` ni `isdisjoint` seuls** : `set().isdisjoint(set())` est vrai et
+    # `len(set()) <= 1` aussi. `_creneau_simule` **avale en silence** `EffectifTableauInvalide` et
+    # `PrelevementEnAttente` (il rend `()`), donc « plus aucun arbre » est le mode de panne le plus
+    # probable de ce code — et il passait au vert. Mesuré en revue (axe D), sabotage à l'appui.
     phases_vues = [{etat.phase_id for etat in creneau.tableaux} for creneau in resultat.creneaux]
+    assert [len(vues) for vues in phases_vues] == [1, 1], "un arbre par créneau, ni zéro ni deux"
     assert phases_vues[0].isdisjoint(phases_vues[1]), "un arbre ne pend qu'à son créneau"
-    assert all(len(vues) <= 1 for vues in phases_vues), "un tableau par créneau, pas deux"

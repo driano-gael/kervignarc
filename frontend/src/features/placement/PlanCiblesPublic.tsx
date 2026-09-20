@@ -22,6 +22,8 @@ function nomComplet(archer: { prenom: string; nom: string }): string {
 }
 
 // Libellé d'un départ dans le sélecteur : son horaire s'il est renseigné, sinon son numéro.
+// `DETTE-106` — 3ᵉ orthographe du libellé de créneau : duplication **pure** de
+// `libelleCreneau`, à remplacer par un import lors de la résorption.
 function libelleDepart(depart: { numero: number; horaire: string | null }): string {
   return depart.horaire ? `Départ ${depart.numero} — ${depart.horaire}` : `Départ ${depart.numero}`
 }

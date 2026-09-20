@@ -49,7 +49,8 @@ export function BandeauContexte({
                 departs.data.length === 0
                 ? 'Aucun départ configuré'
                 : 'Tous les départs sont clos'
-              : `Départ ${depart.numero} · ${depart.horaire} — ${libelleEtatDepart(depart)}`}
+              : /* `DETTE-106` — 5ᵉ orthographe : préfixe composé en ligne, séparateur `·`. */
+                `Départ ${depart.numero} · ${depart.horaire} — ${libelleEtatDepart(depart)}`}
         </span>
       )}
 

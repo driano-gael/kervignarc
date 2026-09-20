@@ -85,7 +85,7 @@ export interface TableauSimule {
 // ne relie ce type au modèle Pydantic, `fetchJson<T>` étant un transtypage et non une validation.
 // Une divergence est donc invisible à `tsc` ET à `vitest` — c'est exactement ce qui a laissé ce
 // fichier en arrière d'un commit qui changeait le contrat (relevé par les cinq axes de revue).
-// Même classe que `DETTE-081`.
+// `DETTE-108` porte cette classe au registre.
 export interface CreneauSimule {
   depart_id: number
   libelle: string

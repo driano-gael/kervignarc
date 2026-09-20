@@ -149,7 +149,11 @@ class EtatSessionReponse(BaseModel):
                 CreneauSimuleReponse(
                     depart_id=creneau.depart_id,
                     libelle=creneau.libelle,
-                    classement=ClassementReponse.de_agregat(etat.tournoi_id, creneau.classement),
+                    # ⚠️ **`creneau.depart_id`, jamais `etat.tournoi_id`** : `ClassementReponse`
+                    # publie un `depart_id` (ADR-0075), et `DepartId`/`TournoiId` sont deux alias
+                    # de `int` — mypy ne voit rien (`DETTE-044`). E06US009 avait réintroduit ici
+                    # le défaut exact qu'E01US025 avait corrigé sur ce DTO (relevé par l'axe D).
+                    classement=ClassementReponse.de_agregat(creneau.depart_id, creneau.classement),
                     tableaux=[TableauReponse.de_etat(t) for t in creneau.tableaux],
                 )
                 for creneau in etat.creneaux

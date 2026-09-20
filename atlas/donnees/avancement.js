@@ -4,6 +4,24 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "107",
+   "introduite_par": [
+    "E06US009"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
+  },
+  {
+   "identifiant": "108",
+   "introduite_par": [
+    "E06US009"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
+  },
+  {
    "identifiant": "106",
    "introduite_par": [
     "E06US009"
@@ -3341,7 +3359,9 @@ window.ATLAS.avancement = {
     "0111"
    ],
    "dettes_introduites": [
-    "106"
+    "106",
+    "107",
+    "108"
    ],
    "dettes_resorbees": [
     "045",

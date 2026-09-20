@@ -43,7 +43,22 @@ def app_simulation(tmp_path: Path) -> Iterator[FastAPI]:
 
 
 def _tournoi_simulable(client: TestClient) -> int:
-    """Instancie « petit » (16 archers inscrits) et lui donne un barème de qualification court."""
+    """Instancie « petit » (16 archers inscrits) et lui donne un barème de qualification court.
+
+    ⚠️ **Un tournoi jetable est instancié d'abord, pour décaler les séquences** : sans lui, le
+    tournoi et son départ portent tous deux l'`id` 1, et toute confusion des deux mailles reste
+    verte par coïncidence numérique — c'est ce qui avait laissé passer le défaut d'E01US025, puis
+    sa réapparition dans E06US009 (`DETTE-044` : les deux sont des alias de `int`).
+    """
+    amorce = client.post("/api/v1/jeu-essai/scenarios/petit/instancier", json={})
+    assert amorce.status_code == 201, amorce.text
+    # Un créneau de plus sur le tournoi jetable : c'est lui qui **désynchronise** les deux
+    # séquences (un scénario en crée un de chaque, elles resteraient sinon en phase).
+    decalage = client.post(
+        f"/api/v1/tournois/{int(amorce.json()['tournoi_id'])}/departs",
+        json={"tarif_centimes": 800, "horaire": "14:00"},
+    )
+    assert decalage.status_code == 201, decalage.text
     reponse = client.post("/api/v1/jeu-essai/scenarios/petit/instancier", json={})
     assert reponse.status_code == 201, reponse.text
     tournoi_id = int(reponse.json()["tournoi_id"])
@@ -78,6 +93,14 @@ def test_cycle_complet_via_api(app_simulation: FastAPI, connecter_admin: Connect
         (creneau,) = corps["creneaux"]
         assert len(creneau["classement"]["lignes"]) == 16
         assert all(ligne["total"] > 0 for ligne in creneau["classement"]["lignes"])
+        # ⚠️ **Le classement d'un créneau publie SON `depart_id`, jamais le `tournoi_id`.**
+        # E06US009 avait remis ici le défaut exact qu'E01US025 avait corrigé sur ce DTO :
+        # `DepartId` et `TournoiId` sont deux alias de `int` (`DETTE-044`), donc ni mypy ni le
+        # typage TS ne voient l'inversion — seule une assertion la tient. ⚠️ Elle n'a de valeur
+        # que parce que le décor rend `tournoi_id != depart_id` : le test d'E01US025 était vert
+        # par coïncidence numérique, les deux portant l'`id` 1.
+        assert creneau["depart_id"] != corps["tournoi_id"], "sans quoi l'assertion suivante ment"
+        assert creneau["classement"]["depart_id"] == creneau["depart_id"]
 
         # Lecture indépendante (le front recharge après un signal de diffusion).
         relecture = client.get(f"/api/v1/simulations/{session_id}")

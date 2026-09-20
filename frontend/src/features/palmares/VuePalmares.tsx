@@ -112,9 +112,11 @@ export function VuePalmares({
 
 /** Le palmarès d'**un** créneau, titré de son libellé (E06US009).
  *
- * ⚠️ **Le titre s'affiche même à un seul créneau.** Le masquer aurait fait deux mises en page à
- * tenir au lieu d'une — et surtout : c'est ce titre que l'organisateur lit pour savoir quelles
- * médailles il tient en main. Le PDF fait le même choix, pour la même raison.
+ * ⚠️ `DETTE-097` — cette pile **n'est pas paginée** sur l'écran de salle : au projecteur, seul le
+ * haut est lisible et personne n'est là pour faire défiler.
+ *
+ * ⚠️ **Le titre s'affiche même à un seul créneau** : c'est lui que l'organisateur lit pour savoir
+ * quelles médailles il tient en main. Le PDF fait le même choix.
  */
 function SectionCreneau({
   section,

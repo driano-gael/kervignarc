@@ -86,8 +86,12 @@ choix à une US passée revenait à ne le trancher nulle part.
   irréductible (un podium par départ demande un classement par départ) ; une autre ne l'est pas —
   `ServiceClassement.pour_phase` relit les archers, les catégories et les forfaits **à la maille
   tournoi**, donc `N` fois le même résultat. Cette part est tracée, pas fermée.
-- **Un seul instant de lecture** pour toutes les sections : le réglage et les `N` palmarès viennent
-  du même `par_id`, ce qu'une route par départ n'aurait pas garanti.
+- **Un seul instant de lecture pour le RÉGLAGE et le nom du tournoi** — ce qui suffit à l'invariant
+  visé : aucun bloc rendu sous deux réglages différents. ⚠️ **Les `N` classements, eux, sont lus
+  séquentiellement, sans isolation** : chaque lecture de repository ouvre sa propre session, il n'y
+  a ni transaction englobante ni instantané, donc une saisie de score peut s'intercaler entre deux
+  sections. La première rédaction disait « un seul instant de lecture pour toutes les sections » —
+  l'ADR promettait plus que le code ne porte (relevé en 2ᵉ passe, axe D).
 - **L'écran de salle projeté ne pagine pas `VuePalmares`** : à `N` créneaux empilés, seul le haut
   est lisible et personne ne fait défiler devant un vidéoprojecteur. `DETTE-097` est élargie : son
   déclencheur cesse d'être un réglage explicite pour devenir le cas nominal.
@@ -108,8 +112,10 @@ choix à une US passée revenait à ne le trancher nulle part.
 - `backend/infrastructure/pdf/palmares.py` — `_corps` (une section par créneau, titrée) et
   `_corps_creneau` ; `backend/infrastructure/tableur/palmares.py` — `_ENTETE` (colonne « Départ » en
   tête) et la double boucle `for section … for ligne`, qui **est** le « une grille, pas N onglets ».
-- `frontend/src/features/palmares/VuePalmares.tsx` — `SectionCreneau` : la pile titrée, et la garde
-  globale qui ne parle que si **aucun** créneau n'est classé.
+- `frontend/src/features/palmares/VuePalmares.tsx` — `SectionCreneau` (la pile titrée) et
+  `VuePalmares` lui-même (la garde globale, qui ne parle que si **aucun** créneau n'est classé).
+  ⚠️ **Deux symboles, pas un** : la garde n'est pas dans `SectionCreneau`, et le lui prêter était la
+  version atténuée du défaut d'ADR-0017 — nommer un module qui ne porte pas ce qu'on lui prête.
 - `backend/tests/test_service_palmares_par_depart.py` — garde la décision 1 et l'absence d'agrégat.
 - `backend/tests/test_pdf_palmares.py` (`test_deux_creneaux_font_deux_sections`) et
   `backend/tests/test_tableur_palmares.py` (`test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne`)

@@ -604,5 +604,20 @@ def test_chaque_creneau_de_la_session_porte_son_classement_et_ses_arbres() -> No
         "Départ n°1 — 09:00",
         "Départ n°2 — 14:00",
     ]
+    # ⚠️ **L'assertion qui manquait** : `depart_id` et `libelle` viennent de la variable de boucle,
+    # donc une régression du classement les laisserait verts. C'est l'identité des archers qui tient
+    # la portée — quatre axes de revue l'ont relevé le même jour.
+    vus = [{ligne.archer_id for ligne in c.classement.lignes} for c in etat.creneaux]
+    assert [len(v) for v in vus] == [4, 4], "chaque créneau classe SES inscrits"
+    assert vus[0].isdisjoint(vus[1]), "aucun archer ne figure dans les deux"
+
+    # ⚠️ **La limite `DETTE-107`, ancrée mécaniquement plutôt que laissée en prose** : le harnais
+    # n'écrit ses volées que dans **une** qualification, donc le second créneau est classé **à
+    # zéro** — ses inscrits y figurent, et son arbre est tout de même monté et joué sur ces zéros.
+    # Ce test tombera le jour où le moteur deviendra multi-qualification : c'est voulu.
+    assert all(ligne.total > 0 for ligne in etat.creneaux[0].classement.lignes)
+    assert all(ligne.total == 0 for ligne in etat.creneaux[1].classement.lignes)
+
     phases_vues = [{tableau.phase_id for tableau in creneau.tableaux} for creneau in etat.creneaux]
+    assert [len(v) for v in phases_vues] == [1, 1], "un arbre par créneau, ni zéro ni deux"
     assert phases_vues[0].isdisjoint(phases_vues[1]), "un arbre ne pend qu'à son créneau"

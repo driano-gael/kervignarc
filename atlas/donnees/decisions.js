@@ -10736,7 +10736,8 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/palmares/VuePalmares.tsx",
      "existe": true,
      "symboles": [
-      "SectionCreneau"
+      "SectionCreneau",
+      "VuePalmares"
      ],
      "symboles_absents": [],
      "verifiable": true

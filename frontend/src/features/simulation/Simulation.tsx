@@ -290,10 +290,11 @@ function VuePublic({ etat }: { etat: EtatSession }) {
   return (
     <div>
       {etat.creneaux.map((creneau) => (
-        <section key={creneau.depart_id} aria-label={creneau.libelle}>
+        <section key={creneau.depart_id} aria-label={`Classement — ${creneau.libelle}`}>
           {/* Le créneau est titré même quand il n'y en a qu'un — mêmes raisons que `VuePalmares`
-              (E06US009) : une seule mise en page à tenir, et l'on sait quel départ on regarde. */}
-          <h3 className="carte__sous-titre">{creneau.libelle} — classement</h3>
+              (E06US009). ⚠️ Le nom accessible est **le titre visible**, jamais un synonyme : la
+              règle est posée dans `VuePalmares.tsx`, ce fichier la suivait mal (revue, 2 axes). */}
+          <h3 className="carte__sous-titre">Classement — {creneau.libelle}</h3>
           <TableClassement
             tournoiId={etat.tournoi_id}
             lignes={creneau.classement.lignes}
@@ -472,16 +473,31 @@ function VueArcher({ etat, sessionId }: { etat: EtatSession; sessionId: number }
           onChange={(e) => setArcherId(e.target.value === '' ? null : Number(e.target.value))}
         >
           <option value="">— Choisir un archer —</option>
-          {/* ⚠️ **Aplati sur tous les créneaux, et nommé** : un archer ne tire que dans le sien,
-              mais deux créneaux peuvent porter le même nom de famille — sans le libellé, la liste
-              proposerait deux entrées indiscernables (E06US009). */}
-          {etat.creneaux.flatMap((creneau) =>
-            creneau.classement.lignes.map((ligne) => (
-              <option key={`${creneau.depart_id}-${ligne.archer_id}`} value={ligne.archer_id}>
-                {ligne.nom} {ligne.prenom} — {ligne.total} pts ({creneau.libelle})
-              </option>
-            )),
-          )}
+          {/* ⚠️ **Groupé par créneau, et dédoublonné sur l'archer.** Un archer inscrit sur deux
+              créneaux (cas soutenu, `DETTE-046`) produisait deux `<option>` de **même `value`** :
+              le `<select>` étant contrôlé, le navigateur re-sélectionnait toujours la première, si
+              bien que cliquer « Départ n°2 » affichait « Départ n°1 » (revue, axe C1). Le détail
+              se charge par `archer_id` seul, les deux entrées étaient donc équivalentes. */}
+          {etat.creneaux.map((creneau, index) => (
+            <optgroup key={creneau.depart_id} label={creneau.libelle}>
+              {creneau.classement.lignes
+                .filter(
+                  (ligne) =>
+                    !etat.creneaux
+                      .slice(0, index)
+                      .some((precedent) =>
+                        precedent.classement.lignes.some(
+                          (vue) => vue.archer_id === ligne.archer_id,
+                        ),
+                      ),
+                )
+                .map((ligne) => (
+                  <option key={ligne.archer_id} value={ligne.archer_id}>
+                    {ligne.nom} {ligne.prenom} — {ligne.total} pts
+                  </option>
+                ))}
+            </optgroup>
+          ))}
         </select>
       </div>
       {detail.data && (
@@ -549,7 +565,7 @@ function VueScoreur({
     <div>
       {etat.creneaux.map((creneau) => (
         <section key={creneau.depart_id} aria-label={`Duels — ${creneau.libelle}`}>
-          <h3 className="carte__sous-titre">{creneau.libelle}</h3>
+          <h3 className="carte__sous-titre">Duels — {creneau.libelle}</h3>
           {creneau.tableaux.length === 0 ? (
             <p className="carte__etat">Les duels n'ont pas encore commencé sur ce créneau.</p>
           ) : (

@@ -241,7 +241,15 @@ class ServicePalmares:
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        depart = next((d for d in self._departs.par_tournoi(tournoi_id) if d.id == depart_id), None)
+        departs = self._departs.par_tournoi(tournoi_id)
+        if not departs:
+            # ⚠️ **Le même refus que `rendu`**, jamais `DepartIntrouvable` : « ce tournoi n'a aucun
+            # créneau » (409) n'est pas « ce créneau n'existe pas » (404). La 1ʳᵉ écriture de ce
+            # raccourci les confondait (relevé par trois axes).
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun créneau : il n'y a pas de classement dont tirer un palmarès."
+            )
+        depart = next((d for d in departs if d.id == depart_id), None)
         if depart is None:
             raise DepartIntrouvable(f"Aucun créneau d'identifiant {depart_id} dans ce tournoi.")
         libelles = self._libelles_club(tournoi.reglage_podiums)
