@@ -38,7 +38,7 @@ from application.tableaux_publics import ServiceTableauxPublics, TableauPublic
 from domain.bareme import BaremeQualification
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.politiques import ProfondeurClassement
-from tests.conftest import poser_phase_factice
+from tests.conftest import identite_d_etape, poser_phase_factice
 from tests.test_service_routage import _huit, _Monde, _quatre
 
 
@@ -311,7 +311,7 @@ def test_un_tableau_illisible_est_omis_sans_emporter_les_autres() -> None:
             monde.depart_id,
             3,
             TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase(etape_source_id=1, rang_debut=5, rang_fin=8),),
+            sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=5, rang_fin=8),),
         ),
     )
     assert a_venir.id is not None

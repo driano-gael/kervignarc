@@ -118,9 +118,16 @@ def test_le_statut_naît_a_l_instanciation_dans_un_creneau() -> None:
     assert phase.bareme == BaremeQualification.preset_ffta_18m()
 
 
-def test_les_etapes_appliquees_ne_sont_pas_persistees() -> None:
-    """L'application est **pure** : c'est le service qui décide d'écrire (aucun `id` attribué)."""
-    assert all(phase.id is None for phase in appliquer_en_memoire(_format(), TOURNOI))
+def test_instancier_un_modele_n_attribue_aucun_identifiant() -> None:
+    """L'instanciation est **pure** : c'est le service qui décide d'écrire (aucun `id` attribué).
+
+    ⚠️ **Le sujet a changé avec E05US022** (correctif de revue) : ce test portait sur
+    `FormatTournoi.appliquer`, que l'US supprime — ancrer demande une identité que seule la
+    persistance attribue. La propriété « rien n'est identifié tant que rien n'est écrit »
+    appartient désormais à `ModelePhase.pour_tournoi`, et c'est elle qu'on épingle ; la viser sur
+    le décor `appliquer_en_memoire` aurait fait affirmer au test une propriété du décor.
+    """
+    assert all(modele.pour_tournoi(TOURNOI).id is None for modele in _format().etapes_ordonnees)
 
 
 def test_appliquer_transporte_bareme_grain_effectif_et_source() -> None:

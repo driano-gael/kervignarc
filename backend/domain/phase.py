@@ -401,18 +401,32 @@ def ancrer_sur_les_etapes(
     )
 
 
+RANG_INTROUVABLE = 0
+"""Le rang d'une ancre que la table ne résout pas — hors de toute séquence, donc introuvable.
+
+⚠️ **La valeur importe** : aucune séquence ne commence à 0, donc `_anomalies_sources` rendra
+`SourceIntrouvable` **affichée** plutôt qu'un défaut d'ordre. C'est le pendant exact de
+l'`ordreOrphelin` du front (`features/deroule/sequence.ts`).
+"""
+
+
 def projeter_sur_les_rangs(
-    sources: tuple[SourcePhase, ...], id_vers_ordre: Mapping[EtapeDerouleId, int]
+    sources: tuple[SourcePhase, ...],
+    id_vers_ordre: Mapping[EtapeDerouleId, int],
+    *,
+    tolerante: bool = False,
 ) -> tuple[SourceModele, ...]:
     """Traduit des prélèvements **par identité** en prélèvements **par rang** (ADR-0078 §4).
 
-    Le sens édition → bibliothèque, à deux emplois : la **promotion** d'un déroulé en format, et la
-    **vue** que le déroulé se donne pour entrer dans le moteur — qui raisonne, et dont les
-    anomalies parlent, en rangs (« la phase 2 »). Même garde bruyante qu'à l'aller.
+    Le sens édition → bibliothèque : la **promotion** d'un déroulé en format, et la **vue** du
+    moteur, qui raisonne en rangs (« la phase 2 »). ⚠️ **`tolerante` est réservé à la LECTURE**
+    (correctif de revue) : l'ancre non résolue y devient `RANG_INTROUVABLE`, que
+    `_anomalies_sources` **signale** au lieu de lever — sans quoi un créneau incomplet
+    (`DETTE-025`, base restaurée) fait tomber le suivi en 422 sur une route publique.
     """
     return tuple(
         SourceModele(
-            ordre_source=_rang_exige(source.etape_source_id, id_vers_ordre),
+            ordre_source=_rang_projete(source.etape_source_id, id_vers_ordre, tolerante),
             rang_debut=source.rang_debut,
             rang_fin=source.rang_fin,
             nature=source.nature,
@@ -449,15 +463,15 @@ def vues_par_rangs(phases: Sequence[Phase]) -> tuple[VueParRangs, ...]:
     Les phases d'un départ jouent les étapes d'un même déroulé : chacune porte à la fois son
     identité d'étape et le rang de celle-ci, si bien que la correspondance se lit sur le lot sans
     rien aller chercher. ⚠️ Une phase **non persistée** (`etape_id` à `None`) n'entre pas dans la
-    table : un prélèvement qui la viserait est donc introuvable, et c'est le comportement voulu —
-    on ne prélève pas dans une étape qui n'existe pas encore.
+    table : son prélèvement est alors **signalé** comme introuvable, pas levé — c'est un chemin de
+    **lecture** (suivi du déroulé), et un créneau incomplet doit s'afficher dégradé, pas en erreur.
     """
     id_vers_ordre = {phase.etape_id: phase.ordre for phase in phases if phase.etape_id is not None}
     return tuple(
         VueParRangs(
             ordre=phase.ordre,
             type=phase.type,
-            sources=projeter_sur_les_rangs(phase.sources, id_vers_ordre),
+            sources=projeter_sur_les_rangs(phase.sources, id_vers_ordre, tolerante=True),
             effectif=phase.effectif,
             bareme=phase.bareme,
             validation=phase.validation,
@@ -476,13 +490,18 @@ def _identite_exigee(ordre: int, ordre_vers_id: Mapping[int, EtapeDerouleId]) ->
     return identite
 
 
-def _rang_exige(identite: EtapeDerouleId, id_vers_ordre: Mapping[EtapeDerouleId, int]) -> int:
+def _rang_projete(
+    identite: EtapeDerouleId, id_vers_ordre: Mapping[EtapeDerouleId, int], tolerante: bool
+) -> int:
     ordre = id_vers_ordre.get(identite)
-    if ordre is None:
-        raise SourceIntrouvable(
-            f"Aucune étape d'identité {identite} dans ce déroulé : le prélèvement ne désigne rien."
-        )
-    return ordre
+    if ordre is not None:
+        return ordre
+    if tolerante:
+        return RANG_INTROUVABLE
+    # ⚠️ Le message ne porte **pas** l'identifiant : il part au client en 422, et l'organisateur
+    # ne lit jamais un identifiant technique — c'est le choix déjà fait côté front (« d'une phase
+    # retirée »). L'identité reste au journal serveur, par la trace de l'exception.
+    raise SourceIntrouvable("Ce prélèvement désigne une phase absente du déroulé : réaffectez-le.")
 
 
 @dataclass(frozen=True)

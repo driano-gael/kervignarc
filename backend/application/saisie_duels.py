@@ -464,8 +464,20 @@ class ServiceSaisieDuels:
             ),
             None,
         )
-        if phase.sources and qualification is not None and qualification.ordre not in cache:
-            cache[qualification.ordre] = ClassementSource(classement=classement)
+        # ⚠️ **Amorcé par l'identité, et estampillé** (ADR-0078, correctif de revue). La clé
+        # était restée le **rang** alors que le résolveur lit par identité : la mémoïsation ne
+        # prenait plus (double reconstruction sur le thread écrivain unique, `DETTE-031`) et, pire,
+        # une étape dont l'identifiant valait `1` récupérait le classement de la **qualification**
+        # — un tableau ensemencé avec la mauvaise population, sans erreur ni signal.
+        if (
+            phase.sources
+            and qualification is not None
+            and qualification.etape_id is not None
+            and qualification.etape_id not in cache
+        ):
+            cache[qualification.etape_id] = ClassementSource(
+                classement=classement, ordre=qualification.ordre
+            )
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste

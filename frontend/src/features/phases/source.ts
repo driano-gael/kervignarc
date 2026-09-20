@@ -34,9 +34,9 @@ export function decrireSources(sources: SourcePhase[], rangs: ReadonlyMap<number
 
 /** La table identité → rang d'un déroulé, lue sur lui-même (pendant de `table_des_rangs`). */
 export function rangsParEtape(
-  phases: readonly { id: number; ordre: number }[],
+  etapes: readonly { id: number; ordre: number }[],
 ): Map<number, number> {
-  return new Map(phases.map((phase) => [phase.id, phase.ordre]))
+  return new Map(etapes.map((etape) => [etape.id, etape.ordre]))
 }
 
 // Une phase que le formulaire de cet écran sait éditer **sans rien perdre** : au plus un

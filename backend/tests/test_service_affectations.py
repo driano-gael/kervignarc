@@ -27,7 +27,7 @@ from application.routage import (
 from domain.forfait import Forfait, NatureForfait
 from domain.phase import IssueTour, Phase, SourcePhase, TypePhase
 from domain.politiques import PlacementEnCascade, RoutingRepechage
-from tests.conftest import poser_phase_factice
+from tests.conftest import identite_d_etape, poser_phase_factice
 from tests.test_service_routage import _QUAND, _huit, _Monde, _quatre
 
 # --- CA « une vue "toutes les affectations" » ---------------------------------------------------
@@ -427,7 +427,11 @@ def test_le_battu_repris_par_la_sequence_n_est_pas_encore_annonce() -> None:
             monde.tournoi_id,
             3,
             TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_issue_de_tour(2, tour=1, issue=IssueTour.PERDANTS),),
+            sources=(
+                SourcePhase.par_issue_de_tour(
+                    identite_d_etape(2), tour=1, issue=IssueTour.PERDANTS
+                ),
+            ),
         )
     )
     monde.placer()
@@ -474,7 +478,11 @@ class _MondeRepechage(_Monde):
                 self.depart_id,
                 3,
                 TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_issue_de_tour(2, tour=tour, issue=IssueTour.PERDANTS),),
+                sources=(
+                    SourcePhase.par_issue_de_tour(
+                        identite_d_etape(2), tour=tour, issue=IssueTour.PERDANTS
+                    ),
+                ),
             ),
         )
         assert phase.id is not None

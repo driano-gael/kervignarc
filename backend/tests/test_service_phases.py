@@ -169,35 +169,35 @@ def test_modifier_change_type_source_effectif() -> None:
     service, tournoi_id = _service()
     p1 = service.ajouter(tournoi_id, TypePhase.PLACEMENT, effectif=40)
     p2 = service.ajouter(tournoi_id, TypePhase.PLACEMENT)
-    assert p2.id is not None
+    assert p1.id is not None and p2.id is not None
+    source = SourcePhase(etape_source_id=p1.id, rang_debut=1, rang_fin=16)
 
     modifiee = service.modifier(
         tournoi_id,
         p2.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
+        sources=(source,),
         effectif=16,
     )
 
     assert modifiee.type is TypePhase.ELIMINATION_DIRECTE
     assert modifiee.effectif == 16
-    assert modifiee.sources == (SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),)
+    assert modifiee.sources == (source,)
     assert modifiee.ordre == 2  # préservé
-    _ = p1
 
 
 def test_modifier_effectif_incompatible_est_refuse() -> None:
     service, tournoi_id = _service()
-    service.ajouter(tournoi_id, TypePhase.PLACEMENT, effectif=40)
+    amont = service.ajouter(tournoi_id, TypePhase.PLACEMENT, effectif=40)
     p2 = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
-    assert p2.id is not None
+    assert amont.id is not None and p2.id is not None
 
     with pytest.raises(EffectifIncompatible):
         service.modifier(
             tournoi_id,
             p2.id,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=8),),  # 8 prélevés
+            sources=(SourcePhase(etape_source_id=amont.id, rang_debut=1, rang_fin=8),),
             effectif=16,  # mais 16 attendus
         )
 
@@ -311,7 +311,7 @@ def test_supprimer_une_phase_source_d_une_autre_est_refuse() -> None:
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
+        sources=(SourcePhase(etape_source_id=a.id, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 

@@ -7,7 +7,7 @@
 // affiche tous mais n'en **édite** qu'un, « par rangs » — toute phase hors de ce cas reste en
 // lecture (`editableIci`), la soumettre écraserait sa composition sans le dire.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { ConfigPhase, EtapeDeroule, SourcePhase, TypePhase } from './api'
 import {
@@ -95,6 +95,10 @@ const TYPES_AJOUTABLES: TypePhase[] = [
 export function Phases({ tournoiId }: { tournoiId: number }) {
   const phases = usePhases(tournoiId)
   const liste = phases.data ?? []
+  // La table identité → rang du déroulé, calculée **une fois** pour toutes les lignes.
+  // ⚠️ Dépend de `phases.data`, pas de `liste` : `?? []` fabrique un tableau neuf à chaque rendu,
+  // donc le `useMemo` ne mémoïserait **rien** (relevé par `react-hooks/exhaustive-deps`).
+  const rangs = useMemo(() => rangsParEtape(phases.data ?? []), [phases.data])
 
   return (
     <section>
@@ -115,6 +119,7 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
               tournoiId={tournoiId}
               phase={phase}
               phases={liste}
+              rangs={rangs}
               premier={index === 0}
               dernier={index === liste.length - 1}
             />
@@ -319,12 +324,16 @@ function LignePhase({
   tournoiId,
   phase,
   phases,
+  rangs,
   premier,
   dernier,
 }: {
   tournoiId: number
   phase: EtapeDeroule
   phases: EtapeDeroule[]
+  // ⚠️ **Calculée une fois par l'écran, pas par ligne** (correctif de revue) : `rangsParEtape`
+  // dans le corps du composant reconstruisait une `Map` neuve à chaque rendu de chaque ligne.
+  rangs: ReadonlyMap<number, number>
   premier: boolean
   dernier: boolean
 }) {
@@ -359,7 +368,7 @@ function LignePhase({
           {/* Le type n'est jamais perdu : il redevient un détail, il ne disparaît pas. Sans lui,
               deux phases nommées ne diraient plus ce qu'elles font. */}
           {phase.titre != null && `${LIBELLE_TYPE[phase.type]} · `}
-          {decrireSources(phase.sources, rangsParEtape(phases))}
+          {decrireSources(phase.sources, rangs)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
           {/* Parité avec l'écran de composition, qui l'affiche déjà : sur un tournoi réel, le
               réglage le plus lourd de la journée ne doit pas n'être visible qu'en rouvrant le

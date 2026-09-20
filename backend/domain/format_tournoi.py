@@ -411,18 +411,26 @@ class FormatTournoi:
         """
         return replace(self, nom=_nom_valide(nom), origine=OrigineBrique.UTILISATEUR, id=None)
 
-    def verifier_applicable(self) -> None:
+    def verifier_applicable(self, tournoi_id: TournoiId) -> None:
         """Refuse un format que le tournoi ne pourrait pas jouer (ADR-0063).
 
         **C'est ici que l'invariant est tenu** : l'enregistrement accepte le brouillon,
         l'application refuse en **disant pourquoi**. Seules les **bloquantes** arrêtent — une
         anomalie conjoncturelle n'empêche pas d'appliquer. ⚠️ **Séparée de la pose depuis
-        ADR-0078** : ancrer demande une identité que seule l'écriture attribue, et ce contrôle
-        doit rester appelable **avant** elle.
+        ADR-0078** : ancrer demande une identité que seule l'écriture attribue.
         """
         for anomalie in self.anomalies():
             if anomalie.gravite is Gravite.BLOQUANTE:
                 raise anomalie.erreur
+        # ⚠️ **Pose à blanc, et elle n'est pas décorative** (correctif de revue E05US022). Cinq
+        # invariants d'`EtapeDeroule` ne sont **pas** des anomalies — découpage, arrêts, Big Shoot
+        # Off, rondes, portée de défi — parce qu'un `ModelePhase` ne valide rien (ADR-0063) : ils
+        # ne se lèvent qu'à la construction. Sans cette répétition, `appliquer` détruisait le
+        # déroulé **puis** échouait, laissant le tournoi sans phases ni barème — ce que
+        # « instancier avant de détruire » (E01US024) existe pour empêcher.
+        factices: dict[int, EtapeDerouleId] = {etape.ordre: etape.ordre for etape in self.etapes}
+        for modele in self.etapes_ordonnees:
+            modele.pour_tournoi(tournoi_id, factices)
 
     @property
     def etapes_ordonnees(self) -> tuple[ModelePhase, ...]:

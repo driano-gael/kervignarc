@@ -21,6 +21,7 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxPhaseRepository,
+    identite_d_etape,
     poser_phase_factice,
 )
 
@@ -172,7 +173,7 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
             depart.id,
             ordre=2,
             type=TypePhase.PLACEMENT,
-            sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
+            sources=(SourcePhase(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=16),),
             effectif=16,
         ),
     )
@@ -217,14 +218,20 @@ def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
     assert depart.id is not None
     service = ServiceBaremeQualification(tournois, phases, departs, deroules)
     service.definir(tournoi.id, 20, 3)  # qualification créée en ordre 1
-    phases.ajouter(
+    qualif_posee = next(e for e in deroules.par_tournoi(tournoi.id) if e.ordre == 1)
+    assert qualif_posee.id is not None
+    source = SourcePhase(etape_source_id=qualif_posee.id, rang_debut=1, rang_fin=16)
+    poser_phase_factice(
+        departs,
+        deroules,
+        phases,
         Phase.creer(
             depart.id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
+            sources=(source,),
             effectif=16,
-        )
+        ),
     )
 
     service.definir(tournoi.id, 10, 6)  # redéfinition
@@ -234,5 +241,5 @@ def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
         (1, TypePhase.QUALIFICATION),
         (2, TypePhase.ELIMINATION_DIRECTE),
     ]
-    # La source de l'élim reste sur l'ordre 1 (la qualification) : aucun second décalage.
-    assert apres[1].sources == (SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),)
+    # La source de l'élim désigne toujours la qualification : aucun second décalage.
+    assert apres[1].sources == (source,)

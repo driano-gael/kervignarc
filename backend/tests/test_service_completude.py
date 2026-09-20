@@ -48,6 +48,7 @@ from tests.conftest import (
     FauxInscriptionRepository,
     FauxLecteurPopulations,
     FauxPhaseRepository,
+    identite_d_etape,
 )
 
 _DATE = datetime.date(2026, 3, 14)
@@ -493,7 +494,7 @@ def test_la_basse_ne_bloque_pas_les_cibles_de_la_haute() -> None:
     m.semer(depart, 10, volees_validees=2)
     m.semer(depart, 11, volees_validees=2)
     haute, basse = _poser_la_fourche(m, depart)
-    m.populations.populations = {2: [10], 3: [11]}
+    m.populations.populations = {identite_d_etape(2): [10], identite_d_etape(3): [11]}
     m.series.poser(_serie(10, haute, volees_validees=2))
     m.series.poser(_serie(11, basse, volees_validees=2))
 
@@ -532,7 +533,7 @@ def test_une_seconde_qualification_inachevee_retient_la_cible() -> None:
     m.semer(depart, 10, volees_validees=2)
     m.semer(depart, 11, volees_validees=2)
     haute, basse = _poser_la_fourche(m, depart)
-    m.populations.populations = {2: [10], 3: [11]}
+    m.populations.populations = {identite_d_etape(2): [10], identite_d_etape(3): [11]}
     m.series.poser(_serie(10, haute, volees_validees=1))  # une volée manque
     m.series.poser(_serie(11, basse, volees_validees=2))
 
@@ -554,7 +555,7 @@ def test_avancement_du_creneau_attend_les_deux_moitiés_de_la_fourche() -> None:
     m.semer(depart, 10, volees_validees=2)
     m.semer(depart, 11, volees_validees=2)
     haute, basse = _poser_la_fourche(m, depart)
-    m.populations.populations = {2: [10], 3: [11]}
+    m.populations.populations = {identite_d_etape(2): [10], identite_d_etape(3): [11]}
     m.series.poser(_serie(10, haute, volees_validees=2))
 
     partiel = m.service.avancement_depart(m.tournoi_id, depart)
@@ -576,7 +577,8 @@ def _poser_la_fourche(m: Montage, depart_id: DepartId) -> tuple[int, int]:
                 type=TypePhase.QUALIFICATION,
                 bareme=BaremeQualification.creer(m.nb_volees_bareme, 3),
                 validation=GrainValidation.fin_de_serie(),
-                sources=(SourcePhase.par_rangs(1),),
+                sources=(SourcePhase.par_rangs(identite_d_etape(1)),),
+                etape_id=identite_d_etape(ordre),
             ).demarrer()
         )
         assert phase.id is not None

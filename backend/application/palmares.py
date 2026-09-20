@@ -438,11 +438,15 @@ class ServicePalmares:
         `origine` porte la règle « décerne si rien ne prélève dedans », critère **structurel** et
         non par type. Les plages indécises deviennent des **fourchettes**.
         """
-        if phase.id is None:
+        if phase.id is None or phase.etape_id is None:
             return None
         resolveur = self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)
         try:
-            source = resolveur(phase.ordre)
+            # ⚠️ **Par l'identité de l'étape, jamais par le rang** (ADR-0078) : le résolveur a
+            # changé de clé, et `EtapeDerouleId` étant un alias d'`int` (`DETTE-044`), mypy ne
+            # distingue pas les deux. Correctif de revue — passer le rang rendait `None`, donc
+            # faisait **disparaître du palmarès** les poules et le système suisse.
+            source = resolveur(phase.etape_id)
         except (
             PhaseIntrouvable,
             PrelevementEnAttente,
@@ -546,10 +550,11 @@ class ServicePalmares:
         rang 1 donneraient à 60 archers la première place pendant qu'ils tirent. ⚠️ Le critère est
         `total > 0` : une phase où tout le monde aurait manqué resterait dehors — cela retarde.
         """
-        if not phase.sources:
+        if not phase.sources or phase.etape_id is None:
             return None
+        # Par l'identité de l'étape (ADR-0078) — cf. `_resultat_classant`, même piège.
         source = self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)(
-            phase.ordre
+            phase.etape_id
         )
         if source is None:
             return None

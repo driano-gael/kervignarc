@@ -46,6 +46,7 @@ from tests.conftest import (
     FauxInscriptionRepository,
     FauxLecteurPopulations,
     FauxPhaseRepository,
+    identite_d_etape,
 )
 
 _DEPART: DepartId = 7
@@ -738,7 +739,7 @@ def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
                 # `sources` renseignées : c'est ce qui rend la phase **prélevée**, donc
                 # discriminante. Sans elles, le service la traite comme une qualification de tête
                 # (qui accueille tout le monde) et le décor ne prouverait rien.
-                sources=(SourcePhase.par_rangs(1),),
+                sources=(SourcePhase.par_rangs(identite_d_etape(1)),),
             ).demarrer()
         )
         for ordre in (2, 3)

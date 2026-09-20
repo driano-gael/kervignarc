@@ -26,14 +26,17 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import (
+    RANG_INTROUVABLE,
     IssueTour,
     Phase,
     SequencePhases,
     SourcePhase,
     StatutPhase,
     TypePhase,
+    anomalies_sequence,
     grain_par_defaut,
     produit_un_classement,
+    vues_par_rangs,
 )
 from tests.conftest import identite_d_etape
 
@@ -782,3 +785,29 @@ def test_un_seuil_de_barrage_positif_est_conserve() -> None:
         etape_id=identite_d_etape(2),
     )
     assert phase.barrage_jusqu_au == 8
+
+
+def test_un_avancement_manquant_se_signale_au_lieu_de_faire_tomber_la_lecture() -> None:
+    """**Une projection de LECTURE signale, elle ne lève pas** (correctif de revue E05US022).
+
+    Un créneau auquel il manque un avancement — panne au milieu d'une pose (`DETTE-025`), base
+    restaurée d'une sauvegarde — laisse un prélèvement dont l'étape amont n'est pas dans le lot lu.
+    Avant ADR-0078, le moteur rendait alors une **anomalie affichée** et le suivi du déroulé
+    s'ouvrait, dégradé. L'ancrage par identité l'avait transformé en 422 sur une route publique,
+    pollée toutes les dix secondes par chaque tablette.
+    """
+    orpheline = Phase.creer(
+        depart_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 8),),
+        etape_id=identite_d_etape(2),
+    )
+
+    vues = vues_par_rangs([orpheline])  # la phase de rang 1 manque au lot
+
+    assert vues[0].sources[0].ordre_source == RANG_INTROUVABLE
+    anomalies = list(anomalies_sequence(vues))
+    assert any(
+        isinstance(a.erreur, SourceIntrouvable) for a in anomalies
+    ), "le défaut doit être **signalé** au lieu d'interrompre la lecture"

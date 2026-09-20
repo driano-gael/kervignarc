@@ -118,6 +118,13 @@ doublon ». Le premier terme est juste, le second ne l'était pas :
 contrainte SQL `uq_deroule_tournoi_ordre`, qu'ADR-0078 ne touchait pas. Échanger deux rangs voisins
 transitait par un doublon quel que soit l'ancrage.
 
+⚠️ **Sur `DETTE-025`, en revanche, le §5 disait vrai et c'est son amendement qui se trompait**
+(relevé en revue, axe C2, et vérifié) : `ServicePhases.reordonner` passait de **deux** écritures
+(le réordonnancement, puis le réalignement des avancements — une par créneau) à **une seule**. La
+dette est donc bien **allégée**, comme l'ADR l'annonçait. La première rédaction de cet amendement
+affirmait le contraire : avoir corrigé l'ADR là où il sur-promettait avait entraîné à le
+« corriger » là où il disait juste.
+
 **Arbitrage du commanditaire, 20/09/2026** : **relâcher l'unicité** — issue que la section
 « contre-argument » de cet ADR envisageait déjà (« l'unicité `(tournoi, ordre)` peut même être
 relâchée si un jour un réordonnancement transitoire l'exige »). Le rang ne désignant plus rien, le
@@ -154,7 +161,7 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
   concrète entre dans les contrôles de séquence. `Phase.etape_id` y est déclaré ; `Phase.ordre`
   subsiste comme **rang d'affichage**, dérivé de l'étape et non persisté.
 - **`backend/domain/deroule_etape.py`** — `EtapeDeroule.instancier`, qui pose `etape_id` sur
-  l'avancement, plus `table_des_rangs` / `table_des_identites` / `vues_du_deroule`.
+  l'avancement, plus `table_des_rangs` et `vues_du_deroule`.
 - **`backend/domain/format_tournoi.py`** — `ModelePhase.sources` reste en `SourceModele` (§3) ;
   `ModelePhase.pour_tournoi` et `ModelePhase.d_etape` **sont** les deux sens de la conversion (§4) ;
   `FormatTournoi.verifier_applicable` et `FormatTournoi.etapes_ordonnees` ont remplacé

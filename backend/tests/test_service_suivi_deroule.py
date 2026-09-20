@@ -49,6 +49,7 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxPhaseRepository,
+    identite_d_etape,
     poser_phase_factice,
 )
 
@@ -217,7 +218,12 @@ def _tableau_ed(depart_id: int, ordre: int, statut: StatutPhase) -> Phase:
         ordre=ordre,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=8, nature=NatureSource.RANGS),
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=1,
+                rang_fin=8,
+                nature=NatureSource.RANGS,
+            ),
         ),
         effectif=8,
     )
@@ -368,7 +374,12 @@ def test_un_tableau_alimente_par_une_tranche_haute_compte_correctement() -> None
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(etape_source_id=1, rang_debut=9, rang_fin=16, nature=NatureSource.RANGS),
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=9,
+                rang_fin=16,
+                nature=NatureSource.RANGS,
+            ),
         ),
         effectif=8,
     ).demarrer()
@@ -408,7 +419,12 @@ def test_une_phase_ne_se_termine_jamais_avant_sa_finale() -> None:
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=32, nature=NatureSource.RANGS),
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=1,
+                rang_fin=32,
+                nature=NatureSource.RANGS,
+            ),
         ),
         effectif=32,
     ).demarrer()
@@ -487,7 +503,12 @@ def test_un_exempt_n_est_pas_un_duel_joue() -> None:
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=6, nature=NatureSource.RANGS),
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=1,
+                rang_fin=6,
+                nature=NatureSource.RANGS,
+            ),
         ),
         effectif=6,
     ).demarrer()

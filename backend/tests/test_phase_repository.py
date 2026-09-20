@@ -574,7 +574,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        _poser(
+        qualif = _poser(
             db,
             depart_id,
             ordre=1,
@@ -582,6 +582,10 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
             bareme=BaremeQualification.creer(20, 3),
             validation=GrainValidation.fin_de_serie(),
         )
+        # ⚠️ L'identité **réelle** de l'étape amont, jamais un `1` écrit à la main : sur une base
+        # neuve elle vaudrait 1 par coïncidence, et le test passerait avec l'ancien ancrage.
+        assert qualif.etape_id is not None
+        source = SourcePhase(etape_source_id=qualif.etape_id, rang_debut=1, rang_fin=16)
 
         elim = poser_phase_sql(
             db.session_factory,
@@ -589,7 +593,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
                 depart_id,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),),
+                sources=(source,),
                 effectif=16,
             ),
         )
@@ -600,7 +604,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
         assert relue is not None
         assert relue.bareme is None
         assert relue.validation is None
-        assert relue.sources == (SourcePhase(etape_source_id=1, rang_debut=1, rang_fin=16),)
+        assert relue.sources == (source,)
         assert relue.effectif == 16
 
         # Le JSON ne porte ni scoring ni validation pour une phase non-qualification. On vise

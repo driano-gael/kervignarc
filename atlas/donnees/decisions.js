@@ -4089,6 +4089,7 @@ window.ATLAS.decisions = {
     "E01US025",
     "E01US026",
     "E03US012",
+    "E05US022",
     "E05US026",
     "E05US029",
     "E05US032",
@@ -4470,7 +4471,6 @@ window.ATLAS.decisions = {
       "EtapeDeroule.instancier",
       "etape_id",
       "table_des_rangs",
-      "table_des_identites",
       "vues_du_deroule"
      ],
      "symboles_absents": [],
@@ -5879,7 +5879,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-08-16",
    "date_brute": "2026-08-16",
-   "extrait": "### 1. Le critère est structurel, pas typologique > Une phase décerne ses rangs — donc peut donner une médaille — si et seulement si aucune > phase avale ne prélève dedans. Le critère se lit sur le graphe des sources du déroulé, pas sur TypePhase. La même phase de poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne, sans que l'organisateur ait quoi que ce soit à régler. Il se lit sur ordre et non sur l'identité, parce que c'est ainsi qu'une source désigne sa phase (SourcePhase.ordre_source) : c'est l'ancrage par ordre de DETTE-026, et s'en écarter ici créerait une seconde convention. ### 2. Deux régimes, portés par origine - phase consommée → […]",
+   "extrait": "### 1. Le critère est structurel, pas typologique > Une phase décerne ses rangs — donc peut donner une médaille — si et seulement si aucune > phase avale ne prélève dedans. Le critère se lit sur le graphe des sources du déroulé, pas sur TypePhase. La même phase de poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne, sans que l'organisateur ait quoi que ce soit à régler. Il se lit sur l'identité de l'étape (SourcePhase.etape_source_id) depuis E05US022 / ADR-0078, parce que c'est ainsi qu'une source désigne sa phase — et il n'y a qu'une convention. Rédaction d'origine, devenue fausse le 20/09/2026 : « il se lit sur ordre et non sur l'identité … c'est […]",
    "fichier": "docs/adr/0085-une-phase-decerne-ses-rangs-si-rien-ne-preleve-dedans.md",
    "identifiant": "0085",
    "liens": [
@@ -5908,6 +5908,7 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Une phase décerne ses rangs si rien ne prélève dedans",
    "us": [
+    "E05US022",
     "E05US025",
     "E05US026",
     "E05US029"

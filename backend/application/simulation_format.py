@@ -296,7 +296,7 @@ def _fonder(
     # ⚠️ **Même geste qu'à `ServiceFormats.appliquer`, et il doit le rester** (ADR-0078 §4) : les
     # étapes se posent dans l'ordre, chacune s'ancrant sur l'identité des précédentes. Un jumeau
     # qui divergerait ferait simuler un déroulé dont les prélèvements ne sont pas ceux du vrai.
-    format_tournoi.verifier_applicable()
+    format_tournoi.verifier_applicable(tournoi.id)
     ordre_vers_id: dict[int, EtapeDerouleId] = {}
     for modele in format_tournoi.etapes_ordonnees:
         posee = harnais.deroules.ajouter(modele.pour_tournoi(tournoi.id, ordre_vers_id))

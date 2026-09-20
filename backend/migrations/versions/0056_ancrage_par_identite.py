@@ -26,18 +26,21 @@ construction (ADR-0060 §5), et l'ancrage par rang y est correct, pas dégradé 
 
 ⚠️ **Un avancement dont le rang n'a aucune étape est supprimé**, pas migré. Il était déjà invisible
 à toute lecture — les deux adapters écartent l'orpheline — et ``etape_id`` est ``NOT NULL`` : le
-garder exigerait d'inventer un rattachement. La migration en compte le nombre dans son journal.
+garder exigerait d'inventer un rattachement. Le nombre supprimé part au journal d'Alembic.
 
 Le ``downgrade`` rétablit ``phase.ordre`` depuis le rang de l'étape désignée, et les
 ``ordre_source`` depuis les identités. Il est **fidèle** tant que la séquence est cohérente 1..N,
 ce que le domaine garantit ; sur une base trafiquée à la main, il rend ce que l'ancien code aurait
-lu. La contrainte d'unicité est reposée en dernier — si elle échoue, c'est que deux étapes
-partagent un rang, état qu'ADR-0078 rend possible et que l'ancien schéma interdisait.
+lu. La contrainte d'unicité est reposée **en premier**, pour que l'échec précède toute réécriture
+de données — deux étapes au même rang est un état qu'ADR-0078 rend possible et que l'ancien
+schéma interdisait.
 """
 
 from __future__ import annotations
 
 import json
+import logging
+from collections.abc import Callable
 from typing import Any
 
 import sqlalchemy as sa
@@ -47,6 +50,8 @@ revision = "0056_ancrage_par_identite"
 down_revision = "0055_volee_role_de_saisie"
 branch_labels = None
 depends_on = None
+
+_JOURNAL = logging.getLogger("alembic.runtime.migration")
 
 
 def _etapes_par_tournoi(connexion: sa.Connection) -> dict[int, dict[int, int]]:
@@ -76,13 +81,18 @@ def _brutes(config: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _reecrire_sources(
     connexion: sa.Connection,
-    resoudre: Any,
+    resoudre: Callable[[int, dict[str, Any]], dict[str, Any] | None],
 ) -> None:
     """Réécrit les ancres de toutes les ``config`` de ``deroule_etape``.
 
     ⚠️ **Normalise au passage la forme ancienne en liste** : une ``config.source`` unique ressort
     en ``config.sources`` d'un élément. Le lecteur cible ne consulte plus ``config.source``, donc
     la laisser en place reviendrait à perdre le prélèvement.
+
+    ⚠️ **Un prélèvement que ``resoudre`` rend ``None`` est RETIRÉ**, pas laissé à demi écrit
+    (correctif de revue). Le laisser sans ancre rendait la ``config`` illisible, et comme les
+    étapes se relisent par lot, c'était **tout le déroulé du tournoi** qui tombait en erreur —
+    définitivement, sans écran pour le réparer.
     """
     lignes = list(
         connexion.execute(sa.text("SELECT id, tournoi_id, config FROM deroule_etape")).fetchall()
@@ -93,7 +103,8 @@ def _reecrire_sources(
         if not sources:
             continue
         config.pop("source", None)
-        config["sources"] = [resoudre(tournoi_id, source) for source in sources]
+        reecrites = [resoudre(tournoi_id, source) for source in sources]
+        config["sources"] = [source for source in reecrites if source is not None]
         connexion.execute(
             sa.text("UPDATE deroule_etape SET config = :config WHERE id = :id"),
             {"config": json.dumps(config), "id": etape_id},
@@ -122,18 +133,30 @@ def upgrade() -> None:
     if orphelines:
         # Déjà invisibles à toute lecture (écartées comme orphelines par les deux adapters) : les
         # supprimer est ce qui rend la colonne `NOT NULL` tenable sans inventer de rattachement.
+        # ⚠️ `franchissement_arret` pend à `phase` **sans** `ON DELETE CASCADE`, et Alembic tourne
+        # sans `PRAGMA foreign_keys` : sans cette purge, la suppression laisserait des lignes
+        # pendantes que rien ne signalerait jamais (correctif de revue).
+        connexion.execute(
+            sa.text(
+                "DELETE FROM franchissement_arret WHERE phase_id IN "
+                "(SELECT id FROM phase WHERE etape_id IS NULL)"
+            )
+        )
         connexion.execute(sa.text("DELETE FROM phase WHERE etape_id IS NULL"))
+        _JOURNAL.info("0056 : %s avancement(s) orphelin(s) supprimé(s).", orphelines)
 
     # (2) les prélèvements, tant que les rangs disent encore vrai.
-    def vers_identite(tournoi_id: int, source: dict[str, Any]) -> dict[str, Any]:
+    def vers_identite(tournoi_id: int, source: dict[str, Any]) -> dict[str, Any] | None:
         ancre = source.pop("ordre_source", None)
         if ancre is None:
             return source
         etape_id = par_tournoi.get(tournoi_id, {}).get(int(ancre))
         if etape_id is None:
-            # Rang sans étape : le prélèvement ne désignait déjà rien de lisible. On le laisse
-            # sans ancre plutôt que d'en inventer une — la relecture lèvera, bruyamment.
-            return source
+            # ⚠️ **Rang sans étape : on RETIRE le prélèvement** (correctif de revue). Il ne
+            # désignait déjà rien — la lecture d'avant le rendait inerte —, donc le retirer
+            # conserve le comportement observé. Le garder sans ancre rendait toute l'étape, et
+            # donc tout le déroulé du tournoi, illisible.
+            return None
         return {**source, "etape_source_id": etape_id}
 
     _reecrire_sources(connexion, vers_identite)
@@ -156,12 +179,13 @@ def downgrade() -> None:
     with op.batch_alter_table("deroule_etape") as lot:
         lot.create_unique_constraint("uq_deroule_tournoi_ordre", ["tournoi_id", "ordre"])
 
-    def vers_rang(_tournoi_id: int, source: dict[str, Any]) -> dict[str, Any]:
+    def vers_rang(_tournoi_id: int, source: dict[str, Any]) -> dict[str, Any] | None:
         ancre = source.pop("etape_source_id", None)
         if ancre is None:
             return source
         ordre = rangs.get(int(ancre))
-        return source if ordre is None else {**source, "ordre_source": ordre}
+        # Même règle qu'à l'aller : une ancre qui ne se résout pas fait retirer le prélèvement.
+        return None if ordre is None else {**source, "ordre_source": ordre}
 
     _reecrire_sources(connexion, vers_rang)
 

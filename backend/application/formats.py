@@ -192,7 +192,7 @@ class ServiceFormats:
         # le troisième garde existe pour protéger. ⚠️ **La pose, elle, ne peut plus précéder la
         # destruction** (ADR-0078) : une étape s'ancre sur l'identité des précédentes, qui n'existe
         # qu'une fois écrite. D'où la séparation entre le contrôle et la matérialisation.
-        format_tournoi.verifier_applicable()
+        format_tournoi.verifier_applicable(tournoi_id)
 
         # Le domaine ignore les créneaux (ADR-0076) : c'est ici qu'on refuse un tournoi qui n'en a
         # aucun. Sans départ, le déroulé serait défini mais **personne ne le jouerait** — et le

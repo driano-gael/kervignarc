@@ -26,12 +26,20 @@ from application.erreurs import (
     TournoiSansPhase,
 )
 from application.formats import ServiceFormats
+from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
 from domain.depart import Depart
-from domain.erreurs import PhaseQualificationIncomplete, ProfondeurInvalide
+from domain.erreurs import DomainError, PhaseQualificationIncomplete, ProfondeurInvalide
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
-from domain.phase import Phase, SourceModele, StatutPhase, TypePhase, grain_par_defaut
+from domain.phase import (
+    Phase,
+    SourceModele,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+    grain_par_defaut,
+)
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
@@ -269,6 +277,53 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
     assert [p.ordre for p in phases] == [1, 2]
     assert all(p.statut is StatutPhase.A_VENIR for p in phases)
     assert all(p.depart_id == ctx.depart_id for p in phases)
+    # ⚠️ **La conversion rang → identité, assérée là où elle se fait** (ADR-0078 §4, correctif de
+    # revue) : le CA en fait le seul point de contact entre les deux mondes, et rien ne le
+    # vérifiait. Le modèle citait « la phase 1 » ; l'étape posée cite l'**identité** de l'étape 1.
+    assert etapes[0].id is not None
+    assert etapes[1].sources == (
+        SourcePhase(etape_source_id=etapes[0].id, rang_debut=1, rang_fin=8),
+    )
+    # Et les avancements désignent leur étape, pas leur rang.
+    assert {p.etape_id for p in phases} == {e.id for e in etapes}
+
+
+def test_appliquer_refuse_un_brouillon_sans_detruire_le_deroule_en_place(ctx: Contexte) -> None:
+    """**« Instancier avant de détruire » (E01US024) tient toujours** — correctif de revue.
+
+    Cinq invariants d'`EtapeDeroule` ne sont pas des anomalies : un `ModelePhase` ne valide rien
+    (ADR-0063), donc un arrêt posé sur un type non arrêtable s'**enregistre** et ne se refuse qu'à
+    la construction de l'étape. En séparant le contrôle de la pose, E05US022 avait déplacé ce
+    refus **après** les suppressions : le tournoi se retrouvait sans phases ni barème. Ce test
+    échoue si quelqu'un retire la pose à blanc de `verifier_applicable`.
+    """
+    en_place = ctx.service.creer("En place", [_qualification(ordre=1, effectif=16)])
+    ctx.service.appliquer(ctx.tournoi_id, _id(en_place.id))
+    avant_etapes = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    avant_phases = ctx.phases.par_tournoi(ctx.tournoi_id)
+    assert avant_etapes and avant_phases
+
+    brouillon = ctx.service.creer(
+        "Brouillon",
+        [
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.PLACEMENT,
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+                effectif=8,
+                # Un arrêt sur un type qui ne sait pas s'arrêter : licite au format, refusé à
+                # l'étape (ADR-0091).
+                arrets=(ArretProgramme(apres_tour=1, portee=PorteeArret.PHASE),),
+            ),
+        ],
+    )
+
+    with pytest.raises(DomainError):
+        ctx.service.appliquer(ctx.tournoi_id, _id(brouillon.id))
+
+    assert ctx.deroules.par_tournoi(ctx.tournoi_id) == avant_etapes, "le déroulé est intact"
+    assert ctx.phases.par_tournoi(ctx.tournoi_id) == avant_phases, "les avancements aussi"
 
 
 def test_appliquer_recopie_le_minimum_exige_sur_le_tournoi(ctx: Contexte) -> None:

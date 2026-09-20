@@ -140,13 +140,13 @@ def app_poules(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
-def _etape_de_rang(client: object, tournoi_id: int, rang: int) -> int:
+def _etape_de_rang(client: TestClient, tournoi_id: int, rang: int) -> int:
     """L'identité de l'étape à ce rang, lue sur l'API (ADR-0078).
 
     Une charge utile ne peut plus citer « la phase 2 » : elle cite une identité, que seule la
     lecture du déroulé donne. Le rang reste ce que le **décor** décrit, d'où cette traduction.
     """
-    phases = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()  # type: ignore[attr-defined]
+    phases = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()
     return int(next(p for p in phases if p["ordre"] == rang)["id"])
 
 

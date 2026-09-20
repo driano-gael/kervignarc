@@ -335,11 +335,6 @@ def table_des_rangs(etapes: Iterable[EtapeDeroule]) -> dict[EtapeDerouleId, int]
     return {etape.id: etape.ordre for etape in etapes if etape.id is not None}
 
 
-def table_des_identites(etapes: Iterable[EtapeDeroule]) -> dict[int, EtapeDerouleId]:
-    """La correspondance **rang → identité**, réciproque de `table_des_rangs`."""
-    return {etape.ordre: etape.id for etape in etapes if etape.id is not None}
-
-
 def vues_du_deroule(etapes: Sequence[EtapeDeroule]) -> tuple[VueParRangs, ...]:
     """Projette un déroulé sur ses rangs, pour les **contrôles de séquence** (ADR-0078 §4).
 

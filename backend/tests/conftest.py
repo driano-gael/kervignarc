@@ -45,6 +45,7 @@ import dataclasses
 import datetime
 import re
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -654,7 +655,14 @@ class FauxDerouleRepository:
 
     def __init__(self) -> None:
         self._items: dict[int, EtapeDeroule] = {}
-        self._sequence = 0
+        # ⚠️ **La séquence ne démarre pas à 0**, même raison que `FauxPhaseRepository` et, depuis
+        # ADR-0078, avec plus de force : l'identité d'étape **est** l'ancre d'un prélèvement et la
+        # clé de jointure d'un avancement. Un décor où l'étape de rang 1 reçoit l'identifiant 1
+        # rend **vert par coïncidence** tout code resté sur le rang — c'est exactement ce qui a
+        # laissé passer trois bloquants à la revue d'E05US022 (`palmares`, `completude`, la clé du
+        # cache de `saisie_duels`), sous 4376 tests verts. 200 pour ne pas heurter les `PhaseId`,
+        # qui partent de 100.
+        self._sequence = 200
 
     def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
         """Persiste l'étape ; un `id` **déjà fourni est préservé** (même règle que les phases)."""
@@ -719,12 +727,17 @@ def appliquer_en_memoire(
     des rangs et n'enrichir la table qu'**après** avoir instancié l'étape courante. S'ils
     divergeaient, ce décor validerait un ancrage que la production ne produit pas.
     """
-    format_tournoi.verifier_applicable()
+    format_tournoi.verifier_applicable(tournoi_id)
     ordre_vers_id: dict[int, EtapeDerouleId] = {}
     etapes: list[EtapeDeroule] = []
     for rang, modele in enumerate(format_tournoi.etapes_ordonnees, start=0):
-        etapes.append(modele.pour_tournoi(tournoi_id, ordre_vers_id))
-        ordre_vers_id[modele.ordre] = PREMIERE_IDENTITE_SIMULEE + rang
+        identite = PREMIERE_IDENTITE_SIMULEE + rang
+        # ⚠️ **L'étape rendue PORTE son identité**, comme celle que le dépôt renvoie en production
+        # (correctif de revue) : la première rédaction ne la mettait que dans la table, si bien
+        # que le déroulé rendu citait des identités qu'aucune de ses étapes ne portait — un état
+        # que la production ne produit jamais, et que `vues_du_deroule` refuse.
+        etapes.append(replace(modele.pour_tournoi(tournoi_id, ordre_vers_id), id=identite))
+        ordre_vers_id[modele.ordre] = identite
     return tuple(etapes)
 
 
@@ -758,6 +771,11 @@ def poser_phase_factice(
         etape = deroules.ajouter(
             EtapeDeroule(
                 tournoi_id=depart.tournoi_id,
+                # ⚠️ **Identité imposée, et décalée du rang** (ADR-0078) : sans cela, le magasin
+                # alloue dans l'ordre de pose et `etape.id == etape.ordre`, si bien qu'un lecteur
+                # resté sur le rang passe **vert par coïncidence**. Trois bloquants d'E05US022
+                # avaient traversé 4376 tests ainsi. Un décor cite donc `identite_d_etape(N)`.
+                id=identite_d_etape(phase.ordre),
                 ordre=phase.ordre,
                 type=phase.type,
                 bareme=phase.bareme,
@@ -966,13 +984,17 @@ def qualification_de_secours(
 class FauxLecteurPopulations:
     """Doublure du port `LecteurPopulationPhase` (E05US025, correctif de revue).
 
-    Dit, pour l'`ordre` d'une phase, **quels archers elle a reçus** — la seule chose que la saisie
-    et la complétude lui demandent. `populations` vide ⇒ le résolveur rend `None` partout, et les
+    Dit, pour l'**identité de l'étape** qu'une phase joue, **quels archers elle a reçus** — la
+    seule chose que la saisie et la complétude lui demandent. ⚠️ **C'était l'`ordre` jusqu'à
+    ADR-0078** : la doublure suit la clé du port, sans quoi elle rendrait `None` sur tout le
+    chemin réel tout en restant verte là où identité et rang coïncident.
+
+    `populations` vide ⇒ le résolveur rend `None` partout, et les
     deux services retombent sur leur comportement mono-qualification : c'est le montage par défaut,
     et il est **volontairement inerte** pour que les décors existants ne changent pas de sens.
 
-    Renseigner `populations[ordre]` monte la **fourche** du CA (une *haute* et une *basse* qui se
-    jouent ensemble) sans avoir à câbler tout le moteur de classement dans un test de service.
+    Renseigner `populations[identite_d_etape(ordre)]` monte la **fourche** du CA (une *haute* et
+    une *basse* qui se jouent ensemble) sans câbler tout le moteur de classement dans un test.
 
     ⚠️ **`tous` n'est pas un confort, c'est la fidélité à la production** (2ᵉ correctif de revue).
     En production, une phase **sans source** — la qualification de tête — rend
@@ -981,7 +1003,8 @@ class FauxLecteurPopulations:
     réclame personne, donc que l'ensemble des phases admissibles est toujours un singleton — et le
     départage entre elles, seul endroit où la production peut se tromper, ne serait exercé par aucun
     test. C'est le doublage « porté à moitié » que cette même US a dénoncé deux fois ; on ne le
-    refait pas ici. Renseigner `tous` pose donc la population par défaut de tout ordre non déclaré.
+    refait pas ici. Renseigner `tous` pose donc la population par défaut de toute étape non
+    déclarée.
     """
 
     def __init__(
@@ -993,8 +1016,8 @@ class FauxLecteurPopulations:
     def resolveur_de_classement(
         self, tournoi_id: int, depart_id: int
     ) -> Callable[[int], ClassementSource | None]:
-        def resoudre(ordre: int) -> ClassementSource | None:
-            archers = self.populations.get(ordre, self.tous)
+        def resoudre(etape_id: int) -> ClassementSource | None:
+            archers = self.populations.get(etape_id, self.tous)
             if archers is None:
                 return None
             return ClassementSource(
@@ -1107,6 +1130,11 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
 
     Des **étapes** et non des phases (ADR-0076) : c'est une *définition*, elle appartient au
     tournoi et s'écrit une seule fois quel que soit le nombre de créneaux.
+
+    ⚠️ **Les identités sont posées d'avance et décalées des rangs** (ADR-0078) : les prélèvements
+    citent l'étape amont par `identite_d_etape(1)`, pas par `1`. Les repositories préservent un
+    `id` fourni, donc le décor reste cohérent une fois posé — et surtout, il cesse de passer par
+    coïncidence si un lecteur confond les deux.
     """
     return [
         EtapeDeroule(
@@ -1115,18 +1143,21 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
             type=TypePhase.QUALIFICATION,
             bareme=BaremeQualification.preset_ffta_18m(),
             validation=GrainValidation.fin_de_serie(),
+            id=identite_d_etape(1),
         ),
         EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, 1, 32),),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 32),),
+            id=identite_d_etape(2),
         ),
         EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=3,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, rang_debut=33),),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1), rang_debut=33),),
+            id=identite_d_etape(3),
         ),
     ]
 
