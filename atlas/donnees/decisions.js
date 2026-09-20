@@ -10671,6 +10671,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "RenduPalmares.sections",
       "ServicePalmares.rendu",
+      "par_id",
+      "_libelles_club",
+      "N",
       "pour_depart"
      ],
      "symboles_absents": [],

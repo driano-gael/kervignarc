@@ -252,7 +252,18 @@ describe('VuePalmares — un palmarès par créneau (E06US009)', () => {
       ...PALMARES,
       // ⚠️ `classement_vide` implique `lignes: []` côté serveur : un décor qui garderait
       // des lignes décrirait un état que le serveur ne peut pas émettre.
-      sections: [SECTION, { ...APRES_MIDI, classement_vide: true, lignes: [], podiums: [] }],
+      sections: [
+        SECTION,
+        {
+          ...APRES_MIDI,
+          classement_vide: true,
+          lignes: [],
+          podiums: [],
+          // Sans ligne, `classer_clubs` ne peut rien compter : garder des médailles ici
+          // décrirait encore un état que le serveur n'émet pas.
+          classement_clubs: { ...APRES_MIDI.classement_clubs, lignes: [], portees_comptees: [] },
+        },
+      ],
     })
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 

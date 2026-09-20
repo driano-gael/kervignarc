@@ -611,12 +611,14 @@ def test_chaque_creneau_de_la_session_porte_son_classement_et_ses_arbres() -> No
     assert [len(v) for v in vus] == [4, 4], "chaque créneau classe SES inscrits"
     assert vus[0].isdisjoint(vus[1]), "aucun archer ne figure dans les deux"
 
-    # ⚠️ **La limite `DETTE-107`, ancrée mécaniquement plutôt que laissée en prose** : le harnais
-    # n'écrit ses volées que dans **une** qualification, donc le second créneau est classé **à
-    # zéro** — ses inscrits y figurent, et son arbre est tout de même monté et joué sur ces zéros.
-    # Ce test tombera le jour où le moteur deviendra multi-qualification : c'est voulu.
-    assert all(ligne.total > 0 for ligne in etat.creneaux[0].classement.lignes)
-    assert all(ligne.total == 0 for ligne in etat.creneaux[1].classement.lignes)
+    # ⚠️ **Les DEUX créneaux ont réellement tiré** : c'est le CA « la simulation suit », et c'est
+    # ce que le harnais ne faisait pas — il résolvait `qualification_du_tournoi`, donc écrivait
+    # toutes ses volées dans la qualification du premier départ, le second sortant à zéro. Un test
+    # qui n'asserterait que le premier resterait vert sous ce défaut.
+    for creneau in etat.creneaux:
+        assert all(ligne.total > 0 for ligne in creneau.classement.lignes), creneau.libelle
+    totaux = [tuple(ligne.total for ligne in c.classement.lignes) for c in etat.creneaux]
+    assert totaux[0] != totaux[1], "deux créneaux, deux déroulés"
 
     phases_vues = [{tableau.phase_id for tableau in creneau.tableaux} for creneau in etat.creneaux]
     assert [len(v) for v in phases_vues] == [1, 1], "un arbre par créneau, ni zéro ni deux"

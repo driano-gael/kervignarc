@@ -3,10 +3,11 @@
 // ⚠️ **Pourquoi ce fichier existe.** `EtatSession` est un miroir écrit à la main d'un modèle
 // Pydantic, et `fetchJson<T>` transtype sans valider (`DETTE-108`) : quand E06US009 a changé le
 // contrat, `tsc` est resté vert, `vitest` aussi (zéro test ici) et la porte a rendu 14/14 — sur une
-// appli admin qui tombait en page blanche, faute d'`ErrorBoundary`. ⚠️ **Le décor est typé sans
-// transtypage** : un `as unknown as` y rejouerait le défaut que ce test garde (revue, 2ᵉ passe).
+// appli admin qui tombait en page blanche, faute d'`ErrorBoundary`. ⚠️ **Le décor de DONNÉES est
+// typé sans transtypage** — c'est lui qui porte le contrat serveur ; les doublures de hooks gardent
+// leur cast, elles n'en portent aucun. `VueCible` n'est pas couverte : elle ne lit pas `creneaux`.
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
@@ -132,8 +133,8 @@ describe('Simulation — le cockpit rejoue chaque créneau (E06US009)', () => {
 
     // ⚠️ L'assertion porte sur les DEUX archers : un cockpit resté sur « le » premier créneau
     // afficherait MARTIN seul, et un test qui ne compterait que les titres le laisserait passer.
-    expect(screen.getByLabelText('Classement — Départ n°1 — 09:00')).toBeInTheDocument()
-    expect(screen.getByLabelText('Classement — Départ n°2 — 14:00')).toBeInTheDocument()
+    expect(screen.getByLabelText('Départ n°1 — 09:00')).toBeInTheDocument()
+    expect(screen.getByLabelText('Départ n°2 — 14:00')).toBeInTheDocument()
     // `TableClassement` compose « NOM Prénom » dans un seul nœud — d'où le motif, pas l'égalité.
     expect(screen.getByText(/MARTIN/)).toBeInTheDocument()
     expect(screen.getByText(/CADIOU/)).toBeInTheDocument()
@@ -162,7 +163,13 @@ describe('Simulation — le cockpit rejoue chaque créneau (E06US009)', () => {
     await ouvrirLeCockpit(etatA([MATIN, doubleInscrit]))
     await userEvent.click(screen.getByRole('button', { name: 'Archer' }))
 
-    expect(screen.getAllByRole('option', { name: /MARTIN/ })).toHaveLength(1)
+    // ⚠️ **Le test dit LAQUELLE des deux survit**, pas seulement qu'il n'en reste qu'une : garder
+    // la dernière afficherait « 0 pts » sous « Départ n°2 », et l'assertion de comptage seule
+    // resterait verte (revue, 3ᵉ passe). La décision est : **la première**.
+    const survivant = screen.getByRole('option', { name: /MARTIN/ })
+    expect(survivant).toHaveTextContent('30 pts')
+    expect(survivant.closest('optgroup')).toHaveAttribute('label', 'Départ n°1 — 09:00')
+    expect(screen.getAllByRole('group')).toHaveLength(1)
   })
 
   it('dit quel créneau n’a pas commencé sans taire celui qui duelle', async () => {
@@ -174,7 +181,23 @@ describe('Simulation — le cockpit rejoue chaque créneau (E06US009)', () => {
 
     expect(screen.queryByText("Les duels n'ont pas encore commencé.")).not.toBeInTheDocument()
     expect(screen.getByText(/pas encore commencé sur ce créneau/)).toBeInTheDocument()
-    expect(screen.getByLabelText('Duels — Départ n°1 — 09:00')).toBeInTheDocument()
+    // ⚠️ **L'arbre est rendu DANS sa section** : c'est le miroir front de l'invariant que le
+    // service garde (`phases_vues[0].isdisjoint(phases_vues[1])`), et il n'était gardé nulle part
+    // côté écran — un arbre affiché sous le mauvais créneau passait (revue, 3ᵉ passe).
+    const sectionMatin = screen.getByLabelText('Duels — Départ n°1 — 09:00')
+    expect(within(sectionMatin).getByText(/Tableau/)).toBeInTheDocument()
+  })
+
+  it('voit le créneau qui duelle même quand c’est le SECOND', async () => {
+    // ⚠️ **L'ordre inverse est le seul cas qui distingue `every` d'un `creneaux[0]`.** Le test
+    // précédent ne monte l'arbre que sur le premier créneau : il resterait vert sous un `[0]`.
+    // Un axe de revue a d'ailleurs *cru* lire un `[0]` ici — le code portait bien `every`, mais
+    // rien ne le prouvait. Maintenant si.
+    await ouvrirLeCockpit(etatA([MATIN, { ...APRES_MIDI, tableaux: [ARBRE] }]))
+    await userEvent.click(screen.getByRole('button', { name: 'Scoreur' }))
+
+    expect(screen.queryByText("Les duels n'ont pas encore commencé.")).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Duels — Départ n°2 — 14:00')).toBeInTheDocument()
   })
 
   it('ne dit « les duels n’ont pas commencé » que si AUCUN créneau ne duelle', async () => {

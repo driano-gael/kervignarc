@@ -195,13 +195,14 @@ donc **aucune** agrégation inter-départs à écrire.
   07/08/2026. Il **amende [ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md)**
   (décision 9), dont le § Contexte promettait « le club le plus performant **de la journée** » —
   formulation qui réclamait la seule agrégation inter-départs du produit.
-- **CA — la simulation suit, côté AFFICHAGE** : le rejeu de simulation **et la session de
-  simulation pilotée** rendent un bloc **par créneau** au lieu du seul premier. ⚠️ **Le moteur de la
-  session pilotée, lui, reste mono-qualification** (`DETTE-107`) : il ne tire que dans un créneau,
-  les autres sortent donc **à zéro**. Le CA s'arrête à ce que l'US livre. *(La session pilotée a été
-  ajoutée au périmètre au cadrage du 19/09/2026 ; la restriction « côté affichage » a été ajoutée en
-  2ᵉ passe de revue — la rédaction d'origine promettait un moteur que l'US ne livrait pas, et la
-  puce « Résorbe » la contredisait trente-huit lignes plus bas, dans le même commit.)*
+- **CA — la simulation suit** : le rejeu de simulation **et la session de simulation pilotée**
+  cessent de ne voir que le premier départ — **affichage et moteur**. Le harnais résout la
+  qualification **par créneau** (`qualification_courante`, ADR-0082) au lieu de
+  `qualification_du_tournoi`, si bien que chaque départ tire réellement le sien.
+  *(⚠️ **Le CA a failli être rétréci** : la 2ᵉ passe de revue l'avait restreint à « côté affichage »
+  pour qu'il épouse un code qui ne livrait que cela. La 3ᵉ passe l'a relevé comme un arbitrage de
+  périmètre pris seul, et le commanditaire a tranché le 20/09/2026 pour la correction du moteur.
+  Un CA se satisfait, il ne se rabote pas.)*
 - **Notes — ce n'est pas qu'un changement d'affichage.** `_premier_depart` disparaît de
   `application/palmares.py` : tant qu'il existe, la vue reste juste par accident sur les tournois
   mono-créneau et fausse partout ailleurs.
@@ -237,14 +238,12 @@ donc **aucune** agrégation inter-départs à écrire.
   créneau (deux au moins : « Départ **n°**2 » côté serveur, « Départ 2 » côté front). Unifier est un
   **remède structurel** — ADR + US dédiée —, donc hors de cette US, qui se contente d'utiliser
   l'existant plutôt que d'inventer une sixième forme.
-- **Résorbe** : `DETTE-045` *(les trois sites, **côté portée d'affichage**)*. ⚠️ **Le moteur de la
-  session pilotée, lui, reste mono-qualification** (`DETTE-107`, ouverte par cette US) : le harnais
-  écrit toutes ses volées dans la phase rendue par `qualification_du_tournoi`, si bien qu'à `N`
-  créneaux les autres sortent **avec leurs inscrits rangés à zéro** — pas vides — et que leur arbre
-  est tout de même monté et joué sur ces zéros. ⚠️ **Le volet était d'abord renvoyé à `DETTE-022` /
-  `DETTE-047`, à tort** : celles-ci traitent des **forfaits**, les résorber ne corrigerait pas le
-  cockpit (relevé en 2ᵉ passe, axes C2 et D — ce dernier l'a mesuré).
-  **Ouvre** : `DETTE-106`. **Décide** : [ADR-0111](../docs/adr/0111-le-palmares-rend-toutes-ses-sections-en-une-reponse.md) ;
+- **Résorbe** : `DETTE-045` *(les trois sites, affichage **et** moteur)*. ⚠️ **Le harnais de la
+  session pilotée a été repris** : `SessionSimulation` porte une résolution `archer → phase de
+  qualification` au lieu d'un identifiant unique. Mesuré avant/après sur un décor à deux créneaux —
+  le second passait de `[0, 0, 0, 0]` à de vrais totaux.
+  **Ouvre** : `DETTE-106`, `DETTE-108`, `DETTE-109`.
+  **Décide** : [ADR-0111](../docs/adr/0111-le-palmares-rend-toutes-ses-sections-en-une-reponse.md) ;
   **amende** : [ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) § 9. **Dépend de** : E01US025 · **Jalon** : J3
 
 ---

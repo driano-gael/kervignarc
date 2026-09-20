@@ -4,13 +4,13 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
-   "identifiant": "107",
+   "identifiant": "109",
    "introduite_par": [
     "E06US009"
    ],
    "ouverte": true,
    "resorption_us": [],
-   "severite": "majeur"
+   "severite": "mineur"
   },
   {
    "identifiant": "108",
@@ -3360,8 +3360,8 @@ window.ATLAS.avancement = {
    ],
    "dettes_introduites": [
     "106",
-    "107",
-    "108"
+    "108",
+    "109"
    ],
    "dettes_resorbees": [
     "045",

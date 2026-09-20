@@ -169,3 +169,19 @@ def test_un_tournoi_sans_creneau_refuse_le_palmares() -> None:
 
     with pytest.raises(TournoiSansDepart):
         _service(monde).rendu(monde.tournoi_id)
+
+
+def test_sans_creneau_pour_depart_refuse_comme_rendu_et_non_en_404() -> None:
+    """Les deux lectures refusent **de la même façon** : 409, pas 404.
+
+    ⚠️ « Ce tournoi n'a aucun créneau » n'est pas « ce créneau n'existe pas ». `pour_depart` a été
+    réécrite pour ne calculer qu'une section, et la réécriture avait confondu les deux — trois axes
+    de revue l'ont relevé, et aucun test ne retenait la parité. Celui-ci la retient.
+    """
+    monde = _Monde()
+    disparu = monde.depart_id
+    monde.departs.supprimer(monde.depart_id)
+    monde.departs.supprimer(monde.depart_id_2)
+
+    with pytest.raises(TournoiSansDepart):
+        _service(monde).pour_depart(monde.tournoi_id, disparu)

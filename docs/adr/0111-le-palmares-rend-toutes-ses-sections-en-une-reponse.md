@@ -104,8 +104,9 @@ choix à une US passée revenait à ne le trancher nulle part.
   tournoi) et `SectionPalmaresReponse` / `.de_section` (décision 1). ⚠️ **C'est `de_section` qui
   tient la décision 2** : remonter l'appel à `classer_clubs` d'un cran au-dessus rendrait un
   classement de clubs agrégé sans qu'aucun champ neuf n'apparaisse.
-- `backend/application/palmares.py` — `RenduPalmares.sections` et `ServicePalmares.rendu` : le
-  « un seul instant de lecture » des Conséquences. `pour_depart` **n'est pas** une route en
+- `backend/application/palmares.py` — `RenduPalmares.sections` et `ServicePalmares.rendu` :
+  l'instant unique du **réglage** (un seul `par_id`, un seul `_libelles_club`) — et non des `N`
+  classements, cf. la Conséquence amendée. `pour_depart` **n'est pas** une route en
   attente — sa docstring porte l'avertissement.
 - `backend/domain/ports.py` — `GenerateurPalmares.palmares(sections=…)` : la décision 3 côté port,
   donc opposable aux deux adapters et à tout format à venir.
