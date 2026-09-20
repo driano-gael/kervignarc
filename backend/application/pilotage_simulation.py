@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 import threading
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Protocol
@@ -21,12 +22,14 @@ from application.erreurs import (
     PilotageSimulationInvalide,
     PrelevementEnAttente,
     SessionSimulationIntrouvable,
+    TournoiSansDepart,
     UniteSimulationInvalide,
 )
 from application.generateur_scores import GenerateurScores, valeur_zone
-from application.portee import qualification_du_tournoi
+from application.portee import qualification_courante
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
+    CreneauSimule,
     HarnaisSimulation,
     UsineHarnais,
     charger_tournoi_simulable,
@@ -35,10 +38,9 @@ from application.simulation import (
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import ZONES_DEFAUT, ZoneScore
-from domain.classement import Classement
 from domain.duel import Cote
 from domain.erreurs import EffectifTableauInvalide
-from domain.phase import PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -152,9 +154,29 @@ class EtatSession:
     etat_pilote: EtatPilote
     etape: EtapeSimulation
     progression: Progression
-    classement: Classement
-    tableaux: tuple[EtatTableau, ...]
+    creneaux: tuple[CreneauSimule, ...]
+    """**Un par créneau du tournoi simulé** (E06US009), chacun avec son classement et ses arbres.
+
+    ⚠️ **Le cockpit lisait le premier créneau et l'appelait « le » classement** — sur un tournoi de
+    quatre départs, il en montrait un quart sans rien dire. Le site n'était marqué nulle part : ni
+    la fiche d'US ni `docs/dette.md` ne le citaient, seul `simulation.py` portait le marqueur.
+    """
+
     prochaine_unite: ProchaineUnite | None
+
+    def creneau_unique(self) -> CreneauSimule:
+        """Le seul créneau de cette session — pour les appelants qui n'en fabriquent **qu'un**.
+
+        ⚠️ **Une garde, pas un `[0]`** (E06US009) : `simulation_format` monte un seul départ et a
+        le droit d'aplatir ; à deux, un `[0]` nu rendrait le premier en silence.
+
+        ⚠️ **`assert`, et non une `ApplicationError`** (deux axes de revue) : un 409 promettrait
+        qu'un changement d'état sauve la requête, alors que c'est le serveur qui est incohérent.
+        """
+        assert (
+            len(self.creneaux) == 1
+        ), f"Session à {len(self.creneaux)} créneaux : aucun n'est « le » créneau de la simulation."
+        return self.creneaux[0]
 
 
 class DiffusionSimulation(Protocol):
@@ -185,7 +207,15 @@ class SessionSimulation:
     graine: int
     harnais: HarnaisSimulation
     bareme: BaremeQualification
-    phase_qualif_id: PhaseId
+    qualif_par_archer: Mapping[ArcherId, PhaseId]
+    """Où la feuille de **chaque** archer se lit et s'écrit — une par créneau (E06US009).
+
+    ⚠️ **Ce champ était un `PhaseId` scalaire**, résolu par `qualification_du_tournoi`, donc la
+    qualification du **premier** créneau pour tout le monde : à N départs, un seul portait des
+    scores et les autres s'affichaient rangés à zéro. Les quatre sites de lecture ont tous
+    l'`archer_id` en main, d'où cette table plutôt qu'un `depart_id` à transporter.
+    """
+
     phases_duels: tuple[PhaseId, ...]
     archers_ordonnes: tuple[ArcherId, ...]
     niveaux: dict[ArcherId, float]
@@ -237,6 +267,18 @@ class RegistreSessionsSimulation:
         # Idempotent : arrêter une session déjà partie n'est pas une erreur (le front peut rejouer).
         with self._verrou:
             self._sessions.pop(session_id, None)
+
+
+def _serie_de(session: SessionSimulation, archer_id: ArcherId) -> Serie | None:
+    """La feuille de cet archer, dans la qualification de **son** créneau (E06US009).
+
+    ⚠️ Rend `None` pour un archer **sans créneau** : il n'est inscrit nulle part, donc il n'a pas
+    de feuille — le cockpit affiche alors un cumul nul plutôt que de lever.
+    """
+    phase_id = session.qualif_par_archer.get(archer_id)
+    if phase_id is None:
+        return None
+    return session.harnais.series.par_archer(phase_id, archer_id)
 
 
 class ServicePilotageSimulation:
@@ -319,7 +361,22 @@ class ServicePilotageSimulation:
         """
         assert tournoi.id is not None, "Un tournoi de simulation porte un identifiant."
         tournoi_id = tournoi.id
-        phase_qualif = qualification_du_tournoi(harnais.phases, tournoi_id)
+        # ⚠️ **Une qualification PAR CRÉNEAU** (E06US009) : le harnais résolvait
+        # `qualification_du_tournoi`, donc celle du premier départ pour tout le monde — à N
+        # créneaux, un seul portait des scores. Même geste que `ServiceSaisie` en production :
+        # `la_plus_courante` sur les qualifications **du créneau** (ADR-0082).
+        qualif_par_archer: dict[ArcherId, PhaseId] = {}
+        premiere: Phase | None = None
+        for depart in harnais.departs.par_tournoi(tournoi_id):
+            if depart.id is None:
+                continue
+            qualif = qualification_courante(harnais.phases, depart.id)
+            if qualif is None or qualif.id is None:
+                continue
+            premiere = premiere or qualif
+            for inscription in harnais.inscriptions.par_depart(depart.id):
+                qualif_par_archer[inscription.archer_id] = qualif.id
+        phase_qualif = premiere
         if phase_qualif is None or phase_qualif.bareme is None or phase_qualif.id is None:
             raise PhaseQualificationAbsente(
                 "Pour simuler le déroulé, le tournoi doit avoir une phase de qualification avec un "
@@ -343,8 +400,12 @@ class ServicePilotageSimulation:
                 tournoi_nom=tournoi.nom,
                 graine=graine,
                 harnais=harnais,
+                # ⚠️ **Le barème d'une seule suffit, et ce n'est pas un raccourci** : les
+                # qualifications d'un même tournoi sont instanciées de **la même étape** de
+                # déroulé (ADR-0076), elles portent donc le même barème. Le jour où une étape
+                # par créneau existera, ce champ devra suivre — d'où cette phrase.
                 bareme=phase_qualif.bareme,
-                phase_qualif_id=phase_qualif.id,
+                qualif_par_archer=qualif_par_archer,
                 phases_duels=phases_duels,
                 archers_ordonnes=archers_ordonnes,
                 niveaux=niveaux,
@@ -375,10 +436,10 @@ class ServicePilotageSimulation:
                     f"Aucun archer d'identifiant {archer_id} dans la simulation {session_id}."
                 )
             # Correctif de revue E05US025 : la feuille se lit **dans la phase où elle a été
-            # écrite** (`phase_qualif_id`, cf. `_ecrire_volee`). Ce site passait encore
-            # `tournoi_id` — deux alias d'`int` (`DETTE-044`), donc muet à la compilation : le
-            # cockpit rendait un cumul **0** dès que les deux identifiants cessaient de coïncider.
-            serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
+            # écrite** (cf. `_ecrire_volee`). Ce site passait encore `tournoi_id` — deux alias
+            # d'`int` (`DETTE-044`), donc muet à la compilation : le cockpit rendait un cumul **0**
+            # dès que les deux identifiants cessaient de coïncider.
+            serie = _serie_de(session, archer_id)
             return DetailArcher(
                 archer_id=archer_id,
                 nom=archer.nom,
@@ -560,12 +621,12 @@ class ServicePilotageSimulation:
         duplique trivialement l'assemblage privé de `domain.serie` (2ᵉ occurrence, règle 16).
         """
 
-        # E05US025 : la feuille se résout par `(phase, archer)`. La session porte déjà l'identifiant
-        # de la qualification qu'elle simule (`phase_qualif_id`) — le harnais ne simule qu'un
-        # déroulé mono-qualification, mais il écrit **dans** cette phase et non « dans le tournoi ».
-        serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
+        # E05US025 : la feuille se résout par `(phase, archer)`. Depuis E06US009 la session sait
+        # dans **quelle** qualification écrire pour chaque archer — celle de **son** créneau.
+        phase_id = session.qualif_par_archer[archer_id]
+        serie = session.harnais.series.par_archer(phase_id, archer_id)
         if serie is None:
-            serie = Serie.vide(session.tournoi_id, archer_id, session.phase_qualif_id)
+            serie = Serie.vide(session.tournoi_id, archer_id, phase_id)
         # `lot_validation` : le harnais valide une volée par acte, donc un lot par volée — même
         # convention que le backfill de la migration 0054 (ADR-0109).
         volee = Volee(
@@ -733,7 +794,7 @@ class ServicePilotageSimulation:
     def _volee_validee(self, session: SessionSimulation, archer_id: ArcherId, numero: int) -> bool:
         # Correctif de revue E05US025 : même défaut qu'`detail_archer` — lu au tournoi, écrit à la
         # phase, donc **toujours `False`** hors coïncidence d'identifiants.
-        serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
+        serie = _serie_de(session, archer_id)
         if serie is None:
             return False
         volee = serie.volee(numero)
@@ -750,10 +811,17 @@ class ServicePilotageSimulation:
                     return blason.zones
         return ZONES_DEFAUT
 
-    def _tableaux(self, session: SessionSimulation) -> tuple[EtatTableau, ...]:
-        """Les tableaux **jouables** (une phase pas encore prête est sautée, comme le one-shot)."""
+    def _tableaux(
+        self, session: SessionSimulation, phases: Sequence[PhaseId]
+    ) -> tuple[EtatTableau, ...]:
+        """Les tableaux **jouables** du créneau (une phase pas encore prête est sautée).
+
+        ⚠️ `phases` est **obligatoire** : la branche « toute la session » a été retirée en revue
+        avec son dernier appelant. La laisser invitait à relire à plat ce que les créneaux portent
+        déjà, donc à reconstruire deux fois.
+        """
         tableaux: list[EtatTableau] = []
-        for phase_id in session.phases_duels:
+        for phase_id in phases:
             try:
                 tableaux.append(
                     session.harnais.saisie_duels.etat_tableau(session.tournoi_id, phase_id)
@@ -798,10 +866,7 @@ class ServicePilotageSimulation:
         return None
 
     def _etat(self, session: SessionSimulation) -> EtatSession:
-        depart_simule = session.harnais.departs.par_tournoi(session.tournoi_id)[0]
-        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
-        classement = session.harnais.classement.pour_depart(depart_simule.id)
-        tableaux = self._tableaux(session)
+        creneaux = self._creneaux(session)
         prochaine = self._prochaine_unite(session)
         if isinstance(prochaine, ProchaineVolee):
             etape = EtapeSimulation.QUALIFICATION
@@ -813,7 +878,15 @@ class ServicePilotageSimulation:
             volees_faites=session.volees_jouees,
             volees_total=session.bareme.nb_volees * len(session.archers_ordonnes),
             duels_faits=session.duels_joues,
-            duels_total=sum(max(0, etat.effectif - 1) for etat in tableaux),
+            # ⚠️ `DETTE-109` — ce total **ignore le match pour la 3ᵉ place** : sur un arbre de
+            # quatre, 4 duels se jouent pour 3 comptés, et la barre du cockpit passe 100 %.
+            # ⚠️ **Dérivé des créneaux déjà calculés**, jamais d'un second `_tableaux` à plat : la
+            # reconstruction d'arbre est la lecture la plus chère du produit (`DETTE-031`) et
+            # `_etat` est traversé à **chaque** pas du cockpit. Le doublon a vécu le temps de la
+            # revue de l'US qui l'a introduit (trois axes).
+            duels_total=sum(
+                max(0, etat.effectif - 1) for creneau in creneaux for etat in creneau.tableaux
+            ),
         )
         return EtatSession(
             session_id=session.id,
@@ -823,10 +896,45 @@ class ServicePilotageSimulation:
             etat_pilote=session.etat_pilote,
             etape=etape,
             progression=progression,
-            classement=classement,
-            tableaux=tableaux,
+            creneaux=creneaux,
             prochaine_unite=prochaine,
         )
+
+    def _creneaux(self, session: SessionSimulation) -> tuple[CreneauSimule, ...]:
+        """Chaque créneau du tournoi simulé, avec **son** classement et **ses** arbres.
+
+        ⚠️ **`par_depart` filtré sur `phases_duels`, et non `phases_duels` tel quel** : la session
+        porte les phases à duels de tout le tournoi, sans leur créneau. Les rendre en bloc sous
+        chaque classement aurait remplacé « un créneau sur quatre » par « les quatre arbres sous
+        chaque classement » — le même défaut de portée, retourné.
+        """
+        creneaux = session.harnais.departs.par_tournoi(session.tournoi_id)
+        if not creneaux:
+            # ⚠️ **Garde défensive, sans test — et c'est dit parce que ça ne se devine pas.** Le
+            # harnais hydrate les créneaux à `demarrer`, et un tournoi qui n'en a aucun échoue plus
+            # tôt (sa qualification pend à un départ). Aucun décor ne peut donc l'atteindre. Elle
+            # remplace l'`IndexError` d'avant E06US009, qui sortait en 500 : un refus typé coûte
+            # une ligne, un 500 sur une lecture d'état coûte un diagnostic.
+            raise TournoiSansDepart(
+                "Cette session n'a aucun créneau : il n'y a rien à rejouer.",
+            )
+        simules: list[CreneauSimule] = []
+        for depart in creneaux:
+            assert depart.id is not None, "Le magasin in-memory attribue un identifiant."
+            phases = tuple(
+                phase.id
+                for phase in session.harnais.phases.par_depart(depart.id)
+                if phase.id is not None and phase.id in session.phases_duels
+            )
+            simules.append(
+                CreneauSimule(
+                    depart.id,
+                    depart.libelle_creneau(),
+                    session.harnais.classement.pour_depart(depart.id),
+                    self._tableaux(session, phases),
+                )
+            )
+        return tuple(simules)
 
     def _exiger_pause(self, session: SessionSimulation) -> None:
         if session.etat_pilote is not EtatPilote.EN_PAUSE:

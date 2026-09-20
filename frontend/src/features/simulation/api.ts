@@ -78,6 +78,21 @@ export interface TableauSimule {
   podium: PlaceSimule[]
 }
 
+// Ce qu'un **créneau** a produit dans la session (E06US009). La session rejouait « le » classement
+// du tournoi, qui était en fait celui du premier départ.
+//
+// ⚠️ **Miroir écrit à la main de `CreneauSimuleReponse`** (`backend/api/v1/simulation.py`) : rien
+// ne relie ce type au modèle Pydantic, `fetchJson<T>` étant un transtypage et non une validation.
+// Une divergence est donc invisible à `tsc` ET à `vitest` — c'est exactement ce qui a laissé ce
+// fichier en arrière d'un commit qui changeait le contrat (relevé par les cinq axes de revue).
+// `DETTE-108` porte cette classe au registre.
+export interface CreneauSimule {
+  depart_id: number
+  libelle: string
+  classement: Classement
+  tableaux: TableauSimule[]
+}
+
 export interface EtatSession {
   session_id: number
   tournoi_id: number
@@ -86,8 +101,7 @@ export interface EtatSession {
   etat_pilote: EtatPilote
   etape: EtapeSimulation
   progression: Progression
-  classement: Classement
-  tableaux: TableauSimule[]
+  creneaux: CreneauSimule[]
   prochaine_unite: ProchaineUnite | null
 }
 

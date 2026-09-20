@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from application.big_shoot_off import LecteurEtatBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import (
+    DepartIntrouvable,
     PhaseIntrouvable,
     PhasePasReglee,
     PhasePasUnBigShootOff,
@@ -29,13 +30,14 @@ from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
 from domain.club import ClubId
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_RECONSTRUCTIBLES
-from domain.depart import DepartId
+from domain.depart import Depart, DepartId
 from domain.erreurs import DomainError, EffectifTableauInvalide
 from domain.palmares import (
     OriginePalmares,
     Palmares,
     PositionPhase,
     ResultatPhase,
+    SectionPalmares,
     calculer_palmares,
 )
 from domain.participant import GenreParticipant
@@ -78,16 +80,19 @@ déroule le résultat. Un type absent ne casse pas le palmarès — il n'y appor
 
 @dataclass(frozen=True)
 class RenduPalmares:
-    """Ce qu'il faut pour rendre un palmarès **cohérent**, lu d'un seul coup.
+    """Les palmarès d'un tournoi : **une section par créneau**, juxtaposées (E06US009).
 
-    ⚠️ **`complet` porte les podiums, `affiche` porte le classement.** Les deux diffèrent dès qu'un
-    filtre par catégorie est demandé, et les confondre fabriquait des blocs faux : un podium est
-    celui du tournoi, il ne dépend pas de ce que l'organisateur a choisi de regarder.
+    ⚠️ **Il n'existe aucun palmarès « du tournoi ».** L'arbitrage du 07/08/2026 est *juxtaposé —
+    quatre départs font quatre podiums* : deux archers de créneaux différents ne sont jamais
+    comparés, et aucune agrégation inter-départs n'existe dans le produit. Un champ « total » ici
+    serait la porte par laquelle elle rentrerait.
     """
 
-    complet: Palmares
-    affiche: Palmares
+    sections: tuple[SectionPalmares, ...]
     reglage: ReglagePodiums
+    """Ce que le tournoi récompense — **une** valeur pour tous les créneaux : c'est un réglage du
+    tournoi (ADR-0103), pas un résultat sportif."""
+
     nom_tournoi: str
     """Le nom du tournoi, lu au **même instant** que le reste — le PDF le titre avec.
 
@@ -175,46 +180,94 @@ class ServicePalmares:
     def rendu(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
     ) -> RenduPalmares:
-        """Le palmarès **complet**, sa restriction d'affichage et le réglage — en **une** lecture.
+        """**Une section par créneau**, sa restriction d'affichage et le réglage — en une lecture.
 
-        Les trois ensemble parce qu'ils doivent être cohérents : composer les podiums sur le
-        palmarès filtré rendait un bloc « Scratch » amputé de tout ce qui n'est pas la catégorie
-        demandée (bloquant de revue). Un seul `par_id`, un seul `calculer_palmares` — le coût est
-        celui d'avant, pas le double.
+        Composer les podiums sur le palmarès filtré amputait « Scratch » (bloquant de revue).
+
+        ⚠️ **N classements sont irréductibles ; les lectures de référentiel ne le sont pas** —
+        `pour_phase` relit archers, catégories et forfaits à la maille tournoi (`DETTE-031`, revue).
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        complet = self._calculer(tournoi_id, tournoi.reglage_podiums)
-        affiche = complet if categorie_id is None else complet.pour_categorie(categorie_id)
+        departs = self._departs.par_tournoi(tournoi_id)
+        if not departs:
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun créneau : il n'y a pas de classement dont tirer un palmarès."
+            )
+        # ⚠️ **Les noms de club sont lus UNE fois pour tous les créneaux.** Laissés dans
+        # `_calculer`, ils devenaient N lectures de tout le référentiel par rendu — sur une route
+        # publique que chaque tablette interroge (`DETTE-031`). Un test de comptage existant l'a
+        # relevé : c'est exactement le mode de panne « lecture dans une boucle » de la checklist.
+        libelles = self._libelles_club(tournoi.reglage_podiums)
         return RenduPalmares(
-            complet=complet,
-            affiche=affiche,
+            sections=tuple(
+                self._section(tournoi_id, depart, libelles, categorie_id) for depart in departs
+            ),
             reglage=tournoi.reglage_podiums,
             nom_tournoi=tournoi.nom,
         )
 
-    def pour_tournoi(
-        self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
+    def _section(
+        self,
+        tournoi_id: TournoiId,
+        depart: Depart,
+        libelles: Mapping[ClubId, str],
+        categorie_id: CategorieId | None,
+    ) -> SectionPalmares:
+        assert depart.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
+        complet = self._calculer(tournoi_id, depart.id, libelles)
+        return SectionPalmares(
+            depart_id=depart.id,
+            libelle=depart.libelle_creneau(),
+            complet=complet,
+            affiche=complet if categorie_id is None else complet.pour_categorie(categorie_id),
+        )
+
+    def pour_depart(
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        categorie_id: CategorieId | None = None,
     ) -> Palmares:
-        """Le palmarès d'un tournoi, éventuellement **filtré** à une catégorie.
+        """Le palmarès d'**un** créneau, éventuellement **filtré** à une catégorie.
 
-        ⚠️ **Aucun appelant de production** : les routes passent par `rendu`, `imprimer` ou
-        `reglage_podiums`. C'est une commodité de lecture pour les tests, et elle ne compose
-        **jamais** de podium — les blocs se lisent sur `RenduPalmares.complet`. Le filtre lui-même
-        reste le CA d'E06US001 : voir une catégorie sans perdre la position d'ensemble.
+        ⚠️ **Aucun appelant de production** : commodité de lecture pour les tests, qui ne compose
+        **jamais** de podium — les blocs se lisent sur `SectionPalmares.complet`.
+
+        ⚠️ **Ne calcule QUE la section demandée** : écrite sur `rendu`, elle payait N classements
+        pour en jeter N-1, sur un helper qu'appellent soixante tests (revue).
         """
-        return self.rendu(tournoi_id, categorie_id).affiche
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        departs = self._departs.par_tournoi(tournoi_id)
+        if not departs:
+            # ⚠️ **Le même refus que `rendu`**, jamais `DepartIntrouvable` : « ce tournoi n'a aucun
+            # créneau » (409) n'est pas « ce créneau n'existe pas » (404). La 1ʳᵉ écriture de ce
+            # raccourci les confondait (relevé par trois axes).
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun créneau : il n'y a pas de classement dont tirer un palmarès."
+            )
+        depart = next((d for d in departs if d.id == depart_id), None)
+        if depart is None:
+            raise DepartIntrouvable(f"Aucun créneau d'identifiant {depart_id} dans ce tournoi.")
+        libelles = self._libelles_club(tournoi.reglage_podiums)
+        return self._section(tournoi_id, depart, libelles, categorie_id).affiche
 
-    def _calculer(self, tournoi_id: TournoiId, reglage: ReglagePodiums) -> Palmares:
-        """Reconstruit le palmarès **entier** du tournoi (`DETTE-031` : rien n'est mis en cache)."""
-        # Le palmarès d'un **départ** (ADR-0075) : il s'appuie sur le classement de qualification,
-        # qui n'existe plus qu'à cette maille. Le premier départ qui en porte un fait référence
-        # tant que la route reste au niveau tournoi — `DETTE-045`.
-        # ⚠️ E16US014 l'aggrave : « Toutes catégories » et les podiums de club **nomment** une portée
-        # tournoi sur une donnée d'un seul créneau. Le raccourci n'est plus implicite, il est titré.
-        premier = self._premier_depart(tournoi_id)
-        qualification = self._classements.pour_depart(premier)
+    def _calculer(
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        libelles: Mapping[ClubId, str],
+    ) -> Palmares:
+        """Reconstruit le palmarès entier d'**un créneau** (`DETTE-031` : rien n'est mis en cache).
+
+        ⚠️ **Le créneau est un paramètre, pas une résolution interne** (E06US009) : tant qu'il se
+        déduisait ici, la maille de sortie ne pouvait pas différer de celle d'entrée — le palmarès
+        restait celui du premier départ quoi qu'en dise l'appelant.
+        """
+        qualification = self._classements.pour_depart(depart_id)
         # ⚠️ **Les phases du même créneau que la qualification**, pas celles du tournoi. Le résultat
         # affiché ne changeait pas — `calculer_palmares` écarte les archers absents du classement de
         # référence —, mais on reconstruisait le tableau de **tous** les créneaux pour les jeter
@@ -223,7 +276,7 @@ class ServicePalmares:
         # que par ricochet : un archer engagé sur deux créneaux (cas soutenu, DETTE-046) pouvait se
         # voir attribuer la position acquise dans le tableau de l'autre créneau, les rangs se
         # répétant d'un départ à l'autre.
-        phases = self._phases.par_depart(premier)
+        phases = self._phases.par_depart(depart_id)
         # ⚠️ **Ce qui n'a encore rien livré compte autant que ce qui a livré** (E16US014) : les
         # `None` retenus ici sont ce qui permet à l'écran de dire « en cours » plutôt que
         # « plus jamais ». Les **trois** familles à duels, pas seulement les tableaux — un créneau
@@ -258,7 +311,7 @@ class ServicePalmares:
             qualification,
             resultats,
             self._aggregation,
-            self._libelles_club(reglage),
+            libelles,
             duels_non_commences=_duels_non_commences((*tableaux, *gros_shoot_offs, *classants)),
         )
 
@@ -313,8 +366,8 @@ class ServicePalmares:
     ) -> bytes:
         """Rend le palmarès dans le format demandé (CA « affiché et exportable », E16US016).
 
-        Même calcul que `pour_tournoi` — un document qui divergerait de l'écran serait pire que
-        pas de document du tout : c'est celui-là qu'on affiche au mur.
+        Même calcul que `rendu` — un document qui divergerait de l'écran serait pire que pas de
+        document du tout : c'est celui-là qu'on affiche au mur.
         ⚠️ `format_` retombe sur le PDF : les appelants d'avant E16US016 n'en passent aucun.
         """
         # ⚠️ Les blocs se composent sur `complet`, jamais sur la restriction : sinon le mur du
@@ -322,28 +375,9 @@ class ServicePalmares:
         rendu = self.rendu(tournoi_id, categorie_id)
         return self._generateurs.pour(format_).palmares(
             rendu.nom_tournoi,
-            complet=rendu.complet,
-            affiche=rendu.affiche,
+            sections=rendu.sections,
             reglage=rendu.reglage,
         )
-
-    def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
-        """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.
-
-        ⚠️ **Raccourci tracé (`DETTE-045`)** : le palmarès est rendu « du tournoi » alors que le
-        classement dont il dérive est celui d'un **départ**, donc un tournoi multi-créneaux
-        n'affiche que le podium du premier. La question métier a été tranchée le 07/08/2026 —
-        *juxtaposé*, quatre départs font quatre podiums —, et le remède se réduit à une route par
-        départ (E06US009).
-        """
-        departs = self._departs.par_tournoi(tournoi_id)
-        if not departs:
-            raise TournoiSansDepart(
-                "Ce tournoi n'a aucun créneau : il n'y a pas de classement dont tirer un palmarès."
-            )
-        premier = departs[0]
-        assert premier.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
-        return premier.id
 
     def _resultat_big_shoot_off(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'un Big Shoot Off a décidé — `None` s'il n'a **rien** décidé (encore) (E05US028).

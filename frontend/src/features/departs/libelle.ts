@@ -1,4 +1,5 @@
-// Le libellé d'un créneau dans l'interface — **un seul**, partout.
+// Le libellé d'un créneau **dans cette feature** — ce n'est pas la seule forme du produit :
+// cinq sites, deux orthographes (`DETTE-106`), et c'est la forme **serveur** qui fait foi.
 //
 // Depuis ADR-0075, plusieurs écrans désignent un départ (classement, forfaits, plan de cibles,
 // pilotage du déroulé). Un « Départ 2 — 14:00 » ici et un « créneau n°2 » là, et l'organisateur ne
@@ -13,7 +14,12 @@ export interface CreneauChoisissable {
   horaire: string | null
 }
 
-/** « Départ 2 — 14:00 », ou « Départ 2 » si l'horaire manque. */
+/** « Départ 2 — 14:00 », ou « Départ 2 » si l'horaire manque.
+ *
+ * ⚠️ **Pas la seule forme du produit** : le serveur écrit « Départ **n°**2 », forme persistée au
+ * registre de remboursement, donc celle qui fait foi. Cinq sites en tout — `DETTE-106` prévoit
+ * d'aligner celui-ci sur elle.
+ */
 export function libelleCreneau(depart: CreneauChoisissable): string {
   return `Départ ${depart.numero}${depart.horaire !== null ? ` — ${depart.horaire}` : ''}`
 }

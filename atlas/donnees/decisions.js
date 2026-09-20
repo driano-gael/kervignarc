@@ -4094,6 +4094,7 @@ window.ATLAS.decisions = {
     "E05US032",
     "E05US034",
     "E05US035",
+    "E06US009",
     "E16US002",
     "E16US007",
     "E16US008",
@@ -9385,17 +9386,20 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/palmares.py",
      "existe": true,
      "symboles": [
-      "PalmaresReponse.classement_vide",
+      "SectionPalmaresReponse.classement_vide",
       "PodiumReponse",
       "effectif",
       "en_attente",
       "PlacePodiumReponse",
       "ReglagePodiumsReponse",
       "ReglerPodiumsRequete",
-      "PalmaresReponse.de_rendu",
+      "SectionPalmaresReponse.de_section",
       "reglage_podiums",
       "regler_podiums",
-      "exiger_admin"
+      "exiger_admin",
+      "PalmaresReponse",
+      "tournoi_id",
+      "profondeur_podium"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9532,6 +9536,7 @@ window.ATLAS.decisions = {
    "us": [
     "E06US001",
     "E06US004",
+    "E06US009",
     "E16US009",
     "E16US014",
     "E16US017"
@@ -9547,6 +9552,12 @@ window.ATLAS.decisions = {
    "liens": [
     {
      "cible": "E16US017",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E06US009",
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
@@ -9578,9 +9589,10 @@ window.ATLAS.decisions = {
       "ClassementClubsReponse",
       "LigneClassementClubsReponse",
       "classer_clubs",
+      "SectionPalmaresReponse.de_section",
       "PalmaresReponse.de_rendu",
-      "rendu.complet",
-      "rendu.affiche"
+      "section.complet",
+      "section.affiche"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9589,7 +9601,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/palmares.py",
      "existe": true,
      "symboles": [
-      "ServicePalmares._libelles_club"
+      "ServicePalmares._libelles_club",
+      "rendu",
+      "_calculer"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9615,10 +9629,36 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/domain/palmares.py",
+     "existe": true,
+     "symboles": [
+      "SectionPalmares",
+      "classer_clubs",
+      "Palmares",
+      "SectionPalmaresReponse.de_section"
+     ],
+     "symboles_absents": [
+      "classer_clubs",
+      "SectionPalmaresReponse.de_section"
+     ],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/infrastructure/pdf/palmares.py",
      "existe": true,
      "symboles": [
       "GenerateurPalmaresPdf._classement_clubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_palmares_par_depart.py",
+     "existe": true,
+     "symboles": [
+      "test_chaque_creneau_a_son_club_laureat",
+      "ClassementClubs.lignes",
+      "section.complet"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9644,9 +9684,10 @@ window.ATLAS.decisions = {
    ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté",
+   "statut_brut": "Accepté — **amendé le 2026-09-19** (décision 9, `E06US009`)",
    "titre": "Le classement des clubs se compte en médailles **inter-clubs**",
    "us": [
+    "E06US009",
     "E16US014",
     "E16US017"
    ]
@@ -10576,6 +10617,143 @@ window.ATLAS.decisions = {
    "titre": "La porte mécanique tient dans un script, et en deux étages",
    "us": [
     "E00US031"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-19",
+   "date_brute": "2026-09-19",
+   "extrait": "### 1. Une réponse, N sections — et aucune route par départ GET /api/v1/tournois/{id}/palmares rend sections: [{ depart_id, libelle, podiums, classement_vide, classement_clubs, lignes }], une par créneau, dans l'ordre des départs. Pourquoi pas une route par départ, qui était le remède annoncé : les quatre surfaces du palmarès (pilotage, écran de salle, appli publique, document) veulent toutes les afficher ensemble. Une route par départ leur aurait imposé N requêtes, donc N instants de lecture différents pour un même écran — exactement ce que RenduPalmares existe pour empêcher : un PUT de réglage intercalé entre deux requêtes rendrait des blocs qui se contredisent. ⚠️ Cela ferme une […]",
+   "fichier": "docs/adr/0111-le-palmares-rend-toutes-ses-sections-en-une-reponse.md",
+   "identifiant": "0111",
+   "liens": [
+    {
+     "cible": "E06US009",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0075",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0103",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0101",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/palmares.py",
+     "existe": true,
+     "symboles": [
+      "PalmaresReponse",
+      "SectionPalmaresReponse",
+      "de_section",
+      "classer_clubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "RenduPalmares.sections",
+      "ServicePalmares.rendu",
+      "par_id",
+      "_libelles_club",
+      "N",
+      "pour_depart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/pdf/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_corps",
+      "_corps_creneau",
+      "_ENTETE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_corps",
+      "_corps_creneau",
+      "_ENTETE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_pdf_palmares.py",
+     "existe": true,
+     "symboles": [
+      "test_deux_creneaux_font_deux_sections",
+      "test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_palmares_par_depart.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_tableur_palmares.py",
+     "existe": true,
+     "symboles": [
+      "test_deux_creneaux_font_deux_sections",
+      "test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/VuePalmares.tsx",
+     "existe": true,
+     "symboles": [
+      "SectionCreneau",
+      "VuePalmares"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le palmarès rend toutes ses sections en **une** réponse",
+   "us": [
+    "E06US009",
+    "E16US007",
+    "E16US016"
    ]
   }
  ]

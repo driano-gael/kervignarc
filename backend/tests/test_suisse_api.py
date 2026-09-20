@@ -41,7 +41,7 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin, poser_phase_sql
+from tests.conftest import ConnecterAdmin, poser_phase_sql, section_unique
 from tests.test_placement_api import _appliquer_gabarit
 
 _DATE = datetime.date(2026, 3, 1)
@@ -368,7 +368,7 @@ def test_la_pose_du_plan_est_reservee_a_l_admin(app_suisse: FastAPI) -> None:
 def _palmares(client: TestClient, tournoi_id: int) -> dict[int, dict[str, object]]:
     reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares")
     assert reponse.status_code == 200, reponse.text
-    return {ligne["archer_id"]: ligne for ligne in reponse.json()["lignes"]}
+    return {ligne["archer_id"]: ligne for ligne in section_unique(reponse.json())["lignes"]}
 
 
 def test_un_suisse_terminal_decerne_ses_rangs(
@@ -607,4 +607,4 @@ def test_un_suisse_non_commence_ne_decerne_aucune_medaille(app_suisse: FastAPI) 
         reponse = client.get(f"/api/v1/tournois/{scn.tournoi_id}/palmares")
 
     assert reponse.status_code == 200, reponse.text
-    assert not any(ligne["decerne"] for ligne in reponse.json()["lignes"])
+    assert not any(ligne["decerne"] for ligne in section_unique(reponse.json())["lignes"])

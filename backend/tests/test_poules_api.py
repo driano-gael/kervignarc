@@ -48,7 +48,7 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin, poser_phase_sql
+from tests.conftest import ConnecterAdmin, poser_phase_sql, section_unique
 from tests.test_placement_api import _appliquer_gabarit
 
 _DATE = datetime.date(2026, 3, 14)
@@ -703,7 +703,7 @@ def test_le_drapeau_de_desynchronisation_traverse_les_deux_vues(
 def _palmares_lignes(client: TestClient, tournoi_id: int) -> list[dict[str, object]]:
     reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares")
     assert reponse.status_code == 200, reponse.text
-    lignes: list[dict[str, object]] = reponse.json()["lignes"]
+    lignes: list[dict[str, object]] = section_unique(reponse.json())["lignes"]
     return lignes
 
 

@@ -5,7 +5,7 @@
 // canal live (`donnees_modifiees` post-commit → invalidation globale) ; le poll n'est qu'un
 // **filet**. ⚠️ Intervalle **long**, pour la même raison qu'`useAffectations` (E07US008) : chaque
 // appel refait la lecture la plus chère de l'application — classement complet **et** reconstruction
-// de chaque tableau (`# DETTE-031`).
+// de chaque tableau, **par créneau** depuis E06US009 (`DETTE-031`, élargie).
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ReglagePodiums, getPalmares, getReglagePodiums, putReglagePodiums } from './api'

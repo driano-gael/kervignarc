@@ -4,6 +4,35 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "109",
+   "introduite_par": [
+    "E06US009"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "108",
+   "introduite_par": [
+    "E06US009"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
+  },
+  {
+   "identifiant": "106",
+   "introduite_par": [
+    "E06US009"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E06US009"
+   ],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "105",
    "introduite_par": [
     "E00US031"
@@ -585,7 +614,7 @@ window.ATLAS.avancement = {
    "resorption_us": [
     "E16US009"
    ],
-   "severite": "mineur"
+   "severite": "majeur"
   },
   {
    "identifiant": "088",
@@ -804,16 +833,6 @@ window.ATLAS.avancement = {
    "severite": "majeur"
   },
   {
-   "identifiant": "045",
-   "introduite_par": [
-    "E06US009",
-    "E16US014"
-   ],
-   "ouverte": true,
-   "resorption_us": [],
-   "severite": "majeur"
-  },
-  {
    "identifiant": "047",
    "introduite_par": [
     "E01US025"
@@ -891,8 +910,10 @@ window.ATLAS.avancement = {
   }
  ],
  "entete": {
-  "adr_du_resume": [],
-  "derniere": "E00US031"
+  "adr_du_resume": [
+   "0104"
+  ],
+  "derniere": "E06US009"
  },
  "epics": [
   {
@@ -3331,14 +3352,24 @@ window.ATLAS.avancement = {
    "titre_story": "Classement intégral 1→N & profondeur configurable"
   },
   {
-   "adr": [],
-   "dettes_introduites": [
-    "045"
+   "adr": [
+    "0075",
+    "0103",
+    "0104",
+    "0111"
    ],
-   "dettes_resorbees": [],
+   "dettes_introduites": [
+    "106",
+    "108",
+    "109"
+   ],
+   "dettes_resorbees": [
+    "045",
+    "106"
+   ],
    "epic": "06",
    "epic_titre": "Classements & résultats",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E06US009",
    "sections": [
     "Résorptions de dette planifiées (arbitrages du 07/08/2026)"
@@ -4306,7 +4337,8 @@ window.ATLAS.avancement = {
     "0075",
     "0096",
     "0101",
-    "0102"
+    "0102",
+    "0111"
    ],
    "dettes_introduites": [
     "095"
@@ -4473,7 +4505,6 @@ window.ATLAS.avancement = {
     "0104"
    ],
    "dettes_introduites": [
-    "045",
     "096",
     "097"
    ],
@@ -4513,7 +4544,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0075",
-    "0101"
+    "0101",
+    "0111"
    ],
    "dettes_introduites": [
     "031",
@@ -4788,7 +4820,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 143,
+  "livrees": 144,
   "vivantes": 178
  },
  "sections": [
@@ -6077,7 +6109,7 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    2,
+    3,
     4
    ],
    "compteur_ecrit": null,
@@ -6090,7 +6122,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E06US009",
      "titre": "Un palmarès par départ, juxtaposés"
     },

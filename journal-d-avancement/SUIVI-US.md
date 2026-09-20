@@ -12,41 +12,33 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 19/09/2026, 14 h 42** · **143 US livrées** · dernière : `E00US031`
-*(**l'accueil du tournoi parle par départ** — un bloc par créneau en tête de l'écran d'atterrissage :
-horaire, quota, état de cycle, **effectif du créneau** et la **pause affichée là où elle a lieu**, au
-lieu des seuls totaux tournoi. ⚠️ **Le cadrage était la moitié de l'US** : la fiche exigeait de borner
-« toutes les informations utiles au déroulé » **avant** de coder, et deux des réponses du commanditaire
-**se contredisaient** — retirer la pastille de relance sans retenir les pauses aurait effacé de l'accueil
-la capacité d'`E05US034` ; retirer les trois chiffres aurait perdu « Réglés » et « Postes en ligne »,
-que rien ne ventile par départ. Les deux ont été rouvertes. ⚠️ **L'avancement des phases est exclu** :
-il ne se lit que par `suivi-deroule`, scopée à **un** créneau et reconstruisant tous les
-tableaux (`DETTE-031`). ✅ **`DETTE-082` resserrée** — sur l'accueil, `demarrer`/`terminer` renvoient
-vers leur écran « prêt à… » au lieu d'agir ; elle reste ouverte sur la destination « Tournoi » et pour
-`archiver`, dont le jalon répond `404`. ⚠️ **Zéro aller-retour HTTP de plus**, mais une lecture
-SQL **ajoutée** par créneau : la formule « il n'y avait qu'à cesser de jeter » était fausse, et c'est
-l'une des quatre affirmations du même genre que la revue a corrigées dans le CA avant qu'elles n'y
-fassent autorité)*.
-Avant elle, `E16US020` *(**deux écritures, une même volée : le rôle tranche** — la hiérarchie
-`poste de cible < scoreur < admin` devient une règle de serveur sur les **identités réelles** du
-dépôt ; la volée retient le **rôle de la garde**, jamais `saisie_par` qui est déclaratif ; migration
-`0055`. Livrée par la PR #182, détail dans sa ligne du tableau)*.
-Précédente : `E16US019` *(annuler une validation pour corriger — détail dans sa ligne du tableau)*.
+**Dernière mise à jour : 19/09/2026, 21 h 24** · **144 US livrées** · dernière : `E06US009`
+*(**un palmarès par départ, juxtaposés** — l'écran, le PDF et le tableur rendent `N` blocs titrés,
+un par créneau, au lieu du seul premier. `DETTE-045` est soldée. ⚠️ **Le raccourci vivait à trois
+endroits et la fiche en nommait deux faux** : le site *tracé* (`simulation.py`) n'a aucun appelant
+de production, le site *atteignable* (`pilotage_simulation.py`, servi par `/api/v1/simulations/*`)
+n'était marqué nulle part, et `simulation_format.py`, cité par le registre, n'était pas concerné —
+il ne fabrique qu'un créneau, unicité désormais **gardée** plutôt que supposée. ⚠️
+**[ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) est
+amendé** (décision 9, arbitrage du commanditaire) : le trophée des clubs se juxtapose lui aussi,
+`N` créneaux font `N` lauréats — ce qui retire de son § Contexte la promesse d'un club « le plus
+performant **de la journée** ». ⚠️ **Une régression de performance a été évitée par un test
+existant** : les noms de clubs, lus dans le calcul, l'étaient `N` fois par rendu sur une route
+publique pollée par chaque tablette ; ils sont hissés hors de la boucle. ⚠️ **Le sabotage a payé** —
+sur quatre tests neufs, **un seul** attrapait la régression au premier jet ; deux étaient des
+placebos, réécrits. Ouvre `DETTE-106` : cinq orthographes concurrentes du libellé de créneau,
+remède structurel renvoyé en US dédiée)*.
+Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
+Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée après treize mois)*.
 
-> ⚠️ **Ce fichier décrit l'état APRÈS fusion des DEUX PR en vol** — #182 (`E16US020`) et #183
-> (`E16US021`), livrées le même jour par deux sessions parallèles. Les deux touchent forcément ces
-> lignes : le tracker **voyage avec le diff de son US**, c'est la règle, donc le conflit est le
-> comportement attendu, pas un accident. **Il se résout en gardant la version de la branche
-> `feat/e16us021-accueil-par-depart`**, qui reprend déjà le contenu de #182 — dans les deux ordres
-> de merge. ⚠️ **Corollaire : ne pas merger #183 SANS #182**, sinon `main` annoncerait une US de
-> plus qu'il n'en porte.
-
-> ⚠️ **137 fiches closes, mais 135 livraisons.** Le total ci-dessus est **écrit à la main** et
+> ⚠️ **144 fiches closes, mais 142 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
 > sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches sont closes sans
 > livraison propre — `E01US016` (absorbée par `E16US006`, 25/08/2026) et `E16US011` (**close par
-> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 134 ferait rougir la CI ; on
-> note donc la nuance au lieu de la cacher.
+> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 142 ferait rougir la CI ; on
+> note donc la nuance au lieu de la cacher. ⚠️ **Ces trois nombres se réécrivent à chaque US** :
+> l'atlas ne contrôle que le premier, les deux autres dérivent en silence (ils annonçaient encore
+> 137/135/134 à 143 US livrées — corrigé le 19/09/2026).
 > ⚠️ **Cet encart doit rester APRÈS le paragraphe de résumé, jamais entre lui et la ligne d'annonce** :
 > l'atlas lit le résumé comme les lignes qui suivent l'annonce **jusqu'à la première ligne vide**
 > (`backend/atlas/sources/suivi.py`). Une ligne vide intercalée vide `adr_du_resume`, ce qui **éteint
@@ -355,7 +347,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯 1~~ ✅ | ~~`E16US016`~~ | **Livrée le 18/09/2026 — `EPIC-16` est soldé.** Le journal d'audit **se consulte** (écran neuf : recherche repliant casse et accents, filtre par type d'acte, avant/après dépliable, pagination), `xlsx` rejoint le catalogue, et le palmarès y entre à son tour. ⚠️ **Les trois arbitrages que la fiche réclamait ont été rendus avant la première ligne de code** : `openpyxl` (règle 11, `pip-audit` vert, licence MIT) ; **renommage franc** de la route publique du palmarès — `/palmares.pdf` **disparaît** au profit de `…/palmares/document?format=…`, l'alias de compatibilité ayant été écarté (avant le jour J, aucune URL diffusée) ; et le niveau d'écran d'audit (la variante à filtres cumulés + recherche serveur a été écartée). ⚠️ **Le CA le plus coûteux n'était pas celui qu'on croyait** : le journal existait depuis `E10US005` et **aucun écran ne l'appelait** — c'est une feature front entière, pas un reliquat d'export. ⚠️ **Un remède de conception a été pris sur preuve dans le diff** : six adapters tableur (3 documents × 2 formats) dont trois auraient recopié la composition de leur jumelle — le mode de panne de `DETTE-085`. D'où un socle `Tableau` + rendu **injecté** : une classe, deux instances, zéro `if` sur le format ([ADR-0101 §6](../docs/adr/0101-le-catalogue-d-exports-porte-les-formats-pas-les-url.md), ADR **rouvert**, deux de ses conséquences devenues caduques). ⚠️ **La neutralisation des formules ne peut PAS être partagée** entre les deux rendus, et le risque est **plus grand** en xlsx qu'en CSV : openpyxl exécute toute chaîne commençant par `=` — garde-fou posé et **vérifié par sabotage**. ⚠️ **Deux tests préexistants prouvaient le contraire de leur nom** : `connecter_admin` pose un en-tête `Authorization` que `client.cookies.clear()` ne retire pas, si bien que « le palmarès se lit sans jeton » était vert **parce qu'il était authentifié**. Corrigés tous les deux (défaut déjà relevé en revue d'`E16US007`, point 5). ⚠️ **La porte des commentaires (règle 13-i) a mordu cinq fois** — raisonnement sorti en ADR, renvoi d'une ligne gardé. `DETTE-101` inscrite (le journal se charge en entier pour être filtré à l'écran — **prix connu** du périmètre arbitré, chiffré à ~300 Ko), `DETTE-095` élargie (le catalogue passe de trois à cinq documents). **Aucune migration.** |
 > | 🎯 **à choisir** | — | **La file d'exécution est vide.** `EPIC-16` est soldé et `E16US013` est **parquée** (cadrée puis reposée le 05/09/2026). Ce qui reste est de trois natures, et **le choix vous revient** : (a) les **résorptions de dette tranchées** du 07/08 — `E06US009` et `E05US022`, `E01US026` ayant été prise le 19/09/2026 — dont la fenêtre est désormais ouverte ; (b) `E02US007` (**import inscript'arc**), que [ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md) et ADR-0015 nomment comme leur point de réouverture, et qu'`E16US011` a confirmé au découpage ; (c) les deux US **bloquées sur votre arbitrage** ci-dessous, qui se débloquent d'une réponse. |
 > | ~~🎯~~ ✅ | ~~`E01US026`~~ | **Livrée le 19/09/2026** — la **plus ancienne dette du registre** (`DETTE-001`, treize mois) est soldée : un tournoi peuplé se supprime après un signalement **chiffré**, en une transaction, sans aucun `ON DELETE CASCADE`. ⚠️ **`DETTE-018` refermée avec elle**, sur arbitrage du commanditaire — même code de cascade. Deux arbitrages de CA reversés dans `stories/` et dans ADR-0077. |
-> | 🎯 **à choisir** | `E06US009`, `E05US022` | **La file reste à composer.** Les deux autres résorptions tranchées le 07/08 restent prenables : `E06US009` (un palmarès par départ, `DETTE-045` — surface **visible**) et `E05US022` (ancrer une source de phase sur l'**identité** et non le rang, `DETTE-026` — moteur, sans surface). `E02US007` (import inscript'arc) reste **bloquée** tant que le format exact du fichier (QT1) n'est pas fourni. |
+> | ~~🎯~~ ✅ | ~~`E06US009`~~ | **Livrée le 19/09/2026** — un palmarès par créneau, juxtaposés (`DETTE-045`, ouverte par `E01US025`). Le palmarès, le rejeu de simulation **et la session de simulation pilotée** cessaient de voir autre chose que le premier départ ; ADR-0104 est amendé (le trophée des clubs se juxtapose aussi). |
+> | 🎯 **à choisir** | `E05US022` | **La file reste à composer.** La dernière résorption tranchée le 07/08 reste prenable : `E05US022` (ancrer une source de phase sur l'**identité** et non le rang, `DETTE-026` — moteur, sans surface). `E02US007` (import inscript'arc) reste **bloquée** tant que le format exact du fichier (QT1) n'est pas fourni. |
 > | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
 >
 > ---
@@ -1390,7 +1383,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | US | Titre | Résorbe | État |
 |---|---|---|---|
 | E05US023 | **Rendre jouables** poules, suisse, colline, Big Shoot Off — **et composables à l'atelier** | `DETTE-028` | ✅ *(**découpée le 09/08/2026 en quatre tranches**, comme annoncé — 4 moteurs × 2 surfaces ne tenant pas dans une branche : poules (`E05US023`, 09/08), Big Shoot Off (`E05US028`, 14/08), système suisse (`E05US026` + `E05US030`, 15-16/08), colline (`E05US027`, 22/08). **Les quatre sont livrées.** ⚠️ **Mais `DETTE-028` n'est refermée que sur son volet « moteurs de formats »** : le volet **politiques** subsiste — `ScoreAvecHandicap` et `RoutingRepechage` inertes, `classement.py` hors famille `scoring` — et **il n'a aucune US inscrite**. Ne pas lire cette ligne comme la fermeture de la dette.)* |
-| E06US009 | Un palmarès **par départ, juxtaposés** | `DETTE-045` | ⬜ *(arbitrage rendu : « 4 départs = 4 podiums », donc **aucune** agrégation inter-départs à écrire)* |
+| E06US009 | Un palmarès **par départ, juxtaposés** | `DETTE-045` | ✅ *(livrée le 19/09/2026 — `N` sections empilées et titrées, une par créneau ; `_premier_depart` supprimé ; PDF à `N` sections et tableur à colonne « Départ ». ⚠️ **Le raccourci était à trois endroits, et la fiche en nommait deux faux** : le site tracé de `simulation.py` n'a aucun appelant de production, celui de `pilotage_simulation.py` — le seul servi par une route — n'était marqué nulle part, et `simulation_format.py`, cité par le registre, n'était pas concerné. ⚠️ **[ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) amendé** (décision 9) : le trophée des clubs est juxtaposé lui aussi — `N` créneaux, `N` lauréats —, ce qui retire la promesse « le club le plus performant **de la journée** » de son § Contexte. ⚠️ **Régression de perf évitée de justesse** : les noms de clubs, lus dans le calcul, l'étaient `N` fois par rendu sur une route publique pollée — un test de comptage existant l'a relevé, ils sont hissés hors de la boucle. Ouvre `DETTE-106` (cinq orthographes du libellé de créneau, remède structurel renvoyé en US dédiée))* |
 | E01US026 | Supprimer un tournoi : **signaler puis confirmer** | `DETTE-001` | ✅ *(livrée le 19/09/2026 — 409 `tournoi_peuple` chiffré, confirmation, cascade applicative en une transaction, **aucun `ON DELETE CASCADE`** ; `xfail` d'E02US010 levé. [ADR-0077](../docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) complété de sa section « Porté dans le code par » et de ses **deux arbitrages** : « vide » se juge sur le décompte — les créneaux ne comptent pas —, et les remboursements sont **effacés mais chiffrés**, le registre ne survivant pas au tournoi. ⚠️ **Périmètre élargi par le commanditaire** : `DETTE-018` refermée dans la même US (supprimer une fiche archer payée ouvre son remboursement, motif `archer_supprime`) — même code de cascade, donc même US. ⚠️ **Défaut latent trouvé en chemin** : la purge du *départ* ignorait `arret_de_circonstance` et `franchissement_arret`, deux FK *enforced* — supprimer un créneau portant un arrêt partait déjà en 500, indépendamment de cette US. ⚠️ Les ~45 marqueurs `DETTE-001` par colonne sont remplacés par **un** énoncé en tête de `models.py` : ils disaient tous « politique non tranchée », devenu faux. ⚠️⚠️ **La revue a trouvé un bloquant, et aucune grille ne l'aurait vu** — il vient de l'axe adversarial : en remplaçant la confirmation *inline* à deux clics par un dialogue ouvert par le 409, l'US rendait destructible **en un tap** un tournoi entièrement préparé (postes et scoreurs hors décompte, codes tirés par `secrets`, QR déjà collés sur les buttes). Le critère du décompte est devenu « **est-ce que ça se ressaisit ?** » : postes, scoreurs et **journal d'audit** y entrent. Deux majeurs convergents ont suivi — l'argent n'était pas chiffré (`montant_encaisse` sommait le **registre**, pas l'encaissé : 400 payants annonçaient zéro euro) et la promesse « une table ajoutée demain ne sera pas oubliée » ne reposait sur **rien** (sept listes manuelles). Elle est désormais **mécanique** : deux tests dérivés de `Base.metadata`, dont le premier a attrapé un `forfait` oublié dès sa naissance. ⚠️ **Le seul défaut d'exécution est venu d'un script** : la substitution de masse a coupé trois phrases voisines, dont l'avertissement qui *justifiait* une cascade — la cause n'était pas l'inattention mais un découpage en phrases qui coupait aussi sur « : ». Dette neuve `DETTE-104` (29 copies de doublure, coût chiffré pour la 1ʳᵉ fois))* |
 | E05US022 | Ancrer la séquence sur **l'identité** de l'étape | `DETTE-026` | ⬜ *([ADR-0078](../docs/adr/0078-la-sequence-s-ancre-sur-l-identite-de-l-etape.md) — seuil de la règle 16 **dépassé** : 4 écrivains ; allège aussi `DETTE-025`)* |
 

@@ -17,6 +17,7 @@ from domain.archer import ArcherId
 from domain.categorie import CategorieId
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.club import ClubId
+from domain.depart import DepartId
 from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 
@@ -297,12 +298,33 @@ class Palmares:
         Même parti qu'E06US001 : on voit une catégorie sans perdre la position d'ensemble. Un
         recalcul ferait du 1ᵉʳ de sa catégorie un « 1ᵉʳ » tout court, ce qu'il n'est pas.
         """
-        # `replace` et non une reconstruction champ par champ : la prochaine dérivation (une
-        # `pour_depart` le jour où `DETTE-045` se résorbe) hériterait sinon d'un défaut silencieux.
+        # `replace` et non une reconstruction champ par champ : toute dérivation à venir
+        # hériterait sinon d'un défaut silencieux sur les champs oubliés.
         return replace(
             self,
             lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id),
         )
+
+
+@dataclass(frozen=True)
+class SectionPalmares:
+    """Le palmarès d'**un** créneau — l'unité que le produit décerne (ADR-0075, E06US009).
+
+    ⚠️ **`complet` porte les podiums, `affiche` le classement** : les confondre fabriquait des blocs
+    faux dès qu'une catégorie est filtrée.
+
+    ⚠️ **Ici et non dans `application/`** : le port la reçoit (règle 2). Mais **aucune règle du
+    domaine ne doit lire `affiche` ni `libelle`** — ils ne font que traverser (revue, axe D).
+    """
+
+    depart_id: DepartId
+    libelle: str
+    """Le libellé usuel du créneau, composé par le **serveur** : le document n'a pas de front pour
+    le faire à sa place. Vient de `Depart.libelle_creneau` — cf. `DETTE-106` sur les orthographes
+    concurrentes de ce même libellé."""
+
+    complet: Palmares
+    affiche: Palmares
 
 
 def libelle_de_club(ligne: LignePalmares) -> str:

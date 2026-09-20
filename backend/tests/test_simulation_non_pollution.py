@@ -89,7 +89,8 @@ def test_une_simulation_ne_modifie_pas_la_base(app_simulation: FastAPI) -> None:
     ).par_tournoi(tournoi_id)
     assert _departs_oracle and _departs_oracle[0].id is not None
     oracle_sql = app_simulation.state.service_classement.pour_depart(_departs_oracle[0].id)
-    assert simulation.classement == oracle_sql
+    ((creneau,)) = simulation.creneaux
+    assert creneau.classement == oracle_sql
 
     apres = _photo(app_simulation)
     assert apres == avant, "La simulation a écrit dans la vraie base — non-pollution violée."
@@ -119,7 +120,8 @@ def test_le_chemin_duels_ne_pollue_pas_la_base(app_simulation: FastAPI) -> None:
 
     avant = _photo(app_simulation)  # photo APRÈS l'ajout salle + phase (données réelles assumées)
     simulation = app_simulation.state.service_simulation.simuler(tournoi_id)
-    assert simulation.tableaux, "Le moteur a bien joué la phase de tableau (chemin duels exercé)."
+    ((creneau,)) = simulation.creneaux
+    assert creneau.tableaux, "Le moteur a joué la phase de tableau (chemin duels exercé)."
 
     apres = _photo(app_simulation)
     assert apres == avant, "regenerer a écrit dans la vraie base — non-pollution violée."

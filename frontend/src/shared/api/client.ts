@@ -125,6 +125,10 @@ async function lancerErreurApi(reponse: Response): Promise<never> {
   )
 }
 
+// ⚠️ **`DETTE-108` — ceci TRANSTYPE, cela ne valide rien.** Le `T` rendu est une promesse du
+// développeur, pas une vérification : un serveur qui change un champ laisse `tsc` vert et le
+// front déréférence `undefined`. Sans `ErrorBoundary` racine, cela blanchit toute l'appli —
+// c'est arrivé en E06US009. Voir `docs/dette.md` pour les deux gestes de résorption.
 export async function fetchJson<T>(
   chemin: string,
   options?: RequestInit,

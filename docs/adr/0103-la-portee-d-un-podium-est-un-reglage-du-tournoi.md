@@ -131,7 +131,7 @@ seule** veut dire « ça va être tiré » — sans ce filtre, une consolante ab
 en cours » **pour toujours**, et la branche du définitif devenait inatteignable.
 
 ⚠️ **Le serveur porte les faits, le client ne les déduit pas.** Même leçon que ci-dessus, un cran
-plus haut : la vacuité du classement (`PalmaresReponse.classement_vide`) est **servie**, parce que
+plus haut : la vacuité du classement (`SectionPalmaresReponse.classement_vide`) est **servie**, parce que
 quatre gardes successives ont tenté de l'inférer de données filtrées ou commandées par le réglage,
 et se sont trompées dans quatre coins différents.
 
@@ -179,9 +179,12 @@ huit blocs de quatre places, la portée *club* peut en produire des dizaines —
 montrera le haut et rien d'autre. Le déclencheur est un choix explicite de l'organisateur (le défaut
 reste catégorie / 4 places) ; la limite est inscrite au registre de dette plutôt que corrigée ici.
 
-**Ce qui reste à surveiller.** `DETTE-045` : le palmarès est rendu « du tournoi » alors qu'il dérive
-du **premier créneau**. Les portées *toutes catégories* et *club* revendiquent explicitement une
-portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
+~~**Ce qui reste à surveiller.** `DETTE-045`~~ — **résorbée le 19/09/2026 par `E06US009`.** Le
+palmarès n'est plus rendu « du tournoi » : il rend **une section par créneau**, et les portées
+*toutes catégories* et *club* ne revendiquent donc plus qu'une portée que la donnée couvre — celle
+d'**un** départ. ⚠️ **Le libellé des portées n'a pas changé** : un bloc reste titré « Toutes
+catégories », et c'est le **titre de section** qui dit désormais de quel créneau il s'agit. Retirer
+ce titre rendrait au bloc exactement le mensonge que `DETTE-045` décrivait.
 
 ## Porté dans le code par
 
@@ -200,11 +203,16 @@ portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
   du créneau et leur statut (décision 6) ;
   `_libelles_club` (lecture conditionnelle, décision 3 — ⚠️ **garde élargie par E16US017/ADR-0104** : la lecture a lieu dès qu'une portée est réglée) ; `reglage_podiums` /
   `definir_reglage_podiums`.
-- `backend/api/v1/palmares.py` — `PalmaresReponse.classement_vide`, qui **porte** le fait « ce
-  tournoi est-il classé ? » que quatre gardes successives avaient tenté d'inférer ; `PodiumReponse`
-  (dont `effectif` et `en_attente`, recopiés du bloc), `PlacePodiumReponse`, `ReglagePodiumsReponse`, `ReglerPodiumsRequete`,
-  `PalmaresReponse.de_rendu`, et les fonctions de route `reglage_podiums` (lecture ouverte) et
-  `regler_podiums` (derrière `exiger_admin`).
+- `backend/api/v1/palmares.py` — `SectionPalmaresReponse.classement_vide`, qui **porte** le fait
+  « ce créneau est-il classé ? » que quatre gardes successives avaient tenté d'inférer ;
+  `PodiumReponse` (dont `effectif` et `en_attente`, recopiés du bloc), `PlacePodiumReponse`,
+  `ReglagePodiumsReponse`, `ReglerPodiumsRequete`, `SectionPalmaresReponse.de_section`, et les
+  fonctions de route `reglage_podiums` (lecture ouverte) et `regler_podiums` (derrière
+  `exiger_admin`).
+  ⚠️ **Ces symboles ont changé de niveau le 19/09/2026 (`E06US009`)** : ils vivaient sur
+  `PalmaresReponse`, qui ne porte plus que `tournoi_id`, `profondeur_podium` et la liste des
+  sections. La **profondeur reste au tournoi** et n'est pas descendue avec eux : c'est un réglage
+  du tournoi (décision 1), le même pour tous ses créneaux.
 - `backend/infrastructure/db/models.py` (`TournoiORM.podium_portees`, `podium_profondeur`),
   `backend/migrations/versions/0052_reglage_podiums.py` (les défauts serveur qui portent la
   non-régression) et `backend/infrastructure/db/repositories/referentiel.py`

@@ -102,6 +102,15 @@ class ProchaineUniteReponse(BaseModel):
         return None
 
 
+class CreneauSimuleReponse(BaseModel):
+    """Ce qu'un créneau a produit dans la session : son classement et ses arbres (E06US009)."""
+
+    depart_id: int
+    libelle: str
+    classement: ClassementReponse
+    tableaux: list[TableauReponse]
+
+
 class EtatSessionReponse(BaseModel):
     """Instantané complet d'une session, servi au cockpit (les quatre vues en dérivent)."""
 
@@ -112,8 +121,13 @@ class EtatSessionReponse(BaseModel):
     etat_pilote: str
     etape: str
     progression: ProgressionReponse
-    classement: ClassementReponse
-    tableaux: list[TableauReponse]
+    creneaux: list[CreneauSimuleReponse]
+    """**Un par créneau du tournoi simulé** (E06US009).
+
+    ⚠️ **Le cockpit lisait `classement` et `tableaux` à plat**, qui ne portaient que le premier
+    créneau : sur un tournoi de quatre départs, il en montrait un quart sans le dire.
+    """
+
     prochaine_unite: ProchaineUniteReponse | None
 
     @staticmethod
@@ -131,8 +145,19 @@ class EtatSessionReponse(BaseModel):
                 duels_faits=etat.progression.duels_faits,
                 duels_total=etat.progression.duels_total,
             ),
-            classement=ClassementReponse.de_agregat(etat.tournoi_id, etat.classement),
-            tableaux=[TableauReponse.de_etat(t) for t in etat.tableaux],
+            creneaux=[
+                CreneauSimuleReponse(
+                    depart_id=creneau.depart_id,
+                    libelle=creneau.libelle,
+                    # ⚠️ **`creneau.depart_id`, jamais `etat.tournoi_id`** : `ClassementReponse`
+                    # publie un `depart_id` (ADR-0075), et `DepartId`/`TournoiId` sont deux alias
+                    # de `int` — mypy ne voit rien (`DETTE-044`). E06US009 avait réintroduit ici
+                    # le défaut exact qu'E01US025 avait corrigé sur ce DTO (relevé par l'axe D).
+                    classement=ClassementReponse.de_agregat(creneau.depart_id, creneau.classement),
+                    tableaux=[TableauReponse.de_etat(t) for t in creneau.tableaux],
+                )
+                for creneau in etat.creneaux
+            ],
             prochaine_unite=ProchaineUniteReponse.de_unite(etat.prochaine_unite),
         )
 

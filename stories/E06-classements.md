@@ -180,18 +180,71 @@ donc **aucune** agrégation inter-départs à écrire.
 - **CA — juxtaposition, pas addition** : l'application ne produit **aucun** classement « du
   tournoi » toutes catégories et tous départs confondus. Deux archers de créneaux différents ne sont
   jamais comparés. *(C'est l'arbitrage : le tournoi est un contenant, le départ la portée sportive.)*
-- **CA — chaque podium est nommé** : le créneau est identifié par son libellé usuel (« Départ 2 —
-  14:00 »), le **même** partout dans le produit. Un podium anonyme dans une pile de quatre ne se
-  distribue pas.
-- **CA — la simulation suit** : le rejeu de simulation cesse de ne voir que le premier départ.
+- **CA — chaque podium est nommé** : le créneau est identifié par le libellé du **domaine**
+  (`Depart.libelle_creneau`, « Départ n°2 — 14:00 »), **composé par le serveur** — le document PDF
+  le porte aussi et n'a pas de front pour le fabriquer. Un podium anonyme dans une pile de quatre
+  ne se distribue pas. ⚠️ **Il n'est PAS encore le même partout dans le produit** : cinq sites en
+  composent deux orthographes (`DETTE-106`), et c'est la forme **serveur** qui fait foi — elle est
+  persistée verbatim au registre de remboursement ([ADR-0057](../docs/adr/0057-registre-de-remboursements.md)).
+  *(La rédaction d'origine disait « le même partout » : elle était fausse à la livraison, et elle
+  aurait fait écrire à l'US de résorption l'alignement inverse — relevé par deux axes de revue.)*
+- **CA — le classement des clubs est juxtaposé lui aussi** *(arbitrage du commanditaire du
+  19/09/2026)* : `N` créneaux font `N` classements de clubs, donc `N` lauréats — chacun compté sur
+  les médailles de **son** créneau. ⚠️ Ce CA n'existait pas à la rédaction de la fiche : le
+  classement des clubs a été livré le 04/09/2026 par `E16US017`, **après** l'arbitrage du
+  07/08/2026. Il **amende [ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md)**
+  (décision 9), dont le § Contexte promettait « le club le plus performant **de la journée** » —
+  formulation qui réclamait la seule agrégation inter-départs du produit.
+- **CA — la simulation suit** : le rejeu de simulation **et la session de simulation pilotée**
+  cessent de ne voir que le premier départ — **affichage et moteur**. Le harnais résout la
+  qualification **par créneau** (`qualification_courante`, ADR-0082) au lieu de
+  `qualification_du_tournoi`, si bien que chaque départ tire réellement le sien.
+  *(⚠️ **Le CA a failli être rétréci** : la 2ᵉ passe de revue l'avait restreint à « côté affichage »
+  pour qu'il épouse un code qui ne livrait que cela. La 3ᵉ passe l'a relevé comme un arbitrage de
+  périmètre pris seul, et le commanditaire a tranché le 20/09/2026 pour la correction du moteur.
+  Un CA se satisfait, il ne se rabote pas.)*
 - **Notes — ce n'est pas qu'un changement d'affichage.** `_premier_depart` disparaît de
   `application/palmares.py` : tant qu'il existe, la vue reste juste par accident sur les tournois
-  mono-créneau et fausse partout ailleurs. Les marqueurs `# DETTE-045` posés dans `palmares.py`,
-  `simulation.py` et `simulation_format.py` désignent les sites exacts.
-- **Notes — exports** : tout export du palmarès (EPIC-09) hérite de la juxtaposition. Un fichier par
-  départ ou un fichier à N sections est un choix de **format d'export**, pas de classement — à
-  trancher dans l'US d'export, pas ici.
-- **Résorbe** : `DETTE-045`. **Dépend de** : E01US025 · **Jalon** : J3
+  mono-créneau et fausse partout ailleurs.
+- **Notes — ⚠️ le raccourci était à TROIS endroits, et la fiche en nommait deux faux.** Constaté au
+  cadrage du 19/09/2026 :
+  - `application/palmares.py` (`_premier_depart`) — marqué, atteignable, **le vrai sujet** ;
+  - `application/simulation.py` (`creneaux[0]`, en ligne) — marqué, mais `ServiceSimulation.simuler`
+    n'a **aucun appelant de production** : seuls trois tests l'exercent ;
+  - `application/pilotage_simulation.py` (`_etat`) — **ni marqué ni cité nulle part**, et pourtant
+    le seul des trois servi par une route (`/api/v1/simulations/*`). Il indexait même à nu, donc
+    **500** là où `simulation.py` avait appris à lever `TournoiSansDepart` (409).
+
+  `simulation_format.py`, que la fiche et le registre citaient comme site, ne portait **aucun**
+  marqueur et n'était pas concerné : il fabrique **un seul** créneau (`Depart.creer(numero=1)`).
+  Son unicité est désormais **gardée** plutôt que supposée — `EtatSession.creneau_unique()` lève au
+  lieu d'indexer.
+- **Notes — exports, tranché le 19/09/2026** : tout export du palmarès hérite de la juxtaposition,
+  en **un document à N sections** et non un fichier par départ. Le PDF titre chaque créneau ; le
+  tableur garde **une** grille et ouvre une colonne « Départ » — le parti de ce format est le
+  classement à plat, qui se trie et se filtre, et des onglets rendraient les `N` rangs 1
+  indiscernables. ⚠️ **Conséquence à connaître : la colonne « Rang » n'est plus unique** dans le
+  tableur, chaque créneau y recommençant à 1.
+- **Notes — ⚠️ le coût est multiplié par le nombre de créneaux ; une part seulement est
+  irréductible.** Un podium par départ demande un classement par départ, et rien n'est mis en cache
+  (`DETTE-031`) : cela, on ne peut pas l'éviter. Mais `ServiceClassement.pour_phase` relit à chaque
+  appel les **archers**, les **catégories**, les **forfaits** et le tournoi — à la maille *tournoi*,
+  donc `N` fois le même résultat. Cette part-là est du travail jeté, et elle reste ouverte
+  (`DETTE-031` élargie). *(La première rédaction disait « irréductible » tout court, dans trois
+  artefacts à la fois : le garde-fou qui m'avait alerté était un compteur qui ne comptait que les
+  **clubs**, donc le correctif a été calibré sur la portée du détecteur — relevé par l'axe D.)*
+  Le référentiel des clubs, lui, est bien **hissé hors de la boucle**.
+- **Notes — dette ouverte en chemin** : `DETTE-106`, cinq orthographes concurrentes du libellé de
+  créneau (deux au moins : « Départ **n°**2 » côté serveur, « Départ 2 » côté front). Unifier est un
+  **remède structurel** — ADR + US dédiée —, donc hors de cette US, qui se contente d'utiliser
+  l'existant plutôt que d'inventer une sixième forme.
+- **Résorbe** : `DETTE-045` *(les trois sites, affichage **et** moteur)*. ⚠️ **Le harnais de la
+  session pilotée a été repris** : `SessionSimulation` porte une résolution `archer → phase de
+  qualification` au lieu d'un identifiant unique. Mesuré avant/après sur un décor à deux créneaux —
+  le second passait de `[0, 0, 0, 0]` à de vrais totaux.
+  **Ouvre** : `DETTE-106`, `DETTE-108`, `DETTE-109`.
+  **Décide** : [ADR-0111](../docs/adr/0111-le-palmares-rend-toutes-ses-sections-en-une-reponse.md) ;
+  **amende** : [ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) § 9. **Dépend de** : E01US025 · **Jalon** : J3
 
 ---
 

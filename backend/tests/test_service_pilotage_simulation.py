@@ -135,6 +135,7 @@ class _Contexte:
         )
         assert _d.id is not None
         self.depart_id = _d.id
+        self._etapes: list[EtapeDeroule] = []
 
         # Deux gestes depuis ADR-0076 : l'étape définit (au tournoi), la phase avance (au créneau).
         # L'adapter refuse un avancement sans définition — une instance orpheline serait invisible
@@ -177,7 +178,34 @@ class _Contexte:
                 profondeur=phase.profondeur,
             )
         )
+        self._etapes.append(etape)
         self.phases.ajouter(etape.instancier(self.depart_id))
+
+    def second_creneau(self, nb_archers: int = 4) -> int:
+        """Un second créneau, avec **les mêmes étapes instanciées** et ses propres inscrits.
+
+        ⚠️ **Les étapes sont réutilisées, pas redéfinies** (ADR-0076) : un déroulé se définit une
+        fois au tournoi, chaque départ en porte l'avancement. Redéfinir donnerait un déroulé à deux
+        qualifications, qui n'est pas le cas couvert ici.
+        """
+        autre = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+        )
+        assert autre.id is not None
+        for etape in self._etapes:
+            self.phases.ajouter(etape.instancier(autre.id))
+        for indice in range(nb_archers):
+            archer = self.archers.ajouter(
+                Archer(
+                    nom=f"Soir{indice}",
+                    prenom=f"P{indice}",
+                    tournoi_id=self.tournoi_id,
+                    categorie_id=self.categorie_id,
+                )
+            )
+            assert archer.id is not None
+            self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=autre.id))
+        return autre.id
 
     def service(self, diffusion: DiffusionSimulation | None = None) -> ServicePilotageSimulation:
         return ServicePilotageSimulation(
@@ -221,15 +249,15 @@ def test_le_bot_deroule_jusqu_au_classement_et_au_podium() -> None:
     assert etat.etat_pilote is EtatPilote.TERMINEE
     assert etat.etape is EtapeSimulation.TERMINEE
     # Tous les archers classés, avec un total (ils ont tiré) et un rang scratch attribué.
-    assert len(etat.classement.lignes) == 4
-    assert all(ligne.total > 0 for ligne in etat.classement.lignes)
-    rangs = [ligne.rang_scratch for ligne in etat.classement.lignes]
+    assert len(etat.creneau_unique().classement.lignes) == 4
+    assert all(ligne.total > 0 for ligne in etat.creneau_unique().classement.lignes)
+    rangs = [ligne.rang_scratch for ligne in etat.creneau_unique().classement.lignes]
     assert None not in rangs
     assert sorted(rang for rang in rangs if rang is not None) == [1, 2, 3, 4]
     # Le tableau de duels s'est joué jusqu'au bout : podium peuplé (or/argent/bronze).
-    assert len(etat.tableaux) == 1
-    assert etat.tableaux[0].est_termine
-    assert len(etat.tableaux[0].podium) >= 3
+    assert len(etat.creneau_unique().tableaux) == 1
+    assert etat.creneau_unique().tableaux[0].est_termine
+    assert len(etat.creneau_unique().tableaux[0].podium) >= 3
 
 
 def test_avancer_pas_a_pas_progresse_puis_termine() -> None:
@@ -259,7 +287,7 @@ def test_meme_graine_meme_deroule() -> None:
         service = ctx.service()
         depart = service.demarrer(ctx.tournoi_id, graine=99)
         etat = service.terminer(depart.session_id)
-        totaux.append([ligne.total for ligne in etat.classement.lignes])
+        totaux.append([ligne.total for ligne in etat.creneau_unique().classement.lignes])
     assert totaux[0] == totaux[1]
 
 
@@ -275,9 +303,12 @@ def test_meme_graine_meme_deroule_avec_duels() -> None:
         ctx = _Contexte(nb_archers=4, avec_duels=True, nb_volees=2, nb_fleches=3)
         service = ctx.service()
         etat = service.terminer(service.demarrer(ctx.tournoi_id, graine=123).session_id)
-        totaux = [ligne.total for ligne in etat.classement.lignes]
+        totaux = [ligne.total for ligne in etat.creneau_unique().classement.lignes]
         # `EtatTableau.podium` : tuples (rang, Duelliste), pas des objets.
-        podium = [(rang, duelliste.archer_id) for rang, duelliste in etat.tableaux[0].podium]
+        podium = [
+            (rang, duelliste.archer_id)
+            for rang, duelliste in etat.creneau_unique().tableaux[0].podium
+        ]
         empreintes.append((totaux, podium))
     assert empreintes[0] == empreintes[1]
     assert len(empreintes[0][1]) >= 3  # un podium a bien été produit (le test a du sens)
@@ -290,7 +321,7 @@ def test_scores_generes_bornes_et_etales() -> None:
     etat = service.terminer(service.demarrer(ctx.tournoi_id, graine=3).session_id)
 
     score_max = BaremeQualification.creer(3, 3).score_max  # 3 volées x 3 flèches x 10 = 90
-    totaux = [ligne.total for ligne in etat.classement.lignes]
+    totaux = [ligne.total for ligne in etat.creneau_unique().classement.lignes]
     assert all(0 <= total <= score_max for total in totaux)
     # Des niveaux distincts par archer → des totaux distincts (déterministe, donc non flaky).
     assert len(set(totaux)) > 1
@@ -414,7 +445,7 @@ def test_reprise_en_main_duel_designe_le_vainqueur(cote: Cote) -> None:
 
     apres = service.designer_vainqueur(depart.session_id, unite.phase_id, unite.match_numero, cote)
     # Le match désigné est tranché en faveur du camp **choisi** (l'humain a joué le scoreur).
-    tableau = apres.tableaux[0]
+    tableau = apres.creneau_unique().tableaux[0]
     match = next(d for d in tableau.duels if d.numero == unite.match_numero)
     assert match.duel is not None
     assert match.duel.validee_par == "Manuel"
@@ -546,3 +577,49 @@ def test_valeur_zone_manque_vaut_zero() -> None:
     """Cohérence du barème du générateur : `M` vaut 0, les zones marquantes leur valeur."""
     assert valeur_zone(ZoneScore.MANQUE) == 0
     assert valeur_zone(ZoneScore.DIX) == 10
+
+
+def test_chaque_creneau_de_la_session_porte_son_classement_et_ses_arbres() -> None:
+    """CA « la simulation suit », volet **session pilotée** (E06US009).
+
+    ⚠️ **C'est le seul des trois sites de `DETTE-045` servi par une route de production**
+    (`/api/v1/simulations/*`) et, jusqu'à cette revue, le moins testé : tous les autres tests de ce
+    fichier passent par `creneau_unique()`, qui **assère l'unicité** — donc exactement le décor sous
+    lequel l'ancien `…par_tournoi(...)[0]` était déjà juste.
+
+    Deux pièges symétriques, et ce test tombe sur l'un comme sur l'autre :
+    - rendre le classement du **premier** créneau pour tous (le défaut d'origine) ;
+    - rendre **tous** les arbres du tournoi sous **chaque** classement — ce que produirait un
+      `session.phases_duels` consommé tel quel au lieu de l'intersection avec `par_depart`.
+    """
+    ctx = _Contexte(nb_archers=4, avec_duels=True)
+    autre_depart = ctx.second_creneau()
+    service = ctx.service()
+
+    depart = service.demarrer(ctx.tournoi_id, graine=3)
+    etat = service.terminer(depart.session_id)
+
+    assert [creneau.depart_id for creneau in etat.creneaux] == [ctx.depart_id, autre_depart]
+    assert [creneau.libelle for creneau in etat.creneaux] == [
+        "Départ n°1 — 09:00",
+        "Départ n°2 — 14:00",
+    ]
+    # ⚠️ **L'assertion qui manquait** : `depart_id` et `libelle` viennent de la variable de boucle,
+    # donc une régression du classement les laisserait verts. C'est l'identité des archers qui tient
+    # la portée — quatre axes de revue l'ont relevé le même jour.
+    vus = [{ligne.archer_id for ligne in c.classement.lignes} for c in etat.creneaux]
+    assert [len(v) for v in vus] == [4, 4], "chaque créneau classe SES inscrits"
+    assert vus[0].isdisjoint(vus[1]), "aucun archer ne figure dans les deux"
+
+    # ⚠️ **Les DEUX créneaux ont réellement tiré** : c'est le CA « la simulation suit », et c'est
+    # ce que le harnais ne faisait pas — il résolvait `qualification_du_tournoi`, donc écrivait
+    # toutes ses volées dans la qualification du premier départ, le second sortant à zéro. Un test
+    # qui n'asserterait que le premier resterait vert sous ce défaut.
+    for creneau in etat.creneaux:
+        assert all(ligne.total > 0 for ligne in creneau.classement.lignes), creneau.libelle
+    totaux = [tuple(ligne.total for ligne in c.classement.lignes) for c in etat.creneaux]
+    assert totaux[0] != totaux[1], "deux créneaux, deux déroulés"
+
+    phases_vues = [{tableau.phase_id for tableau in creneau.tableaux} for creneau in etat.creneaux]
+    assert [len(v) for v in phases_vues] == [1, 1], "un arbre par créneau, ni zéro ni deux"
+    assert phases_vues[0].isdisjoint(phases_vues[1]), "un arbre ne pend qu'à son créneau"

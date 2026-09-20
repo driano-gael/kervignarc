@@ -1088,3 +1088,23 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
             sources=(SourcePhase.par_rangs(1, rang_debut=33),),
         ),
     ]
+
+
+# --- Lectures de réponses d'API : helper d'assertion partagé -----------------------------
+#
+# Même seuil que les doublures : on ne remonte ici qu'à la **3ᵉ** occurrence réelle. Posés
+# ailleurs, il vivait au milieu du marquage par familles (ADR-0110), puis entre `poser_phase_
+# factice` et `poser_phase_sql`, deux jumeaux qui se lisent en vis-à-vis (deux fois relevé).
+
+
+def section_unique(corps: dict[str, Any]) -> dict[str, Any]:
+    """La **seule** section d'une réponse de palmarès — décors mono-créneau (E06US009).
+
+    ⚠️ **Le dépliage est l'assertion** : il lève si la réponse en porte deux, ce qui voudrait dire
+    que le décor a changé sans que le test le sache. Le cas à N créneaux est couvert par
+    `test_service_palmares_par_depart.py`. Ici depuis la revue d'E06US009 : il était recopié au
+    mot près dans trois fichiers, soit la 3ᵉ occurrence, seuil de factorisation du projet.
+    """
+    (section,) = corps["sections"]
+    assert isinstance(section, dict)
+    return section

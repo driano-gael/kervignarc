@@ -14,7 +14,7 @@ import datetime
 
 from domain.classement import StatutClassement
 from domain.entree_audit import ActionAuditee, EntreeAudit, JournalAudit
-from domain.palmares import LignePalmares, Palmares
+from domain.palmares import LignePalmares, Palmares, SectionPalmares
 from domain.podium import ReglagePodiums
 from infrastructure.tableur.audit import _LIBELLES_ACTION, GenerateurJournalAuditTableur
 from infrastructure.tableur.grille import rendre_csv
@@ -45,12 +45,59 @@ def _ligne(**surcharges: object) -> LignePalmares:
     return LignePalmares(**defauts)  # type: ignore[arg-type]
 
 
+_CRENEAU = "Départ n°1 — 09:00"
+"""Le libellé rendu par `Depart.libelle_creneau` — recopié ici, ces tests n'ayant pas de départ."""
+
+
+def _section(complet: Palmares, affiche: Palmares) -> SectionPalmares:
+    return SectionPalmares(depart_id=41, libelle=_CRENEAU, complet=complet, affiche=affiche)
+
+
 def _lignes_csv(*lignes: LignePalmares) -> list[list[str]]:
+    """Les rangs du CSV, **colonne « Départ » retirée** (E06US009).
+
+    ⚠️ **Retirée, et non renumérotée dans douze assertions** : ce que ces tests gardent est le
+    rendu d'une *ligne d'archer* — fourchettes de rang, statuts, club. Décaler chaque index de un
+    aurait risqué un décalage muet sur l'un d'eux. La colonne elle-même a son propre test
+    (`test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne`), qui est le seul endroit où son
+    existence est affirmée.
+    """
     palmares = Palmares(lignes=tuple(lignes))
     octets = GenerateurPalmaresTableur(rendre_csv).palmares(
-        "Trophée", complet=palmares, affiche=palmares, reglage=ReglagePodiums()
+        "Trophée", sections=[_section(palmares, palmares)], reglage=ReglagePodiums()
     )
-    return [rang.split(";") for rang in octets.decode("utf-8-sig").splitlines()]
+    return [rang.split(";")[1:] for rang in octets.decode("utf-8-sig").splitlines()]
+
+
+def test_la_colonne_depart_nomme_le_creneau_de_chaque_ligne() -> None:
+    """CA « chaque podium est nommé » — au tableur, le créneau est une **colonne**, pas un onglet.
+
+    ⚠️ **Deux créneaux, pas un** : à une seule section, un bug qui écrirait le libellé du premier
+    partout resterait invisible. C'est précisément le raccourci que cette US retire.
+    """
+    matin = Palmares(lignes=(_ligne(nom="MARTIN"),))
+    apres_midi = Palmares(lignes=(_ligne(archer_id=2, nom="CADIOU"),))
+
+    octets = GenerateurPalmaresTableur(rendre_csv).palmares(
+        "Trophée",
+        sections=[
+            _section(matin, matin),
+            SectionPalmares(
+                depart_id=42,
+                libelle="Départ n°2 — 14:00",
+                complet=apres_midi,
+                affiche=apres_midi,
+            ),
+        ],
+        reglage=ReglagePodiums(),
+    )
+
+    rangs = [rang.split(";") for rang in octets.decode("utf-8-sig").splitlines()]
+    assert rangs[0][0] == "Départ"
+    assert [(rang[0], rang[2]) for rang in rangs[1:]] == [
+        (_CRENEAU, "MARTIN"),
+        ("Départ n°2 — 14:00", "CADIOU"),
+    ]
 
 
 def test_un_rang_exact_sort_sans_fourchette() -> None:
@@ -133,7 +180,7 @@ def test_le_tableur_rend_le_palmares_affiche_et_non_le_complet() -> None:
     complet = Palmares(lignes=(_ligne(nom="MARTIN"), _ligne(archer_id=2, nom="CADIOU")))
 
     octets = GenerateurPalmaresTableur(rendre_csv).palmares(
-        "Trophée", complet=complet, affiche=affiche, reglage=ReglagePodiums()
+        "Trophée", sections=[_section(complet, affiche)], reglage=ReglagePodiums()
     )
 
     texte = octets.decode("utf-8-sig")

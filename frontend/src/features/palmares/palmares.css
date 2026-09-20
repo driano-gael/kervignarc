@@ -23,6 +23,22 @@
   color: var(--text);
 }
 
+/* Un palmarès par créneau, empilés (E06US009). Le titre est un cran AU-DESSUS de
+   `.palmares-section`, qui sert déjà aux podiums et au classement des clubs *à l'intérieur*
+   d'un créneau : deux niveaux au même poids et on ne sait plus quel podium appartient à quel
+   départ. Le séparateur rend la pile lisible au projecteur, où l'on ne fait pas défiler. */
+.palmares-creneau + .palmares-creneau {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.palmares-creneau__titre {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: var(--text);
+}
+
 .palmares-podium {
   margin-bottom: 12px;
   padding: 12px;
