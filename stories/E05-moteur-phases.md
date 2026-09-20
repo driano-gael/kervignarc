@@ -617,8 +617,20 @@ Origine : `DETTE-026`, dont le seuil de résorption (règle 16 — « au 3ᵉ é
   (E01US024) — et une pose **incrémentale** dans le service, correcte parce qu'une source ne vise
   jamais qu'une phase antérieure, donc déjà écrite.
 - **CA — non-régression** : l'oracle 120 et l'oracle multi-départ restent verts, et le garde-fou de
-  portée (`test_portee_sportive.py`) aussi. Le comportement observable ne change **pas** : c'est un
-  remède structurel, pas une évolution fonctionnelle.
+  portée (`test_portee_sportive.py`) aussi. Le comportement observable ne change **pas** — à la
+  réserve du CA suivant, qui en énumère les seules exceptions : c'est un remède structurel, pas
+  une évolution fonctionnelle.
+- **CA — la reprise de données retire trois choses, et les journalise** *(ajouté le 20/09/2026,
+  en 3ᵉ passe de revue — le CA « non-régression » se lisait sans réserve alors que la migration en
+  porte trois, et un CA périmé se dérive sans effort)*. Aucune n'est **observable avant** la
+  reprise : (1) un **avancement** dont le rang n'a aucune étape est supprimé — il était déjà écarté
+  par les deux adapters ; ses lignes filles le suivent, sauf le **barrage**, détaché parce qu'un
+  barrage est un tir réellement effectué ; (2) un **prélèvement** dont le rang ne se résout pas est
+  retiré — il ne peuplait rien, et le garder sans ancre rendait tout le déroulé du tournoi
+  illisible ; (3) un **prélèvement sans clé d'ancre** de même. Les trois partent au journal
+  d'Alembic avec leur compte. ⚠️ Conséquence **observable après** : une phase qui perd une partie
+  de ses prélèvements en gardant son `effectif` déclaré devient `EffectifIncompatible`, ce qui
+  bloque toute édition du déroulé jusqu'à correction — annoncé dans `docs/fonctionnel/E05US022.md`.
 - **Notes — le contre-argument est écarté explicitement, pas ignoré.** `models.py` objecte qu'« une
   FK dupliquerait l'information tout en pouvant en diverger ». L'ADR répond : le remède ne duplique
   pas, il **sépare** deux rôles que le rang cumulait depuis ADR-0076 (ordre d'affichage **et**

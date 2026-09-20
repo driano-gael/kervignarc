@@ -426,3 +426,10 @@ def test_deux_ancres_perdues_ne_fabriquent_pas_un_faux_recoupement() -> None:
     erreurs = [type(anomalie.erreur) for anomalie in anomalies]
     assert erreurs.count(SourceIntrouvable) == 2, "une par prélèvement perdu"
     assert SourcesQuiSeRecoupent not in erreurs, "deux ancres perdues ne sont pas la même source"
+    # ⚠️ Le **libellé** est épinglé : il part sur la route publique de suivi, et une régression
+    # vers « d'ordre 0 » ferait lire à l'organisateur le numéro d'une phase qui n'existe pas.
+    assert all(
+        "phase retirée du déroulé" in str(anomalie.erreur)
+        for anomalie in anomalies
+        if isinstance(anomalie.erreur, SourceIntrouvable)
+    )

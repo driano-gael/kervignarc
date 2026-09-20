@@ -33,8 +33,10 @@ from domain.depart import Depart
 from domain.erreurs import (
     ArretProgrammeInvalide,
     ConfigurationBigShootOffInvalide,
+    ConfigurationSuisseInvalide,
     PhaseQualificationIncomplete,
     ProfondeurInvalide,
+    ReglageDePoulesInvalide,
 )
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
@@ -48,6 +50,8 @@ from domain.phase import (
 )
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
+from domain.poule import ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxDepartRepository,
@@ -335,8 +339,35 @@ def test_appliquer_refuse_un_brouillon_sans_detruire_le_deroule_en_place(ctx: Co
     assert ctx.phases.par_tournoi(ctx.tournoi_id) == avant_phases, "les avancements aussi"
 
 
+@pytest.mark.parametrize(
+    ("type_phase", "reglage", "erreur"),
+    [
+        (
+            TypePhase.PLACEMENT,
+            {"big_shoot_off": ConfigurationBigShootOff(eliminations=(2,))},
+            ConfigurationBigShootOffInvalide,
+        ),
+        (TypePhase.PLACEMENT, {"poules": ReglageDePoules(taille_visee=4)}, ReglageDePoulesInvalide),
+        (
+            TypePhase.PLACEMENT,
+            {"suisse": ConfigurationSuisse(nb_rondes=3)},
+            ConfigurationSuisseInvalide,
+        ),
+        # ⚠️ Pas un placement ici : le placement **monte** un tableau, donc une profondeur y est
+        # licite. La garde ne vise que les types qui n'en montent pas.
+        (
+            TypePhase.ECHAUFFEMENT,
+            {"profondeur": ProfondeurClassement.top(4)},
+            ProfondeurInvalide,
+        ),
+    ],
+    ids=["big_shoot_off", "poules", "suisse", "profondeur"],
+)
 def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire(
     ctx: Contexte,
+    type_phase: TypePhase,
+    reglage: dict[str, object],
+    erreur: type[Exception],
 ) -> None:
     """Les **quatre gardes de `DETTE-078`** entrent aussi dans la pose à blanc (2ᵉ passe, axe D).
 
@@ -345,6 +376,9 @@ def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire
     en place. Le test jumeau ci-dessus choisit un `arrets`, cas couvert par les invariants
     d'`EtapeDeroule` : il laissait croire la classe fermée alors que quatre cas sur neuf
     détruisaient encore le tournoi avant de lever.
+
+    ⚠️ **Les quatre, pas un** (3ᵉ passe) : elles vivent dans quatre `__post_init__` distincts, et
+    rien ne garantissait *a priori* qu'elles lèvent toutes sur un `depart_id` factice.
     """
     en_place = ctx.service.creer("En place", [_qualification(ordre=1, effectif=16)])
     ctx.service.appliquer(ctx.tournoi_id, _id(en_place.id))
@@ -358,18 +392,18 @@ def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire
             _qualification(ordre=1, effectif=16),
             ModelePhase(
                 ordre=2,
-                type=TypePhase.PLACEMENT,
+                type=type_phase,
                 sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
-                # ⚠️ **Pas d'`effectif`** : avec lui, `EtapeDeroule` refuserait déjà le réglage
-                # (trop de rescapés au rang 1) et le test ne pincerait plus la garde de `Phase`.
-                # Un réglage de Big Shoot Off sur un placement est licite au format (ADR-0063),
-                # accepté par l'étape, et refusé à l'**instanciation**.
-                big_shoot_off=ConfigurationBigShootOff(eliminations=(2,)),
+                # ⚠️ **Pas d'`effectif`** : avec lui, `EtapeDeroule` refuserait déjà certains
+                # réglages (trop de rescapés au rang 1) et le test ne pincerait plus la garde de
+                # `Phase`. Ces réglages sont licites au format (ADR-0063), acceptés par l'étape,
+                # et refusés à l'**instanciation**.
+                **reglage,  # type: ignore[arg-type]
             ),
         ],
     )
 
-    with pytest.raises(ConfigurationBigShootOffInvalide):
+    with pytest.raises(erreur):
         ctx.service.appliquer(ctx.tournoi_id, _id(brouillon.id))
 
     assert ctx.deroules.par_tournoi(ctx.tournoi_id) == avant_etapes, "le déroulé est intact"

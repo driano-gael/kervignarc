@@ -481,6 +481,20 @@ def vues_par_rangs(phases: Sequence[Phase]) -> tuple[VueParRangs, ...]:
     )
 
 
+def rangs_aux_ancres_perdues(vues: Sequence[VueParRangs]) -> tuple[int, ...]:
+    """Les rangs des phases dont **au moins un** prélèvement n'a pas su se résoudre.
+
+    ⚠️ La sentinelle `RANG_INTROUVABLE` se lit **ici et nulle part ailleurs hors de ce module** :
+    un service qui la comparerait lui-même passerait à côté du jour où la valeur change
+    (3ᵉ passe de revue, axe A). Le seul appelant est le suivi du déroulé, qui journalise.
+    """
+    return tuple(
+        vue.ordre
+        for vue in vues
+        if any(source.ordre_source == RANG_INTROUVABLE for source in vue.sources)
+    )
+
+
 def _identite_exigee(ordre: int, ordre_vers_id: Mapping[int, EtapeDerouleId]) -> EtapeDerouleId:
     identite = ordre_vers_id.get(ordre)
     if identite is None:
@@ -941,13 +955,14 @@ def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
             if phase_source is None:
                 # ⚠️ La sentinelle ne se montre pas à l'organisateur : « une phase d'ordre 0 » ne
                 # veut rien dire pour lui. Même formulation que le front (« d'une phase retirée »).
-                motif = (
-                    "par une phase retirée du déroulé"
-                    if source.ordre_source == RANG_INTROUVABLE
-                    else f"par une phase d'ordre {source.ordre_source}, qui n'existe pas"
-                )
+                # ⚠️ Un rang **hors de la séquence** ne se nomme pas à l'organisateur : « une
+                # phase d'ordre 0 » (sentinelle back) ou « d'ordre 4 » sur une séquence de 3
+                # (sentinelle front) ne veulent rien dire pour lui. Seul un rang qui *existe*
+                # dans la séquence mérite d'être cité — ce qui n'arrive pas ici par définition.
                 yield Anomalie(
-                    SourceIntrouvable(f"La phase {phase.ordre} est alimentée {motif}."),
+                    SourceIntrouvable(
+                        f"La phase {phase.ordre} est alimentée par une phase retirée du déroulé."
+                    ),
                     phase.ordre,
                 )
                 # Les contrôles suivants déréférencent la phase source : sans elle, ils n'ont pas
@@ -1008,11 +1023,14 @@ def _anomalies_recoupements(
     entièrement bornées passaient sans examen (cf. `SourcePhase.intervalle`).
     """
 
-    # ⚠️ Les ancres **non résolues** sortent du contrôle : elles s'effondrent toutes sur
-    # `RANG_INTROUVABLE`, donc deux prélèvements visant deux étapes *différentes* et absentes
-    # deviennent égaux après projection — d'où un doublon puis un recouvrement, tous deux faux,
-    # servis sur la route publique de suivi. `SourceIntrouvable` les dit déjà, une fois chacun.
-    ancrees = tuple(s for s in phase.sources if s.ordre_source != RANG_INTROUVABLE)
+    # ⚠️ Les ancres **que la séquence ne résout pas** sortent du contrôle : deux prélèvements
+    # visant deux étapes *différentes* et absentes portent le même rang de sentinelle, donc
+    # deviennent égaux — d'où un doublon puis un recouvrement, tous deux faux. Le critère est
+    # « absente de `par_ordre` », **pas** « vaut `RANG_INTROUVABLE` » : il y a deux sentinelles
+    # (back 0, front `taille + 1`, cf. `features/deroule/sequence.ts`), la seconde arrivant ici
+    # par l'atelier. Perte assumée : deux prélèvements sur la *même* étape absente ne sont plus
+    # recoupés — le diagnostic revient dès qu'elle est recréée.
+    ancrees = tuple(s for s in phase.sources if s.ordre_source in par_ordre)
     doublons = [s for s in ancrees if ancrees.count(s) > 1]
     if doublons:
         yield Anomalie(

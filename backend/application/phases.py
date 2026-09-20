@@ -191,6 +191,10 @@ class ServicePhases:
         est dérivé à chaque lecture, donc passer `volees` de 1 à 2 **re-partitionne des volées déjà
         validées** et rejoue les éliminations autrement, sans message.
         """
+
+        # ⚠️ `DETTE-078` — ce geste **n'instancie jamais** : les quatre gardes qui vivent sur
+        # `Phase.__post_init__` ne se lèvent pas ici. Retyper une phase en gardant son réglage
+        # répond **200**, persiste, et fait tomber **chaque lecture** ultérieure en 422.
         etape = self._exiger_etape(tournoi_id, etape_id)
         modifiee = replace(
             etape,
@@ -250,8 +254,8 @@ class ServicePhases:
         verifier_sequence(vues_du_deroule(reordonnees))  # valide l'ordre demandé
         # **En un bloc, pas étape par étape** : le rang n'est plus qu'un affichage (ADR-0078), mais
         # une panne au milieu laisserait tout de même une numérotation trouée à l'écran. ⚠️ Ce
-        # geste **n'est plus un site de `DETTE-025`** depuis ADR-0078 — une seule écriture,
-        # atomique —, d'où l'absence de jeton : un `grep` de résorption n'a rien à trouver ici.
+        # geste n'est plus un site de la dette d'atomicité depuis ADR-0078 : une seule écriture.
+        # (Le jeton est délibérément absent — le `grep` de résorption ne doit pas passer ici.)
         return self._deroules.enregistrer_plusieurs(reordonnees)
 
     def supprimer(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> None:

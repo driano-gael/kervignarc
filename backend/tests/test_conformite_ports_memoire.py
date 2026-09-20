@@ -126,6 +126,17 @@ def _contrat_phase(
 
     # Le déroulé, **une fois par tournoi** : c'est lui qui porte le type de chaque rang.
     # (On évite le type `qualification`, qui exigerait un barème — hors sujet ici.)
+    # ⚠️ **Trois étapes jetables d'abord** (3ᵉ passe de revue E05US022) : les deux allocateurs
+    # partent de 1, si bien que les vraies étapes recevaient les identités 1, 2, 3 — c'est-à-dire
+    # leurs rangs. Le contrat éprouve précisément la jointure `phase.etape_id` (ADR-0078) : la
+    # coïncidence le rendait vert pour un adapter resté sur le rang. Supprimées **après** la pose
+    # réelle, sans quoi SQLite rendrait leurs `rowid`.
+    brulees = [
+        deroules.ajouter(
+            EtapeDeroule(tournoi_id=tournoi.id, ordre=900 + i, type=TypePhase.PLACEMENT)
+        )
+        for i in range(3)
+    ]
     etapes = [
         deroules.ajouter(EtapeDeroule(tournoi_id=tournoi.id, ordre=ordre, type=type_etape))
         for ordre, type_etape in (
@@ -134,6 +145,10 @@ def _contrat_phase(
             (3, TypePhase.ELIMINATION_DIRECTE),
         )
     ]
+    for brulee in brulees:
+        assert brulee.id is not None
+        deroules.supprimer(brulee.id)
+    assert all(etape.id != etape.ordre for etape in etapes), "décor recoincidé : identité == rang"
     ailleurs_etape = deroules.ajouter(
         EtapeDeroule(tournoi_id=autre.id, ordre=1, type=TypePhase.PLACEMENT)
     )

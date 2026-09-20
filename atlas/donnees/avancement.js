@@ -563,7 +563,7 @@ window.ATLAS.avancement = {
    "resorption_us": [
     "E05US022"
    ],
-   "severite": "mineur"
+   "severite": "majeur"
   },
   {
    "identifiant": "079",

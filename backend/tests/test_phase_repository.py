@@ -56,7 +56,7 @@ from infrastructure.db import (
 )
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
-from tests.conftest import poser_phase_sql
+from tests.conftest import decaler_les_identites_sql, poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -115,9 +115,16 @@ def _poser(db: Database, depart_id: DepartId, **reglages: Any) -> Phase:
     l'avancement sur `phase`. Les tests de ce fichier éprouvent l'aller-retour de la config — ils
     doivent donc écrire là où elle vit désormais, sinon ils vérifieraient une table vide.
     """
-    etape = DerouleEtapeRepositorySQL(db.session_factory).ajouter(
-        EtapeDeroule(tournoi_id=_tournoi_du(db, depart_id), **reglages)
-    )
+    tournoi_id = _tournoi_du(db, depart_id)
+    # ⚠️ **Ce fichier écrit l'étape lui-même**, donc `poser_phase_sql` n'a plus rien à décaler
+    # quand il est appelé : sans ce geste, SQLite alloue 1, 2, 3… et `etape.id == etape.ordre`
+    # dans le fichier même qui éprouve la jointure par identité (`_assembler`, ADR-0078). C'est
+    # le décor le plus rentable du dépôt pour cette coïncidence — relevé en 3ᵉ passe de revue.
+    deroules = DerouleEtapeRepositorySQL(db.session_factory)
+    brulee = decaler_les_identites_sql(db.session_factory, tournoi_id)
+    etape = deroules.ajouter(EtapeDeroule(tournoi_id=tournoi_id, **reglages))
+    if brulee is not None:
+        deroules.supprimer(brulee)
     return poser_phase_sql(db.session_factory, etape.instancier(depart_id))
 
 
@@ -613,8 +620,15 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
             ligne = session.query(DerouleEtapeORM).filter_by(ordre=2).one()
             config = json.loads(ligne.config)
         assert "scoring" not in config and "validation" not in config
+        # ⚠️ L'identité **lue sur la qualification**, jamais écrite en dur : la version qui
+        # attendait `1` ne passait que parce que SQLite allouait depuis 1 (3ᵉ passe de revue).
         assert config["sources"] == [
-            {"nature": "rangs", "etape_source_id": 1, "rang_debut": 1, "rang_fin": 16}
+            {
+                "nature": "rangs",
+                "etape_source_id": qualif.etape_id,
+                "rang_debut": 1,
+                "rang_fin": 16,
+            }
         ]
     finally:
         db.engine.dispose()

@@ -23,6 +23,8 @@ from domain.erreurs import (
     PhaseQualificationIncomplete,
     SequenceOrdreInvalide,
     SourceApresPhase,
+    SourceIntrouvable,
+    SourcesQuiSeRecoupent,
 )
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -387,23 +389,23 @@ def test_la_promotion_redescend_les_prelevements_sur_les_rangs() -> None:
         type=TypePhase.QUALIFICATION,
         bareme=BaremeQualification.preset_ffta_18m(),
         validation=GrainValidation.fin_de_serie(),
-        id=identite_d_etape(1),
+        id=identite_d_etape(1, TOURNOI),
     )
     tableau = EtapeDeroule(
         tournoi_id=TOURNOI,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 8),),
-        id=identite_d_etape(2),
+        sources=(SourcePhase.par_rangs(identite_d_etape(1, TOURNOI), 1, 8),),
+        id=identite_d_etape(2, TOURNOI),
     )
 
     promu = FormatTournoi.de_deroule("L'an dernier", [qualif, tableau])
 
-    # Le **rang**, pas l'identité : 1, et surtout pas `identite_d_etape(1)`.
+    # Le **rang**, pas l'identité : 1, et surtout pas `identite_d_etape(1, TOURNOI)`.
     assert promu.etapes[1].sources == (SourceModele.par_rangs(1, 1, 8),)
 
 
-def test_promouvoir_puis_reappliquer_rend_le_meme_ancrage() -> None:
+def test_appliquer_puis_promouvoir_rend_le_meme_ancrage() -> None:
     """L'aller-retour prouve que les deux traductions sont **réciproques** — « une seule traduction
     sert les deux sens » est le CA, et c'est ce qui le vérifie."""
     depart = FormatTournoi.creer(
@@ -423,3 +425,36 @@ def test_promouvoir_puis_reappliquer_rend_le_meme_ancrage() -> None:
     retour = FormatTournoi.de_deroule("Retour", list(etapes))
 
     assert retour.etapes[1].sources == depart.etapes[1].sources
+
+
+def test_deux_ancres_retirees_dans_un_format_ne_se_recoupent_pas() -> None:
+    """Le **jumeau bibliothèque** du contrôle de recoupement (3ᵉ passe de revue, axe adversarial).
+
+    Le premier correctif excluait la seule valeur `RANG_INTROUVABLE` (0), sentinelle du **back**.
+    Or l'atelier de composition retire une étape avec la sentinelle du **front**,
+    `ordreOrphelin(taille) = taille + 1` (`features/deroule/sequence.ts`) : deux prélèvements
+    visant deux étapes retirées arrivaient donc ici avec le même rang **sans** être écartés, et
+    l'organisateur lisait « deux sources prélèvent le même rang de la phase 3 » — une phase qui
+    n'existe pas. Le critère est désormais « absente de la séquence », pas « vaut 0 ».
+    """
+    retiree = 3  # `ordreOrphelin` d'une séquence de deux étapes : taille + 1.
+    format_tournoi = FormatTournoi(
+        nom="Atelier en cours",
+        etapes=(
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(
+                    SourceModele(ordre_source=retiree, rang_debut=1, rang_fin=4),
+                    SourceModele(ordre_source=retiree, rang_debut=3, rang_fin=6),
+                ),
+                effectif=8,
+            ),
+        ),
+    )
+
+    erreurs = [type(anomalie.erreur) for anomalie in format_tournoi.anomalies()]
+
+    assert erreurs.count(SourceIntrouvable) == 2, "une par prélèvement retiré"
+    assert SourcesQuiSeRecoupent not in erreurs

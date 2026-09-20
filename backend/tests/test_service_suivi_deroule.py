@@ -47,13 +47,13 @@ from domain.suivi_deroule import AvancementDePhase
 from domain.tableau import Tableau, construire_tableau
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
+    CaptureWarnings,
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxPhaseRepository,
     identite_d_etape,
     poser_phase_factice,
 )
-from tests.test_service_feuille_de_marque import _CaptureWarnings
 
 _DATE = datetime.date(2026, 3, 14)
 # Identifiants de créneau **volontairement distincts** de celui du tournoi (qui vaut 1) : les
@@ -556,16 +556,10 @@ def test_un_tableau_illisible_ne_fait_pas_tomber_le_suivi(ctx: Contexte) -> None
     assert bloc.duels_attendus == 7
 
 
-def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx: Contexte) -> None:
-    """La tolérance de `vues_par_rangs` ne doit pas être **silencieuse** (2ᵉ passe, E05US022).
-
-    Une phase qui prélève dans une étape absente du déroulé s'affiche dégradée — c'est voulu, un
-    écran de salle ne tombe pas —, mais sans trace serveur l'organisateur n'a **aucun** moyen de
-    remonter la cause : il voit un bloc vide et rien d'autre. Le journal est le seul recours.
-    """
-    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
-    orpheline = dataclasses.replace(
-        _tableau_ed(ctx.depart_id, 2, StatutPhase.A_VENIR),
+def _orpheline(depart_id: int) -> Phase:
+    """Un tableau de rang 2 qui prélève dans une étape **absente** du déroulé."""
+    return dataclasses.replace(
+        _tableau_ed(depart_id, 2, StatutPhase.A_VENIR),
         sources=(
             SourcePhase(
                 etape_source_id=identite_d_etape(99),
@@ -575,13 +569,23 @@ def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx:
             ),
         ),
     )
-    ctx.ajouter_phase(orpheline, 2)
+
+
+def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx: Contexte) -> None:
+    """La tolérance de `vues_par_rangs` ne doit pas être **silencieuse** (2ᵉ passe, E05US022).
+
+    Une phase qui prélève dans une étape absente du déroulé s'affiche dégradée — c'est voulu, un
+    écran de salle ne tombe pas —, mais sans trace serveur l'organisateur n'a **aucun** moyen de
+    remonter la cause : il voit un bloc vide et rien d'autre. Le journal est le seul recours.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_orpheline(ctx.depart_id), 2)
 
     # ⚠️ **Pas `caplog`** : il capte par propagation vers la racine, que d'autres tests
     # reconfigurent via `create_app` — le test devient alors vert seul et rouge en suite. Handler
     # posé sur le logger lui-même, patron déjà éprouvé par `test_service_feuille_de_marque`.
     logger = logging.getLogger("application.suivi_deroule")
-    capture = _CaptureWarnings()
+    capture = CaptureWarnings()
     niveau, desactive = logger.level, logger.disabled
     logger.addHandler(capture)
     logger.setLevel(logging.WARNING)
@@ -594,9 +598,38 @@ def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx:
         logger.disabled = desactive
 
     assert len(suivi.avancement.blocs) == 2, "le suivi reste servi, dégradé"
-    assert any(
-        "absente du déroulé" in message for message in capture.messages
-    ), "la dégradation doit laisser une trace serveur"
+    assert capture.messages == [
+        f"Suivi du départ {ctx.depart_id} : les phases 2 sont alimentées par une étape absente "
+        "du déroulé ; leurs blocs s'affichent dégradés."
+    ], "une seule trace, nommant le créneau ET le rang — et pas une par appel"
+
+
+def test_une_ancre_perdue_ne_se_signale_qu_au_changement(ctx: Contexte) -> None:
+    """La route est **pollée toutes les 10 s** par chaque tablette (3ᵉ passe de revue).
+
+    Un déroulé cassé est un état **persistant** : le signaler à chaque appel produirait des
+    dizaines de milliers de lignes par jour et noierait le journal — à commencer par
+    l'avertissement bien plus urgent du repli de `ServiceSaisie`. Le remède au silence ne doit
+    pas être le bruit.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_orpheline(ctx.depart_id), 2)
+
+    logger = logging.getLogger("application.suivi_deroule")
+    capture = CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        for _ in range(5):
+            ctx.service.pour_depart(ctx.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    assert len(capture.messages) == 1, "cinq lectures d'un état inchangé, un seul avertissement"
 
 
 # --- Portée : le suivi est celui d'un créneau, jamais du tournoi (ADR-0075) ----------------------

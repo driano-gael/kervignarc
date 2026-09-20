@@ -26,11 +26,11 @@ from application.erreurs import (
     PhaseIntrouvable,
     PhasePasUnTableau,
 )
-from application.saisie_duels import EtatDuel, ServiceSaisieDuels
+from application.saisie_duels import EtatDuel, ServiceSaisieDuels, amorce_du_cache
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
-from domain.classement import StatutClassement
+from domain.classement import Classement, StatutClassement
 from domain.depart import Depart
 from domain.duel import ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
@@ -875,7 +875,7 @@ def test_le_tableau_reste_lisible_pendant_la_pause() -> None:
     assert etat.duels, "le tableau doit rester consultable pendant la pause"
 
 
-def test_le_cache_n_amorce_que_la_qualification_de_tete() -> None:
+def test_une_qualification_prelevee_rend_une_tranche_pas_le_creneau() -> None:
     """**Une qualification PRÉLEVÉE ne s'amorce pas avec le classement du créneau entier.**
 
     Correctif de 2ᵉ passe de revue, et trou ouvert par le correctif de la 1ʳᵉ : la valeur pré-posée
@@ -884,14 +884,10 @@ def test_le_cache_n_amorce_que_la_qualification_de_tete() -> None:
     tranche, avec son `rang_premier`. Tant que la clé était le rang, l'entrée n'était jamais lue et
     la valeur fausse dormait ; réparer la clé l'a **activée**.
 
-    ⚠️ **Ce test pince la valeur, pas le garde-fou.** Retirer `not p.sources` de l'amorçage le
-    laisse vert, et il faut le savoir : les deux adapters rendent `par_depart` **trié par rang**,
-    et le domaine interdit une source à la phase de rang 1, donc dès qu'une qualification de tête
-    existe le `next(...)` la trouve la première — avec ou sans le filtre. Le filtre ne devient
-    déterminant que sur un déroulé **sans** qualification de tête (rang 1 non qualificatif, la
-    qualification prélevée derrière), configuration qu'aucun décor du dépôt ne sait monter
-    aujourd'hui. Ce qui est vérifié ici est l'invariant qui compte : une qualification prélevée
-    rend **une tranche**.
+    ⚠️ **Ce test pince la valeur, pas le garde-fou** — c'est `test_l_amorce_du_cache_ignore_une_
+    qualification_prelevee` qui pince le second, sur la fonction extraite à cet effet en 3ᵉ passe
+    de revue. Ici, `resolveur_de_classement` se crée son propre cache : l'amorçage de `_decor`
+    n'est pas traversé.
     """
     monde = _Monde()
     for rang in range(8):
@@ -918,3 +914,43 @@ def test_le_cache_n_amorce_que_la_qualification_de_tete() -> None:
     assert source is not None
     # La tranche, pas le créneau : 4 prélevés sur 8 inscrits.
     assert len(source.classement.lignes) == 4
+
+
+def test_l_amorce_du_cache_ignore_une_qualification_prelevee() -> None:
+    """**La garde `not p.sources`, pincée directement** (3ᵉ passe de revue).
+
+    L'amorçage offre au résolveur le classement du **créneau entier** ; seule une qualification
+    de tête le mérite. Sur un déroulé où la seule qualification est **prélevée** (ADR-0082), il
+    doit s'abstenir : l'amorcer estamperait une tranche sous l'identité d'une phase qui n'en
+    produit pas, et le tableau aval serait ensemencé de la mauvaise population — sans erreur.
+
+    Le test vit sur la fonction de module `amorce_du_cache` parce que `_decor` n'est atteignable
+    qu'à travers `etat_tableau`, dont aucun décor ne sait produire un créneau sans tête.
+    """
+    depart_id = 1
+    prelevee = Phase(
+        depart_id=depart_id,
+        ordre=2,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.creer(1, 3),
+        validation=GrainValidation.fin_de_serie(),
+        sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 4),),
+        etape_id=identite_d_etape(2),
+    )
+    classement = Classement(lignes=())
+
+    assert amorce_du_cache([prelevee], classement) is None
+
+    tete = Phase(
+        depart_id=depart_id,
+        ordre=1,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.creer(1, 3),
+        validation=GrainValidation.fin_de_serie(),
+        etape_id=identite_d_etape(1),
+    )
+    amorce = amorce_du_cache([prelevee, tete], classement)
+
+    assert amorce is not None
+    assert amorce[0] == identite_d_etape(1), "l'identité de la TÊTE, pas celle de la prélevée"
+    assert amorce[1].ordre == 1

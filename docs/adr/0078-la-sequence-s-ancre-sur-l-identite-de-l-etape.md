@@ -169,6 +169,16 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
   invariants d'`EtapeDeroule` et les quatre gardes de `Phase.__post_init__` (`DETTE-078`) ne se
   lèvent qu'à la construction, et `ServiceFormats.appliquer` détruit le déroulé en place avant de
   poser le neuf. Sans les deux moitiés, un format invalide laissait le tournoi sans phases.
+- **`backend/migrations/versions/0056_ancrage_par_identite.py`** — la reprise : `phase.etape_id`
+  rempli par la jointure d'hier, les `config` réécrites, `uq_deroule_tournoi_ordre` levée.
+  ⚠️ Elle **purge les huit tables filles** de `phase` avant de supprimer un avancement orphelin :
+  cinq portent `ON DELETE CASCADE`, et cette cascade est **inerte** — `migrations/env.py` monte
+  son moteur sans le `PRAGMA foreign_keys=ON` de `infrastructure/db/engine.py`.
+- **`backend/tests/conftest.py`** — `identite_d_etape(ordre, tournoi_id)` et
+  `decaler_les_identites_sql` : les décors n'ont **pas** le droit de faire coïncider identité et
+  rang, sans quoi tout lecteur resté sur le rang passe vert (`DETTE-044`). C'est un porteur au
+  même titre que le code : l'ancrage par identité n'est vérifiable que là où la coïncidence est
+  rompue.
 - **`backend/domain/ports.py`** — `PhaseRepository.reordonner` a **disparu** ;
   `DerouleRepository.reordonner` est devenu `enregistrer_plusieurs` (§5, amendé ci-dessous).
 - **`backend/application/formats.py`** (`ServiceFormats.appliquer`) et

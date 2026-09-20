@@ -821,8 +821,16 @@ class ServiceSaisie:
         pour une réponse acquise. Best-effort : le filet couvre `ApplicationError` **et**
         `DomainError`, sans quoi un déroulé incohérent faisait tomber la saisie en 500.
         """
-        if not phase.sources or phase.etape_id is None:
+        if not phase.sources:
             return True
+        if phase.etape_id is None:
+            # ⚠️ **`False`, comme les deux replis ci-dessous** (3ᵉ passe de revue) : rendre `True`
+            # ferait admettre **tout le créneau** dans une phase prélevée, et muettement. Le cas
+            # est injoignable en production (`phase.etape_id` est `NOT NULL` depuis 0056) ; ce
+            # qu'un `True` rouvrirait vraiment, c'est le vert par coïncidence d'un décor écrit
+            # sans `etape_id` — l'état exact qui a caché le bloquant de la 2ᵉ passe. Ici, la
+            # dégradation retombe sur le repli **journalisé** de `_qualification_de_l_archer`.
+            return False
         try:
             # ⚠️ **Par l'identité de l'étape** (ADR-0078) — 4ᵉ appelant du résolveur, oublié au
             # premier correctif de revue. Passer le rang rendait `False` pour **toutes** les

@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import logging
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import replace
@@ -695,6 +696,24 @@ class FauxDerouleRepository:
         self._items.pop(etape_id, None)
 
 
+class CaptureWarnings(logging.Handler):
+    """Capte les messages d'un logger via un handler **attaché directement** dessus.
+
+    Volontairement **pas** `caplog` : `caplog` capte par propagation vers le logger racine, et
+    d'autres tests (via `create_app`) reconfigurent le logging global, ce qui neutralise cette
+    propagation. Un handler posé sur le logger lui-même reçoit ses enregistrements quel que soit
+    l'état global (à condition de forcer `level`/`disabled`, cf. les tests qui s'en servent).
+
+    Hissée ici en 3ᵉ passe de revue d'E05US022 : **2ᵉ consommateur**, le seuil du fichier."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
 def identite_d_etape(ordre: int, tournoi_id: TournoiId = 1) -> EtapeDerouleId:
     """L'identité conventionnelle de l'étape de ce rang, **dans les décors de test** (ADR-0078).
 
@@ -707,13 +726,61 @@ def identite_d_etape(ordre: int, tournoi_id: TournoiId = 1) -> EtapeDerouleId:
     ⚠️ **Le tournoi entre dans l'identité, et ce n'est pas décoratif** : sans lui, deux tournois
     d'un même test se donnaient la même identité au même rang, l'étape du second **écrasait**
     celle du premier dans le magasin, et les phases du premier créneau disparaissaient
-    silencieusement de `par_depart` (l'assemblage joint sur `etape_id`).
+    silencieusement de `par_depart` (l'assemblage joint sur `etape_id`). ⚠️ Un décor dont le
+    tournoi n'est **pas 1** doit donc passer `tournoi_id` : l'omettre fait diverger l'ancre de
+    l'identité posée, sans aucun rouge.
     """
+    # La disjonction des trois espaces n'est vraie **que** sous ces bornes : au-delà, un rang
+    # déborde sur le tournoi suivant, ou un tournoi sur la bande d'allocation (9 000+).
+    assert (
+        0 <= ordre < 100 and 1 <= tournoi_id < 60
+    ), f"hors de la bande d'identités conventionnelles (ordre={ordre}, tournoi={tournoi_id})"
     return 3_000 + 100 * tournoi_id + ordre
 
 
 _RANG_BRULE = 900
-"""Rang de l'étape éphémère qui décale l'auto-incrément SQL — voir `poser_phase_sql`."""
+"""Rang de l'étape éphémère qui décale l'auto-incrément SQL — voir `decaler_les_identites_sql`."""
+
+_IDENTITE_BRULEE = 5_000
+"""Identité de cette étape éphémère : **au-dessus de tout `PhaseId`** qu'un décor allouera.
+
+⚠️ La hauteur est le sujet. Brûler **un** identifiant ne donnait que `id == ordre + 1` : un
+lecteur resté sur le rang ne tombait pas dans le vide, il tombait sur l'étape **voisine** — une
+étape valide, donc un vert par coïncidence (3ᵉ passe de revue). Et `phase.id` partant de 1, les
+deux espaces se recoupaient : passer un `PhaseId` à une route qui adresse une `EtapeDerouleId`
+répondait 200 sur la mauvaise définition.
+"""
+
+
+def decaler_les_identites_sql(session_factory: Any, tournoi_id: int) -> int | None:
+    """Pose une étape éphémère à identité **haute**, si l'auto-incrément est encore bas.
+
+    Rend son identifiant, que l'appelant doit supprimer **après** avoir posé la vraie étape :
+    `deroule_etape` n'est pas `AUTOINCREMENT`, donc supprimer avant rendrait le `rowid`.
+    `DerouleEtapeRepositorySQL.ajouter` **jette** un `id` fourni — d'où le SQL direct, sur une
+    ligne jetable dont l'argument « passer par le chemin de production » ne vaut pas.
+
+    ⚠️ Le seuil se lit sur `MAX(id)`, pas sur « ce tournoi a-t-il des étapes ? » : un test qui
+    vide `deroule_etape` en cours de route (`ServiceFormats.appliquer`) fait repartir SQLite à 1.
+    """
+    import sqlalchemy as sa
+
+    with session_factory() as session:
+        maximum = int(
+            session.execute(sa.text("SELECT COALESCE(MAX(id), 0) FROM deroule_etape")).scalar_one()
+        )
+        if maximum >= _IDENTITE_BRULEE:
+            return None
+        session.execute(
+            sa.text(
+                "INSERT INTO deroule_etape (id, tournoi_id, ordre, type, config) "
+                "VALUES (:id, :tournoi, :ordre, 'placement', '{}')"
+            ),
+            {"id": _IDENTITE_BRULEE, "tournoi": tournoi_id, "ordre": _RANG_BRULE},
+        )
+        session.commit()
+    return _IDENTITE_BRULEE
+
 
 PREMIERE_IDENTITE_SIMULEE = 1_000
 """Base des identités que `appliquer_en_memoire` invente — hors de portée des identifiants réels.
@@ -866,22 +933,12 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
     deja_posees = deroules.par_tournoi(depart.tournoi_id)
     etape = next((e for e in deja_posees if e.ordre == phase.ordre), None)
     if etape is None:
-        # ⚠️ **Le pendant SQL d'`identite_d_etape`** (2ᵉ passe de revue E05US022) : sur une base
-        # neuve SQLite alloue 1, 2, 3…, si bien que l'étape de rang 1 recevait l'identité 1 et que
-        # tout l'étage d'intégration restait **vert par coïncidence** devant la confusion rang /
-        # identité qui a coûté quatre bloquants à cette US. On brûle donc un identifiant sur une
-        # étape éphémère du **même** tournoi — un tournoi jetable violerait la clé étrangère —,
-        # supprimée **après** la vraie pose : la supprimer avant rendrait son `rowid` (SQLite le
-        # réattribue, la table n'est pas `AUTOINCREMENT`). Décalage résiduel : `id == ordre + 1`.
-        brulee = (
-            None
-            if deja_posees
-            else deroules.ajouter(
-                EtapeDeroule(
-                    tournoi_id=depart.tournoi_id, ordre=_RANG_BRULE, type=TypePhase.PLACEMENT
-                )
-            )
-        )
+        # ⚠️ **Le pendant SQL d'`identite_d_etape`** : sur une base neuve SQLite alloue 1, 2, 3…,
+        # si bien que l'étape de rang 1 recevait l'identité 1 et que tout l'étage d'intégration
+        # restait **vert par coïncidence** devant la confusion rang / identité qui a coûté quatre
+        # bloquants à cette US. Le `finally` ci-dessous est ce qui empêche l'étape éphémère de
+        # survivre à un échec de la vraie pose.
+        brulee = decaler_les_identites_sql(session_factory, depart.tournoi_id)
         etape = deroules.ajouter(
             EtapeDeroule(
                 tournoi_id=depart.tournoi_id,
@@ -928,8 +985,12 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
             )
         )
-        if brulee is not None and brulee.id is not None:
-            deroules.supprimer(brulee.id)
+        if brulee is not None:
+            deroules.supprimer(brulee)
+    assert etape.id != etape.ordre, (
+        "décor recoincidé : l'identité de l'étape vaut son rang, donc un lecteur resté sur le "
+        "rang passera vert par coïncidence (ADR-0078, DETTE-044)."
+    )
     return PhaseRepositorySQL(session_factory).ajouter(
         dataclasses.replace(etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id)
     )
@@ -1158,10 +1219,12 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
     Des **étapes** et non des phases (ADR-0076) : c'est une *définition*, elle appartient au
     tournoi et s'écrit une seule fois quel que soit le nombre de créneaux.
 
-    ⚠️ **Les identités sont posées d'avance et décalées des rangs** (ADR-0078) : les prélèvements
-    citent l'étape amont par `identite_d_etape(1)`, pas par `1`. Les repositories préservent un
-    `id` fourni, donc le décor reste cohérent une fois posé — et surtout, il cesse de passer par
-    coïncidence si un lecteur confond les deux.
+    ⚠️ **Les identités sont posées d'avance, décalées des rangs ET portées par le tournoi**
+    (ADR-0078) : les prélèvements citent l'étape amont par `identite_d_etape(1, tournoi_id)`, pas
+    par `1`. Omettre `tournoi_id` ferait **écraser** le décor d'un tournoi par celui d'un autre
+    dans le magasin, sans un seul rouge (relevé en 3ᵉ passe de revue).
+    ⚠️ Seul `FauxDerouleRepository` préserve un `id` fourni : l'adapter SQL le **jette** — voir
+    `poser_phase_sql`, qui doit décaler l'auto-incrément pour obtenir le même effet.
     """
     return [
         EtapeDeroule(
@@ -1170,21 +1233,21 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
             type=TypePhase.QUALIFICATION,
             bareme=BaremeQualification.preset_ffta_18m(),
             validation=GrainValidation.fin_de_serie(),
-            id=identite_d_etape(1),
+            id=identite_d_etape(1, tournoi_id),
         ),
         EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 32),),
-            id=identite_d_etape(2),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1, tournoi_id), 1, 32),),
+            id=identite_d_etape(2, tournoi_id),
         ),
         EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=3,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(identite_d_etape(1), rang_debut=33),),
-            id=identite_d_etape(3),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1, tournoi_id), rang_debut=33),),
+            id=identite_d_etape(3, tournoi_id),
         ),
     ]
 

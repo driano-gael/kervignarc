@@ -219,6 +219,14 @@ charger avec la grille, plutôt que de la retranscrire, est ce qui l'empêche de
      (règles 10 et 11). Un axe B silencieux sur les tests est toujours un raté.
    - Le **verdict global** est le plus sévère de **tous les rapports rendus, relecteur adversarial
      compris** : un bloquant, d'où qu'il vienne, bloque la PR.
+1. bis. **Recopie IMMÉDIATEMENT les comptes par axe** dans une ligne neuve de
+   [`docs/metriques-revue.md`](../../docs/metriques-revue.md), avec la **taille du diff soumis à
+   la passe** (`git diff --stat <base>..HEAD`, pas celle des correctifs à venir) et les lignes
+   `Durée :`. Le reste de la ligne — `passes`, portes rouges, enseignement — se complète au
+   point 4. ⚠️ **Avant les correctifs, pas après** : les comptes n'existent que dans les rapports,
+   qui ne vivent que dans le contexte de la session, et une passe de correctifs est précisément
+   ce qui la remplit jusqu'au `/compact`. C'est arrivé le 20/09/2026 en 2ᵉ passe d'`E05US022` —
+   quatre axes sur cinq perdus, ligne inscrite « comptes perdus ».
 2. Traite chaque remarque :
    - **bloquant / majeur** → corrige dans le code.
    - **mineur / suggestion** → corrige si rapide et sûr ; sinon justifie brièvement de ne pas le faire.

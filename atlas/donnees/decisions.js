@@ -4047,6 +4047,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [
+      "verifier_applicable",
+      "etapes_ordonnees",
       "appliquer"
      ],
      "symboles_absents": [],
@@ -4568,7 +4570,18 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "phase.etape_id",
-      "config"
+      "config",
+      "uq_deroule_tournoi_ordre",
+      "phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/conftest.py",
+     "existe": true,
+     "symboles": [
+      "decaler_les_identites_sql"
      ],
      "symboles_absents": [],
      "verifiable": true

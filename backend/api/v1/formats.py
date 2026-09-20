@@ -65,7 +65,11 @@ class SourceDTO(BaseModel):
     **identité**. Ne pas les réunir — ce serait le champ polymorphe que l'ADR interdit.
     """
 
-    ordre_source: int
+    # ⚠️ **`ge=1`, et ce n'est pas cosmétique** (3ᵉ passe de revue) : le domaine réserve le rang
+    # **0** à `RANG_INTROUVABLE`, la sentinelle d'ancre non résolue. Sans cette borne, un client
+    # tapant `0` obtenait « alimentée par une phase retirée du déroulé » — faux, il est dans la
+    # bibliothèque où rien n'a été retiré — et sautait le contrôle de recoupement.
+    ordre_source: int = Field(ge=1)
     nature: NatureSource = NatureSource.RANGS
     rang_debut: int = 1
     rang_fin: int | None = None

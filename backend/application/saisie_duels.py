@@ -9,6 +9,7 @@ hypothèse d'homogénéité assumée (ADR-0049).
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from application.classements import ServiceClassement
@@ -35,7 +36,7 @@ from application.prelevement import (
     tranche,
 )
 from domain.blason import ZoneScore
-from domain.classement import LigneClassement
+from domain.classement import Classement, LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
@@ -149,6 +150,25 @@ class EtatTableau:
     est_termine: bool
     duels: tuple[EtatDuel, ...]
     podium: tuple[tuple[int, Duelliste], ...]
+
+
+def amorce_du_cache(
+    phases: Sequence[Phase], classement: Classement
+) -> tuple[EtapeDerouleId, ClassementSource] | None:
+    """L'entrée que le résolveur peut se voir offrir d'avance : la **qualification de tête**.
+
+    ⚠️ **De tête, donc SANS source.** La valeur offerte est le classement du **créneau entier**,
+    ce que le résolveur ne rend que pour elle ; une qualification *prélevée* (ADR-0082) rend une
+    tranche, et l'amorcer ainsi court-circuiterait sa résolution sans erreur ni signal.
+    Fonction de module délibérément : inlinée, la garde n'était atteignable par aucun test.
+    """
+    tete = next(
+        (p for p in phases if p.type is TypePhase.QUALIFICATION and not p.sources),
+        None,
+    )
+    if tete is None or tete.etape_id is None:
+        return None
+    return tete.etape_id, ClassementSource(classement=classement, ordre=tete.ordre)
 
 
 class ServiceSaisieDuels:
@@ -454,30 +474,10 @@ class ServiceSaisieDuels:
         # repository, `DETTE-031`). Sous `if phase.sources` : sans source déclarée, `preleves`
         # n'appelle jamais le résolveur et l'entrée serait pure perte.
 
-        # ⚠️ **La qualification de TÊTE, donc sans source** (2ᵉ passe de revue) : la valeur posée
-        # est le classement du **créneau entier**, ce que le résolveur ne rend que pour elle. Une
-        # qualification *prélevée* (ADR-0082) rend une tranche ; l'amorcer ainsi court-circuiterait
-        # sa vraie résolution, sans erreur ni signal. ⚠️ `not p.sources` est une **garde de
-        # défense** qu'aucun test ne pince : `par_depart` est trié par rang des deux côtés, donc la
-        # tête sort la première dès qu'elle existe (cf. la docstring du test homonyme).
-        tete = next(
-            (
-                p
-                for p in self._phases.par_depart(phase.depart_id)
-                if p.type is TypePhase.QUALIFICATION and not p.sources
-            ),
-            None,
-        )
-        # ⚠️ **Amorcé par l'identité, et estampillé** (ADR-0078, correctif de revue). La clé était
-        # restée le **rang** alors que le résolveur lit par identité : la mémoïsation ne prenait
-        # plus (`DETTE-031`), et l'entrée fausse ci-dessus dormait faute d'être jamais lue.
-        if (
-            phase.sources
-            and tete is not None
-            and tete.etape_id is not None
-            and tete.etape_id not in cache
-        ):
-            cache[tete.etape_id] = ClassementSource(classement=classement, ordre=tete.ordre)
+        if phase.sources:
+            amorce = amorce_du_cache(self._phases.par_depart(phase.depart_id), classement)
+            if amorce is not None and amorce[0] not in cache:
+                cache[amorce[0]] = amorce[1]
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste

@@ -130,14 +130,8 @@ def test_upgrade_rattache_l_avancement_a_l_etape_de_son_rang_dans_son_propre_tou
     Le tournoi 2 porte les mêmes rangs que le tournoi 1 : c'est ce qui prouve que la résolution
     est cloisonnée par tournoi, et pas globale.
     """
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    cfg = _config(url)
-    command.upgrade(cfg, _AVANT)
-    engine = sa.create_engine(url)
+    cfg, engine = _preparer(tmp_path)
     try:
-        with engine.begin() as conn:
-            _semer(conn)
-
         command.upgrade(cfg, _APRES)
 
         rattachements = _rattachements(engine)
@@ -158,14 +152,8 @@ def test_upgrade_supprime_l_avancement_orphelin(tmp_path: Path) -> None:
     prélèvement dont le rang ne se résout pas disparaît lui aussi (test ci-dessous). Les deux sont
     annoncés par la fiche fonctionnelle et comptés au journal d'Alembic.
     """
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    cfg = _config(url)
-    command.upgrade(cfg, _AVANT)
-    engine = sa.create_engine(url)
+    cfg, engine = _preparer(tmp_path)
     try:
-        with engine.begin() as conn:
-            _semer(conn)
-
         command.upgrade(cfg, _APRES)
 
         with engine.connect() as conn:
@@ -182,14 +170,8 @@ def test_upgrade_reecrit_les_deux_formes_historiques_de_prelevement(tmp_path: Pa
     Oublier la seconde laisserait muets les prélèvements des plus vieux tournois : elle est
     normalisée en liste au passage, puisque le lecteur cible ne consulte plus `config.source`.
     """
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    cfg = _config(url)
-    command.upgrade(cfg, _AVANT)
-    engine = sa.create_engine(url)
+    cfg, engine = _preparer(tmp_path)
     try:
-        with engine.begin() as conn:
-            _semer(conn)
-
         command.upgrade(cfg, _APRES)
 
         configs = _configs(engine)
@@ -213,13 +195,9 @@ def test_upgrade_retire_un_prelevement_que_le_rang_ne_resout_pas(tmp_path: Path)
     déroulé** du tournoi en `InfrastructureError` — écran d'administration en erreur, sans recours.
     Le prélèvement ne désignait déjà rien ; le retirer conserve le comportement observé (inerte).
     """
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    cfg = _config(url)
-    command.upgrade(cfg, _AVANT)
-    engine = sa.create_engine(url)
+    cfg, engine = _preparer(tmp_path)
     try:
         with engine.begin() as conn:
-            _semer(conn)
             _etape(
                 conn,
                 44,
@@ -249,14 +227,8 @@ def test_l_aller_retour_restitue_les_rangs_et_les_ancres(tmp_path: Path) -> None
     Seule différence assumée, sans conséquence : la forme historique `config.source` ressort
     normalisée en `config.sources`, que le lecteur de `0055` acceptait déjà.
     """
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    cfg = _config(url)
-    command.upgrade(cfg, _AVANT)
-    engine = sa.create_engine(url)
+    cfg, engine = _preparer(tmp_path)
     try:
-        with engine.begin() as conn:
-            _semer(conn)
-
         command.upgrade(cfg, _APRES)
         command.downgrade(cfg, _AVANT)
 
@@ -286,36 +258,91 @@ def _preparer(tmp_path: Path) -> tuple[Config, sa.Engine]:
     return cfg, engine
 
 
-def test_upgrade_purge_les_trois_tables_filles_de_l_avancement_orphelin(tmp_path: Path) -> None:
+def _accrocher_les_filles(conn: sa.Connection, phase_id: int) -> None:
+    """Une ligne dans **chacune des huit tables** qui pendent à `phase`, plus une `volee`.
+
+    ⚠️ Le décor porte l'**invariant**, pas la liste du jour : la 2ᵉ passe n'avait semé que les
+    trois tables que le correctif d'alors traitait, si bien que les cinq autres — celles à
+    `ON DELETE CASCADE`, cascade **inerte** sous Alembic — restaient invisibles au
+    `foreign_key_check`. Ajouter une fille au schéma sans l'ajouter ici doit faire rougir.
+    """
+    conn.execute(
+        sa.text(
+            "INSERT INTO franchissement_arret (phase_id, apres_tour, etat) "
+            "VALUES (:p, 1, 'ouvert')"
+        ),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO arret_de_circonstance (depart_id, phase_id, apres_tour, portee) "
+            "VALUES (1, :p, 1, 'depart')"
+        ),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO barrage (id, phase_id, portee, participants_json, cree_le, depart_id) "
+            "VALUES (7, :p, 'phase', '[]', '2026-09-20T09:00:00', 1)"
+        ),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text("INSERT INTO serie (id, tournoi_id, archer_id, phase_id) VALUES (3, 1, 1, :p)"),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO volee (serie_id, numero, valeurs, created_at) "
+            "VALUES (3, 1, '[]', '2026-09-20T09:00:00')"
+        )
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO duel "
+            "(phase_id, match_numero, haut_genre, haut_ref, bas_genre, bas_ref, manches) "
+            "VALUES (:p, 1, 'archer', '1', 'archer', '2', '[]')"
+        ),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO forfait "
+            "(tournoi_id, archer_id, phase_id, nature, declare_par, declare_le) "
+            "VALUES (1, 1, :p, 'abandon', 'Admin', '2026-09-20T09:00:00')"
+        ),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO placement_tableau "
+            "(phase_id, tour, inscription_id, cible_index, position) VALUES (:p, 1, 1, 1, 'A')"
+        ),
+        {"p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO placement_par_bloc "
+            "(phase_id, cible_index, position, groupe_numero, rang) VALUES (:p, 1, 'A', 1, 1)"
+        ),
+        {"p": phase_id},
+    )
+
+
+def test_upgrade_purge_toutes_les_tables_filles_de_l_avancement_orphelin(tmp_path: Path) -> None:
     """Supprimer la phase 99 sans purger ses filles **casserait l'intégrité référentielle**.
 
-    Aucune des trois FK n'est `ON DELETE CASCADE`, et Alembic tourne sans `PRAGMA foreign_keys` :
-    la suppression passerait en silence et la base sortirait de la migration dans un état que son
-    propre runtime (`engine.py`, FK actives) refuse. `barrage.phase_id` étant **nullable**, la
-    ligne survit détachée — un barrage est un tir réellement effectué.
+    ⚠️ **Huit tables pendent à `phase`.** Trois n'ont pas de cascade ; les cinq autres en ont une
+    qui **ne se déclenche pas**, `migrations/env.py` montant son moteur sans
+    `PRAGMA foreign_keys=ON`. La base sortirait donc de la migration dans un état que son propre
+    runtime refuse — et `phase.id` étant un `rowid` réattribuable, une phase neuve hériterait des
+    feuilles de marque du fantôme. `barrage.phase_id` étant **nullable**, sa ligne survit
+    détachée : un barrage est un tir réellement effectué.
     """
     cfg, engine = _preparer(tmp_path)
     try:
         with engine.begin() as conn:
-            conn.execute(
-                sa.text(
-                    "INSERT INTO franchissement_arret (phase_id, apres_tour, etat) "
-                    "VALUES (99, 1, 'ouvert')"
-                )
-            )
-            conn.execute(
-                sa.text(
-                    "INSERT INTO arret_de_circonstance (depart_id, phase_id, apres_tour, portee) "
-                    "VALUES (1, 99, 1, 'depart')"
-                )
-            )
-            conn.execute(
-                sa.text(
-                    "INSERT INTO barrage "
-                    "(id, phase_id, portee, participants_json, cree_le, depart_id) "
-                    "VALUES (7, 99, 'phase', '[]', '2026-09-20T09:00:00', 1)"
-                )
-            )
+            _accrocher_les_filles(conn, phase_id=99)
 
         command.upgrade(cfg, _APRES)
 
@@ -334,13 +361,27 @@ def test_upgrade_purge_les_trois_tables_filles_de_l_avancement_orphelin(tmp_path
             arrets = conn.execute(
                 sa.text("SELECT COUNT(*) FROM arret_de_circonstance")
             ).scalar_one()
-            # `scalar_one` : la ligne doit **exister** (sinon le barrage a été supprimé, pas
-            # détaché) et son `phase_id` valoir `None`.
+            # ⚠️ `scalar_one`, **pas** `scalar_one_or_none` : le second rend `None` aussi quand
+            # la ligne a disparu, donc un `DELETE FROM barrage` à la place de l'`UPDATE` laisserait
+            # ce test vert — c'est-à-dire le sabotage exact que l'invariant interdit.
             barrage = conn.execute(
                 sa.text("SELECT phase_id FROM barrage WHERE id = 7")
-            ).scalar_one_or_none()
+            ).scalar_one()
+            restantes = {
+                table: compte
+                for table in (
+                    "serie",
+                    "volee",
+                    "duel",
+                    "forfait",
+                    "placement_tableau",
+                    "placement_par_bloc",
+                )
+                if (compte := conn.execute(sa.text(f"SELECT COUNT(*) FROM {table}")).scalar_one())
+            }
         assert manquements == [], "aucune ligne ne doit pointer une phase disparue"
         assert (franchissements, arrets) == (0, 0)
+        assert restantes == {}, "les cinq tables à cascade inerte sont purgées elles aussi"
         assert barrage is None, "le barrage survit, détaché"
     finally:
         engine.dispose()
@@ -399,5 +440,31 @@ def test_upgrade_leve_l_unicite_du_rang_dans_le_deroule(tmp_path: Path) -> None:
                 sa.text("SELECT COUNT(*) FROM deroule_etape WHERE tournoi_id = 1 AND ordre = 1")
             ).scalar_one()
         assert au_rang_1 == 2
+    finally:
+        engine.dispose()
+
+
+def test_upgrade_retire_un_prelevement_qui_ne_porte_aucune_ancre(tmp_path: Path) -> None:
+    """Une source **sans clé d'ancre** disparaît elle aussi (3ᵉ passe de revue).
+
+    Troisième branche de retrait, distincte des deux autres : la source ne porte ni
+    `ordre_source` ni rien qui désigne une phase. Défensive — le sérialiseur d'avant l'US écrivait
+    toujours `ordre_source` —, mais elle **supprime de la donnée** là où la rédaction d'origine la
+    conservait, et le libellé du journal (« sans ancre résoluble ») la couvre exprès.
+    """
+    cfg, engine = _preparer(tmp_path)
+    try:
+        with engine.begin() as conn:
+            _etape(
+                conn,
+                47,
+                tournoi=1,
+                ordre=7,
+                config={"sources": [{"nature": "rangs", "rang_debut": 1, "rang_fin": 2}]},
+            )
+
+        command.upgrade(cfg, _APRES)
+
+        assert _configs(engine)[47]["sources"] == []
     finally:
         engine.dispose()

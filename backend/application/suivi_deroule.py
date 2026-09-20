@@ -22,12 +22,11 @@ from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
 from domain.phase import (
-    RANG_INTROUVABLE,
     TYPES_EN_TABLEAU,
     Phase,
     PhaseId,
     TypePhase,
-    VueParRangs,
+    rangs_aux_ancres_perdues,
     vues_par_rangs,
 )
 from domain.ports import (
@@ -46,26 +45,6 @@ from domain.tableau import Match, Tableau
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
-
-
-def _tracer_les_ancres_perdues(depart_id: DepartId, vues: Sequence[VueParRangs]) -> None:
-    """Journalise les prélèvements que la projection **tolérante** n'a pas su résoudre.
-
-    ⚠️ La tolérance de `vues_par_rangs` est délibérée — un créneau incomplet s'affiche dégradé
-    plutôt qu'en erreur —, mais sans trace elle est **silencieuse** : l'écran de salle montre un
-    bloc vide et rien côté serveur ne dit pourquoi. Le journal est le seul endroit où un
-    organisateur puisse remonter la cause (correctif de 2ᵉ passe de revue, E05US022).
-    """
-    perdues = sum(
-        1 for vue in vues for source in vue.sources if source.ordre_source == RANG_INTROUVABLE
-    )
-    if perdues:
-        _logger.warning(
-            "Suivi du départ %s : %s prélèvement(s) désignent une étape absente du déroulé ; "
-            "les blocs concernés s'affichent dégradés.",
-            depart_id,
-            perdues,
-        )
 
 
 class LecteurAvancementDePhase(Protocol):
@@ -199,6 +178,26 @@ class ServiceSuiviDeroule:
         self._engages = engages
         self._tableaux = tableaux
         self._avancements: dict[TypePhase, LecteurAvancementDePhase] = {}
+        self._ancres_perdues_signalees: dict[DepartId, tuple[int, ...]] = {}
+
+    def _tracer_les_ancres_perdues(self, depart_id: DepartId, rangs: tuple[int, ...]) -> None:
+        """Journalise les prélèvements que la projection **tolérante** n'a pas su résoudre.
+
+        Sans trace, la tolérance de `vues_par_rangs` est muette : un bloc vide à l'écran, rien
+        côté serveur. ⚠️ **Signalé au CHANGEMENT, pas à chaque appel** : route publique pollée
+        toutes les 10 s par chaque tablette, sur un état qui **persiste** jusqu'à réparation —
+        ~86 000 lignes par jour, qui noieraient le repli plus urgent de `ServiceSaisie`.
+        """
+        if rangs == self._ancres_perdues_signalees.get(depart_id, ()):
+            return
+        self._ancres_perdues_signalees[depart_id] = rangs
+        if rangs:
+            _logger.warning(
+                "Suivi du départ %s : les phases %s sont alimentées par une étape absente "
+                "du déroulé ; leurs blocs s'affichent dégradés.",
+                depart_id,
+                ", ".join(str(rang) for rang in rangs),
+            )
 
     def brancher_lecteur_avancement(
         self, type_phase: TypePhase, lecteur: LecteurAvancementDePhase
@@ -229,7 +228,7 @@ class ServiceSuiviDeroule:
         phases = sorted(self._phases.par_depart(depart_id), key=lambda phase: phase.ordre)
         effectif = self._engages.nb_engages_du_depart(depart_id)
         vues = vues_par_rangs(phases)
-        _tracer_les_ancres_perdues(depart_id, vues)
+        self._tracer_les_ancres_perdues(depart_id, rangs_aux_ancres_perdues(vues))
         projection = projeter(vues, effectif)
         par_ordre = {phase.ordre: phase for phase in phases}
         blocs = tuple(

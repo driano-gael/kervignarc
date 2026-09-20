@@ -113,8 +113,11 @@ def _reecrire_sources(
             {"config": json.dumps(config), "id": etape_id},
         )
     if retires:
-        # Une perte de donnee, donc une trace — au meme titre que les avancements orphelins.
-        _JOURNAL.info("0056 : %s prelevement(s) sans etape resoluble retire(s).", retires)
+        # Une perte de donnée, donc une trace — au même titre que les avancements orphelins.
+        # ⚠️ « sans ancre résoluble » couvre **deux** cas : l'ancre désigne un rang qu'aucune
+        # étape ne porte, ou la source n'en portait aucune. Les deux sont inertes avant la
+        # reprise ; les distinguer au journal n'apprendrait rien à qui le lit.
+        _JOURNAL.info("0056 : %s prélèvement(s) sans ancre résoluble retiré(s).", retires)
 
 
 def upgrade() -> None:
@@ -139,19 +142,31 @@ def upgrade() -> None:
     if orphelines:
         # Déjà invisibles à toute lecture (écartées comme orphelines par les deux adapters) : les
         # supprimer est ce qui rend la colonne `NOT NULL` tenable sans inventer de rattachement.
-        # ⚠️ **Les TROIS tables filles, pas une** (2ᵉ passe de revue : la 1ʳᵉ rédaction n'en
-        # purgeait qu'une, sur un raisonnement qui valait pour les trois). Aucune n'a d'`ON DELETE
-        # CASCADE`, et Alembic tourne sans `PRAGMA foreign_keys` : la base serait sortie de la
-        # migration dans un état que son propre runtime (`engine.py`, FK actives) juge invalide.
-        # `barrage.phase_id` étant **nullable**, on le détache au lieu de le supprimer — un
-        # barrage est un tir réellement effectué, on ne le perd pas avec un avancement fantôme.
+        # ⚠️ **HUIT tables pendent à `phase`, pas trois** (3ᵉ passe de revue ; la 1ʳᵉ rédaction
+        # n'en purgeait qu'une, la 2ᵉ trois). Cinq portent `ON DELETE CASCADE`, **et la cascade ne
+        # se déclenche pas** : `migrations/env.py` construit son moteur sans le listener
+        # `PRAGMA foreign_keys=ON` que seul `infrastructure/db/engine.py` pose. Les laisser
+        # ferait sortir la base dans un état que son propre runtime juge invalide.
+        # ⚠️ `barrage.phase_id` étant **nullable**, on le détache : un barrage est un tir
+        # réellement effectué, on ne le perd pas avec un avancement fantôme.
         orphelines_sql = "(SELECT id FROM phase WHERE etape_id IS NULL)"
+        # `volee` d'abord : elle pend à `serie`, dont la cascade est tout aussi inerte.
         connexion.execute(
-            sa.text(f"DELETE FROM franchissement_arret WHERE phase_id IN {orphelines_sql}")
+            sa.text(
+                "DELETE FROM volee WHERE serie_id IN "
+                f"(SELECT id FROM serie WHERE phase_id IN {orphelines_sql})"
+            )
         )
-        connexion.execute(
-            sa.text(f"DELETE FROM arret_de_circonstance WHERE phase_id IN {orphelines_sql}")
-        )
+        for fille in (
+            "serie",
+            "duel",
+            "forfait",
+            "placement_tableau",
+            "placement_par_bloc",
+            "franchissement_arret",
+            "arret_de_circonstance",
+        ):
+            connexion.execute(sa.text(f"DELETE FROM {fille} WHERE phase_id IN {orphelines_sql}"))
         connexion.execute(
             sa.text(f"UPDATE barrage SET phase_id = NULL WHERE phase_id IN {orphelines_sql}")
         )

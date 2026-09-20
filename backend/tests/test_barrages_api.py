@@ -58,11 +58,20 @@ class Scenario:
         self.tournoi_id = tournoi.id
         # Le créneau porte la qualification, le classement et le barrage (E01US025, ADR-0075) : les
         # archers y sont **inscrits**, car c'est l'inscription qui dit qui tire ici.
-        depart = DepartRepositorySQL(db.session_factory).ajouter(
+        departs = DepartRepositorySQL(db.session_factory)
+        # ⚠️ **Un créneau jeté d'abord**, pour que `depart_id != tournoi_id` (3ᵉ passe de revue).
+        # Sans lui, les deux valent 1 et douze assertions de ce fichier passaient un identifiant
+        # de tournoi à une route de créneau sans rien faire rougir — la classe `DETTE-044` qui a
+        # livré un vrai bug la veille. Patron repris de `test_simulation_api._tournoi_simulable`.
+        departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=9, tarif_centimes=800, horaire="08:00")
+        )
+        depart = departs.ajouter(
             Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
         )
         assert depart.id is not None
         self.depart_id = depart.id
+        assert self.depart_id != self.tournoi_id, "décor recoincidé : créneau et tournoi"
         inscriptions = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
@@ -135,8 +144,8 @@ def _classement(client: TestClient, depart_id: int) -> dict[str, object]:
     return corps
 
 
-def _rangs(client: TestClient, tournoi_id: int) -> dict[int, int | None]:
-    lignes = _classement(client, tournoi_id)["lignes"]
+def _rangs(client: TestClient, depart_id: int) -> dict[int, int | None]:
+    lignes = _classement(client, depart_id)["lignes"]
     assert isinstance(lignes, list)
     return {ligne["archer_id"]: ligne["rang_scratch"] for ligne in lignes}
 
@@ -198,7 +207,7 @@ def test_sans_seuil_le_classement_est_celui_d_e06us001(
         corps = _classement(client, scenario.depart_id)
 
         assert corps["egalites_a_departager"] == []
-        assert _rangs(client, scenario.tournoi_id) == {
+        assert _rangs(client, scenario.depart_id) == {
             scenario.archers[0]: 1,
             scenario.archers[1]: 2,
             scenario.archers[2]: 2,
@@ -227,7 +236,7 @@ def test_le_seuil_se_relit_sur_la_phase(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        phases = client.get(f"/api/v1/tournois/{scenario.depart_id}/phases").json()
+        phases = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/phases").json()
 
         assert phases[0]["barrage_jusqu_au"] == 8
 
@@ -263,7 +272,7 @@ def test_le_barrage_tire_rend_les_rangs_consecutifs(
         assert manche.json()["est_resolu"] is True
         assert manche.json()["ordre"] == [troisieme, second]
 
-        assert _rangs(client, scenario.tournoi_id) == {
+        assert _rangs(client, scenario.depart_id) == {
             scenario.archers[0]: 1,
             troisieme: 2,
             second: 3,
@@ -299,8 +308,8 @@ def test_un_barrage_non_resolu_laisse_le_rang_partage(
 
         assert manche.json()["est_resolu"] is False
         assert manche.json()["groupes_a_rejouer"] == [[second, troisieme]]
-        assert _rangs(client, scenario.tournoi_id)[second] == 2
-        assert _rangs(client, scenario.tournoi_id)[troisieme] == 2
+        assert _rangs(client, scenario.depart_id)[second] == 2
+        assert _rangs(client, scenario.depart_id)[troisieme] == 2
 
 
 def test_clore_un_barrage_indecis_est_refuse(
@@ -608,7 +617,7 @@ def test_corriger_un_barrage_clos_le_rouvre(
         assert reponse.status_code == 200, reponse.text
         assert reponse.json()["clos"] is False
         assert reponse.json()["ordre"] == [second, troisieme]
-        assert _rangs(client, scenario.tournoi_id)[second] == 2
+        assert _rangs(client, scenario.depart_id)[second] == 2
 
 
 def test_le_verdict_survit_a_l_effacement_du_seuil(
@@ -638,7 +647,7 @@ def test_le_verdict_survit_a_l_effacement_du_seuil(
         _regler_le_seuil(client, scenario, None)
 
         assert _classement(client, scenario.depart_id)["egalites_a_departager"] == []
-        assert _rangs(client, scenario.tournoi_id) == {
+        assert _rangs(client, scenario.depart_id) == {
             scenario.archers[0]: 1,
             troisieme: 2,
             second: 3,
@@ -751,7 +760,7 @@ def test_un_barrage_de_poule_ne_touche_pas_le_classement_de_qualification(
     premier, second, troisieme = scenario.archers
     with TestClient(app_barrages) as client:
         connecter_admin(client)
-        avant = _rangs(client, scenario.tournoi_id)
+        avant = _rangs(client, scenario.depart_id)
         barrage_id = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
             json={
@@ -771,7 +780,7 @@ def test_un_barrage_de_poule_ne_touche_pas_le_classement_de_qualification(
             },
         )
 
-        assert _rangs(client, scenario.tournoi_id) == avant
+        assert _rangs(client, scenario.depart_id) == avant
         assert premier in avant
 
 
@@ -1147,7 +1156,7 @@ def test_le_verdict_est_visible_du_classement_que_consomme_le_placement(
         )
 
         # Le classement que consomme le placement voit bien l'ordre issu du barrage.
-        rangs = _rangs(client, scenario.tournoi_id)
+        rangs = _rangs(client, scenario.depart_id)
         assert rangs[troisieme] == 2
         assert rangs[second] == 3
 
@@ -1181,7 +1190,7 @@ def test_un_barrage_acte_devient_perime_si_le_groupe_change(
             },
         )
         client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
-        assert _rangs(client, scenario.tournoi_id)[troisieme] == 2
+        assert _rangs(client, scenario.depart_id)[troisieme] == 2
 
         # Un 4ᵉ archer rejoint l'égalité : le verdict clos ne décrit plus le bon groupe.
         _ajouter_archer(app_barrages, scenario, ("10", "9", "8"))
@@ -1192,7 +1201,7 @@ def test_un_barrage_acte_devient_perime_si_le_groupe_change(
         # …et le classement confirme : le verdict est écarté, les rangs sont repartagés — **les
         # trois**, arrivant compris. Sans cette dernière assertion, une variante où l'arrivant
         # serait mal classé tout en repartageant les deux autres passerait inaperçue.
-        rangs = _rangs(client, scenario.tournoi_id)
+        rangs = _rangs(client, scenario.depart_id)
         assert rangs[second] == 2
         assert rangs[troisieme] == 2
         assert sorted(rang for rang in rangs.values() if rang is not None) == [1, 2, 2, 2]
@@ -1263,7 +1272,7 @@ def test_un_barrage_acte_est_perime_meme_si_le_groupe_glisse_de_rang(
         _ajouter_archer(app_barrages, scenario, ("10", "10", "8"))
 
         barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
-        rangs = _rangs(client, scenario.tournoi_id)
+        rangs = _rangs(client, scenario.depart_id)
         assert rangs[second] == rangs[troisieme], "le verdict est écarté, les rangs sont repartagés"
         assert barrage["perime"] is True, "…et l'écran doit le dire"
 
@@ -1303,8 +1312,8 @@ def test_un_barrage_acte_est_perime_meme_si_le_seuil_est_efface(
         assert _classement(client, scenario.depart_id)["egalites_a_departager"] == []
         barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
         assert (
-            _rangs(client, scenario.tournoi_id)[second]
-            == _rangs(client, scenario.tournoi_id)[troisieme]
+            _rangs(client, scenario.depart_id)[second]
+            == _rangs(client, scenario.depart_id)[troisieme]
         )
         assert barrage["perime"] is True
 
