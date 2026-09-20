@@ -114,7 +114,10 @@ Tournoi ──► Déroulé : suite d'ÉTAPES (définition, une seule fois)
 
 - `backend/domain/deroule_etape.py` (`EtapeDeroule`) et `backend/domain/phase.py` (`Phase`,
   `SequencePhases` sur les étapes)
-- `backend/domain/format_tournoi.py` (`appliquer` produit **un** déroulé)
+- `backend/domain/format_tournoi.py` (`verifier_applicable` et `etapes_ordonnees` — **un**
+  déroulé, posé par `application/formats.py`. La méthode unique qui le produisait a été
+  scindée en deux par E05US022 : ancrer un prélèvement demande l'identité des étapes
+  précédentes, que seule l'écriture attribue, ADR-0078 §3)
 - `backend/application/departs.py` (`ServiceDeparts.creer`) : le **sens inverse** de la
   synchronisation — un créneau créé après coup rejoue le déroulé **déjà** composé, une instance par
   étape. L'ADR n'énonçait l'invariant que dans un sens (« ajouter une étape l'instancie dans chaque

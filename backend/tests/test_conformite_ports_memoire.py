@@ -126,16 +126,18 @@ def _contrat_phase(
 
     # Le déroulé, **une fois par tournoi** : c'est lui qui porte le type de chaque rang.
     # (On évite le type `qualification`, qui exigerait un barème — hors sujet ici.)
-    # ⚠️ **Trois étapes jetables d'abord** (3ᵉ passe de revue E05US022) : les deux allocateurs
-    # partent de 1, si bien que les vraies étapes recevaient les identités 1, 2, 3 — c'est-à-dire
-    # leurs rangs. Le contrat éprouve précisément la jointure `phase.etape_id` (ADR-0078) : la
-    # coïncidence le rendait vert pour un adapter resté sur le rang. Supprimées **après** la pose
-    # réelle, sans quoi SQLite rendrait leurs `rowid`.
+    # ⚠️ **Dix étapes jetables d'abord** (E05US022, 3ᵉ puis 4ᵉ passe de revue) : les deux
+    # allocateurs partent de 1, si bien que les vraies étapes recevaient les identités 1, 2, 3 —
+    # c'est-à-dire leurs rangs. Le contrat éprouve précisément la jointure `phase.etape_id`
+    # (ADR-0078) : la coïncidence le rendait vert pour un adapter resté sur le rang. **Dix et non
+    # trois** : avec trois, les étapes prenaient 4-7 et les cinq phases 1-5, donc `PhaseId 4` et
+    # `PhaseId 5` valaient encore une identité d'étape — le recouvrement que ce décor doit
+    # précisément interdire. Supprimées **après** la pose réelle, sans quoi les `rowid` reviennent.
     brulees = [
         deroules.ajouter(
             EtapeDeroule(tournoi_id=tournoi.id, ordre=900 + i, type=TypePhase.PLACEMENT)
         )
-        for i in range(3)
+        for i in range(10)
     ]
     etapes = [
         deroules.ajouter(EtapeDeroule(tournoi_id=tournoi.id, ordre=ordre, type=type_etape))
@@ -160,6 +162,13 @@ def _contrat_phase(
         phases.ajouter(etape.instancier(matin.id))
     phases.ajouter(par_rang[1].instancier(apres_midi.id))  # même tournoi, autre vague
     phases.ajouter(ailleurs_etape.instancier(ailleurs.id))  # d'un autre tournoi
+
+    # ⚠️ **Les deux espaces d'identifiants doivent être DISJOINTS**, pas seulement décalés du
+    # rang : c'est ce qui fait qu'un adapter confondant `PhaseId` et `EtapeDerouleId` tombe dans
+    # le vide au lieu de tomber sur une étape valide (`DETTE-044`).
+    identites_de_phase = {p.id for p in phases.par_tournoi(tournoi.id)}
+    identites_d_etape = {e.id for e in [*etapes, ailleurs_etape]}
+    assert identites_de_phase.isdisjoint(identites_d_etape), "décor recoincidé : PhaseId ↔ EtapeId"
 
     du_depart = phases.par_depart(matin.id)
     assert [p.ordre for p in du_depart] == [1, 2, 3], "par_depart filtre puis trie par ordre."

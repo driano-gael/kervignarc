@@ -164,22 +164,25 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
   l'avancement, plus `table_des_rangs` et `vues_du_deroule`.
 - **`backend/domain/format_tournoi.py`** — `ModelePhase.sources` reste en `SourceModele` (§3) ;
   `ModelePhase.pour_tournoi` et `ModelePhase.d_etape` **sont** les deux sens de la conversion (§4) ;
-  `FormatTournoi.verifier_applicable` et `FormatTournoi.etapes_ordonnees` ont remplacé
-  `FormatTournoi.appliquer`. ⚠️ `verifier_applicable` **pose ET instancie à blanc** : les
+  `FormatTournoi.verifier_applicable` et `FormatTournoi.etapes_ordonnees` ont remplacé la
+  méthode unique de matérialisation, supprimée (§3). ⚠️ `verifier_applicable` **pose ET instancie à blanc** : les
   invariants d'`EtapeDeroule` et les quatre gardes de `Phase.__post_init__` (`DETTE-078`) ne se
   lèvent qu'à la construction, et `ServiceFormats.appliquer` détruit le déroulé en place avant de
   poser le neuf. Sans les deux moitiés, un format invalide laissait le tournoi sans phases.
 - **`backend/migrations/versions/0056_ancrage_par_identite.py`** — la reprise : `phase.etape_id`
   rempli par la jointure d'hier, les `config` réécrites, `uq_deroule_tournoi_ordre` levée.
-  ⚠️ Elle **purge les huit tables filles** de `phase` avant de supprimer un avancement orphelin :
-  cinq portent `ON DELETE CASCADE`, et cette cascade est **inerte** — `migrations/env.py` monte
-  son moteur sans le `PRAGMA foreign_keys=ON` de `infrastructure/db/engine.py`.
+  ⚠️ Avant de supprimer un avancement orphelin, elle **supprime sept de ses huit tables filles**
+  plus la petite-fille `volee` (qui pend à `serie`), et **détache** la huitième (`barrage`, dont
+  la colonne est nullable — un barrage est un tir réellement effectué). Cinq de ces filles
+  portent `ON DELETE CASCADE`, et cette cascade est **inerte** : `migrations/env.py` monte son
+  moteur sans le `PRAGMA foreign_keys=ON` de `infrastructure/db/engine.py`.
 - **`backend/tests/conftest.py`** — `identite_d_etape(ordre, tournoi_id)` et
-  `decaler_les_identites_sql` : les décors n'ont **pas** le droit de faire coïncider identité et
-  rang, sans quoi tout lecteur resté sur le rang passe vert (`DETTE-044`). C'est un porteur au
-  même titre que le code : l'ancrage par identité n'est vérifiable que là où la coïncidence est
-  rompue.
-- **`backend/domain/ports.py`** — `PhaseRepository.reordonner` a **disparu** ;
+  `decaler_les_identites_sql` : **décor habilitant, et un garde partiel**. Les deux retirent la
+  coïncidence identité ↔ rang qui masquait les violations ailleurs ; le seul organe qui *garde*
+  est l'`assert etape.id != etape.ordre` de `poser_phase_sql`, et il ne voit que ce qui passe par
+  lui — un décor qui écrit `deroule_etape` lui-même recoïncide sans un rouge (`DETTE-044`).
+- **`backend/domain/ports.py`** — la méthode de réordonnancement de `PhaseRepository` a
+  **disparu** ;
   `DerouleRepository.reordonner` est devenu `enregistrer_plusieurs` (§5, amendé ci-dessous).
 - **`backend/application/formats.py`** (`ServiceFormats.appliquer`) et
   **`backend/application/simulation_format.py`** — les **deux** sites qui matérialisent un format :

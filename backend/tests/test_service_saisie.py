@@ -1468,3 +1468,26 @@ def test_refermer_une_correction_trace_au_nom_du_scoreur() -> None:
     assert trace.action is ActionAuditee.VALIDATION
     assert trace.auteur == "ROUX"
     assert trace.objet is not None and "volée 1" in trace.objet
+
+
+def test_une_qualification_prelevee_sans_etape_ne_reclame_plus_personne() -> None:
+    """Le repli de `_admet` échoue **fermé** (4ᵉ passe de revue).
+
+    Le cas est injoignable en production (`phase.etape_id` est `NOT NULL` depuis la migration
+    `0056`) : ce que la garde protège est le **décor**. Rendre `True` — la rédaction d'avant —
+    faisait admettre **tout le créneau** par une phase prélevée, c'est-à-dire précisément le vert
+    par coïncidence qui avait caché le bloquant de la 2ᵉ passe : un décor oubliant `etape_id`
+    voyait sa fourche « marcher ». Avec `False`, la phase amputée cesse de réclamer qui que ce
+    soit, et la flèche part ailleurs.
+    """
+    m = Montage()
+    haute, _basse, _autre = _monter_la_fourche(m)
+    amputee = m.phases.par_id(haute)
+    assert amputee is not None
+    m.phases.enregistrer(dataclasses.replace(amputee, etape_id=None))
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+
+    assert (
+        m.series.par_archer(haute, m.archer_id) is None
+    ), "une phase prélevée sans étape ne réclame plus personne"

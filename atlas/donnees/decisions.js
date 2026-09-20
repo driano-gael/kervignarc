@@ -4048,8 +4048,7 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "verifier_applicable",
-      "etapes_ordonnees",
-      "appliquer"
+      "etapes_ordonnees"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4202,7 +4201,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [
-      "appliquer"
+      "verifier_applicable",
+      "etapes_ordonnees"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4241,7 +4241,8 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Un déroulé défini une fois, un avancement par départ",
    "us": [
-    "E01US025"
+    "E01US025",
+    "E05US022"
    ]
   },
   {
@@ -4488,7 +4489,6 @@ window.ATLAS.decisions = {
       "ModelePhase.d_etape",
       "FormatTournoi.verifier_applicable",
       "FormatTournoi.etapes_ordonnees",
-      "FormatTournoi.appliquer",
       "verifier_applicable",
       "EtapeDeroule",
       "Phase.__post_init__",
@@ -4518,12 +4518,11 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/ports.py",
      "existe": true,
      "symboles": [
-      "PhaseRepository.reordonner",
+      "PhaseRepository",
       "DerouleRepository.reordonner",
       "enregistrer_plusieurs"
      ],
      "symboles_absents": [
-      "PhaseRepository.reordonner",
       "DerouleRepository.reordonner"
      ],
      "verifiable": true
@@ -4572,7 +4571,9 @@ window.ATLAS.decisions = {
       "phase.etape_id",
       "config",
       "uq_deroule_tournoi_ordre",
-      "phase"
+      "volee",
+      "serie",
+      "barrage"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4581,7 +4582,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/tests/conftest.py",
      "existe": true,
      "symboles": [
-      "decaler_les_identites_sql"
+      "decaler_les_identites_sql",
+      "poser_phase_sql",
+      "deroule_etape"
      ],
      "symboles_absents": [],
      "verifiable": true

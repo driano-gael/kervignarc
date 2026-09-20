@@ -741,8 +741,13 @@ def identite_d_etape(ordre: int, tournoi_id: TournoiId = 1) -> EtapeDerouleId:
 _RANG_BRULE = 900
 """Rang de l'étape éphémère qui décale l'auto-incrément SQL — voir `decaler_les_identites_sql`."""
 
-_IDENTITE_BRULEE = 5_000
-"""Identité de cette étape éphémère : **au-dessus de tout `PhaseId`** qu'un décor allouera.
+_IDENTITE_BRULEE = 20_000
+"""Identité de cette étape éphémère : **au-dessus de toutes les autres bandes**.
+
+⚠️ 20 000, pas 5 000 : la bande conventionnelle d'`identite_d_etape` court jusqu'à 8 999 et
+l'allocateur en mémoire démarre à 9 000. Une allocation SQL partie de 5 001 les recoupait dès la
+101ᵉ étape — inatteignable en pratique, et c'est exactement la forme du « vert par coïncidence »
+que cette US a payé quatre bloquants (3ᵉ passe de revue).
 
 ⚠️ La hauteur est le sujet. Brûler **un** identifiant ne donnait que `id == ordre + 1` : un
 lecteur resté sur le rang ne tombait pas dans le vide, il tombait sur l'étape **voisine** — une
@@ -752,13 +757,15 @@ répondait 200 sur la mauvaise définition.
 """
 
 
-def decaler_les_identites_sql(session_factory: Any, tournoi_id: int) -> int | None:
+def decaler_les_identites_sql(session_factory: Any, tournoi_id: TournoiId) -> EtapeDerouleId | None:
     """Pose une étape éphémère à identité **haute**, si l'auto-incrément est encore bas.
 
     Rend son identifiant, que l'appelant doit supprimer **après** avoir posé la vraie étape :
     `deroule_etape` n'est pas `AUTOINCREMENT`, donc supprimer avant rendrait le `rowid`.
     `DerouleEtapeRepositorySQL.ajouter` **jette** un `id` fourni — d'où le SQL direct, sur une
     ligne jetable dont l'argument « passer par le chemin de production » ne vaut pas.
+    ⚠️ `import sqlalchemy` **local, à ne pas hisser** : ce fichier doit rester importable sans
+    SQLAlchemy pour le hook pre-commit `domain-isolation` (cf. l'en-tête du module).
 
     ⚠️ Le seuil se lit sur `MAX(id)`, pas sur « ce tournoi a-t-il des étapes ? » : un test qui
     vide `deroule_etape` en cours de route (`ServiceFormats.appliquer`) fait repartir SQLite à 1.
@@ -774,9 +781,14 @@ def decaler_les_identites_sql(session_factory: Any, tournoi_id: int) -> int | No
         session.execute(
             sa.text(
                 "INSERT INTO deroule_etape (id, tournoi_id, ordre, type, config) "
-                "VALUES (:id, :tournoi, :ordre, 'placement', '{}')"
+                "VALUES (:id, :tournoi, :ordre, :type, '{}')"
             ),
-            {"id": _IDENTITE_BRULEE, "tournoi": tournoi_id, "ordre": _RANG_BRULE},
+            {
+                "id": _IDENTITE_BRULEE,
+                "tournoi": tournoi_id,
+                "ordre": _RANG_BRULE,
+                "type": TypePhase.PLACEMENT.value,
+            },
         )
         session.commit()
     return _IDENTITE_BRULEE
@@ -939,54 +951,55 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
         # bloquants à cette US. Le `finally` ci-dessous est ce qui empêche l'étape éphémère de
         # survivre à un échec de la vraie pose.
         brulee = decaler_les_identites_sql(session_factory, depart.tournoi_id)
-        etape = deroules.ajouter(
-            EtapeDeroule(
-                tournoi_id=depart.tournoi_id,
-                ordre=phase.ordre,
-                type=phase.type,
-                bareme=phase.bareme,
-                validation=phase.validation,
-                sources=phase.sources,
-                effectif=phase.effectif,
-                barrage_jusqu_au=phase.barrage_jusqu_au,
-                profondeur=phase.profondeur,
-                # E05US023 : le réglage de poules aussi. Les deux jumeaux le perdaient, si bien
-                # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
-                # exactement la classe de divergence que la docstring ci-dessus décrit.
-                poules=phase.poules,
-                # ⚠️ **Le même oubli s'est reproduit en E05US028**, à l'identique : un décor posant
-                # un Big Shoot Off réglé obtenait une phase non réglée, et le test d'API échouait en
-                # `phase_pas_reglee` sur une phase qui l'était. C'est la **2ᵉ** occurrence — ce
-                # recopiage champ par champ est structurellement fragile (rien ne rougit quand on en
-                # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
-                # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
-                big_shoot_off=phase.big_shoot_off,
-                # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot pour
-                # mot : le réglage du système suisse a été oublié ici, et quatre tests d'API ont
-                # échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du
-                # « remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
-                # désormais **tracée** (`DETTE-064`) au lieu de ne vivre qu'en commentaire — c'est
-                # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
-                # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
-                suisse=phase.suisse,
-                # ⚠️ **4ᵉ occurrence, E05US027** — le réglage de la colline a été oublié ici lui
-                # aussi, et **onze** tests d'API ont échoué en `phase_pas_reglee` sur une phase
-                # parfaitement réglée. C'est en cherchant la cause qu'on est retombé sur le
-                # commentaire ci-dessus, qui l'annonçait. La prédiction de la 2ᵉ occurrence (« il le
-                # sera à chaque réglage neuf ») est désormais vérifiée **quatre fois de suite, sans
-                # exception** : aucun réglage n'a jamais été ajouté ici du premier coup, et c'est
-                # toujours un test d'API — jamais une relecture — qui l'a rattrapé. `DETTE-064` est
-                # élargie d'autant ; remède inchangé : une fabrique unique du domaine
-                # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
-                colline=phase.colline,
-                # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
-                # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
-                # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
-                # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
-            )
+        nouvelle = EtapeDeroule(
+            tournoi_id=depart.tournoi_id,
+            ordre=phase.ordre,
+            type=phase.type,
+            bareme=phase.bareme,
+            validation=phase.validation,
+            sources=phase.sources,
+            effectif=phase.effectif,
+            barrage_jusqu_au=phase.barrage_jusqu_au,
+            profondeur=phase.profondeur,
+            # E05US023 : le réglage de poules aussi. Les deux jumeaux le perdaient, si bien
+            # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
+            # exactement la classe de divergence que la docstring ci-dessus décrit.
+            poules=phase.poules,
+            # ⚠️ **Le même oubli s'est reproduit en E05US028**, à l'identique : un décor posant
+            # un Big Shoot Off réglé obtenait une phase non réglée, et le test d'API échouait en
+            # `phase_pas_reglee` sur une phase qui l'était. C'est la **2ᵉ** occurrence — ce
+            # recopiage champ par champ est structurellement fragile (rien ne rougit quand on en
+            # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
+            # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
+            big_shoot_off=phase.big_shoot_off,
+            # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot pour
+            # mot : le réglage du système suisse a été oublié ici, et quatre tests d'API ont
+            # échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du
+            # « remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
+            # désormais **tracée** (`DETTE-064`) au lieu de ne vivre qu'en commentaire — c'est
+            # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
+            # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
+            suisse=phase.suisse,
+            # ⚠️ **4ᵉ occurrence, E05US027** — le réglage de la colline a été oublié ici lui
+            # aussi, et **onze** tests d'API ont échoué en `phase_pas_reglee` sur une phase
+            # parfaitement réglée. C'est en cherchant la cause qu'on est retombé sur le
+            # commentaire ci-dessus, qui l'annonçait. La prédiction de la 2ᵉ occurrence (« il le
+            # sera à chaque réglage neuf ») est désormais vérifiée **quatre fois de suite, sans
+            # exception** : aucun réglage n'a jamais été ajouté ici du premier coup, et c'est
+            # toujours un test d'API — jamais une relecture — qui l'a rattrapé. `DETTE-064` est
+            # élargie d'autant ; remède inchangé : une fabrique unique du domaine
+            # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
+            colline=phase.colline,
+            # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
+            # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
+            # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
+            # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
         )
-        if brulee is not None:
-            deroules.supprimer(brulee)
+        try:
+            etape = deroules.ajouter(nouvelle)
+        finally:
+            if brulee is not None:
+                deroules.supprimer(brulee)
     assert etape.id != etape.ordre, (
         "décor recoincidé : l'identité de l'étape vaut son rang, donc un lecteur resté sur le "
         "rang passera vert par coïncidence (ADR-0078, DETTE-044)."

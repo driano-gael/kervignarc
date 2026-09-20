@@ -153,11 +153,17 @@ appliquées dans l'US qui porte cet ADR :
   `domain/tableau.py` et `domain/duel.py`, qui ne portent **rien** de la portée — aucun n'a de champ
   de rattachement, ils suivent la phase par `phase_id`. Une section « Porté dans le code par » qui
   nomme des modules vides reproduit exactement le défaut d'ADR-0017 qu'elle existe pour empêcher.*
-- `backend/domain/format_tournoi.py` (`verifier_applicable` — le garde appelable **avant** toute
-  écriture — et `etapes_ordonnees` produisent **le déroulé** du tournoi, une séquence unique.
-  ⚠️ `appliquer` **a disparu** en E05US022 : ancrer un prélèvement demande l'identité des étapes
-  précédentes, que seule l'écriture attribue (ADR-0078 §3). ADR-0076 avait déjà révisé cette
-  ligne : elle annonçait « une séquence par départ », ce que le code n'a jamais fait)
+- `backend/domain/format_tournoi.py` (`verifier_applicable`, le garde appelable **avant** toute
+  écriture, et `etapes_ordonnees`, qui rend les modèles dans l'ordre où ils doivent être posés.
+  Le déroulé lui-même est matérialisé par `application/formats.py`, nommé plus bas)
+
+⚠️ **Ce que cette entrée nommait avant le 20/09/2026** : la méthode de matérialisation du format,
+supprimée par E05US022 — ancrer un prélèvement demande l'identité des étapes précédentes, que
+seule l'écriture attribue (ADR-0078 §3). Le nom n'est **pas** répété dans l'entrée ci-dessus, et
+ce n'est pas une coquetterie : le contrôle d'atlas cherche les symboles d'une entrée par présence
+de texte dans le fichier, donc une prose explicative qui cite le symbole disparu le ferait passer
+pour présent. ADR-0076 avait déjà révisé cette ligne : elle annonçait « une séquence par départ »,
+ce que le code n'a jamais fait.
 - `backend/infrastructure/db/repositories/moteur.py` + migration `0042`
 - `backend/tests/test_portee_sportive.py` (garde-fou mécanique)
 
@@ -299,7 +305,7 @@ depuis » commençait à `0080`, et **personne n'avait regardé entre les deux**
 | `0074` les maquettes font foi | hors critère — procédure documentaire | sans objet |
 | `0075` | l'ADR hôte | présente |
 | `0076` déroulé défini une fois | **entre** — inscrit ci-dessus | présente |
-| `0077` supprimer un tournoi | hors critère — parcours UI | présente (écrite par E01US026) |
+| `0077` supprimer un tournoi | **entre** — inscrit plus haut par E01US026 (portée tournoi + cascade transactionnelle) | présente |
 | `0078` ancrage par identité | **entre** — inscrit ci-dessus | présente |
 | `0079` interrupteur « mes archers » | hors critère — UI | présente |
 

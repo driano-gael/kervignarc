@@ -599,9 +599,9 @@ def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx:
 
     assert len(suivi.avancement.blocs) == 2, "le suivi reste servi, dégradé"
     assert capture.messages == [
-        f"Suivi du départ {ctx.depart_id} : les phases 2 sont alimentées par une étape absente "
-        "du déroulé ; leurs blocs s'affichent dégradés."
-    ], "une seule trace, nommant le créneau ET le rang — et pas une par appel"
+        f"Suivi du départ {ctx.depart_id} : la phase 2 est alimentée par une étape absente "
+        "du déroulé ; bloc dégradé."
+    ], "une seule trace, au singulier, nommant le créneau ET le rang — et pas une par appel"
 
 
 def test_une_ancre_perdue_ne_se_signale_qu_au_changement(ctx: Contexte) -> None:
@@ -630,6 +630,50 @@ def test_une_ancre_perdue_ne_se_signale_qu_au_changement(ctx: Contexte) -> None:
         logger.disabled = desactive
 
     assert len(capture.messages) == 1, "cinq lectures d'un état inchangé, un seul avertissement"
+
+
+def test_une_ancre_perdue_de_plus_se_signale_et_la_reparation_reouvre_le_signal(
+    ctx: Contexte,
+) -> None:
+    """La dé-duplication porte sur **l'état**, pas sur « une fois pour toutes » (4ᵉ passe, axe B).
+
+    Un `if depart_id in deja_signales: return` garderait le test jumeau vert **et** perdrait
+    définitivement le signal quand une autre phase casse ensuite — c'est-à-dire exactement le cas
+    que l'organisateur a besoin de voir. On éprouve donc les deux transitions : l'aggravation, et
+    le retour à la normale suivi d'une rechute.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_orpheline(ctx.depart_id), 2)
+    troisieme = dataclasses.replace(_orpheline(ctx.depart_id), ordre=3)
+
+    logger = logging.getLogger("application.suivi_deroule")
+    capture = CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        ctx.service.pour_depart(ctx.depart_id)
+        ctx.ajouter_phase(troisieme, 3)
+        ctx.service.pour_depart(ctx.depart_id)
+        # Réparation : on retire la 3ᵉ, puis la 2ᵉ — le créneau redevient sain, puis rechute.
+        ctx.phases.supprimer(3)
+        ctx.service.pour_depart(ctx.depart_id)
+        ctx.phases.supprimer(2)
+        ctx.service.pour_depart(ctx.depart_id)
+        ctx.ajouter_phase(_orpheline(ctx.depart_id), 4)
+        ctx.service.pour_depart(ctx.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    assert [m.split(" : ")[1] for m in capture.messages] == [
+        "la phase 2 est alimentée par une étape absente du déroulé ; bloc dégradé.",
+        "les phases 2, 3 sont alimentées par une étape absente du déroulé ; bloc dégradé.",
+        "la phase 2 est alimentée par une étape absente du déroulé ; bloc dégradé.",
+        "la phase 2 est alimentée par une étape absente du déroulé ; bloc dégradé.",
+    ], "aggravation, allègement, puis rechute après retour à la normale"
 
 
 # --- Portée : le suivi est celui d'un créneau, jamais du tournoi (ADR-0075) ----------------------

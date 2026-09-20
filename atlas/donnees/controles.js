@@ -173,7 +173,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce PhaseRepository.reordonner, DerouleRepository.reordonner dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
+   "message": "annonce DerouleRepository.reordonner dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0078"
   },

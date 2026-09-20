@@ -627,8 +627,9 @@ Origine : `DETTE-026`, dont le seuil de résorption (règle 16 — « au 3ᵉ é
   par les deux adapters ; ses lignes filles le suivent, sauf le **barrage**, détaché parce qu'un
   barrage est un tir réellement effectué ; (2) un **prélèvement** dont le rang ne se résout pas est
   retiré — il ne peuplait rien, et le garder sans ancre rendait tout le déroulé du tournoi
-  illisible ; (3) un **prélèvement sans clé d'ancre** de même. Les trois partent au journal
-  d'Alembic avec leur compte. ⚠️ Conséquence **observable après** : une phase qui perd une partie
+  illisible ; (3) un **prélèvement sans clé d'ancre** de même. Tous partent au journal d'Alembic
+  avec leur compte — en **deux** lignes, (2) et (3) partageant le même compteur, les distinguer
+  n'apprenant rien à qui les lit. ⚠️ Conséquence **observable après** : une phase qui perd une partie
   de ses prélèvements en gardant son `effectif` déclaré devient `EffectifIncompatible`, ce qui
   bloque toute édition du déroulé jusqu'à correction — annoncé dans `docs/fonctionnel/E05US022.md`.
 - **Notes — le contre-argument est écarté explicitement, pas ignoré.** `models.py` objecte qu'« une

@@ -45,6 +45,15 @@ from domain.tournoi import TournoiId
 EtapeDerouleId = int
 """Identifiant technique d'une étape de déroulé, attribué par la persistance."""
 
+DEPART_A_BLANC = DepartId(0)
+"""Créneau fictif des **instanciations à blanc** : `EtapeDeroule.instancier(DEPART_A_BLANC)`.
+
+⚠️ Quatre gardes (`profondeur`, `poules`, `big_shoot_off`, `suisse` posés sur un type qui ne les
+lit pas) vivent sur `Phase.__post_init__`, pas sur l'étape : seule une instanciation les lève.
+Les appelants qui **écrivent** doivent donc instancier à blanc **avant** (DETTE-078, résorbée le
+20/09/2026). `Phase.__post_init__` ne lit jamais `depart_id`, la valeur est donc inerte.
+"""
+
 
 @dataclass(frozen=True)
 class EtapeDeroule:
@@ -248,13 +257,11 @@ class EtapeDeroule:
         pour qu'un écran s'ouvre toujours.
         """
         if self.colline is not None and self.type is not TypePhase.COLLINE:
-            # DETTE-078
             # ⚠️ **Le refus existait déjà, mais UN CRAN TROP TARD** : il vivait dans
             # `Phase.__post_init__`, donc à `instancier()`, c'est-à-dire **après** que l'étape a
-            # rejoint le déroulé. Une entrée refusée en 422 laissait une étape sans phase, occupant
-            # un rang que l'ajout suivant ne réutilise pas. Le refuser ici le rend antérieur à
-            # toute écriture. Les quatre réglages voisins partagent ce défaut, hérité et inscrit au
-            # registre plutôt que corrigé en douce ici.
+            # rejoint le déroulé. Le poser ici le rend antérieur à toute écriture. Les quatre
+            # réglages voisins vivent toujours sur `Phase` ; ce sont les trois sites d'écriture
+            # qui instancient à blanc pour eux (`DEPART_A_BLANC`, ex-`DETTE-078`).
             raise ConfigurationCollineInvalide(
                 "Un réglage de colline ne se pose que sur une phase de type « colline »."
             )

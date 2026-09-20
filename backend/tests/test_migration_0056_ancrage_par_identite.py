@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
@@ -258,14 +259,65 @@ def _preparer(tmp_path: Path) -> tuple[Config, sa.Engine]:
     return cfg, engine
 
 
-def _accrocher_les_filles(conn: sa.Connection, phase_id: int) -> None:
-    """Une ligne dans **chacune des huit tables** qui pendent à `phase`, plus une `volee`.
+def _tables_filles(engine: sa.Engine) -> set[str]:
+    """Les tables qui portent une clé étrangère vers `phase`, **lues sur le schéma**.
 
-    ⚠️ Le décor porte l'**invariant**, pas la liste du jour : la 2ᵉ passe n'avait semé que les
-    trois tables que le correctif d'alors traitait, si bien que les cinq autres — celles à
-    `ON DELETE CASCADE`, cascade **inerte** sous Alembic — restaient invisibles au
-    `foreign_key_check`. Ajouter une fille au schéma sans l'ajouter ici doit faire rougir.
+    ⚠️ **Au schéma `0055`**, celui que cette migration reçoit — une fille ajoutée par une
+    migration **postérieure** ne la concerne pas. Dans cette limite, l'assertion de couverture
+    rougit si une fille du schéma n'est pas semée : c'est ce qui fait de `_accrocher_les_filles`
+    un décor d'invariant et non une liste du jour. La 3ᵉ passe avait cru tenir cet invariant avec
+    une liste écrite à la main — et c'est une liste écrite à la main qui avait produit le
+    bloquant qu'elle corrigeait.
     """
+    inspecteur = sa.inspect(engine)
+    return {
+        nom
+        for nom in inspecteur.get_table_names()
+        for cle in inspecteur.get_foreign_keys(nom)
+        if cle["referred_table"] == "phase"
+    }
+
+
+_FILLES_SEMEES = frozenset(
+    {
+        "serie",
+        "duel",
+        "forfait",
+        "placement_tableau",
+        "placement_par_bloc",
+        "franchissement_arret",
+        "arret_de_circonstance",
+        "barrage",
+    }
+)
+
+
+def _accrocher_les_filles(conn: sa.Connection, phase_id: int, depart_id: int = 1) -> None:
+    """Une ligne dans **chacune** des tables de `_FILLES_SEMEES`, plus une `volee` sous `serie`.
+
+    Les identifiants dérivent de `phase_id` pour que deux phases puissent être garnies dans le
+    même décor : c'est ce qui permet d'éprouver la purge **dans les deux sens** — les filles de
+    l'orpheline disparaissent, celles d'une phase vivante restent.
+    """
+    serie_id = phase_id * 100 + 3
+    conn.execute(
+        sa.text("INSERT INTO serie (id, tournoi_id, archer_id, phase_id) VALUES (:s, 1, 1, :p)"),
+        {"s": serie_id, "p": phase_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO volee (serie_id, numero, valeurs, created_at) "
+            "VALUES (:s, 1, '[]', '2026-09-20T09:00:00')"
+        ),
+        {"s": serie_id},
+    )
+    conn.execute(
+        sa.text(
+            "INSERT INTO barrage (id, phase_id, portee, participants_json, cree_le, depart_id) "
+            "VALUES (:b, :p, 'phase', '[]', '2026-09-20T09:00:00', :d)"
+        ),
+        {"b": phase_id * 100 + 7, "p": phase_id, "d": depart_id},
+    )
     conn.execute(
         sa.text(
             "INSERT INTO franchissement_arret (phase_id, apres_tour, etat) "
@@ -276,26 +328,9 @@ def _accrocher_les_filles(conn: sa.Connection, phase_id: int) -> None:
     conn.execute(
         sa.text(
             "INSERT INTO arret_de_circonstance (depart_id, phase_id, apres_tour, portee) "
-            "VALUES (1, :p, 1, 'depart')"
+            "VALUES (:d, :p, 1, 'depart')"
         ),
-        {"p": phase_id},
-    )
-    conn.execute(
-        sa.text(
-            "INSERT INTO barrage (id, phase_id, portee, participants_json, cree_le, depart_id) "
-            "VALUES (7, :p, 'phase', '[]', '2026-09-20T09:00:00', 1)"
-        ),
-        {"p": phase_id},
-    )
-    conn.execute(
-        sa.text("INSERT INTO serie (id, tournoi_id, archer_id, phase_id) VALUES (3, 1, 1, :p)"),
-        {"p": phase_id},
-    )
-    conn.execute(
-        sa.text(
-            "INSERT INTO volee (serie_id, numero, valeurs, created_at) "
-            "VALUES (3, 1, '[]', '2026-09-20T09:00:00')"
-        )
+        {"p": phase_id, "d": depart_id},
     )
     conn.execute(
         sa.text(
@@ -309,7 +344,7 @@ def _accrocher_les_filles(conn: sa.Connection, phase_id: int) -> None:
         sa.text(
             "INSERT INTO forfait "
             "(tournoi_id, archer_id, phase_id, nature, declare_par, declare_le) "
-            "VALUES (1, 1, :p, 'abandon', 'Admin', '2026-09-20T09:00:00')"
+            "VALUES (1, :p, :p, 'abandon', 'Admin', '2026-09-20T09:00:00')"
         ),
         {"p": phase_id},
     )
@@ -329,8 +364,8 @@ def _accrocher_les_filles(conn: sa.Connection, phase_id: int) -> None:
     )
 
 
-def test_upgrade_purge_toutes_les_tables_filles_de_l_avancement_orphelin(tmp_path: Path) -> None:
-    """Supprimer la phase 99 sans purger ses filles **casserait l'intégrité référentielle**.
+def test_upgrade_purge_les_filles_de_l_orpheline_et_laisse_les_autres(tmp_path: Path) -> None:
+    """La purge doit couper **exactement** ce qui pend à la phase disparue, ni plus ni moins.
 
     ⚠️ **Huit tables pendent à `phase`.** Trois n'ont pas de cascade ; les cinq autres en ont une
     qui **ne se déclenche pas**, `migrations/env.py` montant son moteur sans
@@ -338,11 +373,20 @@ def test_upgrade_purge_toutes_les_tables_filles_de_l_avancement_orphelin(tmp_pat
     runtime refuse — et `phase.id` étant un `rowid` réattribuable, une phase neuve hériterait des
     feuilles de marque du fantôme. `barrage.phase_id` étant **nullable**, sa ligne survit
     détachée : un barrage est un tir réellement effectué.
+
+    ⚠️ **Les deux sens, et le second est le plus important** : un `DELETE FROM serie` qui perdrait
+    sa clause `WHERE` détruirait **toutes les feuilles de marque de la base** et resterait vert
+    sur le seul sens « les filles de l'orpheline disparaissent » — `foreign_key_check` ne voit que
+    des lignes qui existent. On garnit donc aussi une phase **vivante** (11).
     """
     cfg, engine = _preparer(tmp_path)
     try:
+        assert (
+            _tables_filles(engine) == _FILLES_SEMEES
+        ), "une table fille neuve doit être semée ici, sinon la purge n'est plus éprouvée"
         with engine.begin() as conn:
             _accrocher_les_filles(conn, phase_id=99)
+            _accrocher_les_filles(conn, phase_id=11)
 
         command.upgrade(cfg, _APRES)
 
@@ -355,34 +399,24 @@ def test_upgrade_purge_toutes_les_tables_filles_de_l_avancement_orphelin(tmp_pat
                 for violation in conn.execute(sa.text("PRAGMA foreign_key_check")).all()
                 if violation[2] == "phase"
             ]
-            franchissements = conn.execute(
-                sa.text("SELECT COUNT(*) FROM franchissement_arret")
-            ).scalar_one()
-            arrets = conn.execute(
-                sa.text("SELECT COUNT(*) FROM arret_de_circonstance")
-            ).scalar_one()
-            # ⚠️ `scalar_one`, **pas** `scalar_one_or_none` : le second rend `None` aussi quand
-            # la ligne a disparu, donc un `DELETE FROM barrage` à la place de l'`UPDATE` laisserait
-            # ce test vert — c'est-à-dire le sabotage exact que l'invariant interdit.
-            barrage = conn.execute(
-                sa.text("SELECT phase_id FROM barrage WHERE id = 7")
-            ).scalar_one()
             restantes = {
-                table: compte
-                for table in (
-                    "serie",
-                    "volee",
-                    "duel",
-                    "forfait",
-                    "placement_tableau",
-                    "placement_par_bloc",
-                )
-                if (compte := conn.execute(sa.text(f"SELECT COUNT(*) FROM {table}")).scalar_one())
+                table: [
+                    ligne[0] for ligne in conn.execute(sa.text(f"SELECT phase_id FROM {table}"))
+                ]
+                for table in sorted(_FILLES_SEMEES)
             }
+            volees = conn.execute(sa.text("SELECT serie_id FROM volee")).scalars().all()
         assert manquements == [], "aucune ligne ne doit pointer une phase disparue"
-        assert (franchissements, arrets) == (0, 0)
-        assert restantes == {}, "les cinq tables à cascade inerte sont purgées elles aussi"
-        assert barrage is None, "le barrage survit, détaché"
+        # ⚠️ `scalar_one` implicite par la liste : `barrage` doit **exister** et porter `None`.
+        # Un `DELETE FROM barrage` à la place de l'`UPDATE` rendrait `[11]` au lieu de `[11, None]`.
+        assert sorted(restantes.pop("barrage"), key=str) == [
+            11,
+            None,
+        ], "le barrage de l'orpheline survit, détaché ; celui de la phase 11 est intact"
+        assert restantes == {
+            table: [11] for table in sorted(_FILLES_SEMEES - {"barrage"})
+        }, "les filles de l'orpheline sont coupées, celles de la phase 11 restent"
+        assert list(volees) == [1103], "la volée de la série survivante n'est pas emportée"
     finally:
         engine.dispose()
 
@@ -466,5 +500,56 @@ def test_upgrade_retire_un_prelevement_qui_ne_porte_aucune_ancre(tmp_path: Path)
         command.upgrade(cfg, _APRES)
 
         assert _configs(engine)[47]["sources"] == []
+    finally:
+        engine.dispose()
+
+
+def test_upgrade_journalise_ce_qu_il_retire(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """La reprise **dit** ce qu'elle supprime — c'est la seule garantie rendue à l'organisateur.
+
+    La fiche fonctionnelle promet que « la sortie affichée pendant la mise à jour dit combien de
+    lignes ont été touchées », et le CA de `stories/` en fait une exigence. Sans ce test, un
+    `_JOURNAL.info` retiré, un compteur figé à zéro ou un `if retires:` mal placé passent au vert
+    et l'organisateur perd la trace d'une perte de données.
+
+    ⚠️ **Lu sur la sortie, pas par un handler** : `migrations/env.py` appelle `fileConfig`, qui
+    **retire les handlers** des loggers qu'il configure — un handler posé d'avance sur
+    `alembic.runtime.migration` disparaît avant la première ligne. C'est aussi ce que la fiche
+    promet à l'organisateur : la console, pas un fichier.
+
+    ⚠️ **Deux lignes pour trois causes** : le prélèvement irrésoluble et celui sans clé d'ancre
+    partagent un compteur, choix assumé par la migration. C'est ce que le test épingle.
+    """
+    cfg, engine = _preparer(tmp_path)
+    try:
+        with engine.begin() as conn:
+            _etape(
+                conn,
+                48,
+                tournoi=1,
+                ordre=8,
+                config={
+                    "sources": [
+                        {"nature": "rangs", "ordre_source": 9, "rang_debut": 1, "rang_fin": 2},
+                        {"nature": "rangs", "rang_debut": 1, "rang_fin": 2},
+                    ]
+                },
+            )
+        capsys.readouterr()
+
+        command.upgrade(cfg, _APRES)
+
+        sortie = capsys.readouterr()
+        lignes = [
+            ligne.split("0056 : ", 1)[1]
+            for ligne in (sortie.err + sortie.out).splitlines()
+            if "0056 : " in ligne
+        ]
+        assert lignes == [
+            "1 avancement(s) orphelin(s) supprimé(s).",
+            "2 prélèvement(s) sans ancre résoluble retiré(s).",
+        ]
     finally:
         engine.dispose()

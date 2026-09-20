@@ -188,16 +188,29 @@ class ServiceSuiviDeroule:
         toutes les 10 s par chaque tablette, sur un état qui **persiste** jusqu'à réparation —
         ~86 000 lignes par jour, qui noieraient le repli plus urgent de `ServiceSaisie`.
         """
+
+        # ⚠️ Lecture puis écriture **non atomiques** : deux requêtes simultanées peuvent
+        # journaliser deux fois le même changement. Assumé — une ligne de trop, jamais un
+        # état faux, et un verrou coûterait plus que le symptôme.
         if rangs == self._ancres_perdues_signalees.get(depart_id, ()):
             return
-        self._ancres_perdues_signalees[depart_id] = rangs
         if rangs:
-            _logger.warning(
-                "Suivi du départ %s : les phases %s sont alimentées par une étape absente "
-                "du déroulé ; leurs blocs s'affichent dégradés.",
-                depart_id,
-                ", ".join(str(rang) for rang in rangs),
-            )
+            self._ancres_perdues_signalees[depart_id] = rangs
+        else:
+            # Un créneau redevenu sain **sort** du dictionnaire : le garder ferait grossir d'une
+            # entrée par créneau lu, et le prochain défaut y serait bien vu comme un changement.
+            self._ancres_perdues_signalees.pop(depart_id, None)
+            return
+        sujet = (
+            f"la phase {rangs[0]} est alimentée"
+            if len(rangs) == 1
+            else f"les phases {', '.join(map(str, rangs))} sont alimentées"
+        )
+        _logger.warning(
+            "Suivi du départ %s : %s par une étape absente du déroulé ; bloc dégradé.",
+            depart_id,
+            sujet,
+        )
 
     def brancher_lecteur_avancement(
         self, type_phase: TypePhase, lecteur: LecteurAvancementDePhase

@@ -619,12 +619,13 @@ class Phase:
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
             )
-        # DETTE-078
-        # ⚠️ **Ces gardes-ci arrivent APRÈS la persistance de l'étape, et c'est la dette.** Elles
-        # vivent sur `Phase`, donc à `instancier()`, or `ServicePhases.ajouter` fait rejoindre
-        # l'étape au déroulé **avant** : une requête refusée en 422 laisse une étape orpheline qui
-        # brûle un `ordre`. Seule `colline` est fermée (garde jumelle dans
-        # `EtapeDeroule.__post_init__`) ; les quatre autres sont héritées, résorption en US dédiée.
+        # ⚠️ **Quatre gardes vivent sur `Phase`, pas sur l'étape** — `profondeur` ci-dessus,
+        # `poules` ci-dessus, `big_shoot_off` et `suisse` ci-dessous ; `colline` et `decoupage`,
+        # eux, sont portés par `EtapeDeroule.__post_init__`. Elles ne se lèvent donc qu'à
+        # `instancier()`, **après** l'écriture de l'étape. C'est pourquoi les trois sites qui
+        # écrivent instancient **à blanc** avant (`DEPART_A_BLANC`, ex-`DETTE-078`, résorbée le
+        # 20/09/2026). ⚠️ Retirer une de ces trois poses rouvre le défaut sans rien faire rougir
+        # d'autre que son test d'API dédié.
         if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
             # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
             # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le
@@ -1041,8 +1042,10 @@ def _anomalies_recoupements(
             phase.ordre,
         )
     for ordre_source in sorted({s.ordre_source for s in ancrees}):
-        etape_source = par_ordre.get(ordre_source)
-        effectif_source = None if etape_source is None else etape_source.effectif
+        # Indexation, pas `.get` : `ancrees` ne contient que des ancres **présentes** dans
+        # `par_ordre` (filtre ci-dessus). Un `KeyError` signalerait franchement une régression
+        # du filtre, là où un repli `None` la dissimulerait en « effectif inconnu ».
+        effectif_source = par_ordre[ordre_source].effectif
         intervalles: list[tuple[int, int]] = []
         for source in ancrees:
             if source.ordre_source != ordre_source:

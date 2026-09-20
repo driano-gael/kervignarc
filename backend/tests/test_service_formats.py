@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 import pytest
 
@@ -339,25 +341,54 @@ def test_appliquer_refuse_un_brouillon_sans_detruire_le_deroule_en_place(ctx: Co
     assert ctx.phases.par_tournoi(ctx.tournoi_id) == avant_phases, "les avancements aussi"
 
 
+def _mal_regle(
+    type_phase: TypePhase,
+    *,
+    poules: ReglageDePoules | None = None,
+    big_shoot_off: ConfigurationBigShootOff | None = None,
+    suisse: ConfigurationSuisse | None = None,
+    profondeur: ProfondeurClassement | None = None,
+) -> ModelePhase:
+    """Le modèle fautif du test ci-dessous — **entièrement typé**, donc sans `type: ignore`.
+
+    ⚠️ **Pas d'`effectif`** : avec lui, `EtapeDeroule` refuserait déjà certains de ces réglages
+    (trop de rescapés au rang 1) et le test ne pincerait plus la garde de `Phase`. Ils sont
+    licites au format (ADR-0063), acceptés par l'étape, refusés à l'**instanciation**.
+    """
+    return ModelePhase(
+        ordre=2,
+        type=type_phase,
+        sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+        poules=poules,
+        big_shoot_off=big_shoot_off,
+        suisse=suisse,
+        profondeur=profondeur,
+    )
+
+
 @pytest.mark.parametrize(
-    ("type_phase", "reglage", "erreur"),
+    ("type_phase", "fabriquer", "erreur"),
     [
         (
             TypePhase.PLACEMENT,
-            {"big_shoot_off": ConfigurationBigShootOff(eliminations=(2,))},
+            partial(_mal_regle, big_shoot_off=ConfigurationBigShootOff(eliminations=(2,))),
             ConfigurationBigShootOffInvalide,
         ),
-        (TypePhase.PLACEMENT, {"poules": ReglageDePoules(taille_visee=4)}, ReglageDePoulesInvalide),
         (
             TypePhase.PLACEMENT,
-            {"suisse": ConfigurationSuisse(nb_rondes=3)},
+            partial(_mal_regle, poules=ReglageDePoules(taille_visee=4)),
+            ReglageDePoulesInvalide,
+        ),
+        (
+            TypePhase.PLACEMENT,
+            partial(_mal_regle, suisse=ConfigurationSuisse(nb_rondes=3)),
             ConfigurationSuisseInvalide,
         ),
         # ⚠️ Pas un placement ici : le placement **monte** un tableau, donc une profondeur y est
         # licite. La garde ne vise que les types qui n'en montent pas.
         (
             TypePhase.ECHAUFFEMENT,
-            {"profondeur": ProfondeurClassement.top(4)},
+            partial(_mal_regle, profondeur=ProfondeurClassement.top(4)),
             ProfondeurInvalide,
         ),
     ],
@@ -366,7 +397,7 @@ def test_appliquer_refuse_un_brouillon_sans_detruire_le_deroule_en_place(ctx: Co
 def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire(
     ctx: Contexte,
     type_phase: TypePhase,
-    reglage: dict[str, object],
+    fabriquer: Callable[[TypePhase], ModelePhase],
     erreur: type[Exception],
 ) -> None:
     """Les **quatre gardes de `DETTE-078`** entrent aussi dans la pose à blanc (2ᵉ passe, axe D).
@@ -390,16 +421,7 @@ def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire
         "Brouillon",
         [
             _qualification(ordre=1, effectif=16),
-            ModelePhase(
-                ordre=2,
-                type=type_phase,
-                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
-                # ⚠️ **Pas d'`effectif`** : avec lui, `EtapeDeroule` refuserait déjà certains
-                # réglages (trop de rescapés au rang 1) et le test ne pincerait plus la garde de
-                # `Phase`. Ces réglages sont licites au format (ADR-0063), acceptés par l'étape,
-                # et refusés à l'**instanciation**.
-                **reglage,  # type: ignore[arg-type]
-            ),
+            fabriquer(type_phase),
         ],
     )
 

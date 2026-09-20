@@ -19,7 +19,13 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
-from domain.deroule_etape import EtapeDeroule, EtapeDerouleId, table_des_rangs, titre_normalise
+from domain.deroule_etape import (
+    DEPART_A_BLANC,
+    EtapeDeroule,
+    EtapeDerouleId,
+    table_des_rangs,
+    titre_normalise,
+)
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
@@ -53,9 +59,6 @@ SANS_ETAPE_POSEE: Mapping[int, EtapeDerouleId] = MappingProxyType({})
 rien à résoudre, tandis qu'un prélèvement non résolu lève `SourceIntrouvable`. Oublier la table ne
 peut donc pas produire un ancrage faux — seulement un refus bruyant.
 """
-
-_DEPART_A_BLANC = 0
-"""Créneau fictif de la pose à blanc : `instancier` n'a besoin que d'un entier, jamais relu."""
 
 _IDENTITE_A_BLANC = 1_000_000
 """Base des identités que la pose à blanc de `verifier_applicable` invente (ADR-0078).
@@ -450,7 +453,7 @@ class FormatTournoi:
             # suisse ou une profondeur posés sur un type qui ne les lit pas — vivent sur
             # `Phase.__post_init__`, donc à `instancier`. Sans cette seconde moitié, quatre cas sur
             # neuf échappaient au contrôle et `appliquer` détruisait le déroulé **avant** de lever.
-            etape.instancier(_DEPART_A_BLANC)
+            etape.instancier(DEPART_A_BLANC)
             factices[modele.ordre] = _IDENTITE_A_BLANC + modele.ordre
 
     @property

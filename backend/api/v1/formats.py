@@ -65,11 +65,14 @@ class SourceDTO(BaseModel):
     **identité**. Ne pas les réunir — ce serait le champ polymorphe que l'ADR interdit.
     """
 
-    # ⚠️ **`ge=1`, et ce n'est pas cosmétique** (3ᵉ passe de revue) : le domaine réserve le rang
-    # **0** à `RANG_INTROUVABLE`, la sentinelle d'ancre non résolue. Sans cette borne, un client
-    # tapant `0` obtenait « alimentée par une phase retirée du déroulé » — faux, il est dans la
-    # bibliothèque où rien n'a été retiré — et sautait le contrôle de recoupement.
-    ordre_source: int = Field(ge=1)
+    # ⚠️ **Aucune borne Pydantic ici, délibérément** — même convention que le DTO jumeau
+    # (`api/v1/phases.SourceDTO`) : la frontière ne doit pas devenir un second lieu d'invariants
+    # (règle 6). Une borne `ge=1` a été posée puis **retirée** en 4ᵉ passe de revue : ce DTO sert
+    # aussi la **réponse** (`de_agregat`), si bien qu'un format déjà stocké avec `ordre_source: 0`
+    # — persistable, un format s'enregistre en brouillon (ADR-0063) — faisait tomber tout
+    # `GET /formats` en 500, sans écran pour le réparer. Un rang hors séquence est diagnostiqué
+    # par le domaine, comme n'importe quel autre.
+    ordre_source: int
     nature: NatureSource = NatureSource.RANGS
     rang_debut: int = 1
     rang_fin: int | None = None
