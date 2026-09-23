@@ -21,6 +21,7 @@ from dataclasses import replace
 from domain.classement import Classement, LigneClassement
 from domain.classement_de_tableau import ClassementSource
 from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
+from tests.conftest import identite_d_etape
 from tests.test_service_saisie_duels import _gagner_manches, _Monde
 
 
@@ -33,7 +34,9 @@ def _monde_a_deux_tableaux(nb: int = 4) -> tuple[_Monde, PhaseId]:
     monde = _Monde()
     for rang in range(nb):
         monde.inscrire_classe(("10", "10", str(max(1, 10 - rang))))
-    aval = monde.phases.ajouter(Phase.creer(monde.depart_id, 3, TypePhase.ELIMINATION_DIRECTE))
+    aval = monde.phases.ajouter(
+        Phase.creer(monde.depart_id, 3, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(3))
+    )
     assert aval.id is not None
     return monde, aval.id
 
@@ -95,9 +98,15 @@ def test_un_prelevement_dans_un_tableau_amont_lit_le_classement_de_ce_tableau() 
     monde, aval = _monde_a_deux_tableaux()
     qualification = _classement_qualification(monde)
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=4),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=2),
+    )
     _jouer_le_tableau_amont(monde)
 
     # Les mal classés ont gagné : le tableau rend 4ᵉ puis 3ᵉ de qualification.
@@ -114,9 +123,15 @@ def test_une_source_visant_un_tableau_amont_n_ensemence_plus_tout_le_monde() -> 
     """
     monde, aval = _monde_a_deux_tableaux()
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=4),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=2),
+    )
     _jouer_le_tableau_amont(monde)
 
     assert monde.service().etat_tableau(monde.tournoi_id, aval).effectif == 2
@@ -141,13 +156,25 @@ def test_la_cascade_tient_sur_plusieurs_crans() -> None:
     termine. Ce test échouerait par récursion infinie si l'antériorité cessait d'être garantie.
     """
     monde, aval = _monde_a_deux_tableaux()
-    dernier = monde.phases.ajouter(Phase.creer(monde.depart_id, 4, TypePhase.ELIMINATION_DIRECTE))
+    dernier = monde.phases.ajouter(
+        Phase.creer(monde.depart_id, 4, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(4))
+    )
     assert dernier.id is not None
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=4),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2))
-    _declarer(monde, dernier.id, SourcePhase.par_rangs(ordre_source=3, rang_debut=1, rang_fin=2))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=2),
+    )
+    _declarer(
+        monde,
+        dernier.id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(3), rang_debut=1, rang_fin=2),
+    )
     _jouer_le_tableau_amont(monde)
 
     # Le tableau aval n'est pas joué : ses deux occupants y sont encore en lice, donc prélevables.
@@ -174,16 +201,20 @@ def test_preleves_lit_le_classement_de_chaque_source_declaree() -> None:
 
     qualification = _source_factice([10, 20, 30, 40])
     tableau_amont = _source_factice([40, 30])
-    phase = Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(3))
     phase = replace(
         phase,
         sources=(
-            SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=1),
-            SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=1),
+            SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=1),
+            SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=1),
         ),
     )
 
-    retenus = preleves(phase, qualification.classement, {1: qualification, 2: tableau_amont}.get)
+    retenus = preleves(
+        phase,
+        qualification.classement,
+        {identite_d_etape(1): qualification, identite_d_etape(2): tableau_amont}.get,
+    )
 
     # Le 1ᵉʳ de la qualification (10) **et** le 1ᵉʳ du tableau amont (40) — pas deux fois le même.
     # ⚠️ Assertion sur la **liste**, pas sur son tri (correctif de revue, axe B) : la docstring de
@@ -206,14 +237,18 @@ def test_un_archer_vise_par_deux_sources_n_est_preleve_qu_une_fois() -> None:
     # Le 1ᵉʳ du tableau amont est **aussi** le 1ᵉʳ de la qualification.
     tableau_amont = _source_factice([10, 20])
     phase = replace(
-        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE),
+        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(3)),
         sources=(
-            SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=1),
-            SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=1),
+            SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=1),
+            SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=1),
         ),
     )
 
-    retenus = preleves(phase, qualification.classement, {1: qualification, 2: tableau_amont}.get)
+    retenus = preleves(
+        phase,
+        qualification.classement,
+        {identite_d_etape(1): qualification, identite_d_etape(2): tableau_amont}.get,
+    )
 
     assert [ligne.archer_id for ligne in retenus] == [10]
 
@@ -284,9 +319,15 @@ def test_une_fenetre_qui_coupe_un_bloc_indecis_est_refusee() -> None:
 
     monde, aval = _monde_a_deux_tableaux(8)
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=8))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=5, rang_fin=8),
+    )
 
     with pytest.raises(PrelevementEnAttente, match="pas encore départagé"):
         monde.service().etat_tableau(monde.tournoi_id, aval)
@@ -302,9 +343,15 @@ def test_la_meme_fenetre_se_resout_une_fois_les_quarts_tires() -> None:
     monde, aval = _monde_a_deux_tableaux(8)
     qualification = _classement_qualification(monde)
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=8))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=5, rang_fin=8),
+    )
     _jouer_le_premier_tour(monde)
 
     battus = sorted(_archers_de(monde, aval))
@@ -323,9 +370,15 @@ def test_une_fenetre_qui_contient_un_bloc_indecis_reste_honoree() -> None:
     """
     monde, aval = _monde_a_deux_tableaux(4)
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=4),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=2),
+    )
     _jouer_le_premier_tour(monde)
 
     assert len(_archers_de(monde, aval)) == 2
@@ -347,11 +400,13 @@ def test_la_tranche_cumule_le_decalage_le_long_de_la_chaine() -> None:
     # La phase source dispute les places 33+ : son rang local 1 vaut le rang 33 du tournoi.
     amont = _source_factice([40, 30], rang_premier=33)
     phase = replace(
-        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE),
-        sources=(SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2),),
+        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(3)),
+        sources=(
+            SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=2),
+        ),
     )
 
-    assert tranche(phase, {2: amont}.get) == 33
+    assert tranche(phase, {identite_d_etape(2): amont}.get) == 33
 
 
 def test_une_source_de_nature_inerte_ne_fait_pas_echouer_la_phase() -> None:
@@ -370,8 +425,12 @@ def test_une_source_de_nature_inerte_ne_fait_pas_echouer_la_phase() -> None:
         raise AssertionError("une source inerte ne doit jamais être résolue")
 
     phase = replace(
-        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE),
-        sources=(SourcePhase.par_issue_de_tour(ordre_source=2, tour=1, issue=IssueTour.PERDANTS),),
+        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(3)),
+        sources=(
+            SourcePhase.par_issue_de_tour(
+                etape_source_id=identite_d_etape(2), tour=1, issue=IssueTour.PERDANTS
+            ),
+        ),
     )
 
     # Aucune source lisible : la phase retombe sur le classement reçu, sans rien résoudre.
@@ -385,7 +444,7 @@ def test_le_rang_premier_du_tableau_amont_est_reellement_cable() -> None:
 
     `test_la_tranche_cumule_le_decalage_le_long_de_la_chaine` fabrique un `rang_premier` à la main :
     il éprouve `tranche`, pas le fait que quoi que ce soit produise un `rang_premier ≠ 1`. La revue
-    l'a montré **par mutation** — retirer l'appel à `tranche` dans `_classement_de_l_ordre` laissait
+    l'a montré **par mutation** — retirer l'appel à `tranche` dans `_classement_de_l_etape` laissait
     la suite complète verte, alors que c'est exactement le bloquant fermé par ce lot (le vainqueur
     d'une consolante des places 33+ publié 1ᵉʳ du tournoi, `DETTE-034`).
 
@@ -394,14 +453,16 @@ def test_le_rang_premier_du_tableau_amont_est_reellement_cable() -> None:
     monde, _aval = _monde_a_deux_tableaux(8)
     # Le tableau amont dispute les places 5 et suivantes : son rang local 1 vaut le rang 5.
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=5, rang_fin=8)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=5, rang_fin=8),
     )
     service = monde.service()
     phase = monde.phases.par_id(monde.phase_id)
     assert phase is not None
 
     resolveur = service.resolveur_de_classement(monde.tournoi_id, phase.depart_id)
-    source = resolveur(2)
+    source = resolveur(identite_d_etape(2))
 
     assert source is not None
     assert source.rang_premier == 5
@@ -420,9 +481,15 @@ def test_l_ecran_public_annonce_la_phase_en_attente_au_lieu_de_la_retirer() -> N
 
     monde, aval = _monde_a_deux_tableaux(8)
     _declarer(
-        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8)
+        monde,
+        monde.phase_id,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8),
     )
-    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=8))
+    _declarer(
+        monde,
+        aval,
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=5, rang_fin=8),
+    )
 
     service = ServiceTableauxPublics(monde.departs, monde.phases, monde.service())
     tableaux = service.pour_depart(monde.depart_id).tableaux

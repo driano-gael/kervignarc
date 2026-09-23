@@ -336,25 +336,21 @@ class PlacementParBlocORM(Base):
 class PhaseORM(Base):
     """Table `phase` — persistance de l'agrégat `Phase` (E01US009/ADR-0011).
 
-    `type` et `statut` stockent la **valeur** de leurs énumérations ; les politiques sont dans
-    `config` (JSON, forme `config.policies` d'ADR-0046), ce qui permet d'en ajouter **sans migration
-    de schéma**. ⚠️ **La phase pend au `depart`, plus au `tournoi`** (E01US025, ADR-0075, migration
-    0042) : le départ est la **portée sportive**, `ordre` est contigu 1..N **par départ**, et le
-    tournoi reste atteignable par jointure `phase → depart → tournoi`.
+    `statut` stocke la **valeur** de son énumération. ⚠️ **La phase pend au `depart`, plus au
+    `tournoi`** (E01US025, ADR-0075, migration 0042) : le départ est la **portée sportive**, le
+    tournoi restant atteignable par jointure. ⚠️ **Plus de rang ici** (ADR-0078, migration 0056) :
+    l'avancement désigne son étape par `etape_id`, et l'objection qui vivait là — « une FK
+    dupliquerait l'information » — est écartée dans l'ADR.
     """
 
     __tablename__ = "phase"
-    # Une seule instance par (créneau, rang) : deux avancements du même rang dans le même départ
-    # n'auraient aucun sens, et le service s'appuie sur cette unicité pour synchroniser.
-    __table_args__ = (UniqueConstraint("depart_id", "ordre", name="uq_phase_depart_ordre"),)
+    # Un seul avancement par (créneau, étape) : deux avancements d'une même étape dans le même
+    # départ n'auraient aucun sens, et le service s'appuie sur cette unicité pour synchroniser.
+    __table_args__ = (UniqueConstraint("depart_id", "etape_id", name="uq_phase_depart_etape"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
-    # `ordre` est la **clé de jointure** vers la définition (`deroule_etape` du tournoi de ce
-    # départ) : c'est lui, et non un `etape_id`, parce que le déroulé s'édite par rang — un
-    # réordonnancement remappe déjà les ordres partout (DETTE-026), et une FK dupliquerait
-    # l'information tout en pouvant en diverger.
-    ordre: Mapped[int] = mapped_column(nullable=False)
+    etape_id: Mapped[int] = mapped_column(ForeignKey("deroule_etape.id"), nullable=False)
     statut: Mapped[str] = mapped_column(nullable=False)
 
 
@@ -368,11 +364,15 @@ class DerouleEtapeORM(Base):
     """
 
     __tablename__ = "deroule_etape"
-    # Un seul réglage par rang dans un tournoi : c'est la définition même d'une séquence 1..N.
-    __table_args__ = (UniqueConstraint("tournoi_id", "ordre", name="uq_deroule_tournoi_ordre"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # ⚠️ **Plus d'unicité `(tournoi, ordre)`** (ADR-0078, migration 0056, arbitrage du 20/09/2026).
+    # Elle disait vrai, mais elle n'avait plus de rôle à défendre : le rang ne désigne plus rien,
+    # il **situe** dans la liste. Ce qu'elle coûtait était réel — réordonner devait garer tous les
+    # rangs en négatif pour éviter un doublon transitoire, manœuvre dont l'oubli d'un `flush`
+    # produisait une collision au hasard des exécutions. La suite 1..N reste tenue par le domaine
+    # (`verifier_sequence`), à chaque écriture.
     ordre: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)

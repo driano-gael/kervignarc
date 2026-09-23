@@ -27,7 +27,11 @@ export type TransitionPhase = 'demarrer' | 'mettre_en_pause' | 'reprendre' | 'te
 // (E05US010). Selon `nature` : les rangs [rang_debut..rang_fin] (`rang_fin: null` = « et
 // suivants »), les gagnants/perdants d'un `tour`, ou « le reste » de ce qu'aucune autre n'a pris.
 export interface SourcePhase {
-  ordre_source: number
+  // ⚠️ **L'étape où l'on puise, désignée par son identité** (ADR-0078). Le jumeau du patrimoine
+  // (`features/patrimoine/api.ts`) porte un `ordre_source` — un **rang** —, parce qu'un format de
+  // bibliothèque décrit des étapes qui n'existent dans aucun tournoi. Les deux ne sont pas
+  // interchangeables : c'est pour cela qu'ils ne portent pas le même nom.
+  etape_source_id: number
   nature: NatureSource
   rang_debut: number
   rang_fin: number | null

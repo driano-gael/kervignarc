@@ -219,15 +219,24 @@ charger avec la grille, plutôt que de la retranscrire, est ce qui l'empêche de
      (règles 10 et 11). Un axe B silencieux sur les tests est toujours un raté.
    - Le **verdict global** est le plus sévère de **tous les rapports rendus, relecteur adversarial
      compris** : un bloquant, d'où qu'il vienne, bloque la PR.
-2. Traite chaque remarque :
+2. **Ouvre IMMÉDIATEMENT la ligne de métrique**, avant de toucher au code, dans
+   [`docs/metriques-revue.md`](../../docs/metriques-revue.md) : les **comptes par axe**, les
+   lignes `Durée :`, la **taille du diff soumis à la passe** (`git diff --stat <base>..HEAD`, pas
+   celle des correctifs à venir) **et l'enseignement** — la cellule qui cite les rapports
+   verbatim, donc la plus dépendante d'eux. Seuls `durée porte`, les portes rouges et `passes` se
+   complètent au point 5, parce qu'ils n'existent pas encore. ⚠️ **Avant les correctifs, pas
+   après** : tout cela ne vit que dans le contexte de la session, et une passe de correctifs est
+   précisément ce qui le remplit jusqu'au `/compact`. C'est arrivé le 20/09/2026 en 2ᵉ passe
+   d'`E05US022` — quatre axes sur cinq perdus, ligne inscrite « comptes perdus ».
+3. Traite chaque remarque :
    - **bloquant / majeur** → corrige dans le code.
    - **mineur / suggestion** → corrige si rapide et sûr ; sinon justifie brièvement de ne pas le faire.
    - **remède structurel proposé (règle 16)** → ne l'implémente **pas** dans l'US courante, même si la remarque est majeure. Vérifie les trois conditions (preuve dans le code, coût chiffré, option « rien » écartée à raison) ; si elles tiennent, inscris la dette au registre et propose l'ADR + l'US dédiée à l'utilisateur. Si elles ne tiennent pas, écarte la remarque en le justifiant — c'est de la sur-ingénierie.
    - **dette (technique ou de conception)** → soit tu la résorbes dans l'US, soit tu l'**assumes explicitement** en suivant la procédure de [`docs/dette.md`](../../docs/dette.md) : ligne au registre + détail, marqueur `# DETTE-nnn` à l'endroit du raccourci, mention dans le corps de la PR, et proposition d'une US de résorption à l'utilisateur. Jamais laissée silencieuse.
-3. Après corrections, **repasse la porte complète** via l'agent `porte-mecanique`, sur les jobs concernés par les fichiers touchés. **Pas de porte partielle, pas de `pytest` restreint à un chemin** : la décision 1 d'ADR-0013 dit qu'« une commande approchante n'est pas la même mesure », et un correctif écrit sous pression est exactement la population où la suite complète sert. Les ~3 min se dépensent en tâche de fond, une fois par passe.
-4. **Renseigne une ligne** dans [`docs/metriques-revue.md`](../../docs/metriques-revue.md) : les deux bornes de l'étape 0 donnent `durée porte`, les lignes `Durée :` des rapports donnent `axe le + lent`, et la colonne décisive est **quel axe a trouvé les bloquants**. C'est la seule mesure dont ADR-0013 admet manquer.
-5. Prépare le **message de commit** conventionnel des correctifs (`<type>(<scope>): …` + corps quoi/pourquoi + `US: ExxUSyyy`).
-6. **Committe et pousse** les correctifs sans demander l'aval — c'est le workflow autonome (`CLAUDE.md` § Workflow) : tu ne rends pas la main pour ça. Seuls `git merge`, `git rebase` et l'ajout de dépendance (règle 11) restent soumis à arbitrage.
+4. Après corrections, **repasse la porte complète** via l'agent `porte-mecanique`, sur les jobs concernés par les fichiers touchés. **Pas de porte partielle, pas de `pytest` restreint à un chemin** : la décision 1 d'ADR-0013 dit qu'« une commande approchante n'est pas la même mesure », et un correctif écrit sous pression est exactement la population où la suite complète sert. Les ~3 min se dépensent en tâche de fond, une fois par passe.
+5. **Complète la ligne ouverte au point 2** (n'en crée pas une seconde) : les deux bornes de l'étape 0 donnent `durée porte`, les **portes rouges** se comptent sur les journaux `.porte/<n>/` de la passe, et `passes` compte les tours. Les lignes `Durée :` des rapports donnent `axe le + lent` — déjà recopiées au point 2 —, et la colonne décisive reste **quel axe a trouvé les bloquants**. C'est la seule mesure dont ADR-0013 admet manquer.
+6. Prépare le **message de commit** conventionnel des correctifs (`<type>(<scope>): …` + corps quoi/pourquoi + `US: ExxUSyyy`).
+7. **Committe et pousse** les correctifs sans demander l'aval — c'est le workflow autonome (`CLAUDE.md` § Workflow) : tu ne rends pas la main pour ça. Seuls `git merge`, `git rebase` et l'ajout de dépendance (règle 11) restent soumis à arbitrage.
 
 ## Étape 3 — Boucle & sortie
 

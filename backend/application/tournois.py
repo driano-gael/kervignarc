@@ -23,7 +23,7 @@ from application.erreurs import (
 )
 from application.suivi_deroule import CompteurEngages
 from domain.deroule import exigence_minimale
-from domain.deroule_etape import EtapeDeroule
+from domain.deroule_etape import EtapeDeroule, vues_du_deroule
 from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
     MESSAGE_SANS_DEPART,
@@ -278,7 +278,7 @@ class ServiceTournois:
             )
 
         exige = tournoi.effectif_minimum_exige
-        deduite = exigence_minimale(etapes)
+        deduite = exigence_minimale(vues_du_deroule(etapes))
         if exige is not None and exige > deduite.minimum:
             # L'exigence du club dépasse le plancher technique : c'est elle qui commande, et aucune
             # phase n'est en cause — le manque vient d'une règle sportive, pas d'un prélèvement.

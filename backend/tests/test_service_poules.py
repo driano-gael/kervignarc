@@ -50,6 +50,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    identite_d_etape,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
@@ -144,6 +145,7 @@ class _Monde:
                 type=TypePhase.POULES,
                 poules=reglage,
                 barrage_jusqu_au=barrage_jusqu_au,
+                etape_id=identite_d_etape(2),
             )
         )
         assert phase.id is not None

@@ -28,7 +28,7 @@ from bootstrap.composition import fabriquer_harnais_simulation
 from domain.bareme import BaremeQualification
 from domain.erreurs import PhaseQualificationIncomplete
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
-from domain.phase import SourcePhase, TypePhase
+from domain.phase import SourceModele, TypePhase
 from infrastructure.memory.repositories import InMemoryTournoiRepository
 
 # Barème court : la simulation joue **toutes** les volées de tous les archers, et l'oracle porte sur
@@ -110,7 +110,7 @@ def _qualif_puis_tableau(formats: _FormatsEnMemoire, rang_fin: int | None = 8) -
                 ModelePhase(
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
-                    sources=(SourcePhase.par_rangs(1, 1, rang_fin),),
+                    sources=(SourceModele.par_rangs(1, 1, rang_fin),),
                 ),
             ],
         )
@@ -253,7 +253,7 @@ def test_le_meme_format_se_simule_a_deux_effectifs_sans_etre_retouche(
                 ModelePhase(
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
-                    sources=(SourcePhase.par_rangs(1, 1, None),),
+                    sources=(SourceModele.par_rangs(1, 1, None),),
                 ),
             ],
         )

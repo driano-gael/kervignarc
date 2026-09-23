@@ -45,9 +45,11 @@ Le critère se lit sur le **graphe des sources** du déroulé, pas sur `TypePhas
 poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne, sans que
 l'organisateur ait quoi que ce soit à régler.
 
-Il se lit sur `ordre` et non sur l'identité, parce que c'est ainsi qu'une source désigne sa phase
-(`SourcePhase.ordre_source`) : c'est l'ancrage par ordre de `DETTE-026`, et s'en écarter ici
-créerait une seconde convention.
+Il se lit sur l'**identité** de l'étape (`SourcePhase.etape_source_id`) depuis E05US022 /
+[ADR-0078](0078-la-sequence-s-ancre-sur-l-identite-de-l-etape.md), parce que c'est ainsi qu'une
+source désigne sa phase — et il n'y a **qu'une** convention. *Rédaction d'origine, devenue fausse
+le 20/09/2026 : « il se lit sur `ordre` et non sur l'identité … c'est l'ancrage par ordre de
+`DETTE-026` », dette depuis résorbée.*
 
 ### 2. Deux régimes, portés par `origine`
 

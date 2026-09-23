@@ -689,14 +689,12 @@ class DerouleRepository(Protocol):
         """Met à jour une étape déjà persistée (barème, grain, type, sources, rang…)."""
         ...
 
-    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
-        """Réécrit **en un bloc** les rangs (et définitions remappées) de tout un déroulé.
+    def enregistrer_plusieurs(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Met à jour **en une transaction** un lot d'étapes déjà persistées.
 
-        ⚠️ **Pas une boucle sur `enregistrer`** : un déroulé est une suite 1..N sans doublon, et
-        l'échange de deux rangs voisins passe par un état que l'unicité SQL refuse. Sortir du piège
-        est une affaire de **persistance**, pas de métier (ADR-0003). L'écriture est **atomique** —
-        à moitié appliquée, elle laisserait une séquence que le domaine rejette. Renvoie les étapes
-        relues dans l'ordre demandé. `# DETTE-026` : 3ᵉ écrivain, le rang porte l'identité.
+        ⚠️ **Pas une boucle sur `enregistrer`** : à moitié appliquée, une renumérotation
+        laisserait une séquence trouée à l'écran. Ce n'est plus un contournement d'unicité — celle
+        de `(tournoi, ordre)` est levée par ADR-0078. Renvoie les étapes relues, dans l'ordre.
         """
         ...
 
@@ -757,16 +755,6 @@ class PhaseRepository(Protocol):
 
         ⚠️ La définition portée par l'objet reçu est **ignorée** (voir l'avertissement du port) :
         elle s'édite sur l'étape, par `DerouleRepository`.
-        """
-        ...
-
-    def reordonner(self, phases: list[Phase]) -> None:
-        """Réécrit **en un bloc** le rang des phases d'un créneau (réalignement sur les étapes).
-
-        Pendant de `DerouleRepository.reordonner`, même raison : l'unicité du rang par créneau
-        refuse un décalage un à un. ⚠️ Le rang **est** la clé de jointure vers la définition
-        (ADR-0076) — une phase laissée sur son ancien rang pointerait l'étape voisine, soit un
-        changement de barème silencieux. D'où l'atomicité. `# DETTE-026`, 4ᵉ écrivain.
         """
         ...
 

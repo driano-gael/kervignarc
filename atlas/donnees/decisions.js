@@ -4044,10 +4044,20 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/formats.py",
+     "existe": true,
+     "symboles": [
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [
-      "appliquer"
+      "verifier_applicable",
+      "etapes_ordonnees"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4089,6 +4099,7 @@ window.ATLAS.decisions = {
     "E01US025",
     "E01US026",
     "E03US012",
+    "E05US022",
     "E05US026",
     "E05US029",
     "E05US032",
@@ -4199,7 +4210,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [
-      "appliquer"
+      "verifier_applicable",
+      "etapes_ordonnees"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4238,7 +4250,8 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Un déroulé défini une fois, un avancement par départ",
    "us": [
-    "E01US025"
+    "E01US025",
+    "E05US022"
    ]
   },
   {
@@ -4383,13 +4396,222 @@ window.ATLAS.decisions = {
      "type": "amende"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/application/bareme_qualification.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/formats.py",
+     "existe": true,
+     "symboles": [
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "PhaseSourceReferencee",
+      "ServicePhases.ajouter",
+      "ServicePhases.modifier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/prelevement.py",
+     "existe": true,
+     "symboles": [
+      "ResolveurClassement",
+      "_classement_de_l_etape",
+      "ClassementSource.ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "ResolveurClassement",
+      "_classement_de_l_etape",
+      "ClassementSource.ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/simulation_format.py",
+     "existe": true,
+     "symboles": [
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.instancier",
+      "etape_id",
+      "table_des_rangs",
+      "vues_du_deroule",
+      "EtapeDeroule.verifier_instanciable",
+      "Phase.__post_init__"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.sources",
+      "SourceModele",
+      "ModelePhase.pour_tournoi",
+      "ModelePhase.d_etape",
+      "FormatTournoi.verifier_applicable",
+      "FormatTournoi.etapes_ordonnees",
+      "verifier_applicable",
+      "EtapeDeroule",
+      "ServiceFormats.appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "Prelevement",
+      "SourceModele",
+      "SourcePhase",
+      "ancrer_sur_les_etapes",
+      "projeter_sur_les_rangs",
+      "VueParRangs",
+      "vues_par_rangs",
+      "Phase.etape_id",
+      "Phase.ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "PhaseRepository",
+      "DerouleRepository",
+      "enregistrer_plusieurs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "PhaseORM.etape_id",
+      "deroule_etape.id",
+      "uq_phase_depart_etape",
+      "PhaseORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_source_json",
+      "_vers_sources_d_etape",
+      "_vers_sources_de_modele",
+      "PhaseRepositorySQL._etapes",
+      "_assembler"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/memory/repositories.py",
+     "existe": true,
+     "symboles": [
+      "InMemoryPhaseRepository._etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0056_ancrage_par_identite.py",
+     "existe": true,
+     "symboles": [
+      "phase.etape_id",
+      "config",
+      "uq_deroule_tournoi_ordre",
+      "volee",
+      "serie",
+      "barrage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/conftest.py",
+     "existe": true,
+     "symboles": [
+      "decaler_les_identites_sql",
+      "poser_phase_sql",
+      "PhaseId",
+      "EtapeDerouleId",
+      "deroule_etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/patrimoine/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
    "titre": "La séquence s'ancre sur l'identité de l'étape, pas sur son rang",
    "us": [
-    "E05US001"
+    "E01US024",
+    "E05US001",
+    "E05US022"
    ]
   },
   {
@@ -4566,7 +4788,9 @@ window.ATLAS.decisions = {
       "_classement_de_l_ordre",
       "_decor"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_classement_de_l_ordre"
+     ],
      "verifiable": true
     },
     {
@@ -4728,7 +4952,9 @@ window.ATLAS.decisions = {
       "ClassementSource",
       "rang_premier"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_classement_de_l_ordre"
+     ],
      "verifiable": true
     },
     {
@@ -4941,7 +5167,9 @@ window.ATLAS.decisions = {
       "preleves",
       "tranche"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_classement_de_l_ordre"
+     ],
      "verifiable": true
     },
     {
@@ -5237,6 +5465,7 @@ window.ATLAS.decisions = {
       "classement_lisible"
      ],
      "symboles_absents": [
+      "_classement_de_l_ordre",
       "brancher_poules"
      ],
      "verifiable": true
@@ -5670,7 +5899,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-08-16",
    "date_brute": "2026-08-16",
-   "extrait": "### 1. Le critère est structurel, pas typologique > Une phase décerne ses rangs — donc peut donner une médaille — si et seulement si aucune > phase avale ne prélève dedans. Le critère se lit sur le graphe des sources du déroulé, pas sur TypePhase. La même phase de poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne, sans que l'organisateur ait quoi que ce soit à régler. Il se lit sur ordre et non sur l'identité, parce que c'est ainsi qu'une source désigne sa phase (SourcePhase.ordre_source) : c'est l'ancrage par ordre de DETTE-026, et s'en écarter ici créerait une seconde convention. ### 2. Deux régimes, portés par origine - phase consommée → […]",
+   "extrait": "### 1. Le critère est structurel, pas typologique > Une phase décerne ses rangs — donc peut donner une médaille — si et seulement si aucune > phase avale ne prélève dedans. Le critère se lit sur le graphe des sources du déroulé, pas sur TypePhase. La même phase de poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne, sans que l'organisateur ait quoi que ce soit à régler. Il se lit sur l'identité de l'étape (SourcePhase.etape_source_id) depuis E05US022 / ADR-0078, parce que c'est ainsi qu'une source désigne sa phase — et il n'y a qu'une convention. Rédaction d'origine, devenue fausse le 20/09/2026 : « il se lit sur ordre et non sur l'identité … c'est […]",
    "fichier": "docs/adr/0085-une-phase-decerne-ses-rangs-si-rien-ne-preleve-dedans.md",
    "identifiant": "0085",
    "liens": [
@@ -5699,6 +5928,7 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Une phase décerne ses rangs si rien ne prélève dedans",
    "us": [
+    "E05US022",
     "E05US025",
     "E05US026",
     "E05US029"

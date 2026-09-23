@@ -41,6 +41,8 @@ from domain.phase import (
     NatureSource,
     Phase,
     PhaseId,
+    Prelevement,
+    SourceModele,
     SourcePhase,
     StatutPhase,
     TypePhase,
@@ -105,7 +107,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             # (mécanisme « politique sans migration », ADR-0011). Sur un autre type, l'absence
             # signifie simplement « pas de grain ».
             validation = grain_par_defaut(type_phase)
-        sources = _vers_sources(config)
+        sources = _vers_sources_d_etape(config)
         effectif = config.get("effectif")
         effectif = None if effectif is None else int(effectif)
         barrage_jusqu_au = _lire_barrage_jusqu_au(config)
@@ -201,10 +203,10 @@ def _lire_scoring_facultatif(config: Any) -> Any:
     return config.get("scoring")
 
 
-def _vers_source(source: Any) -> SourcePhase:
-    """Relit **un** prélèvement depuis sa forme JSON.
+def _champs_du_prelevement(source: Any) -> dict[str, Any]:
+    """Les champs d'un prélèvement **hors ancre** — ce que les deux formes ont en commun.
 
-    Passe par le constructeur de `SourcePhase` pour qu'une forme hors règle remonte en
+    Passe la main au constructeur de la classe voulue, pour qu'une forme hors règle remonte en
     `DomainError`, enveloppée par l'appelant. `source` est typé `Any` (`json.loads`) : une forme
     inattendue lève `AttributeError`/`TypeError`, gérée de même. **Tolérante à l'ancienne forme**
     (sans clé `nature`) : une base d'avant la migration 0036 reste lisible, comme `_lire_scoring`
@@ -212,24 +214,18 @@ def _vers_source(source: Any) -> SourcePhase:
     """
     nature = NatureSource(source.get("nature", NatureSource.RANGS.value))
     if nature is NatureSource.ISSUE_DE_TOUR:
-        return SourcePhase(
-            ordre_source=int(source["ordre_source"]),
-            nature=nature,
-            tour=int(source["tour"]),
-            issue=IssueTour(source["issue"]),
-        )
+        return {"nature": nature, "tour": int(source["tour"]), "issue": IssueTour(source["issue"])}
     if nature is NatureSource.RESTE:
-        return SourcePhase(ordre_source=int(source["ordre_source"]), nature=nature)
+        return {"nature": nature}
     rang_fin = source.get("rang_fin")
-    return SourcePhase(
-        ordre_source=int(source["ordre_source"]),
-        rang_debut=int(source["rang_debut"]),
-        rang_fin=None if rang_fin is None else int(rang_fin),
-    )
+    return {
+        "rang_debut": int(source["rang_debut"]),
+        "rang_fin": None if rang_fin is None else int(rang_fin),
+    }
 
 
-def _vers_sources(config: Any) -> tuple[SourcePhase, ...]:
-    """Relit **tous** les prélèvements d'une étape, forme cible **ou** ancienne.
+def _brutes(config: Any) -> list[Any]:
+    """Les prélèvements bruts d'une `config`, forme cible **ou** ancienne.
 
     Cible (E05US010) : `config.sources`, une liste. Ancienne (E05US001) : `config.source`, un objet
     unique — relu comme une liste d'un élément, puisque c'en est exactement le sous-cas. Absence
@@ -238,8 +234,31 @@ def _vers_sources(config: Any) -> tuple[SourcePhase, ...]:
     brutes = config.get("sources")
     if brutes is None:
         unique = config.get("source")
-        brutes = [] if unique is None else [unique]
-    return tuple(_vers_source(brute) for brute in brutes)
+        return [] if unique is None else [unique]
+    return list(brutes)
+
+
+def _vers_sources_d_etape(config: Any) -> tuple[SourcePhase, ...]:
+    """Relit les prélèvements d'une **étape de déroulé** : ancrage par identité (ADR-0078 §2).
+
+    ⚠️ **Aucun repli sur `ordre_source`**, à la différence de la tolérance ci-dessus. La migration
+    `0056` réécrit toutes les `config` de cette table ; une clé restée au rang y serait un **défaut
+    de reprise**, pas une vieille forme à accommoder. Un `KeyError` ici remonte en
+    `InfrastructureError` — bruyant, donc réparable, là où un repli silencieux ferait prélever
+    dans l'étape dont l'identifiant vaut par hasard l'ancien rang.
+    """
+    return tuple(
+        SourcePhase(etape_source_id=int(brute["etape_source_id"]), **_champs_du_prelevement(brute))
+        for brute in _brutes(config)
+    )
+
+
+def _vers_sources_de_modele(config: Any) -> tuple[SourceModele, ...]:
+    """Relit les prélèvements d'un **modèle de format** : ancrage par rang (ADR-0078 §3)."""
+    return tuple(
+        SourceModele(ordre_source=int(brute["ordre_source"]), **_champs_du_prelevement(brute))
+        for brute in _brutes(config)
+    )
 
 
 def _vers_grain(validation: Any) -> GrainValidation:
@@ -287,7 +306,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
 def _politiques_json(
     bareme: BaremeQualification | None,
     validation: GrainValidation | None,
-    sources: tuple[SourcePhase, ...],
+    sources: tuple[SourceModele, ...] | tuple[SourcePhase, ...],
     effectif: int | None,
     *,
     barrage_jusqu_au: int | None,
@@ -686,24 +705,35 @@ def _mode_de_composition(valeur: object) -> ModeDeComposition:
         raise InfrastructureError("Configuration d'étape de déroulé illisible.") from erreur
 
 
-def _source_json(source: SourcePhase) -> dict[str, object]:
+def _source_json(source: Prelevement) -> dict[str, object]:
     """Un prélèvement en JSON — **seuls** les champs de sa nature sont écrits.
 
     N'écrire que le pertinent garde le document lisible et empêche qu'un champ mort (un `tour` sur
     un prélèvement par rangs) ressuscite à la relecture en `SourceMalFormee`.
+
+    ⚠️ **La clé d'ancre dépend de la classe** (ADR-0078) — seul endroit où les deux formes se
+    croisent, et ce qui rend impossible d'écrire la clé d'un monde dans la table de l'autre.
     """
+    if isinstance(source, SourceModele):
+        ancre: dict[str, object] = {"ordre_source": source.ordre_source}
+    elif isinstance(source, SourcePhase):
+        ancre = {"etape_source_id": source.etape_source_id}
+    else:
+        # Un `Prelevement` nu n'a pas d'ancre, donc rien à écrire : il ne désigne aucune phase
+        # amont. Inatteignable par les deux appelants, gardé typé plutôt qu'`assert` (règle 5).
+        raise InfrastructureError("Prélèvement sans ancre : impossible à sérialiser.")
     if source.nature is NatureSource.ISSUE_DE_TOUR:
         return {
             "nature": source.nature.value,
-            "ordre_source": source.ordre_source,
+            **ancre,
             "tour": source.tour,
             "issue": source.issue.value if source.issue is not None else None,
         }
     if source.nature is NatureSource.RESTE:
-        return {"nature": source.nature.value, "ordre_source": source.ordre_source}
+        return {"nature": source.nature.value, **ancre}
     return {
         "nature": source.nature.value,
-        "ordre_source": source.ordre_source,
+        **ancre,
         "rang_debut": source.rang_debut,
         "rang_fin": source.rang_fin,
     }
@@ -850,7 +880,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         type=type_phase,
         bareme=bareme,
         validation=validation,
-        sources=_vers_sources(brute),
+        sources=_vers_sources_de_modele(brute),
         effectif=None if effectif is None else int(effectif),
         barrage_jusqu_au=_lire_barrage_jusqu_au(brute),
         profondeur=_lire_profondeur(brute),
@@ -1317,14 +1347,13 @@ class DerouleEtapeRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'étape de déroulé.") from exc
 
-    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
-        """Réécrit les rangs de tout un déroulé en **une** transaction, en deux passes.
+    def enregistrer_plusieurs(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Met à jour un lot d'étapes en **une** transaction, en une seule passe.
 
-        `uq_deroule_tournoi_ordre` interdit deux étapes de même rang, or échanger deux rangs voisins
-        passe par cet état. On **gare** donc tous les rangs en négatif — domaine que la séquence
-        1..N n'atteint jamais — avant de poser les rangs voulus. ⚠️ Un `flush` sépare les deux
-        passes : sans lui, SQLAlchemy ordonne librement les `UPDATE` d'un même vidage et la
-        collision réapparaît au hasard des exécutions — le bug qui passe en test, tombe le jour J.
+        ⚠️ **Plus de manœuvre en deux passes** (ADR-0078) : `uq_deroule_tournoi_ordre` est levée
+        (migration `0056`), la suite 1..N restant tenue par le domaine. Ce qui subsiste est le
+        seul vrai besoin : **une** transaction, une renumérotation à moitié écrite laissant une
+        séquence trouée à l'écran.
         """
         try:
             with self._session_factory() as session:
@@ -1333,20 +1362,16 @@ class DerouleEtapeRepositorySQL:
                     ligne = session.get(DerouleEtapeORM, etape.id)
                     if ligne is None:
                         raise InfrastructureError(
-                            "Étape de déroulé à réordonner introuvable en base."
+                            "Étape de déroulé à mettre à jour introuvable en base."
                         )
-                    lignes.append(ligne)
-                for rang, ligne in enumerate(lignes, start=1):
-                    ligne.ordre = -rang
-                session.flush()
-                for etape, ligne in zip(etapes, lignes, strict=True):
                     ligne.ordre = etape.ordre
                     ligne.type = etape.type.value
                     ligne.config = _config_etape(etape)
+                    lignes.append(ligne)
                 session.commit()
                 return [_vers_etape(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec du réordonnancement du déroulé.") from exc
+            raise InfrastructureError("Échec de la mise à jour du déroulé.") from exc
 
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         """Supprime une étape du déroulé (existence garantie par l'appelant)."""
@@ -1367,7 +1392,7 @@ class FranchissementArretRepositorySQL:
     Ne persiste que l'**avancement** d'un arrêt, jamais sa définition — celle-ci vit dans
     `deroule_etape.config` et se lit par `DerouleRepository`. La lecture **par créneau** impose une
     jointure `franchissement_arret → phase` : dupliquer `depart_id` serait une seconde source pour
-    ce que la phase dit déjà (DETTE-026).
+    ce que la phase dit déjà.
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -1549,29 +1574,28 @@ class PhaseRepositorySQL:
     """Adapter SQLite du port `PhaseRepository` — l'**avancement** d'une étape (ADR-0076).
 
     ⚠️ Chaque lecture **assemble** : la ligne `phase` ne porte que `depart_id`, `ordre` et `statut`,
-    et la définition vient de l'étape de même rang, dans le tournoi du créneau. C'est la couture de
+    et la définition vient de l'étape que la phase **désigne** (ADR-0078). C'est la couture de
     la séparation, et elle vit ici pour que le domaine et les services l'ignorent (ADR-0003).
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def _etapes(
-        self, session: Session, depart_ids: Sequence[int]
-    ) -> dict[tuple[int, int], EtapeDeroule]:
-        """Les définitions applicables aux créneaux donnés, indexées `(depart_id, ordre)`.
+    def _etapes(self, session: Session, etape_ids: Sequence[int]) -> dict[int, EtapeDeroule]:
+        """Les définitions désignées, indexées par leur **identité** (ADR-0078 §1).
 
         Une seule requête pour tout un lot : lire l'étape phase par phase ferait N+1 requêtes sur un
-        écran qui en affiche déjà plusieurs dizaines.
+        écran qui en affiche déjà plusieurs dizaines. ⚠️ **Indexées par `id`, plus par
+        `(depart_id, ordre)`** : la jointure passait par le tournoi du départ et appariait les
+        rangs, si bien qu'un rang mal renuméroté faisait assembler la phase avec la définition
+        d'une **autre** étape — sans erreur ni signal. C'est le défaut qu'ADR-0078 ferme.
         """
-        if not depart_ids:
+        if not etape_ids:
             return {}
-        lignes = session.execute(
-            select(DepartORM.id, DerouleEtapeORM)
-            .join(DerouleEtapeORM, DerouleEtapeORM.tournoi_id == DepartORM.tournoi_id)
-            .where(DepartORM.id.in_(depart_ids))
+        lignes = session.scalars(
+            select(DerouleEtapeORM).where(DerouleEtapeORM.id.in_(etape_ids))
         ).all()
-        return {(depart_id, etape.ordre): _vers_etape(etape) for depart_id, etape in lignes}
+        return {ligne.id: _vers_etape(ligne) for ligne in lignes}
 
     def _assembler(self, session: Session, lignes: Sequence[PhaseORM]) -> list[Phase]:
         """Assemble les phases d'un lot ; une instance **orpheline** de définition est ignorée.
@@ -1581,10 +1605,10 @@ class PhaseRepositorySQL:
         phase sans définition ne peut rien dire d'utile, et faire échouer *toute* la lecture pour
         elle priverait l'organisateur du reste de son déroulé le jour J.
         """
-        etapes = self._etapes(session, [ligne.depart_id for ligne in lignes])
+        etapes = self._etapes(session, [ligne.etape_id for ligne in lignes])
         assemblees = []
         for ligne in lignes:
-            etape = etapes.get((ligne.depart_id, ligne.ordre))
+            etape = etapes.get(ligne.etape_id)
             if etape is not None:
                 assemblees.append(_vers_phase(ligne, etape))
         return assemblees
@@ -1593,29 +1617,34 @@ class PhaseRepositorySQL:
         """Persiste l'**avancement** d'une phase ; sa définition n'est **pas** écrite ici.
 
         Le barème, le grain et les prélèvements portés par l'objet reçu sont ignorés : ils vivent
-        sur l'étape (`DerouleRepository`). Seuls `depart_id`, `ordre` et `statut` sont écrits.
+        sur l'étape (`DerouleRepository`). Seuls `depart_id`, `etape_id` et `statut` sont écrits.
+
+        ⚠️ **`etape_id` est obligatoire** (ADR-0078) ; le refus est typé plutôt qu'un
+        `IntegrityError` sur la colonne `NOT NULL`, pour que la cause soit lisible.
         """
+        if phase.etape_id is None:
+            raise InfrastructureError(
+                "Avancement sans étape de déroulé : une phase joue toujours une étape."
+            )
         try:
             with self._session_factory() as session:
                 ligne = PhaseORM(
                     depart_id=phase.depart_id,
-                    ordre=phase.ordre,
+                    etape_id=phase.etape_id,
                     statut=phase.statut.value,
                 )
                 session.add(ligne)
                 # ⚠️ **`flush` et non `commit` avant le contrôle** (revue E01US025). Committer
                 # d'abord laissait une ligne orpheline **en base** quand l'exception partait :
-                # invisible à toute lecture, mais occupant le couple `(depart_id, ordre)` de
-                # `uq_phase_depart_ordre` — l'instanciation légitime de ce rang butait ensuite sur
-                # l'unicité, sans recours par l'écran. Le `flush` donne l'identifiant sans rien
-                # acter ; sortir du `with` sans commit annule tout. L'adapter en mémoire fait déjà
-                # ce choix : les deux ne doivent pas diverger.
+                # invisible à toute lecture, mais occupant le couple d'unicité — l'instanciation
+                # légitime butait ensuite dessus, sans recours par l'écran. Le `flush` donne
+                # l'identifiant sans rien acter ; sortir du `with` sans commit annule tout.
+                # L'adapter en mémoire fait déjà ce choix : les deux ne doivent pas diverger.
                 session.flush()
                 assemblees = self._assembler(session, [ligne])
                 if not assemblees:
                     raise InfrastructureError(
-                        "Phase créée sans étape de déroulé de même rang : le tournoi de ce créneau "
-                        "n'a pas ce rang à son déroulé."
+                        "Phase créée sans étape de déroulé : l'étape désignée n'existe pas."
                     )
                 session.commit()
                 return assemblees[0]
@@ -1651,8 +1680,9 @@ class PhaseRepositorySQL:
                 lignes = list(
                     session.execute(
                         select(PhaseORM)
+                        .join(DerouleEtapeORM, DerouleEtapeORM.id == PhaseORM.etape_id)
                         .where(PhaseORM.depart_id == depart_id)
-                        .order_by(PhaseORM.ordre)
+                        .order_by(DerouleEtapeORM.ordre)
                     ).scalars()
                 )
                 return self._assembler(session, lignes)
@@ -1671,8 +1701,9 @@ class PhaseRepositorySQL:
                     session.execute(
                         select(PhaseORM)
                         .join(DepartORM, PhaseORM.depart_id == DepartORM.id)
+                        .join(DerouleEtapeORM, DerouleEtapeORM.id == PhaseORM.etape_id)
                         .where(DepartORM.tournoi_id == tournoi_id)
-                        .order_by(PhaseORM.depart_id, PhaseORM.ordre)
+                        .order_by(PhaseORM.depart_id, DerouleEtapeORM.ordre)
                     ).scalars()
                 )
                 return self._assembler(session, lignes)
@@ -1680,60 +1711,33 @@ class PhaseRepositorySQL:
             raise InfrastructureError("Échec de lecture des phases du tournoi.") from exc
 
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour l'**avancement** d'une phase — son `statut`, et son rang.
+        """Met à jour l'**avancement** d'une phase — son `statut`, et lui seul (ADR-0078).
 
         La définition n'est pas touchée : l'éditer passe par `DerouleRepository.enregistrer`. Un
         appelant qui modifierait `phase.bareme` avant d'appeler ici ne verrait **rien** changer, et
-        c'est le contrat — le port le dit explicitement.
+        c'est le contrat — le port le dit explicitement. Le **rattachement** ne bouge pas non plus :
+        une phase ne change pas d'étape, elle est créée pour celle-là.
         """
         try:
             with self._session_factory() as session:
                 ligne = session.get(PhaseORM, phase.id)
                 if ligne is None:
                     raise InfrastructureError("Phase à mettre à jour introuvable en base.")
-                ligne.ordre = phase.ordre
                 ligne.statut = phase.statut.value
                 # ⚠️ **`flush` puis contrôle puis `commit`** — même discipline que `ajouter`, et
                 # pour la même raison (relevé en revue E01US025 : le correctif avait été appliqué à
                 # `ajouter` seul, le trou était déplacé, pas fermé). En committant d'abord, un
-                # avancement orphelin — sans étape de déroulé de même rang — était **acté en base**
+                # avancement orphelin — sans étape de déroulé désignée — était **acté en base**
                 # puis signalé en `InfrastructureError` : l'appelant recevait un échec sur une
                 # écriture qui, elle, avait bien eu lieu.
                 session.flush()
                 assemblees = self._assembler(session, [ligne])
                 if not assemblees:
-                    raise InfrastructureError(
-                        "Phase mise à jour sans étape de déroulé de même rang."
-                    )
+                    raise InfrastructureError("Phase mise à jour sans étape de déroulé.")
                 session.commit()
                 return assemblees[0]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de la phase.") from exc
-
-    def reordonner(self, phases: list[Phase]) -> None:
-        """Réaligne les rangs d'un lot de phases en **une** transaction, en deux passes.
-
-        Même piège et même sortie que `DerouleEtapeRepositorySQL.reordonner` :
-        `uq_phase_depart_ordre` interdit deux avancements de même rang, or un décalage y passe — les
-        rangs sont **garés en négatif**, puis reposés. Ne touche que l'`ordre` : le `statut` n'a
-        aucune raison de bouger parce que l'étape a changé de place.
-        """
-        try:
-            with self._session_factory() as session:
-                lignes = []
-                for phase in phases:
-                    ligne = session.get(PhaseORM, phase.id)
-                    if ligne is None:
-                        raise InfrastructureError("Phase à réordonner introuvable en base.")
-                    lignes.append(ligne)
-                for rang, ligne in enumerate(lignes, start=1):
-                    ligne.ordre = -rang
-                session.flush()
-                for phase, ligne in zip(phases, lignes, strict=True):
-                    ligne.ordre = phase.ordre
-                session.commit()
-        except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec du réalignement des phases du créneau.") from exc
 
     def supprimer(self, phase_id: PhaseId) -> None:
         """Supprime l'avancement d'une phase (retrait d'une étape de la séquence, E05US001).

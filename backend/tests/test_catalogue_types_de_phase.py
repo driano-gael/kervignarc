@@ -38,6 +38,7 @@ from domain.politiques import (
     assembler_politiques,
     registre_par_defaut,
 )
+from tests.conftest import identite_d_etape
 
 TOURNOI = 1
 
@@ -57,41 +58,55 @@ def _sequence_ef31() -> SequencePhases:
                 type=TypePhase.QUALIFICATION,
                 bareme=BaremeQualification(nb_volees=5, nb_fleches_par_volee=3),
                 validation=GrainValidation.fin_de_serie(),
+                etape_id=identite_d_etape(1),
             ),
             # 2 — barrage : départage les ex æquo **avant** de monter le tableau (§8.2).
             Phase.creer(
                 depart_id=TOURNOI,
                 ordre=2,
                 type=TypePhase.BARRAGE,
-                sources=(SourcePhase.par_rangs(1, rang_debut=1, rang_fin=32),),
+                sources=(SourcePhase.par_rangs(identite_d_etape(1), rang_debut=1, rang_fin=32),),
+                etape_id=identite_d_etape(2),
             ),
             # 3 — tableau principal : les 32 rescapés du barrage.
             Phase.creer(
                 depart_id=TOURNOI,
                 ordre=3,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_rangs(2, rang_debut=1, rang_fin=32),),
+                sources=(SourcePhase.par_rangs(identite_d_etape(2), rang_debut=1, rang_fin=32),),
+                etape_id=identite_d_etape(3),
             ),
             # 4 — repêchage : les perdants du 1ᵉʳ tour du tableau principal reviennent.
             Phase.creer(
                 depart_id=TOURNOI,
                 ordre=4,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_issue_de_tour(3, tour=1, issue=IssueTour.PERDANTS),),
+                sources=(
+                    SourcePhase.par_issue_de_tour(
+                        identite_d_etape(3), tour=1, issue=IssueTour.PERDANTS
+                    ),
+                ),
+                etape_id=identite_d_etape(4),
             ),
             # 5 — tournoi des perdants : les battus du 2ᵉ tour, qui ne reviennent pas, eux.
             Phase.creer(
                 depart_id=TOURNOI,
                 ordre=5,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_issue_de_tour(3, tour=2, issue=IssueTour.PERDANTS),),
+                sources=(
+                    SourcePhase.par_issue_de_tour(
+                        identite_d_etape(3), tour=2, issue=IssueTour.PERDANTS
+                    ),
+                ),
+                etape_id=identite_d_etape(5),
             ),
             # 6 — tableaux de placement : tout le reste se classe.
             Phase.creer(
                 depart_id=TOURNOI,
                 ordre=6,
                 type=TypePhase.PLACEMENT,
-                sources=(SourcePhase.le_reste(3),),
+                sources=(SourcePhase.le_reste(identite_d_etape(3)),),
+                etape_id=identite_d_etape(6),
             ),
             # 7 — finale : **pas un type**, une élimination directe à 2 alimentée par les gagnants
             # des demies (tour 4 d'un tableau de 32). Elle ne devient une phase distincte que pour
@@ -100,8 +115,13 @@ def _sequence_ef31() -> SequencePhases:
                 depart_id=TOURNOI,
                 ordre=7,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_issue_de_tour(3, tour=4, issue=IssueTour.GAGNANTS),),
+                sources=(
+                    SourcePhase.par_issue_de_tour(
+                        identite_d_etape(3), tour=4, issue=IssueTour.GAGNANTS
+                    ),
+                ),
                 effectif=2,
+                etape_id=identite_d_etape(7),
             ),
             # 8 — Big Shoot Off : la grande finale spectacle, alimentée par **deux** sources — les
             # finalistes et le repêché. C'est le cas réel du classeur (`Tableaux.xlsx`).
@@ -110,9 +130,10 @@ def _sequence_ef31() -> SequencePhases:
                 ordre=8,
                 type=TypePhase.BIG_SHOOT_OFF,
                 sources=(
-                    SourcePhase.par_rangs(7, rang_debut=1, rang_fin=2),
-                    SourcePhase.par_rangs(4, rang_debut=1, rang_fin=1),
+                    SourcePhase.par_rangs(identite_d_etape(7), rang_debut=1, rang_fin=2),
+                    SourcePhase.par_rangs(identite_d_etape(4), rang_debut=1, rang_fin=1),
                 ),
+                etape_id=identite_d_etape(8),
             ),
         )
     )
@@ -192,14 +213,20 @@ def test_un_echauffement_s_insere_en_tete_du_deroule() -> None:
     licite à une phase qui ne classe pas."""
     sequence = SequencePhases(
         (
-            Phase.creer(depart_id=TOURNOI, ordre=1, type=TypePhase.ECHAUFFEMENT),
+            Phase.creer(
+                depart_id=TOURNOI,
+                ordre=1,
+                type=TypePhase.ECHAUFFEMENT,
+                etape_id=identite_d_etape(1),
+            ),
             Phase(
                 depart_id=TOURNOI,
                 ordre=2,
                 type=TypePhase.QUALIFICATION,
-                sources=(SourcePhase.le_reste(1),),
+                sources=(SourcePhase.le_reste(identite_d_etape(1)),),
                 bareme=BaremeQualification(nb_volees=5, nb_fleches_par_volee=3),
                 validation=GrainValidation.fin_de_serie(),
+                etape_id=identite_d_etape(2),
             ),
         )
     )

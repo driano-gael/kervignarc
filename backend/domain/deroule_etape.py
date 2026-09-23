@@ -2,13 +2,14 @@
 (ADR-0076). Avec une définition unique, la divergence entre créneaux n'est plus improbable : elle
 est **impossible**.
 
-⚠️ **`Phase` reste l'objet du moteur** et porte toujours sa définition **en mémoire** : le
-repository l'assemble depuis l'étape de même `ordre`. Les modules qui lisent `phase.bareme`
-ignorent cette couture, et c'est voulu — la jointure est l'affaire de l'adapter (ADR-0003).
+⚠️ **`Phase` reste l'objet du moteur** et porte sa définition **en mémoire** : le repository
+l'assemble depuis l'étape que la phase **désigne** (`phase.etape_id`, ADR-0078). La jointure est
+l'affaire de l'adapter (ADR-0003), et ses lecteurs l'ignorent.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 
 from domain.arret_programme import (
@@ -31,6 +32,8 @@ from domain.phase import (
     SourcePhase,
     StatutPhase,
     TypePhase,
+    VueParRangs,
+    projeter_sur_les_rangs,
     verifier_coherence_etape,
 )
 from domain.politiques import ProfondeurClassement
@@ -42,16 +45,22 @@ from domain.tournoi import TournoiId
 EtapeDerouleId = int
 """Identifiant technique d'une étape de déroulé, attribué par la persistance."""
 
+_DEPART_A_BLANC = DepartId(0)
+"""Créneau fictif des instanciations à blanc — **privé** : ce n'est pas un créneau.
+
+`Phase.__post_init__` ne lit jamais `depart_id`, donc la valeur est inerte ; l'exposer inviterait
+à la prendre pour un identifiant licite et à persister une phase rattachée au néant.
+"""
+
 
 @dataclass(frozen=True)
 class EtapeDeroule:
     """Une étape du déroulé **d'un tournoi** — sa définition, sans avancement ni créneau.
 
-    C'est `ModelePhase` (le contenu d'un format) doté d'un tournoi et d'une identité : le format
-    décrit un déroulé *réutilisable*, cette étape le déroulé *de cette édition*. Les invariants
-    sont ceux d'une phase, par la **même** fonction (`verifier_coherence_etape`). Satisfait
-    structurellement `domain.phase.EtapeSequencee` : la séquence 1..N se valide sur les étapes,
-    seule la **portée** ayant changé (ADR-0045 §3).
+    C'est `ModelePhase` doté d'un tournoi et d'une identité : le format décrit un déroulé
+    *réutilisable*, cette étape le déroulé *de cette édition*. Mêmes invariants qu'une phase, par
+    la **même** fonction (`verifier_coherence_etape`), ADR-0045 §3. ⚠️ **Ne satisfait plus
+    `EtapeSequencee`** (ADR-0078) : ancrée par identité, elle passe par `vues_du_deroule`.
     """
 
     tournoi_id: TournoiId
@@ -246,13 +255,11 @@ class EtapeDeroule:
         pour qu'un écran s'ouvre toujours.
         """
         if self.colline is not None and self.type is not TypePhase.COLLINE:
-            # DETTE-078
             # ⚠️ **Le refus existait déjà, mais UN CRAN TROP TARD** : il vivait dans
             # `Phase.__post_init__`, donc à `instancier()`, c'est-à-dire **après** que l'étape a
-            # rejoint le déroulé. Une entrée refusée en 422 laissait une étape sans phase, occupant
-            # un rang que l'ajout suivant ne réutilise pas. Le refuser ici le rend antérieur à
-            # toute écriture. Les quatre réglages voisins partagent ce défaut, hérité et inscrit au
-            # registre plutôt que corrigé en douce ici.
+            # rejoint le déroulé. Le poser ici le rend antérieur à toute écriture. Les quatre
+            # réglages voisins vivent toujours sur `Phase` ; ce sont les trois sites d'écriture
+            # qui appellent `verifier_instanciable` pour eux.
             raise ConfigurationCollineInvalide(
                 "Un réglage de colline ne se pose que sur une phase de type « colline »."
             )
@@ -290,12 +297,13 @@ class EtapeDeroule:
 
         C'est ici que `depart_id` et `statut` naissent. La phase porte la définition **recopiée en
         mémoire**, jamais persistée en double (ADR-0076). ⚠️ `decoupage` est recopié, `arrets` ne
-        l'est pas : le découpage décide de l'avancement que le moteur **lit sur la phase**, alors
-        que les arrêts ne sont lus que par `ServiceArretsProgrammes`, qui adresse le déroulé par
-        rang — les faire voyager fermerait un cycle d'import.
+        l'est pas : les arrêts ne sont lus que par `ServiceArretsProgrammes`, et les faire voyager
+        fermerait un cycle d'import. ⚠️ **`etape_id` rattache l'avancement à sa définition**
+        (ADR-0078) ; `ordre` ne voyage plus que pour l'affichage.
         """
         return Phase(
             depart_id=depart_id,
+            etape_id=self.id,
             ordre=self.ordre,
             type=self.type,
             bareme=self.bareme,
@@ -312,6 +320,17 @@ class EtapeDeroule:
             statut=StatutPhase.A_VENIR,
         )
 
+    def verifier_instanciable(self) -> None:
+        """Lève si cette étape ne pourra pas s'instancier — **à appeler avant d'écrire**.
+
+        ⚠️ **Cinq** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
+        `big_shoot_off`, `suisse` posés sur un type qui ne les lit pas, plus `barrage_jusqu_au`.
+        Sans cet appel, une étape invalide **rejoint le déroulé** puis fait tomber chaque lecture
+        (E05US022). Une **méthode**, et non un `instancier(...)` dont on jette le résultat : un
+        résultat perdu se lit comme du code mort, et un nettoyage le supprimerait sans rougir.
+        """
+        self.instancier(_DEPART_A_BLANC)
+
     def avec_ordre(self, ordre: int) -> EtapeDeroule:
         """Renvoie une copie à un nouveau rang dans le déroulé (réordonnancement)."""
         return replace(self, ordre=ordre)
@@ -319,6 +338,39 @@ class EtapeDeroule:
     def avec_sources(self, sources: tuple[SourcePhase, ...]) -> EtapeDeroule:
         """Renvoie une copie aux prélèvements remplacés."""
         return replace(self, sources=sources)
+
+
+def table_des_rangs(etapes: Iterable[EtapeDeroule]) -> dict[EtapeDerouleId, int]:
+    """La correspondance **identité → rang** d'un déroulé, lue sur lui-même (ADR-0078 §4).
+
+    Sert partout où l'on redescend d'un ancrage par identité vers un ancrage par rang : la
+    promotion en format, et la vue que le déroulé se donne pour entrer dans le moteur. ⚠️ Une
+    étape **non persistée** n'y figure pas : un prélèvement qui la viserait est introuvable, ce
+    qui est le comportement voulu — on ne prélève pas dans une étape qui n'existe pas encore.
+    """
+    return {etape.id: etape.ordre for etape in etapes if etape.id is not None}
+
+
+def vues_du_deroule(etapes: Sequence[EtapeDeroule]) -> tuple[VueParRangs, ...]:
+    """Projette un déroulé sur ses rangs, pour les **contrôles de séquence** (ADR-0078 §4).
+
+    Jumelle de `domain.phase.vues_par_rangs`, qui fait le même geste sur les avancements. Deux
+    fonctions et non une : ce sont deux agrégats distincts, et les réunir derrière un protocole
+    coûterait plus de lecture que les huit lignes qu'il économiserait.
+    """
+    rangs = table_des_rangs(etapes)
+    return tuple(
+        VueParRangs(
+            ordre=etape.ordre,
+            type=etape.type,
+            sources=projeter_sur_les_rangs(etape.sources, rangs),
+            effectif=etape.effectif,
+            bareme=etape.bareme,
+            validation=etape.validation,
+            poules=etape.poules,
+        )
+        for etape in etapes
+    )
 
 
 def titre_normalise(titre: str | None) -> str | None:

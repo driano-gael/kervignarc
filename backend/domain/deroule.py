@@ -38,7 +38,7 @@ from domain.phase import (
     EtapeSequencee,
     IssueTour,
     NatureSource,
-    SourcePhase,
+    SourceModele,
     TypePhase,
     anomalies_etape,
     anomalies_sequence,
@@ -370,7 +370,7 @@ def _exigence_de_letape(
     )
 
 
-def _source_lisible(source: SourcePhase, par_ordre: dict[int, EtapeSequencee]) -> bool:
+def _source_lisible(source: SourceModele, par_ordre: dict[int, EtapeSequencee]) -> bool:
     """Ce prélèvement sera-t-il **honoré** par le moteur (E05US024) ?
 
     Deux conditions, et les deux sont nécessaires : la nature doit être résolue (`RANGS` seule —
@@ -430,7 +430,7 @@ def _inscrits_pour_classer(
     return min(besoins) if besoins else None
 
 
-def _largeur(source: SourcePhase) -> int:
+def _largeur(source: SourceModele) -> int:
     """Combien de rangs cette fenêtre peut prélever **au plus** (`sys.maxsize` si fin ouverte)."""
     if source.rang_fin is None:
         return sys.maxsize
@@ -724,7 +724,7 @@ def _choc_entre_tranches(effectif: int, resolu: int, taille_visee: int) -> str |
 
 def _resoudre(
     etape: EtapeProjetable,
-    source: SourcePhase,
+    source: SourceModele,
     effectifs: dict[int, int | None],
     tranches: dict[int, tuple[int, int] | None],
     braquets: dict[int, tuple[TourBraquet, ...]],
@@ -791,7 +791,7 @@ def _resoudre(
 
 
 def _compte_issue_de_tour(
-    source: SourcePhase,
+    source: SourceModele,
     braquets: dict[int, tuple[TourBraquet, ...]],
     effectifs: dict[int, int | None],
 ) -> int | None:
@@ -810,7 +810,7 @@ def _compte_issue_de_tour(
 
 
 def _compte_du_reste(
-    source: SourcePhase,
+    source: SourceModele,
     etape: EtapeProjetable,
     etapes: Sequence[EtapeProjetable],
     amont: int | None,

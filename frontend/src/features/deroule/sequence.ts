@@ -1,10 +1,11 @@
 // Manipulation d'une **séquence d'étapes** de format (E01US024) — logique pure, aucun React.
 //
-// Deux gestes, et le second est ce qui les rend sûrs : réordonner ou retirer une étape **renumérote
-// les ordres**, or `ordre_source` désigne une phase **par son ordre** (`# DETTE-026`) — sans
-// remappage, monter une phase d'un cran fait glisser en silence les prélèvements de ses cadettes.
-// Le backend fait déjà exactement cela (`_remapper`) et **refuse** de retirer une phase encore
-// référencée : c'est la parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
+// Deux gestes, et le second est ce qui les rend sûrs : réordonner ou retirer une étape
+// **renumérote les ordres**, or un prélèvement de **format** désigne sa source par son rang —
+// sans remappage, monter une étape d'un cran fait glisser les prélèvements de ses cadettes.
+//
+// ⚠️ **Légitime ici** (ADR-0078 §3) : les étapes d'un format n'ont pas d'identité à citer. Seule
+// l'**édition concrète** est passée à l'identité (E05US022) ; `features/phases` ne remappe plus.
 
 import type { Etape, Source } from '../patrimoine/api'
 import { decrireProfondeur } from '../../shared/phases/profondeur'

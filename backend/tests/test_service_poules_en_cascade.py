@@ -30,6 +30,7 @@ from application.poules import ServicePoules
 from domain.blason import ZoneScore
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.poule import ModeDeComposition, ReglageDePoules
+from tests.conftest import identite_d_etape
 from tests.test_service_poules import _Monde
 
 
@@ -58,8 +59,9 @@ def _phase_avale(
 ) -> int:
     """Pose la phase 2 : des poules qui prélèvent une tranche du classement de la phase 1.
 
-    `SourcePhase.par_rangs` désigne la phase source par son **ordre** dans le déroulé (2, celle que
-    `_Monde.regler` pose), pas par son identifiant — c'est le prélèvement d'ADR-0068/ADR-0080.
+    `SourcePhase.par_rangs` désigne la phase source par son **identité** (ADR-0078) : celle de
+    l'étape de rang 2, que `_Monde.regler` pose. C'était son *ordre* jusqu'à E05US022 — le
+    prélèvement lui-même reste celui d'ADR-0068/ADR-0080.
     """
     phase = monde.phases.ajouter(
         Phase(
@@ -67,7 +69,8 @@ def _phase_avale(
             ordre=3,
             type=TypePhase.POULES,
             poules=ReglageDePoules(taille_visee=taille_visee, mode=mode),
-            sources=(SourcePhase.par_rangs(2, rang_debut, rang_fin),),
+            sources=(SourcePhase.par_rangs(identite_d_etape(2), rang_debut, rang_fin),),
+            etape_id=identite_d_etape(3),
         )
     )
     assert phase.id is not None

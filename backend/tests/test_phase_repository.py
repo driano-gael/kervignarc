@@ -56,7 +56,7 @@ from infrastructure.db import (
 )
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
-from tests.conftest import poser_phase_sql
+from tests.conftest import decaler_les_identites_sql, poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -115,9 +115,16 @@ def _poser(db: Database, depart_id: DepartId, **reglages: Any) -> Phase:
     l'avancement sur `phase`. Les tests de ce fichier éprouvent l'aller-retour de la config — ils
     doivent donc écrire là où elle vit désormais, sinon ils vérifieraient une table vide.
     """
-    etape = DerouleEtapeRepositorySQL(db.session_factory).ajouter(
-        EtapeDeroule(tournoi_id=_tournoi_du(db, depart_id), **reglages)
-    )
+    tournoi_id = _tournoi_du(db, depart_id)
+    # ⚠️ **Ce fichier écrit l'étape lui-même**, donc `poser_phase_sql` n'a plus rien à décaler
+    # quand il est appelé : sans ce geste, SQLite alloue 1, 2, 3… et `etape.id == etape.ordre`
+    # dans le fichier même qui éprouve la jointure par identité (`_assembler`, ADR-0078). C'est
+    # le décor le plus rentable du dépôt pour cette coïncidence — relevé en 3ᵉ passe de revue.
+    deroules = DerouleEtapeRepositorySQL(db.session_factory)
+    brulee = decaler_les_identites_sql(db.session_factory, tournoi_id)
+    etape = deroules.ajouter(EtapeDeroule(tournoi_id=tournoi_id, **reglages))
+    if brulee is not None:
+        deroules.supprimer(brulee)
     return poser_phase_sql(db.session_factory, etape.instancier(depart_id))
 
 
@@ -337,12 +344,14 @@ def _phase_brute(db: Database, depart_id: DepartId, config: str) -> None:
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
         assert depart is not None, "Le décor doit avoir créé le créneau."
-        session.add(
-            DerouleEtapeORM(
-                tournoi_id=depart.tournoi_id, ordre=1, type="qualification", config=config
-            )
+        etape = DerouleEtapeORM(
+            tournoi_id=depart.tournoi_id, ordre=1, type="qualification", config=config
         )
-        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.add(etape)
+        # ⚠️ **`flush` avant d'instancier** : l'avancement désigne son étape par identité
+        # (ADR-0078), et cette identité n'existe qu'une fois la ligne écrite.
+        session.flush()
+        session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
         session.commit()
 
 
@@ -572,7 +581,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        _poser(
+        qualif = _poser(
             db,
             depart_id,
             ordre=1,
@@ -580,6 +589,10 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
             bareme=BaremeQualification.creer(20, 3),
             validation=GrainValidation.fin_de_serie(),
         )
+        # ⚠️ L'identité **réelle** de l'étape amont, jamais un `1` écrit à la main : sur une base
+        # neuve elle vaudrait 1 par coïncidence, et le test passerait avec l'ancien ancrage.
+        assert qualif.etape_id is not None
+        source = SourcePhase(etape_source_id=qualif.etape_id, rang_debut=1, rang_fin=16)
 
         elim = poser_phase_sql(
             db.session_factory,
@@ -587,7 +600,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
                 depart_id,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
+                sources=(source,),
                 effectif=16,
             ),
         )
@@ -598,7 +611,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
         assert relue is not None
         assert relue.bareme is None
         assert relue.validation is None
-        assert relue.sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
+        assert relue.sources == (source,)
         assert relue.effectif == 16
 
         # Le JSON ne porte ni scoring ni validation pour une phase non-qualification. On vise
@@ -607,8 +620,15 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
             ligne = session.query(DerouleEtapeORM).filter_by(ordre=2).one()
             config = json.loads(ligne.config)
         assert "scoring" not in config and "validation" not in config
+        # ⚠️ L'identité **lue sur la qualification**, jamais écrite en dur : la version qui
+        # attendait `1` ne passait que parce que SQLite allouait depuis 1 (3ᵉ passe de revue).
         assert config["sources"] == [
-            {"nature": "rangs", "ordre_source": 1, "rang_debut": 1, "rang_fin": 16}
+            {
+                "nature": "rangs",
+                "etape_source_id": qualif.etape_id,
+                "rang_debut": 1,
+                "rang_fin": 16,
+            }
         ]
     finally:
         db.engine.dispose()
@@ -714,7 +734,7 @@ def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
     try:
         depart_id = _depart(db)
         _tableau_brut(
-            db, depart_id, '{"source": {"ordre_source": 1, "rang_debut": 8, "rang_fin": 4}}'
+            db, depart_id, '{"source": {"etape_source_id": 1, "rang_debut": 8, "rang_fin": 4}}'
         )
         with pytest.raises(InfrastructureError):
             PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
@@ -825,18 +845,20 @@ def _tableau_brut(db: Database, depart_id: DepartId, config: str, statut: str = 
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
         assert depart is not None, "Le décor doit avoir créé le créneau."
-        session.add(
-            DerouleEtapeORM(
-                tournoi_id=depart.tournoi_id,
-                ordre=1,
-                type="elimination_directe",
-                config=config,
-            )
+        etape = DerouleEtapeORM(
+            tournoi_id=depart.tournoi_id,
+            ordre=1,
+            type="elimination_directe",
+            config=config,
         )
+        session.add(etape)
+        # ⚠️ **`flush` avant d'instancier** : l'avancement désigne son étape par identité
+        # (ADR-0078), et cette identité n'existe qu'une fois la ligne écrite.
+        session.flush()
         session.add(
             PhaseORM(
                 depart_id=depart_id,
-                ordre=1,
+                etape_id=etape.id,
                 statut=statut,
             )
         )
@@ -930,10 +952,10 @@ def _poules_brutes(db: Database, depart_id: DepartId, config: str) -> None:
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
         assert depart is not None, "Le décor doit avoir créé le créneau."
-        session.add(
-            DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="poules", config=config)
-        )
-        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        etape = DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="poules", config=config)
+        session.add(etape)
+        session.flush()  # l'identité de l'étape n'existe qu'écrite (ADR-0078)
+        session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
         session.commit()
 
 
@@ -1062,12 +1084,12 @@ def _big_shoot_off_brut(db: Database, depart_id: DepartId, config: str) -> None:
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
         assert depart is not None, "Le décor doit avoir créé le créneau."
-        session.add(
-            DerouleEtapeORM(
-                tournoi_id=depart.tournoi_id, ordre=1, type="big_shoot_off", config=config
-            )
+        etape = DerouleEtapeORM(
+            tournoi_id=depart.tournoi_id, ordre=1, type="big_shoot_off", config=config
         )
-        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.add(etape)
+        session.flush()  # l'identité de l'étape n'existe qu'écrite (ADR-0078)
+        session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
         session.commit()
 
 
@@ -1357,10 +1379,10 @@ def _suisse_brut(db: Database, depart_id: DepartId, config: str) -> None:
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
         assert depart is not None, "Le décor doit avoir créé le créneau."
-        session.add(
-            DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="suisse", config=config)
-        )
-        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        etape = DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="suisse", config=config)
+        session.add(etape)
+        session.flush()  # l'identité de l'étape n'existe qu'écrite (ADR-0078)
+        session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
         session.commit()
 
 
@@ -1465,10 +1487,12 @@ def _colline_brute(db: Database, depart_id: DepartId, config: str) -> None:
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
         assert depart is not None, "Le décor doit avoir créé le créneau."
-        session.add(
-            DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="colline", config=config)
+        etape = DerouleEtapeORM(
+            tournoi_id=depart.tournoi_id, ordre=1, type="colline", config=config
         )
-        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.add(etape)
+        session.flush()  # l'identité de l'étape n'existe qu'écrite (ADR-0078)
+        session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
         session.commit()
 
 

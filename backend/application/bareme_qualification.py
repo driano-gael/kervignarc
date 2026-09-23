@@ -17,7 +17,7 @@ from application.erreurs import (
     TournoiSansDepart,
 )
 from domain.bareme import BaremeQualification
-from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId, vues_du_deroule
 from domain.phase import TypePhase, grain_par_defaut, verifier_sequence
 from domain.ports import (
     DepartRepository,
@@ -150,42 +150,21 @@ class ServiceBaremeQualification:
             bareme=bareme,
             validation=grain_par_defaut(TypePhase.QUALIFICATION),
         )
-        decalees = [_decaler_dun_cran(e) for e in etapes]
-        verifier_sequence([neuve, *decalees])  # valide l'ensemble avant d'écrire
-        # ⚠️ **Décaler d'abord, insérer ensuite.** Un tournoi ne porte qu'une étape par rang : poser
-        # la qualification en tête avant d'avoir libéré le rang 1 heurterait cette unicité. Le
-        # décalage passe par `reordonner`, l'écriture d'ensemble du port — le faire étape par étape
-        # produirait le même doublon transitoire, un cran plus bas.
-        self._deroules.reordonner(decalees)
+        decalees = [e.avec_ordre(e.ordre + 1) for e in etapes]
+        verifier_sequence(vues_du_deroule([neuve, *decalees]))  # valide l'ensemble avant d'écrire
+        # ⚠️ **Seul le rang bouge** (ADR-0078). Les prélèvements des étapes décalées citent des
+        # identités, qui ne changent pas ; les avancements citent l'identité de leur étape, donc
+        # ils n'ont rien à suivre non plus. Jusqu'à cette US il fallait incrémenter chaque ancre
+        # de source **et** réaligner le rang des phases de chaque créneau.
+        self._deroules.enregistrer_plusieurs(decalees)
         posee = self._deroules.ajouter(neuve)
 
-        # Les **avancements** suivent, au même ordre de gestes : une instance de la nouvelle étape
-        # dans chaque créneau, et le rang des instances déjà posées décalé comme leur étape. C'est
-        # le seul éventail qui subsiste, et il ne porte aucun réglage.
+        # Le seul éventail qui subsiste : une instance de la nouvelle étape dans chaque créneau.
         for depart in departs:
             assert depart.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
-            a_decaler = [p.avec_ordre(p.ordre + 1) for p in self._phases.par_depart(depart.id)]
-            if a_decaler:
-                self._phases.reordonner(a_decaler)
             self._phases.ajouter(posee.instancier(depart.id))
         return bareme
 
     def _tournoi_existant(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-
-
-def _decaler_dun_cran(etape: EtapeDeroule) -> EtapeDeroule:
-    """Décale une phase d'un cran vers le bas (ordre +1) pour faire place à la qualification en
-    tête. Les sources **suivent** : leur ancre `ordre_source` est incrémentée d'autant, toutes les
-    phases se décalant du même cran, donc les références restent valides (E05US001).
-
-    Depuis E05US010 une phase porte **plusieurs** prélèvements : ils se décalent tous, faute de quoi
-    la séquence obtenue serait refusée (`SourceApresPhase`) ou, pire, pointerait la mauvaise phase.
-    """
-    decalee = etape.avec_ordre(etape.ordre + 1)
-    if not etape.sources:
-        return decalee
-    return decalee.avec_sources(
-        tuple(replace(source, ordre_source=source.ordre_source + 1) for source in etape.sources)
-    )

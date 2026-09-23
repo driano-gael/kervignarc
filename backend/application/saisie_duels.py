@@ -9,6 +9,7 @@ hypothèse d'homogénéité assumée (ADR-0049).
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from application.classements import ServiceClassement
@@ -35,14 +36,15 @@ from application.prelevement import (
     tranche,
 )
 from domain.blason import ZoneScore
-from domain.classement import LigneClassement
+from domain.classement import Classement, LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
+from domain.deroule_etape import EtapeDerouleId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
-from domain.phase import PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import (
     Aggregation,
     Byes,
@@ -148,6 +150,25 @@ class EtatTableau:
     est_termine: bool
     duels: tuple[EtatDuel, ...]
     podium: tuple[tuple[int, Duelliste], ...]
+
+
+def amorce_du_cache(
+    phases: Sequence[Phase], classement: Classement
+) -> tuple[EtapeDerouleId, ClassementSource] | None:
+    """L'entrée que le résolveur peut se voir offrir d'avance : la **qualification de tête**.
+
+    ⚠️ **De tête, donc SANS source.** La valeur offerte est le classement du **créneau entier**,
+    ce que le résolveur ne rend que pour elle ; une qualification *prélevée* (ADR-0082) rend une
+    tranche, et l'amorcer ainsi court-circuiterait sa résolution sans erreur ni signal.
+    Fonction de module délibérément : inlinée, la garde n'était atteignable par aucun test.
+    """
+    tete = next(
+        (p for p in phases if p.type is TypePhase.QUALIFICATION and not p.sources),
+        None,
+    )
+    if tete is None or tete.etape_id is None:
+        return None
+    return tete.etape_id, ClassementSource(classement=classement, ordre=tete.ordre)
 
 
 class ServiceSaisieDuels:
@@ -415,7 +436,7 @@ class ServiceSaisieDuels:
         tournoi_id: TournoiId,
         phase_id: PhaseId,
         _chaine: tuple[PhaseId, ...] = (),
-        _cache: dict[int, ClassementSource | None] | None = None,
+        _cache: dict[EtapeDerouleId, ClassementSource | None] | None = None,
     ) -> tuple[Tableau, dict[int, LigneClassement]]:
         """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression).
 
@@ -445,26 +466,18 @@ class ServiceSaisieDuels:
         # **diamant** (une super-finale nourrie par le principal *et* la consolante, tous deux nés
         # du même tableau), la phase commune était reconstruite une fois par chemin — coût
         # exponentiel en profondeur, là où le registre et l'ADR annonçaient « fois la profondeur ».
-        cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
+        cache: dict[EtapeDerouleId, ClassementSource | None] = {} if _cache is None else _cache
         classement = self._classements.pour_depart(phase.depart_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
         # Le classement du départ vient d'être calculé : on l'installe au cache pour que la source
-        # visant la qualification ne le recalcule pas (`ServiceClassement.pour_depart` n'est pas
-        # mémoïsé — 7 accès repository, cf. `DETTE-031`). Sans ça, tout déroulé composé depuis
-        # E01US024 le payait **deux fois** par reconstruction, sur le thread écrivain unique.
-        # Sous `if phase.sources` : sans source déclarée, `preleves` n'appelle jamais le résolveur
-        # et l'entrée de cache est pure perte — un SELECT de plus par saisie de manche, sur le
-        # thread écrivain unique, pour le cas de la quasi-totalité des phases (relevé en revue).
-        qualification = next(
-            (
-                p
-                for p in self._phases.par_depart(phase.depart_id)
-                if p.type is TypePhase.QUALIFICATION
-            ),
-            None,
-        )
-        if phase.sources and qualification is not None and qualification.ordre not in cache:
-            cache[qualification.ordre] = ClassementSource(classement=classement)
+        # visant la qualification ne le recalcule pas (`pour_depart` n'est pas mémoïsé — 7 accès
+        # repository, `DETTE-031`). Sous `if phase.sources` : sans source déclarée, `preleves`
+        # n'appelle jamais le résolveur et l'entrée serait pure perte.
+
+        if phase.sources:
+            amorce = amorce_du_cache(self._phases.par_depart(phase.depart_id), classement)
+            if amorce is not None and amorce[0] not in cache:
+                cache[amorce[0]] = amorce[1]
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
@@ -494,7 +507,7 @@ class ServiceSaisieDuels:
         tournoi_id: TournoiId,
         depart_id: DepartId,
         _chaine: tuple[PhaseId, ...] = (),
-        _cache: dict[int, ClassementSource | None] | None = None,
+        _cache: dict[EtapeDerouleId, ClassementSource | None] | None = None,
     ) -> ResolveurClassement:
         """De quoi lire le classement de **n'importe quelle** phase amont de ce créneau (E05US024).
 
@@ -504,26 +517,49 @@ class ServiceSaisieDuels:
         d'E05US020 (plan de 8 pour un tableau de 4) est ce qui arrive quand la règle est recopiée.
         **Mémoïsé sur toute la descente** : coût linéaire en nombre de **phases**, pas de chemins.
         """
-        cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
+        cache: dict[EtapeDerouleId, ClassementSource | None] = {} if _cache is None else _cache
 
-        def resoudre(ordre: int) -> ClassementSource | None:
-            if ordre not in cache:
-                cache[ordre] = self._classement_de_l_ordre(
-                    tournoi_id, depart_id, ordre, _chaine, cache
+        def resoudre(etape_id: EtapeDerouleId) -> ClassementSource | None:
+            if etape_id not in cache:
+                cache[etape_id] = self._classement_de_l_etape(
+                    tournoi_id, depart_id, etape_id, _chaine, cache
                 )
-            return cache[ordre]
+            return cache[etape_id]
 
         return resoudre
 
-    def _classement_de_l_ordre(
+    def _classement_de_l_etape(
         self,
         tournoi_id: TournoiId,
         depart_id: DepartId,
-        ordre: int,
+        etape_id: EtapeDerouleId,
         chaine: tuple[PhaseId, ...],
-        cache: dict[int, ClassementSource | None],
+        cache: dict[EtapeDerouleId, ClassementSource | None],
     ) -> ClassementSource | None:
-        """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
+        """Le classement produit **dans ce créneau** par l'étape désignée, ou `None`.
+
+        ⚠️ **Désignée par identité, estampillée par rang** (ADR-0078). La résolution se fait sur
+        `etape_id` — c'est ce qu'un prélèvement cite, et renuméroter le déroulé ne change donc
+        plus ce qu'une phase aval va lire. Le rang est reposé sur le résultat parce que les
+        messages en ont besoin : « la phase 2 » se dit à l'organisateur, pas un identifiant.
+        """
+        phase = next(
+            (p for p in self._phases.par_depart(depart_id) if p.etape_id == etape_id), None
+        )
+        if phase is None:
+            return None
+        produit = self._classement_produit(tournoi_id, depart_id, phase, chaine, cache)
+        return None if produit is None else replace(produit, ordre=phase.ordre)
+
+    def _classement_produit(
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        phase: Phase,
+        chaine: tuple[PhaseId, ...],
+        cache: dict[EtapeDerouleId, ClassementSource | None],
+    ) -> ClassementSource | None:
+        """Le classement de cette phase, selon son type — sans l'estampille de rang.
 
         1. **qualification** — le classement de tir du départ (ADR-0075) ;
         2. **élimination directe** — l'arbre reconstruit ; le service s'appelle lui-même ;
@@ -531,9 +567,6 @@ class ServiceSaisieDuels:
         4. **tout autre**, ou aucun lecteur branché — `None` : la phase retombe sur son
            comportement d'avant, le prélèvement reste **inerte** plutôt que faux.
         """
-        phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
-        if phase is None:
-            return None
         if phase.type is TypePhase.QUALIFICATION:
             # Un classement de qualification n'a **aucune plage indécise** : les rangs de tir
             # sont fermes dès que les volées sont validées.

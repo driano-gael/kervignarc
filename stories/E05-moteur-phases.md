@@ -599,12 +599,39 @@ Origine : `DETTE-026`, dont le seuil de résorption (règle 16 — « au 3ᵉ é
   n'ont pas d'identité par construction ([ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5) ;
   l'ordre y est **correct**, pas dégradé. La conversion se fait à `appliquer`, seul point où les
   deux mondes se touchent.
-- **CA — les deux `reordonner` de port disparaissent** : renuméroter ne touche plus qu'une colonne
-  sans signification relationnelle, donc plus d'état transitoire à doublon et plus d'écriture
-  d'ensemble à orchestrer.
+- **CA — `PhaseRepository.reordonner` disparaît ; `DerouleRepository.reordonner` devient
+  `enregistrer_plusieurs`** *(CA corrigé le 20/09/2026, en le mettant en œuvre)*. La rédaction
+  d'origine — « les deux disparaissent » — reprenait ADR-0078 §5, qui sur-promettait : le second
+  n'existait pas à cause de l'ancrage mais de la contrainte SQL `uq_deroule_tournoi_ordre`, qu'un
+  changement d'ancre ne touche pas. **Arbitrage du commanditaire** : relâcher cette unicité (issue
+  déjà envisagée par l'ADR). La manœuvre des rangs négatifs disparaît ; l'écriture d'ensemble
+  **reste**, pour l'atomicité seule — une renumérotation à moitié écrite laisserait une séquence
+  trouée à l'écran.
+- **CA — la conversion va dans les DEUX sens** *(ajouté le 20/09/2026)*. ADR-0078 §4 ne nommait que
+  modèle → édition (`appliquer`). Le sens inverse existe : la **promotion** (`de_deroule`) capture
+  un déroulé en format de bibliothèque et doit redescendre sur les rangs, tout comme l'entrée dans
+  le **moteur**, qui raisonne en rangs. Une seule traduction sert les deux.
+- **CA — `FormatTournoi.appliquer` cesse d'être une fonction pure** *(ajouté le 20/09/2026)* :
+  ancrer demande une identité que seule la persistance attribue. Scindée en `verifier_applicable()`
+  — appelable **avant** toute écriture, ce qui préserve « instancier avant de détruire »
+  (E01US024) — et une pose **incrémentale** dans le service, correcte parce qu'une source ne vise
+  jamais qu'une phase antérieure, donc déjà écrite.
 - **CA — non-régression** : l'oracle 120 et l'oracle multi-départ restent verts, et le garde-fou de
-  portée (`test_portee_sportive.py`) aussi. Le comportement observable ne change **pas** : c'est un
-  remède structurel, pas une évolution fonctionnelle.
+  portée (`test_portee_sportive.py`) aussi. Le comportement observable ne change **pas** — à la
+  réserve du CA suivant, qui en énumère les seules exceptions : c'est un remède structurel, pas
+  une évolution fonctionnelle.
+- **CA — la reprise de données retire trois choses, et les journalise** *(ajouté le 20/09/2026,
+  en 3ᵉ passe de revue — le CA « non-régression » se lisait sans réserve alors que la migration en
+  porte trois, et un CA périmé se dérive sans effort)*. Aucune n'est **observable avant** la
+  reprise : (1) un **avancement** dont le rang n'a aucune étape est supprimé — il était déjà écarté
+  par les deux adapters ; ses lignes filles le suivent, sauf le **barrage**, détaché parce qu'un
+  barrage est un tir réellement effectué ; (2) un **prélèvement** dont le rang ne se résout pas est
+  retiré — il ne peuplait rien, et le garder sans ancre rendait tout le déroulé du tournoi
+  illisible ; (3) un **prélèvement sans clé d'ancre** de même. Tous partent au journal d'Alembic
+  avec leur compte — en **deux** lignes, (2) et (3) partageant le même compteur, les distinguer
+  n'apprenant rien à qui les lit. ⚠️ Conséquence **observable après** : une phase qui perd une partie
+  de ses prélèvements en gardant son `effectif` déclaré devient `EffectifIncompatible`, ce qui
+  bloque toute édition du déroulé jusqu'à correction — annoncé dans `docs/fonctionnel/E05US022.md`.
 - **Notes — le contre-argument est écarté explicitement, pas ignoré.** `models.py` objecte qu'« une
   FK dupliquerait l'information tout en pouvant en diverger ». L'ADR répond : le remède ne duplique
   pas, il **sépare** deux rôles que le rang cumulait depuis ADR-0076 (ordre d'affichage **et**
@@ -612,8 +639,13 @@ Origine : `DETTE-026`, dont le seuil de résorption (règle 16 — « au 3ᵉ é
 - **Notes — l'asymétrie est permanente.** Deux ancrages coexisteront (identité côté édition, ordre
   côté bibliothèque). Ils doivent porter des **noms différents** dans le code, jamais un champ
   polymorphe : un lecteur doit savoir lequel il tient sans relire l'ADR.
-- **Résorbe** : `DETTE-026` ; **allège** `DETTE-025` (moins d'écritures à réunir, et celles qui
-  restent ne peuvent plus produire d'appariement faux). **Dépend de** : E01US025 · **Jalon** : J3
+- **Notes — le garde-fou de portée sportive change de liste, pas de promesse** :
+  `test_portee_sportive.py` interdit toute colonne de *définition* sur `phase` ; `etape_id` y entre
+  comme **rattachement** (il désigne, il ne recopie pas) et `ordre` en sort.
+- **Résorbe** : `DETTE-026` ; **allège** `DETTE-025` — pas en nombre d'écritures, mais en
+  **nature** : ce qu'une panne laisse derrière elle est désormais une numérotation trouée à
+  l'écran, plus un barème joué de travers. La dette reste ouverte. **Dépend de** : E01US025 ·
+  **Jalon** : J3
 
 ---
 

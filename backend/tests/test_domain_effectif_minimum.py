@@ -34,15 +34,16 @@ from domain.bareme import BaremeQualification
 from domain.deroule import effectif_minimum, projeter
 from domain.erreurs import EffectifMinimumIncoherent, ExigenceEffectifInvalide
 from domain.format_tournoi import FormatTournoi, ModelePhase
-from domain.phase import IssueTour, SourcePhase, TypePhase
+from domain.phase import IssueTour, SourceModele, TypePhase
 from domain.tournoi import Tournoi
+from tests.conftest import appliquer_en_memoire
 
 
 def _qualification(ordre: int = 1) -> ModelePhase:
     return ModelePhase.qualification(BaremeQualification.preset_ffta_18m(), ordre=ordre)
 
 
-def _tableau(ordre: int, *sources: SourcePhase) -> ModelePhase:
+def _tableau(ordre: int, *sources: SourceModele) -> ModelePhase:
     return ModelePhase(ordre=ordre, type=TypePhase.ELIMINATION_DIRECTE, sources=tuple(sources))
 
 
@@ -63,19 +64,19 @@ def test_une_qualification_seule_nexige_quun_archer() -> None:
 
 
 def test_un_tableau_exige_deux_archers_pour_avoir_un_duel() -> None:
-    assert effectif_minimum([_qualification(), _tableau(2, SourcePhase.par_rangs(1, 1, 32))]) == 2
+    assert effectif_minimum([_qualification(), _tableau(2, SourceModele.par_rangs(1, 1, 32))]) == 2
 
 
 def test_les_rangs_33_et_suivants_exigent_34_inscrits() -> None:
     """L'exemple même du CA — un tableau de 2 ne se monte qu'à partir du 34ᵉ classé."""
-    etapes = [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))]
+    etapes = [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))]
 
     assert effectif_minimum(etapes) == 34
 
 
 def test_une_plage_fermee_haute_exige_autant_quune_plage_ouverte() -> None:
     """« Les rangs 33 à 64 » ne prend deux archers qu'au 34ᵉ, comme « 33 et suivants »."""
-    etapes = [_qualification(), _tableau(2, SourcePhase.par_rangs(1, 33, 64))]
+    etapes = [_qualification(), _tableau(2, SourceModele.par_rangs(1, 33, 64))]
 
     assert effectif_minimum(etapes) == 34
 
@@ -84,8 +85,8 @@ def test_cest_la_phase_la_plus_exigeante_qui_fixe_le_minimum() -> None:
     """Le déroulé d'ADR-0068 : un tableau principal 1-32, un classement « 33 et suivants »."""
     etapes = [
         _qualification(),
-        _tableau(2, SourcePhase.par_rangs(1, 1, 32)),
-        _tableau(3, SourcePhase.par_rangs(1, rang_debut=33)),
+        _tableau(2, SourceModele.par_rangs(1, 1, 32)),
+        _tableau(3, SourceModele.par_rangs(1, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 34
@@ -95,7 +96,7 @@ def test_plusieurs_prelevements_sur_une_phase_se_cumulent_donc_le_plus_bas_decid
     """Une phase nourrie par « 1 à 8 » **et** « 33 à 40 » a ses deux archers dès le 2ᵉ inscrit."""
     etapes = [
         _qualification(),
-        _tableau(2, SourcePhase.par_rangs(1, 1, 8), SourcePhase.par_rangs(1, 33, 40)),
+        _tableau(2, SourceModele.par_rangs(1, 1, 8), SourceModele.par_rangs(1, 33, 40)),
     ]
 
     assert effectif_minimum(etapes) == 2
@@ -115,8 +116,8 @@ def test_un_prelevement_par_issue_de_tour_ne_fixe_aucun_minimum() -> None:
     """
     etapes = [
         _qualification(),
-        _tableau(2, SourcePhase.par_rangs(1, 1, 32)),
-        _tableau(3, SourcePhase.par_issue_de_tour(2, tour=2, issue=IssueTour.PERDANTS)),
+        _tableau(2, SourceModele.par_rangs(1, 1, 32)),
+        _tableau(3, SourceModele.par_issue_de_tour(2, tour=2, issue=IssueTour.PERDANTS)),
     ]
 
     assert effectif_minimum(etapes) == 2
@@ -129,7 +130,7 @@ def test_le_reste_ne_chiffre_rien_mais_un_tableau_reste_un_tableau() -> None:
     ⚠️ Un premier jet rendait `1` ici, et son test l'entérinait : à 1 inscrit, le moteur levait
     `EffectifTableauInvalide` **en salle**, soit le défaut même que l'US retire.
     """
-    etapes = [_qualification(), _tableau(2, SourcePhase.le_reste(1))]
+    etapes = [_qualification(), _tableau(2, SourceModele.le_reste(1))]
 
     assert effectif_minimum(etapes) == 2
 
@@ -139,15 +140,15 @@ def test_un_prelevement_dans_une_phase_intermediaire_ne_se_lit_pas_en_inscrits()
     minimum. L'annoncer comme un besoin de 34 inscrits serait annoncer un chiffre faux."""
     etapes = [
         _qualification(),
-        _tableau(2, SourcePhase.par_rangs(1, 1, 32)),
-        _tableau(3, SourcePhase.par_rangs(2, rang_debut=33)),
+        _tableau(2, SourceModele.par_rangs(1, 1, 32)),
+        _tableau(3, SourceModele.par_rangs(2, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 2
 
 
 # --- Le classement traduisible est celui d'une phase CLASSANTE, où qu'elle soit dans le déroulé ---
-# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._classement_de_l_ordre` sait
+# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._classement_de_l_etape` sait
 # lire une qualification **et** un tableau, et rend `None` pour tout autre type. Un plancher qui
 # viserait autre chose mentirait — et il a menti dans les deux sens avant d'être corrigé.
 #
@@ -169,8 +170,8 @@ def test_un_echauffement_en_tete_ne_desactive_pas_le_controle() -> None:
     etapes = [
         _echauffement(1),
         _qualification(ordre=2),
-        _tableau(3, SourcePhase.par_rangs(2, 1, 32)),
-        _tableau(4, SourcePhase.par_rangs(2, rang_debut=33)),
+        _tableau(3, SourceModele.par_rangs(2, 1, 32)),
+        _tableau(4, SourceModele.par_rangs(2, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 34
@@ -190,8 +191,8 @@ def test_le_plancher_remonte_la_chaine_des_prelevements() -> None:
     """
     etapes = [
         _qualification(),
-        _tableau(2, SourcePhase.par_rangs(1, 17, 32)),
-        _tableau(3, SourcePhase.par_rangs(2, rang_debut=5)),
+        _tableau(2, SourceModele.par_rangs(1, 17, 32)),
+        _tableau(3, SourceModele.par_rangs(2, rang_debut=5)),
     ]
 
     assert effectif_minimum(etapes) == 22
@@ -213,7 +214,7 @@ def test_un_tableau_en_tete_se_traduit_en_inscrits_comme_une_qualification() -> 
     """
     etapes = [
         _tableau(1),
-        _tableau(2, SourcePhase.par_rangs(1, rang_debut=33)),
+        _tableau(2, SourceModele.par_rangs(1, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 34
@@ -229,7 +230,7 @@ def _avec_prelevement_haut(type_phase: TypePhase) -> list[ModelePhase]:
     """Une qualification, puis une phase de `type_phase` prélevant « les rangs 33 et suivants »."""
     return [
         _qualification(),
-        ModelePhase(ordre=2, type=type_phase, sources=(SourcePhase.par_rangs(1, rang_debut=33),)),
+        ModelePhase(ordre=2, type=type_phase, sources=(SourceModele.par_rangs(1, rang_debut=33),)),
     ]
 
 
@@ -297,7 +298,7 @@ def test_une_fenetre_dun_seul_rang_ne_fixe_pas_de_plancher() -> None:
     Annoncer 34 laisserait croire qu'un effectif répare le format ; c'est faux — c'est le déroulé
     qu'il faut corriger. On n'invente donc pas de plancher pour un prélèvement impossible.
     """
-    etapes = [_qualification(), _tableau(2, SourcePhase.par_rangs(1, 33, 33))]
+    etapes = [_qualification(), _tableau(2, SourceModele.par_rangs(1, 33, 33))]
 
     assert effectif_minimum(etapes) == 2
 
@@ -310,7 +311,7 @@ def test_une_fenetre_etroite_ne_masque_pas_la_vraie_exigence_de_sa_voisine() -> 
     """
     etapes = [
         _qualification(),
-        _tableau(2, SourcePhase.par_rangs(1, 1, 1), SourcePhase.par_rangs(1, rang_debut=33)),
+        _tableau(2, SourceModele.par_rangs(1, 1, 1), SourceModele.par_rangs(1, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 34
@@ -329,7 +330,7 @@ def test_un_format_peut_exiger_plus_que_son_minimum_technique() -> None:
     """« Pas de tournoi de ce type sous 40 archers » — une règle de club, au-dessus du déduit."""
     format_tournoi = FormatTournoi.creer(
         "Salle 120",
-        [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))],
+        [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))],
         effectif_minimum_exige=40,
     )
 
@@ -338,7 +339,7 @@ def test_un_format_peut_exiger_plus_que_son_minimum_technique() -> None:
 
 def test_sans_exigence_le_minimum_du_format_est_celui_quil_deduit() -> None:
     format_tournoi = FormatTournoi.creer(
-        "Salle 120", [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))]
+        "Salle 120", [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))]
     )
 
     assert format_tournoi.effectif_minimum == 34
@@ -348,7 +349,7 @@ def test_sans_exigence_le_minimum_du_format_est_celui_quil_deduit() -> None:
 def test_exiger_exactement_le_minimum_deduit_est_licite() -> None:
     format_tournoi = FormatTournoi.creer(
         "Salle 120",
-        [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))],
+        [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))],
         effectif_minimum_exige=34,
     )
 
@@ -361,7 +362,7 @@ def test_exiger_moins_que_le_minimum_deduit_rend_le_format_inapplicable() -> Non
     que le moteur ne saura pas dérouler — le défaut même que l'US corrige."""
     format_tournoi = FormatTournoi.creer(
         "Salle 120",
-        [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))],
+        [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))],
         effectif_minimum_exige=20,
     )
 
@@ -375,12 +376,12 @@ def test_exiger_moins_que_le_minimum_deduit_rend_le_format_inapplicable() -> Non
 def test_un_format_au_minimum_incoherent_refuse_de_sappliquer() -> None:
     format_tournoi = FormatTournoi.creer(
         "Salle 120",
-        [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))],
+        [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))],
         effectif_minimum_exige=20,
     )
 
     with pytest.raises(EffectifMinimumIncoherent):
-        format_tournoi.appliquer(1)
+        appliquer_en_memoire(format_tournoi, 1)
 
 
 @pytest.mark.parametrize("absurde", [0, -1])
@@ -414,7 +415,7 @@ def test_un_tournoi_refuse_la_meme_exigence_absurde_a_la_construction(absurde: i
 def test_la_projection_annonce_le_minimum_sans_effectif_simule() -> None:
     """Le minimum est une propriété du **format**, pas de l'effectif : il s'affiche d'emblée."""
     format_tournoi = FormatTournoi.creer(
-        "Salle 120", [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))]
+        "Salle 120", [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))]
     )
 
     assert format_tournoi.projeter().effectif_minimum == 34
@@ -422,7 +423,7 @@ def test_la_projection_annonce_le_minimum_sans_effectif_simule() -> None:
 
 def test_la_projection_annonce_le_minimum_avec_un_effectif_simule() -> None:
     format_tournoi = FormatTournoi.creer(
-        "Salle 120", [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))]
+        "Salle 120", [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))]
     )
 
     assert format_tournoi.projeter(effectif=28).effectif_minimum == 34
@@ -431,7 +432,7 @@ def test_la_projection_annonce_le_minimum_avec_un_effectif_simule() -> None:
 def test_la_projection_dun_format_exigeant_annonce_lexigence() -> None:
     format_tournoi = FormatTournoi.creer(
         "Salle 120",
-        [_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))],
+        [_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))],
         effectif_minimum_exige=40,
     )
 
@@ -440,7 +441,7 @@ def test_la_projection_dun_format_exigeant_annonce_lexigence() -> None:
 
 def test_la_projection_generique_annonce_le_minimum_deduit() -> None:
     """`projeter` ne connaît que des étapes : il annonce le déduit, que le format relève ensuite."""
-    projection = projeter([_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))])
+    projection = projeter([_qualification(), _tableau(2, SourceModele.par_rangs(1, rang_debut=33))])
 
     assert projection.effectif_minimum == 34
 
@@ -460,7 +461,7 @@ def test_un_deroule_qui_boucle_ne_part_pas_en_recursion() -> None:
     """
     etapes = [
         _qualification(1),
-        _tableau(2, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8)),
+        _tableau(2, SourceModele.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8)),
     ]
 
     # Le plancher structurel subsiste (un tableau veut deux tireurs) ; aucun rang n'est chiffrable.
@@ -471,8 +472,8 @@ def test_un_cycle_entre_deux_etapes_ne_part_pas_en_recursion() -> None:
     """Même garde, sur un cycle de longueur 2 — l'auto-source n'est pas le seul cas."""
     etapes = [
         _qualification(1),
-        _tableau(2, SourcePhase.par_rangs(ordre_source=3, rang_debut=1, rang_fin=8)),
-        _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8)),
+        _tableau(2, SourceModele.par_rangs(ordre_source=3, rang_debut=1, rang_fin=8)),
+        _tableau(3, SourceModele.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8)),
     ]
 
     assert effectif_minimum(etapes) == 2
@@ -494,11 +495,11 @@ def test_le_plancher_est_le_minimum_des_exigences_pas_celui_des_rangs() -> None:
     """
     etapes = [
         _qualification(1),
-        _tableau(2, SourcePhase.par_rangs(ordre_source=1, rang_debut=17, rang_fin=32)),
+        _tableau(2, SourceModele.par_rangs(ordre_source=1, rang_debut=17, rang_fin=32)),
         _tableau(
             3,
-            SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=None),
-            SourcePhase.par_rangs(ordre_source=1, rang_debut=6, rang_fin=None),
+            SourceModele.par_rangs(ordre_source=2, rang_debut=5, rang_fin=None),
+            SourceModele.par_rangs(ordre_source=1, rang_debut=6, rang_fin=None),
         ),
     ]
 
@@ -516,11 +517,11 @@ def test_une_source_infaisable_n_eteint_pas_l_exigence_de_sa_voisine() -> None:
     """
     etapes = [
         _qualification(1),
-        _tableau(2, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=32)),
+        _tableau(2, SourceModele.par_rangs(ordre_source=1, rang_debut=1, rang_fin=32)),
         _tableau(
             3,
-            SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None),
-            SourcePhase.par_rangs(ordre_source=1, rang_debut=60, rang_fin=None),
+            SourceModele.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None),
+            SourceModele.par_rangs(ordre_source=1, rang_debut=60, rang_fin=None),
         ),
     ]
 
@@ -530,7 +531,7 @@ def test_une_source_infaisable_n_eteint_pas_l_exigence_de_sa_voisine() -> None:
 def test_un_prelevement_dans_un_type_non_lisible_ne_fixe_pas_de_plancher() -> None:
     """Le verrou de `_TYPES_CLASSANTS_LUS` dans le sens **dangereux** (correctif de revue, axe B/D).
 
-    La table est présentée comme le miroir de `ServiceSaisieDuels._classement_de_l_ordre`, et sa
+    La table est présentée comme le miroir de `ServiceSaisieDuels._classement_de_l_etape`, et sa
     divergence est censée rouvrir le défaut d'E05US021. Or seul le sens « retirer un type » était
     gardé : y **ajouter** un type que le moteur ne lit pas produit un plancher réclamé pour un
     prélèvement que rien n'honorera, soit le « refus abusif le jour J » que la docstring nomme
@@ -554,7 +555,7 @@ def test_un_prelevement_dans_un_type_non_lisible_ne_fixe_pas_de_plancher() -> No
     etapes = [
         _qualification(1),
         ModelePhase(ordre=2, type=TypePhase.PLACEMENT),
-        _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None)),
+        _tableau(3, SourceModele.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None)),
     ]
 
     assert effectif_minimum(etapes) == 2

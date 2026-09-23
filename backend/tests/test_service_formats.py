@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 import pytest
 
@@ -26,14 +28,32 @@ from application.erreurs import (
     TournoiSansPhase,
 )
 from application.formats import ServiceFormats
+from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import Depart
-from domain.erreurs import PhaseQualificationIncomplete, ProfondeurInvalide
+from domain.erreurs import (
+    ArretProgrammeInvalide,
+    ConfigurationBigShootOffInvalide,
+    ConfigurationSuisseInvalide,
+    PhaseQualificationIncomplete,
+    ProfondeurInvalide,
+    ReglageDePoulesInvalide,
+)
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
-from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
+from domain.phase import (
+    Phase,
+    SourceModele,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+    grain_par_defaut,
+)
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
+from domain.poule import ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxDepartRepository,
@@ -252,7 +272,7 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
             ModelePhase(
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
                 effectif=8,
             ),
         ],
@@ -269,6 +289,147 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
     assert [p.ordre for p in phases] == [1, 2]
     assert all(p.statut is StatutPhase.A_VENIR for p in phases)
     assert all(p.depart_id == ctx.depart_id for p in phases)
+    # ⚠️ **La conversion rang → identité, assérée là où elle se fait** (ADR-0078 §4, correctif de
+    # revue) : le CA en fait le seul point de contact entre les deux mondes, et rien ne le
+    # vérifiait. Le modèle citait « la phase 1 » ; l'étape posée cite l'**identité** de l'étape 1.
+    assert etapes[0].id is not None
+    assert etapes[1].sources == (
+        SourcePhase(etape_source_id=etapes[0].id, rang_debut=1, rang_fin=8),
+    )
+    # Et les avancements désignent leur étape, pas leur rang.
+    assert {p.etape_id for p in phases} == {e.id for e in etapes}
+
+
+def test_appliquer_refuse_un_brouillon_sans_detruire_le_deroule_en_place(ctx: Contexte) -> None:
+    """**« Instancier avant de détruire » (E01US024) tient toujours** — correctif de revue.
+
+    Cinq invariants d'`EtapeDeroule` ne sont pas des anomalies : un `ModelePhase` ne valide rien
+    (ADR-0063), donc un arrêt posé sur un type non arrêtable s'**enregistre** et ne se refuse qu'à
+    la construction de l'étape. En séparant le contrôle de la pose, E05US022 avait déplacé ce
+    refus **après** les suppressions : le tournoi se retrouvait sans phases ni barème. Ce test
+    échoue si quelqu'un retire la pose à blanc de `verifier_applicable`.
+    """
+    en_place = ctx.service.creer("En place", [_qualification(ordre=1, effectif=16)])
+    ctx.service.appliquer(ctx.tournoi_id, _id(en_place.id))
+    avant_etapes = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    avant_phases = ctx.phases.par_tournoi(ctx.tournoi_id)
+    assert avant_etapes and avant_phases
+
+    brouillon = ctx.service.creer(
+        "Brouillon",
+        [
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.PLACEMENT,
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+                effectif=8,
+                # Un arrêt sur un type qui ne sait pas s'arrêter : licite au format, refusé à
+                # l'étape (ADR-0091).
+                arrets=(ArretProgramme(apres_tour=1, portee=PorteeArret.PHASE),),
+            ),
+        ],
+    )
+
+    # ⚠️ `ArretProgrammeInvalide`, pas `DomainError` : le décor pose **aussi** une source, et un
+    # `pytest.raises` large passerait au vert sur un refus venu d'ailleurs — c'est-à-dire sans
+    # prouver que l'invariant d'étape est bien évalué à blanc (correctif de 2ᵉ passe).
+    with pytest.raises(ArretProgrammeInvalide):
+        ctx.service.appliquer(ctx.tournoi_id, _id(brouillon.id))
+
+    assert ctx.deroules.par_tournoi(ctx.tournoi_id) == avant_etapes, "le déroulé est intact"
+    assert ctx.phases.par_tournoi(ctx.tournoi_id) == avant_phases, "les avancements aussi"
+
+
+def _mal_regle(
+    type_phase: TypePhase,
+    *,
+    poules: ReglageDePoules | None = None,
+    big_shoot_off: ConfigurationBigShootOff | None = None,
+    suisse: ConfigurationSuisse | None = None,
+    profondeur: ProfondeurClassement | None = None,
+) -> ModelePhase:
+    """Le modèle fautif du test ci-dessous — **entièrement typé**, donc sans `type: ignore`.
+
+    ⚠️ **Pas d'`effectif`** : avec lui, `EtapeDeroule` refuserait déjà certains de ces réglages
+    (trop de rescapés au rang 1) et le test ne pincerait plus la garde de `Phase`. Ils sont
+    licites au format (ADR-0063), acceptés par l'étape, refusés à l'**instanciation**.
+    """
+    return ModelePhase(
+        ordre=2,
+        type=type_phase,
+        sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+        poules=poules,
+        big_shoot_off=big_shoot_off,
+        suisse=suisse,
+        profondeur=profondeur,
+    )
+
+
+@pytest.mark.parametrize(
+    ("type_phase", "fabriquer", "erreur"),
+    [
+        (
+            TypePhase.PLACEMENT,
+            partial(_mal_regle, big_shoot_off=ConfigurationBigShootOff(eliminations=(2,))),
+            ConfigurationBigShootOffInvalide,
+        ),
+        (
+            TypePhase.PLACEMENT,
+            partial(_mal_regle, poules=ReglageDePoules(taille_visee=4)),
+            ReglageDePoulesInvalide,
+        ),
+        (
+            TypePhase.PLACEMENT,
+            partial(_mal_regle, suisse=ConfigurationSuisse(nb_rondes=3)),
+            ConfigurationSuisseInvalide,
+        ),
+        # ⚠️ Pas un placement ici : le placement **monte** un tableau, donc une profondeur y est
+        # licite. La garde ne vise que les types qui n'en montent pas.
+        (
+            TypePhase.ECHAUFFEMENT,
+            partial(_mal_regle, profondeur=ProfondeurClassement.top(4)),
+            ProfondeurInvalide,
+        ),
+    ],
+    ids=["big_shoot_off", "poules", "suisse", "profondeur"],
+)
+def test_appliquer_refuse_un_reglage_pose_sur_le_mauvais_type_sans_rien_detruire(
+    ctx: Contexte,
+    type_phase: TypePhase,
+    fabriquer: Callable[[TypePhase], ModelePhase],
+    erreur: type[Exception],
+) -> None:
+    """Les **quatre gardes de type** entrent aussi dans la pose à blanc (2ᵉ passe, axe D).
+
+    Elles vivent sur `Phase.__post_init__`, pas sur `EtapeDeroule` : elles ne se déclenchent donc
+    qu'à `instancier`, que `ServiceFormats.appliquer` exécute **après** avoir supprimé le déroulé
+    en place. Le test jumeau ci-dessus choisit un `arrets`, cas couvert par les invariants
+    d'`EtapeDeroule` : il laissait croire la classe fermée alors que quatre cas sur neuf
+    détruisaient encore le tournoi avant de lever.
+
+    ⚠️ **Les quatre, pas un** (3ᵉ passe) : elles vivent dans quatre `__post_init__` distincts, et
+    rien ne garantissait *a priori* qu'elles lèvent toutes sur un `depart_id` factice.
+    """
+    en_place = ctx.service.creer("En place", [_qualification(ordre=1, effectif=16)])
+    ctx.service.appliquer(ctx.tournoi_id, _id(en_place.id))
+    avant_etapes = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    avant_phases = ctx.phases.par_tournoi(ctx.tournoi_id)
+    assert avant_etapes and avant_phases
+
+    brouillon = ctx.service.creer(
+        "Brouillon",
+        [
+            _qualification(ordre=1, effectif=16),
+            fabriquer(type_phase),
+        ],
+    )
+
+    with pytest.raises(erreur):
+        ctx.service.appliquer(ctx.tournoi_id, _id(brouillon.id))
+
+    assert ctx.deroules.par_tournoi(ctx.tournoi_id) == avant_etapes, "le déroulé est intact"
+    assert ctx.phases.par_tournoi(ctx.tournoi_id) == avant_phases, "les avancements aussi"
 
 
 def test_appliquer_recopie_le_minimum_exige_sur_le_tournoi(ctx: Contexte) -> None:
@@ -608,7 +769,7 @@ def test_appliquer_transporte_la_profondeur_du_format_vers_les_phases(ctx: Conte
             ModelePhase(
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
                 effectif=8,
                 profondeur=ProfondeurClassement.integrale(),
             ),

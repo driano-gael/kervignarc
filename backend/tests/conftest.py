@@ -43,8 +43,10 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import logging
 import re
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -61,6 +63,7 @@ from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
+from domain.format_tournoi import FormatTournoi
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
@@ -567,7 +570,9 @@ class FauxPhaseRepository:
             if depart is None:
                 continue
             deroule = self._deroules.par_tournoi(depart.tournoi_id)
-            etape = next((e for e in deroule if e.ordre == phase.ordre), None)
+            # ⚠️ Par **identité** (ADR-0078), comme les deux adapters réels : c'est justement
+            # ce que les tests de conformité de port vérifient.
+            etape = next((e for e in deroule if e.id == phase.etape_id), None)
             if etape is not None:
                 assemblees.append(
                     dataclasses.replace(
@@ -612,7 +617,10 @@ class FauxPhaseRepository:
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
         phases = [p for p in self._phases.values() if p.depart_id == depart_id]
-        return self._assembler(sorted(phases, key=lambda p: p.ordre))
+        # ⚠️ **Assembler PUIS trier** (ADR-0078) : le rang vit sur l'étape, et la copie gardée
+        # en magasin se périme dès qu'on renumérote. Trier avant l'assemblage rendait l'ordre
+        # d'hier. L'adapter SQL fait le même geste, par une jointure.
+        return sorted(self._assembler(phases), key=lambda p: p.ordre)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         """Vue transverse : les phases de **tous** les départs, triées (départ, ordre).
@@ -626,7 +634,7 @@ class FauxPhaseRepository:
         )
         connus = {d.id for d in self._departs.par_tournoi(tournoi_id)}
         phases = [p for p in self._phases.values() if p.depart_id in connus]
-        return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
+        return sorted(self._assembler(phases), key=lambda p: (p.depart_id, p.ordre))
 
     def enregistrer(self, phase: Phase) -> Phase:
         """Met à jour l'**avancement** ; la définition passée est ignorée (contrat du port)."""
@@ -634,12 +642,6 @@ class FauxPhaseRepository:
         self._phases[phase.id] = phase
         assemblee = self._assembler_une(phase)
         return phase if assemblee is None else assemblee
-
-    def reordonner(self, phases: list[Phase]) -> None:
-        """Réaligne les rangs du lot ; seul l'`ordre` bouge, comme les deux adapters réels."""
-        for phase in phases:
-            assert phase.id in self._phases
-            self._phases[phase.id] = dataclasses.replace(self._phases[phase.id], ordre=phase.ordre)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         del self._phases[phase_id]
@@ -654,7 +656,14 @@ class FauxDerouleRepository:
 
     def __init__(self) -> None:
         self._items: dict[int, EtapeDeroule] = {}
-        self._sequence = 0
+        # ⚠️ **La séquence ne démarre pas à 0**, même raison que `FauxPhaseRepository` et, depuis
+        # ADR-0078, avec plus de force : l'identité d'étape **est** l'ancre d'un prélèvement et la
+        # clé de jointure d'un avancement. Un décor où l'étape de rang 1 reçoit l'identifiant 1
+        # rend **vert par coïncidence** tout code resté sur le rang — c'est exactement ce qui a
+        # laissé passer quatre bloquants à la revue d'E05US022 (`palmares`, `completude`,
+        # `saisie`, la clé du cache de `saisie_duels`), sous 4376 tests verts. **9 000** : au-dessus
+        # des `PhaseId` (100+) et de toute identité conventionnelle d'`identite_d_etape`.
+        self._sequence = 9_000
 
     def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
         """Persiste l'étape ; un `id` **déjà fourni est préservé** (même règle que les phases)."""
@@ -676,7 +685,7 @@ class FauxDerouleRepository:
         self._items[etape.id] = etape
         return etape
 
-    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+    def enregistrer_plusieurs(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
         """Réécrit le lot d'un coup (contrat « ou tout, ou rien » de `DerouleRepository`)."""
         for etape in etapes:
             assert etape.id in self._items
@@ -685,6 +694,142 @@ class FauxDerouleRepository:
 
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         self._items.pop(etape_id, None)
+
+
+class CaptureWarnings(logging.Handler):
+    """Capte les messages d'un logger via un handler **attaché directement** dessus.
+
+    Volontairement **pas** `caplog` : `caplog` capte par propagation vers le logger racine, et
+    d'autres tests (via `create_app`) reconfigurent le logging global, ce qui neutralise cette
+    propagation. Un handler posé sur le logger lui-même reçoit ses enregistrements quel que soit
+    l'état global (à condition de forcer `level`/`disabled`, cf. les tests qui s'en servent).
+
+    Hissée ici en 3ᵉ passe de revue d'E05US022 : **2ᵉ consommateur**, le seuil du fichier."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
+def identite_d_etape(ordre: int, tournoi_id: TournoiId = 1) -> EtapeDerouleId:
+    """L'identité conventionnelle de l'étape de ce rang, **dans les décors de test** (ADR-0078).
+
+    ⚠️ **Trois espaces disjoints, et la contrainte est celle-là** (2ᵉ passe de revue) : les
+    `PhaseId` partent de 100 (`FauxPhaseRepository`), les identités conventionnelles de 3 100, et
+    `FauxDerouleRepository` alloue au-dessus de tout cela. La première rédaction rendait
+    `100 + ordre`, donc `phase.id == phase.etape_id` dans tout décor courant — la coïncidence même
+    que cette fonction existe pour interdire, déplacée d'un cran vers `DETTE-044`.
+
+    ⚠️ **Le tournoi entre dans l'identité, et ce n'est pas décoratif** : sans lui, deux tournois
+    d'un même test se donnaient la même identité au même rang, l'étape du second **écrasait**
+    celle du premier dans le magasin, et les phases du premier créneau disparaissaient
+    silencieusement de `par_depart` (l'assemblage joint sur `etape_id`). ⚠️ Un décor dont le
+    tournoi n'est **pas 1** doit donc passer `tournoi_id` : l'omettre fait diverger l'ancre de
+    l'identité posée, sans aucun rouge.
+    """
+    # La disjonction des trois espaces n'est vraie **que** sous ces bornes : au-delà, un rang
+    # déborde sur le tournoi suivant, ou un tournoi sur la bande d'allocation (9 000+).
+    assert (
+        0 <= ordre < 100 and 1 <= tournoi_id < 60
+    ), f"hors de la bande d'identités conventionnelles (ordre={ordre}, tournoi={tournoi_id})"
+    return 3_000 + 100 * tournoi_id + ordre
+
+
+_RANG_BRULE = 900
+"""Rang de l'étape éphémère qui décale l'auto-incrément SQL — voir `decaler_les_identites_sql`."""
+
+_IDENTITE_BRULEE = 20_000
+"""Identité de cette étape éphémère : **au-dessus de toutes les autres bandes**.
+
+⚠️ 20 000, pas 5 000 : la bande conventionnelle d'`identite_d_etape` court de 3 100 à 8 999 et
+l'allocateur en mémoire démarre à 9 000. Une allocation SQL partie de 5 001 recoupait la bande
+conventionnelle **dès sa première étape** — `identite_d_etape(1, 20)` vaut exactement 5 001, et
+le tournoi 20 est dans la plage que l'assertion de bande autorise. C'est la forme même du « vert
+par coïncidence » que cette US a payé quatre bloquants (chiffre rectifié en 5ᵉ passe : la
+rédaction de la 3ᵉ annonçait « la 101ᵉ étape », et c'était faux).
+
+⚠️ La hauteur est le sujet. Brûler **un** identifiant ne donnait que `id == ordre + 1` : un
+lecteur resté sur le rang ne tombait pas dans le vide, il tombait sur l'étape **voisine** — une
+étape valide, donc un vert par coïncidence (3ᵉ passe de revue). Et `phase.id` partant de 1, les
+deux espaces se recoupaient : passer un `PhaseId` à une route qui adresse une `EtapeDerouleId`
+répondait 200 sur la mauvaise définition.
+"""
+
+
+def decaler_les_identites_sql(session_factory: Any, tournoi_id: TournoiId) -> EtapeDerouleId | None:
+    """Pose une étape éphémère à identité **haute**, si l'auto-incrément est encore bas.
+
+    Rend son identifiant, que l'appelant doit supprimer **après** avoir posé la vraie étape :
+    `deroule_etape` n'est pas `AUTOINCREMENT`, donc supprimer avant rendrait le `rowid`.
+    `DerouleEtapeRepositorySQL.ajouter` **jette** un `id` fourni — d'où le SQL direct, sur une
+    ligne jetable dont l'argument « passer par le chemin de production » ne vaut pas.
+    ⚠️ `import sqlalchemy` **local, à ne pas hisser** : ce fichier doit rester importable sans
+    SQLAlchemy pour le hook pre-commit `domain-isolation` (cf. l'en-tête du module).
+
+    ⚠️ Le seuil se lit sur `MAX(id)`, pas sur « ce tournoi a-t-il des étapes ? » : un test qui
+    vide `deroule_etape` en cours de route (`ServiceFormats.appliquer`) fait repartir SQLite à 1.
+    """
+    import sqlalchemy as sa
+
+    with session_factory() as session:
+        maximum = int(
+            session.execute(sa.text("SELECT COALESCE(MAX(id), 0) FROM deroule_etape")).scalar_one()
+        )
+        if maximum >= _IDENTITE_BRULEE:
+            return None
+        session.execute(
+            sa.text(
+                "INSERT INTO deroule_etape (id, tournoi_id, ordre, type, config) "
+                "VALUES (:id, :tournoi, :ordre, :type, '{}')"
+            ),
+            {
+                "id": _IDENTITE_BRULEE,
+                "tournoi": tournoi_id,
+                "ordre": _RANG_BRULE,
+                "type": TypePhase.PLACEMENT.value,
+            },
+        )
+        session.commit()
+    return _IDENTITE_BRULEE
+
+
+PREMIERE_IDENTITE_SIMULEE = 1_000
+"""Base des identités que `appliquer_en_memoire` invente — hors de portée des identifiants réels.
+
+⚠️ **Délibérément éloignée des rangs** (ADR-0078) : si une identité simulée valait le rang, un
+décor passerait aussi bien avec l'ancien ancrage et ne prouverait rien du nouveau.
+"""
+
+
+def appliquer_en_memoire(
+    format_tournoi: FormatTournoi, tournoi_id: TournoiId
+) -> tuple[EtapeDeroule, ...]:
+    """Rejoue ce que `ServiceFormats.appliquer` fait, **sans persistance** (ADR-0078 §4).
+
+    Ancrer un prélèvement demande l'identité de l'étape visée, que seul le dépôt attribue : depuis
+    ADR-0078, `FormatTournoi` ne peut donc plus rendre un déroulé complet d'un seul appel, et les
+    tests de domaine qui le faisaient passent par ici. Les identités sont **inventées**, dans le
+    même ordre que la pose réelle — ce qui suffit à éprouver le transport, jamais la transaction.
+
+    ⚠️ **Jumeau de la boucle de `ServiceFormats.appliquer`** : les deux doivent poser dans l'ordre
+    des rangs et n'enrichir la table qu'**après** avoir instancié l'étape courante. S'ils
+    divergeaient, ce décor validerait un ancrage que la production ne produit pas.
+    """
+    format_tournoi.verifier_applicable(tournoi_id)
+    ordre_vers_id: dict[int, EtapeDerouleId] = {}
+    etapes: list[EtapeDeroule] = []
+    for rang, modele in enumerate(format_tournoi.etapes_ordonnees, start=0):
+        identite = PREMIERE_IDENTITE_SIMULEE + rang
+        # ⚠️ **L'étape rendue PORTE son identité**, comme celle que le dépôt renvoie en production
+        # (correctif de revue) : la première rédaction ne la mettait que dans la table, si bien
+        # que le déroulé rendu citait des identités qu'aucune de ses étapes ne portait — un état
+        # que la production ne produit jamais, et que `vues_du_deroule` refuse.
+        etapes.append(replace(modele.pour_tournoi(tournoi_id, ordre_vers_id), id=identite))
+        ordre_vers_id[modele.ordre] = identite
+    return tuple(etapes)
 
 
 def poser_phase_factice(
@@ -717,6 +862,11 @@ def poser_phase_factice(
         etape = deroules.ajouter(
             EtapeDeroule(
                 tournoi_id=depart.tournoi_id,
+                # ⚠️ **Identité imposée, et décalée du rang** (ADR-0078) : sans cela, le magasin
+                # alloue dans l'ordre de pose et `etape.id == etape.ordre`, si bien qu'un lecteur
+                # resté sur le rang passe **vert par coïncidence**. Trois bloquants d'E05US022
+                # avaient traversé 4376 tests ainsi. Un décor cite donc `identite_d_etape(N)`.
+                id=identite_d_etape(phase.ordre, depart.tournoi_id),
                 ordre=phase.ordre,
                 type=phase.type,
                 bareme=phase.bareme,
@@ -794,56 +944,70 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
     depart = DepartRepositorySQL(session_factory).par_id(phase.depart_id)
     assert depart is not None, "Le décor doit avoir créé le créneau avant d'y poser une phase."
     deroules = DerouleEtapeRepositorySQL(session_factory)
-    etape = next(
-        (e for e in deroules.par_tournoi(depart.tournoi_id) if e.ordre == phase.ordre), None
-    )
+    deja_posees = deroules.par_tournoi(depart.tournoi_id)
+    etape = next((e for e in deja_posees if e.ordre == phase.ordre), None)
     if etape is None:
-        etape = deroules.ajouter(
-            EtapeDeroule(
-                tournoi_id=depart.tournoi_id,
-                ordre=phase.ordre,
-                type=phase.type,
-                bareme=phase.bareme,
-                validation=phase.validation,
-                sources=phase.sources,
-                effectif=phase.effectif,
-                barrage_jusqu_au=phase.barrage_jusqu_au,
-                profondeur=phase.profondeur,
-                # E05US023 : le réglage de poules aussi. Les deux jumeaux le perdaient, si bien
-                # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
-                # exactement la classe de divergence que la docstring ci-dessus décrit.
-                poules=phase.poules,
-                # ⚠️ **Le même oubli s'est reproduit en E05US028**, à l'identique : un décor posant
-                # un Big Shoot Off réglé obtenait une phase non réglée, et le test d'API échouait en
-                # `phase_pas_reglee` sur une phase qui l'était. C'est la **2ᵉ** occurrence — ce
-                # recopiage champ par champ est structurellement fragile (rien ne rougit quand on en
-                # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
-                # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
-                big_shoot_off=phase.big_shoot_off,
-                # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot pour
-                # mot : le réglage du système suisse a été oublié ici, et quatre tests d'API ont
-                # échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du
-                # « remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
-                # désormais **tracée** (`DETTE-064`) au lieu de ne vivre qu'en commentaire — c'est
-                # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
-                # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
-                suisse=phase.suisse,
-                # ⚠️ **4ᵉ occurrence, E05US027** — le réglage de la colline a été oublié ici lui
-                # aussi, et **onze** tests d'API ont échoué en `phase_pas_reglee` sur une phase
-                # parfaitement réglée. C'est en cherchant la cause qu'on est retombé sur le
-                # commentaire ci-dessus, qui l'annonçait. La prédiction de la 2ᵉ occurrence (« il le
-                # sera à chaque réglage neuf ») est désormais vérifiée **quatre fois de suite, sans
-                # exception** : aucun réglage n'a jamais été ajouté ici du premier coup, et c'est
-                # toujours un test d'API — jamais une relecture — qui l'a rattrapé. `DETTE-064` est
-                # élargie d'autant ; remède inchangé : une fabrique unique du domaine
-                # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
-                colline=phase.colline,
-                # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
-                # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
-                # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
-                # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
-            )
+        # ⚠️ **Le pendant SQL d'`identite_d_etape`** : sur une base neuve SQLite alloue 1, 2, 3…,
+        # si bien que l'étape de rang 1 recevait l'identité 1 et que tout l'étage d'intégration
+        # restait **vert par coïncidence** devant la confusion rang / identité qui a coûté quatre
+        # bloquants à cette US. ⚠️ **L'étape se construit AVANT la brûlure, et la pose est sous
+        # `finally`** : `EtapeDeroule.__post_init__` lance cinq contrôles que `Phase` ne lance
+        # pas, donc un décor sous `pytest.raises` laissait l'éphémère derrière lui — et comme
+        # elle devient le `MAX(id)`, plus rien ne la nettoyait ensuite (5ᵉ passe de revue).
+        nouvelle = EtapeDeroule(
+            tournoi_id=depart.tournoi_id,
+            ordre=phase.ordre,
+            type=phase.type,
+            bareme=phase.bareme,
+            validation=phase.validation,
+            sources=phase.sources,
+            effectif=phase.effectif,
+            barrage_jusqu_au=phase.barrage_jusqu_au,
+            profondeur=phase.profondeur,
+            # E05US023 : le réglage de poules aussi. Les deux jumeaux le perdaient, si bien
+            # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
+            # exactement la classe de divergence que la docstring ci-dessus décrit.
+            poules=phase.poules,
+            # ⚠️ **Le même oubli s'est reproduit en E05US028**, à l'identique : un décor posant
+            # un Big Shoot Off réglé obtenait une phase non réglée, et le test d'API échouait en
+            # `phase_pas_reglee` sur une phase qui l'était. C'est la **2ᵉ** occurrence — ce
+            # recopiage champ par champ est structurellement fragile (rien ne rougit quand on en
+            # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
+            # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
+            big_shoot_off=phase.big_shoot_off,
+            # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot pour
+            # mot : le réglage du système suisse a été oublié ici, et quatre tests d'API ont
+            # échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du
+            # « remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
+            # désormais **tracée** (`DETTE-064`) au lieu de ne vivre qu'en commentaire — c'est
+            # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
+            # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
+            suisse=phase.suisse,
+            # ⚠️ **4ᵉ occurrence, E05US027** — le réglage de la colline a été oublié ici lui
+            # aussi, et **onze** tests d'API ont échoué en `phase_pas_reglee` sur une phase
+            # parfaitement réglée. C'est en cherchant la cause qu'on est retombé sur le
+            # commentaire ci-dessus, qui l'annonçait. La prédiction de la 2ᵉ occurrence (« il le
+            # sera à chaque réglage neuf ») est désormais vérifiée **quatre fois de suite, sans
+            # exception** : aucun réglage n'a jamais été ajouté ici du premier coup, et c'est
+            # toujours un test d'API — jamais une relecture — qui l'a rattrapé. `DETTE-064` est
+            # élargie d'autant ; remède inchangé : une fabrique unique du domaine
+            # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
+            colline=phase.colline,
+            # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
+            # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
+            # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
+            # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
         )
+        brulee = decaler_les_identites_sql(session_factory, depart.tournoi_id)
+        try:
+            etape = deroules.ajouter(nouvelle)
+        finally:
+            if brulee is not None:
+                deroules.supprimer(brulee)
+    assert etape.id != etape.ordre, (
+        "décor recoincidé : l'identité de l'étape vaut son rang, donc un lecteur resté sur le "
+        "rang passera vert par coïncidence (ADR-0078, DETTE-044)."
+    )
     return PhaseRepositorySQL(session_factory).ajouter(
         dataclasses.replace(etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id)
     )
@@ -925,13 +1089,17 @@ def qualification_de_secours(
 class FauxLecteurPopulations:
     """Doublure du port `LecteurPopulationPhase` (E05US025, correctif de revue).
 
-    Dit, pour l'`ordre` d'une phase, **quels archers elle a reçus** — la seule chose que la saisie
-    et la complétude lui demandent. `populations` vide ⇒ le résolveur rend `None` partout, et les
+    Dit, pour l'**identité de l'étape** qu'une phase joue, **quels archers elle a reçus** — la
+    seule chose que la saisie et la complétude lui demandent. ⚠️ **C'était l'`ordre` jusqu'à
+    ADR-0078** : la doublure suit la clé du port, sans quoi elle rendrait `None` sur tout le
+    chemin réel tout en restant verte là où identité et rang coïncident.
+
+    `populations` vide ⇒ le résolveur rend `None` partout, et les
     deux services retombent sur leur comportement mono-qualification : c'est le montage par défaut,
     et il est **volontairement inerte** pour que les décors existants ne changent pas de sens.
 
-    Renseigner `populations[ordre]` monte la **fourche** du CA (une *haute* et une *basse* qui se
-    jouent ensemble) sans avoir à câbler tout le moteur de classement dans un test de service.
+    Renseigner `populations[identite_d_etape(ordre)]` monte la **fourche** du CA (une *haute* et
+    une *basse* qui se jouent ensemble) sans câbler tout le moteur de classement dans un test.
 
     ⚠️ **`tous` n'est pas un confort, c'est la fidélité à la production** (2ᵉ correctif de revue).
     En production, une phase **sans source** — la qualification de tête — rend
@@ -940,7 +1108,8 @@ class FauxLecteurPopulations:
     réclame personne, donc que l'ensemble des phases admissibles est toujours un singleton — et le
     départage entre elles, seul endroit où la production peut se tromper, ne serait exercé par aucun
     test. C'est le doublage « porté à moitié » que cette même US a dénoncé deux fois ; on ne le
-    refait pas ici. Renseigner `tous` pose donc la population par défaut de tout ordre non déclaré.
+    refait pas ici. Renseigner `tous` pose donc la population par défaut de toute étape non
+    déclarée.
     """
 
     def __init__(
@@ -952,8 +1121,8 @@ class FauxLecteurPopulations:
     def resolveur_de_classement(
         self, tournoi_id: int, depart_id: int
     ) -> Callable[[int], ClassementSource | None]:
-        def resoudre(ordre: int) -> ClassementSource | None:
-            archers = self.populations.get(ordre, self.tous)
+        def resoudre(etape_id: int) -> ClassementSource | None:
+            archers = self.populations.get(etape_id, self.tous)
             if archers is None:
                 return None
             return ClassementSource(
@@ -1066,6 +1235,13 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
 
     Des **étapes** et non des phases (ADR-0076) : c'est une *définition*, elle appartient au
     tournoi et s'écrit une seule fois quel que soit le nombre de créneaux.
+
+    ⚠️ **Les identités sont posées d'avance, décalées des rangs ET portées par le tournoi**
+    (ADR-0078) : les prélèvements citent l'étape amont par `identite_d_etape(1, tournoi_id)`, pas
+    par `1`. Omettre `tournoi_id` ferait **écraser** le décor d'un tournoi par celui d'un autre
+    dans le magasin, sans un seul rouge (relevé en 3ᵉ passe de revue).
+    ⚠️ Seul `FauxDerouleRepository` préserve un `id` fourni : l'adapter SQL le **jette** — voir
+    `poser_phase_sql`, qui doit décaler l'auto-incrément pour obtenir le même effet.
     """
     return [
         EtapeDeroule(
@@ -1074,18 +1250,21 @@ def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
             type=TypePhase.QUALIFICATION,
             bareme=BaremeQualification.preset_ffta_18m(),
             validation=GrainValidation.fin_de_serie(),
+            id=identite_d_etape(1, tournoi_id),
         ),
         EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, 1, 32),),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1, tournoi_id), 1, 32),),
+            id=identite_d_etape(2, tournoi_id),
         ),
         EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=3,
             type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, rang_debut=33),),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1, tournoi_id), rang_debut=33),),
+            id=identite_d_etape(3, tournoi_id),
         ),
     ]
 
