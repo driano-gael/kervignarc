@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 19/09/2026, 21 h 24** · **144 US livrées** · dernière : `E06US009`
+**Dernière mise à jour : 23/09/2026, 19 h 09** · **145 US livrées** · dernière : `E17US010`
 *(**un palmarès par départ, juxtaposés** — l'écran, le PDF et le tableur rendent `N` blocs titrés,
 un par créneau, au lieu du seul premier. `DETTE-045` est soldée. ⚠️ **Le raccourci vivait à trois
 endroits et la fiche en nommait deux faux** : le site *tracé* (`simulation.py`) n'a aucun appelant
@@ -31,7 +31,7 @@ remède structurel renvoyé en US dédiée)*.
 Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
 Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée après treize mois)*.
 
-> ⚠️ **144 fiches closes, mais 142 livraisons.** Le total ci-dessus est **écrit à la main** et
+> ⚠️ **145 fiches closes, mais 143 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
 > sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches sont closes sans
 > livraison propre — `E01US016` (absorbée par `E16US006`, 25/08/2026) et `E16US011` (**close par
@@ -349,6 +349,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E01US026`~~ | **Livrée le 19/09/2026** — la **plus ancienne dette du registre** (`DETTE-001`, treize mois) est soldée : un tournoi peuplé se supprime après un signalement **chiffré**, en une transaction, sans aucun `ON DELETE CASCADE`. ⚠️ **`DETTE-018` refermée avec elle**, sur arbitrage du commanditaire — même code de cascade. Deux arbitrages de CA reversés dans `stories/` et dans ADR-0077. |
 > | ~~🎯~~ ✅ | ~~`E06US009`~~ | **Livrée le 19/09/2026** — un palmarès par créneau, juxtaposés (`DETTE-045`, ouverte par `E01US025`). Le palmarès, le rejeu de simulation **et la session de simulation pilotée** cessaient de voir autre chose que le premier départ ; ADR-0104 est amendé (le trophée des clubs se juxtapose aussi). |
 > | 🎯 **à choisir** | `E05US022` | **La file reste à composer.** La dernière résorption tranchée le 07/08 reste prenable : `E05US022` (ancrer une source de phase sur l'**identité** et non le rang, `DETTE-026` — moteur, sans surface). `E02US007` (import inscript'arc) reste **bloquée** tant que le format exact du fichier (QT1) n'est pas fourni. |
+> | ~~🎯~~ ✅ | ~~`E17US010`~~ | **Livrée le 23/09/2026 — le dossier de maquettes ne peut plus dériver en silence.** Choisie par le commanditaire en tête du fil `EPIC-17`, **avant** `E17US008` et `E17US009` qui vont relire 16 planches : corriger des écarts que rien n'empêche de revenir, c'est remettre le compteur à zéro. ⚠️ **La dérive était réelle et mesurée avant tout correctif** — 4 destinations livrées absentes de la sidebar des maquettes (`identite`, `archer`, `pret-demarrer`, `audit`), 1 fantôme (`doublons`, retirée par `E16US010`), 4 libellés périmés : **cinq US d'écart accumulé**, dont deux libellés renommés par `E16US002` *parce qu'ils portaient chacun le nom de l'autre*. ⚠️ **Le point de conception est le sens de lecture** : le test **importe** `AXE_PAR_DESTINATION` au lieu de regexer `axes.ts`, donc **un seul des deux côtés peut mentir sur sa forme** — un garde-fou Python, sur le patron de `test_domain_isolation.py`, aurait eu deux parseurs fragiles au lieu d'un. ⚠️ **Asymétrie assumée** : une planche *en avance* sur le produit se déclare (`// PLANCHE-A-VENIR: <id>`) et passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge sans échappatoire. ⚠️ **Périmètre tenu, extension refusée** : les **libellés** et l'**ordre** vivent dans un tableau local à `CoquilleAdmin`, hors de portée d'un import ; les remonter serait la **3ᵉ** occurrence du remède déjà appliqué à `AXE_PAR_DESTINATION` et `BESOIN_TOURNOI` — donc un **remède structurel**, qui se traite en US dédiée. Inscrit en `DETTE-110` plutôt que fait en douce. **Aucun ADR** (le patron des deux garde-fous existants est suivi, rien de neuf n'est décidé), **aucune dépendance**, aucune migration. ➡️ **Prochaine : `E17US008`** (9 planches de saisie `S**`), puis `E17US009`. |
 > | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
 >
 > ---
@@ -1298,7 +1299,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > (égalité 5–5 en duel) et le **conflit de saisie** (deux postes sur la même volée) : ils sont
 > maquettés, pas décidés.
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (4/10)**
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (5/10)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),
@@ -1316,7 +1317,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US007 | **Résorber** les écarts relevés sur les écrans d'administration | J3 | ⬜ *(le relevé est fait depuis le 06/08 ; c'est l'US qui le solde qui manquait — A06, A09, A12, A08, A04, A17)* |
 | E17US008 | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ⬜ |
 | E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
-| E17US010 | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ⬜ *(resynchroniser `appareils.js` **et** rendre la dérive mécaniquement détectable ; **à prendre avant** E17US008/E17US009)* |
+| ~~E17US010~~ | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ✅ *(livrée le 23/09/2026 — `appareils.js` resynchronisé (4 destinations manquantes, 1 fantôme, 4 libellés périmés) et la dérive **rendue rouge** par un test front qui **importe** `axes.ts` ; `DETTE-110` pour les libellés et l'ordre)* |
 
 ## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**
 

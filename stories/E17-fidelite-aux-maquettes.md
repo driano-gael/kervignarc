@@ -299,4 +299,27 @@
   Ce n'est **pas** une US de fidélité visuelle : elle protège l'**outil** de relecture, sans quoi
   toutes les autres E17 se font sur une base fausse. À prendre **avant** `E17US008` et `E17US009`,
   qui vont relire 16 planches.
+- **Arbitrages rendus** *(livrée le 23/09/2026 — reversés ici dans le commit de l'US, règle 9)* :
+  - **Forme du contrôle : test front**, comme le pressentaient les Notes — mais la raison n'était pas
+    « la CI front tourne déjà ». C'est que le test **importe** `AXE_PAR_DESTINATION` : la source
+    produit est lue par `tsc`, jamais regexée, donc **un seul des deux côtés peut mentir sur sa
+    forme**. Un garde-fou Python (comme `test_domain_isolation.py`) aurait dû parser les *deux*
+    fichiers — deux parseurs fragiles au lieu d'un.
+  - **Déclaration d'une divergence volontaire** : `// PLANCHE-A-VENIR: <id> — <pourquoi>` dans
+    `appareils.js`. ⚠️ **Asymétrie voulue** : une maquette *en avance* sur le produit se déclare et
+    passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge **sans échappatoire**
+    — c'est ce sens de dérive, et lui seul, qui fait relire des planches périmées.
+  - **Le contrôle porte aussi l'axe** : une destination rangée sous « pilotage » d'un côté et
+    « atelier » de l'autre rougit. Gratuit — les deux structures portent déjà cette donnée.
+  - **Périmètre : identifiants seulement, pas les libellés ni l'ordre** — `DETTE-110`. Ils vivent
+    dans un tableau local à `CoquilleAdmin`, hors de portée d'un import ; les remonter serait la
+    **3ᵉ** occurrence du remède déjà appliqué à `AXE_PAR_DESTINATION` et `BESOIN_TOURNOI`, donc un
+    **remède structurel** — US dédiée, jamais en douce dans l'US courante.
+- **Écart réel mesuré à la livraison** *(le garde-fou a été vu rouge avant d'être vu vert)* : **4
+  destinations livrées absentes** des maquettes — `identite` (E16US006), `archer` (E16US010),
+  `pret-demarrer` (E16US012), `audit` (E16US016) — et **1 fantôme**, `doublons`, retirée du produit
+  par `E16US010`. Soit **cinq US** de dérive accumulée, plus **quatre libellés** périmés dont deux
+  renommés par `E16US002` *précisément parce qu'ils portaient chacun le nom de l'autre*.
+  ⚠️ **Aucun ADR** : le dépôt avait déjà deux garde-fous mécaniques, ce troisième suit leur patron
+  sans rien décider de neuf.
 - **Dépend de** : — · **Jalon** : J3

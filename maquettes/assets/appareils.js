@@ -17,8 +17,9 @@
      frontend/src/features/admin/axes.ts        (AXES, AXE_PAR_DESTINATION)
      frontend/src/features/admin/CoquilleAdmin.tsx (ordre et libellés)
      frontend/src/app/App.css                   (dimensions)
-   Toute US qui ajoute ou renomme une destination désynchronise ce fichier.
-   Le point de reprise du README porte la consigne de resynchronisation.
+   Les DESTINATIONS sont tenues sous garde mécanique depuis E17US010 : le test front
+   `features/admin/maquettes-navigation.test.ts` rend rouge tout écart avec `axes.ts`.
+   Les LIBELLÉS et l'ORDRE, eux, restent transcrits à la main — `DETTE-110`.
 
    ---------------------------------------------------------------------------
    JEU DE CHIFFRES UNIQUE — le même tournoi sur les 145 planches, sinon la
@@ -70,15 +71,20 @@
   }
 
   // Ordre = celui du tableau `destinations` de CoquilleAdmin.tsx, filtré par axe.
+  // Écart vérifié à chaque CI par `frontend/src/features/admin/maquettes-navigation.test.ts`
+  // (E17US010) : une destination ajoutée, retirée ou déplacée ici sans l'être dans `axes.ts` rend
+  // le test rouge. Une planche en avance sur le produit se déclare `// PLANCHE-A-VENIR: <id>`.
   var DESTINATIONS = {
     pilotage: [
       ['accueil', 'Accueil (tableau de bord)'],
       ['assemblage', 'Assemblage'],
       ['plan', 'Plan de salle'],
       ['bareme', 'Barème & validation'],
-      ['phases', 'Phases (format)'],
+      ['identite', 'Identité visuelle'],
+      ['phases', 'Phases du tournoi'],
       ['departs', 'Départs & tarifs'],
       ['scoreurs', 'Scoreurs'],
+      ['archer', 'Fiche d’un archer'],
       ['placement', 'Placement'],
       ['duels', 'Plan de duels'],
       ['postes', 'Postes de cible'],
@@ -87,22 +93,23 @@
       ['ecrans', 'Écrans de salle'],
       ['suivi-deroule', 'Suivi du déroulé'],
       ['feu-vert', 'Feu vert'],
-      ['completude', 'Complétude'],
+      ['pret-demarrer', 'Prêt à démarrer ?'],
+      ['completude', 'Prêt à terminer ?'],
       ['classement', 'Classement en direct'],
       ['palmares', 'Palmarès'],
     ],
     gestion: [
       ['inscriptions', 'Inscriptions'],
-      ['doublons', 'Doublons'],
       ['paiements', 'Paiements'],
       ['exports', 'Exports'],
+      ['audit', 'Journal d’audit'],
       ['archive', 'Archive'],
     ],
     atelier: [
+      ['formats', 'Formats de tournoi'],
       ['categories', 'Catégories'],
       ['blasons', 'Blasons'],
-      ['formats', 'Formats (déroulés)'],
-      ['deroule', 'Composer un déroulé'],
+      ['deroule', 'Composer un format'],
       ['gabarits', 'Gabarits (modèles)'],
       ['clubs', 'Clubs'],
       ['jeu-essai', 'Jeu d’essai'],
