@@ -72,6 +72,11 @@ qui a manqué n'est pas l'outil : c'est qu'un signal sans conséquence n'est pas
 Chaque type de document a **une** responsabilité et n'énonce en propre que ce qui relève d'elle. Ce
 qui vient d'ailleurs se cite en **une ligne, avec un lien**, jamais recopié.
 
+⚠️ **Une exception bornée existe depuis E17US010** : quand la citation est techniquement
+impossible — un fichier statique ne peut pas `import` un module du produit — la copie n'est
+admise que **sous contrôle de CI**, jamais nue
+([ADR-0112](0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)).
+
 | Document | Ce qu'il énonce **en propre** | Ce qu'il ne fait que **pointer** |
 |---|---|---|
 | `stories/` | le **CA** et les **arbitrages** — c'est l'oracle des tests (règle 9) | le raisonnement (ADR), le geste (fiche fonctionnelle) |

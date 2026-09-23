@@ -600,15 +600,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **145 US livrées** (mergées, revues, CI verte) à la date du 23/09/2026 — la dernière à
-  **surface visible** étant `E06US009` — dont **deux
+- **146 US livrées** (mergées, revues, CI verte) à la date du 23/09/2026 — la dernière à
+  **surface visible** étant `E06US009`, précédée côté moteur par `E05US022` (**remède structurel
+  sans surface visible** : la séquence s'ancre sur l'identité de l'étape, un créneau ne peut plus
+  jouer le barème d'une autre étape, `DETTE-026` soldée) — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
   autorité sur le compte —, la dernière **livraison** étant `E17US010`, un travail d'**outillage
   sans surface utilisateur** : le dossier de maquettes ne peut plus décrire en silence une
   application qui n'existe plus — la CI rougit désormais sur tout écran en trop, manquant, rangé
   au mauvais endroit ou listé deux fois. Cinq US d'écart s'étaient accumulées sans que rien ne le
-  signale. La dernière livraison **visible par l'organisateur** reste `E06US009` — **un palmarès par
+  signale. **Un palmarès par
   départ, juxtaposés** : sur un tournoi à plusieurs créneaux, l'écran « Palmarès », le PDF et le
   tableur ne montraient que le **premier** — et rien ne le disait. Les trois rendent désormais un
   bloc **titré par créneau**, chacun avec ses podiums, son classement des clubs et son classement

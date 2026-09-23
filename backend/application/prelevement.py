@@ -16,6 +16,7 @@ from application.erreurs.moteur import PrelevementEnAttente
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.classement_de_tableau import ClassementSource
 from domain.depart import DepartId
+from domain.deroule_etape import EtapeDerouleId
 from domain.phase import NatureSource, Phase, PhaseId, profondeur_par_defaut
 from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
 from domain.tournoi import TournoiId
@@ -44,13 +45,14 @@ def profondeur_de(phase: Phase, registre: RegistrePolitiques) -> Depth:
     return depth
 
 
-ResolveurClassement = Callable[[int], ClassementSource | None]
-"""Rend le classement produit par la phase de cet `ordre`, ou `None` si elle n'en produit aucun.
+ResolveurClassement = Callable[["EtapeDerouleId"], ClassementSource | None]
+"""Rend le classement produit par l'étape **désignée**, ou `None` si elle n'en produit aucun.
 
-Un **résolveur** et non une table toute faite : résoudre un tableau amont coûte une reconstruction
-complète (`DETTE-031`), qu'on ne paie donc que pour les ordres réellement déclarés en source. Rend
-un `ClassementSource` et non un `Classement` nu — l'appelant a besoin des **plages encore
-indécises** (ADR-0081) et du **rang de tournoi** du premier rang, pour que le décalage se cumule.
+⚠️ **Indexé sur l'identité depuis ADR-0078** ; le rang revient par `ClassementSource.ordre`,
+pour les seuls messages rendus à l'organisateur. Un **résolveur** et non une table toute faite :
+résoudre un tableau amont coûte une reconstruction complète (`DETTE-031`). Rend un
+`ClassementSource` — l'appelant a besoin des **plages indécises** (ADR-0081) et du **rang de
+tournoi** du premier rang, pour que le décalage se cumule.
 """
 
 
@@ -132,7 +134,7 @@ def preleves(
         # axe C1 : régression mesurée contre `main`).
         if source.nature is not NatureSource.RANGS:
             continue
-        source_resolue = resoudre_source(source.ordre_source)
+        source_resolue = resoudre_source(source.etape_source_id)
         if source_resolue is None:
             continue
         borne = source.intervalle(_effectif(source_resolue.classement))
@@ -144,13 +146,13 @@ def preleves(
         if coupee is not None:
             raise PrelevementEnAttente(
                 f"La phase {phase.ordre} prélève les rangs {debut} à {fin} de la phase "
-                f"{source.ordre_source}, qui n'a pas encore départagé les rangs {coupee[0]} à "
-                f"{coupee[1]}.",
-                source.ordre_source,
+                f"{source_resolue.ordre}, qui n'a pas encore départagé les rangs {coupee[0]} "
+                f"à {coupee[1]}.",
+                source_resolue.ordre,
             )
         for ligne in _en_lice(source_resolue.classement):
             if ligne.rang_scratch is not None and debut <= ligne.rang_scratch <= fin:
-                retenus.append((source.ordre_source, ligne.rang_scratch, ligne))
+                retenus.append((source_resolue.ordre, ligne.rang_scratch, ligne))
     if not lisible:
         return _en_lice(classement)
     # Dédoublonnage : deux sources peuvent viser le même archer (« les demi-finalistes **et** le
@@ -179,7 +181,7 @@ def tranche(phase: Phase, resoudre_source: ResolveurClassement) -> int:
         source_resolue.rang_premier - 1 + borne[0]
         for source in phase.sources
         if source.nature is NatureSource.RANGS
-        if (source_resolue := resoudre_source(source.ordre_source)) is not None
+        if (source_resolue := resoudre_source(source.etape_source_id)) is not None
         if (borne := source.intervalle(_effectif(source_resolue.classement))) is not None
     ]
     return min(debuts) if debuts else 1

@@ -803,7 +803,7 @@ class ServiceRoutage:
             for source in autre.sources:
                 if (
                     source.nature is NatureSource.ISSUE_DE_TOUR
-                    and source.ordre_source == phase.ordre
+                    and source.etape_source_id == phase.etape_id
                     and source.issue is IssueTour.PERDANTS
                     and source.tour is not None
                 ):

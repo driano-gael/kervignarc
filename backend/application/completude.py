@@ -227,10 +227,13 @@ class ServiceCompletude:
         (`PrelevementEnAttente`, déroulé incohérent) fait retomber la phase sur **tous** les archers
         placés — la complétude signale alors « à finir » plutôt que de mentir « terminé ».
         """
-        if not phase.sources:
+        if not phase.sources or phase.etape_id is None:
             return places  # la qualification de tête dispute le créneau entier
         try:
-            source = self._populations.resolveur_de_classement(tournoi_id, depart_id)(phase.ordre)
+            # Par l'identité de l'étape (ADR-0078), comme les deux sites de `palmares.py`.
+            source = self._populations.resolveur_de_classement(tournoi_id, depart_id)(
+                phase.etape_id
+            )
         except ApplicationError:
             return places
         if source is None:

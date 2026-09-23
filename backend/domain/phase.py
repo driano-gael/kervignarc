@@ -1,9 +1,10 @@
 """Agrégat **Phase** et séquence — cycle de vie, typage, prélèvements (ADR-0045, ADR-0061).
 L'agrégat porte la valeur et des transitions **pures** ; le service arbitre l'enchaînement.
 
-⚠️ **Une source désigne sa phase amont par son `ordre`, pas par son identité** : tout
-réordonnancement ou suppression oblige donc à **remapper** les références
-(`ServicePhases._remapper`). Écart assumé et tracé — `DETTE-026`.
+⚠️ **Deux ancrages coexistent, et c'est permanent** (ADR-0078) : une édition concrète désigne sa
+phase amont par son **identité** (`SourcePhase`), un format de bibliothèque par son **rang**
+(`SourceModele`), ses étapes n'en ayant aucune. Les deux formes portent des noms distincts à
+dessein — un champ polymorphe rendrait indécidable, à la lecture, laquelle on tient.
 """
 
 # Forme persistée de `config` (ADR-0046) : les politiques sous `config.policies`, le barème sous
@@ -13,10 +14,10 @@ réordonnancement ou suppression oblige donc à **remapper** les références
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
@@ -54,6 +55,12 @@ from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
 from domain.poule import ReglageDePoules
 from domain.qualification import DecoupageEnTours, verifier_decoupage_applicable
 from domain.suisse import ConfigurationSuisse
+
+if TYPE_CHECKING:
+    # ⚠️ Import **différé** : `domain.deroule_etape` importe ce module, et l'identité d'une étape
+    # doit rester déclarée auprès de son entité (comme `TournoiId`). `from __future__ import
+    # annotations` rend les annotations paresseuses, donc le cycle n'existe qu'au typage.
+    from domain.deroule_etape import EtapeDerouleId
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
@@ -191,17 +198,15 @@ class IssueTour(str, Enum):
 
 
 @dataclass(frozen=True)
-class SourcePhase:
-    """Un **prélèvement** de participants dans une phase antérieure (E05US010, ADR-0061).
+class Prelevement:
+    """Ce qu'un **prélèvement** dit de lui-même — tout, **sauf** où il puise (E05US010, ADR-0061).
 
-    Une phase peut en porter **plusieurs**, de natures différentes. Value object pur, validé sur ce
-    qui ne dépend **pas** de la séquence ; les contrôles inter-phases vivent dans
-    `verifier_sequence`. ⚠️ **Un seul type discriminé par `nature`**, et non trois classes : la
-    construction par rangs est le cas courant et reste valide telle quelle, l'étanchéité étant
-    défendue par `__post_init__` (`SourceMalFormee`). `rang_fin=None` = « et suivants ».
+    Value object pur, validé sur ce qui ne dépend **pas** de la séquence. ⚠️ **Un seul type
+    discriminé par `nature`** : l'étanchéité est défendue par `__post_init__` (`SourceMalFormee`),
+    et `rang_fin=None` vaut « et suivants ». ⚠️ **L'ancre vit dans les sous-classes, jamais ici**
+    (ADR-0078) : `SourceModele` par **rang**, `SourcePhase` par **identité**.
     """
 
-    ordre_source: int
     rang_debut: int = 1
     rang_fin: int | None = None
     nature: NatureSource = NatureSource.RANGS
@@ -299,17 +304,30 @@ class SourcePhase:
             return (self.rang_debut, self.rang_fin)
         return (self.rang_debut, effectif_source if effectif_source is not None else sys.maxsize)
 
+
+@dataclass(frozen=True)
+class SourceModele(Prelevement):
+    """Un prélèvement qui désigne sa phase amont par son **rang** (ADR-0078 §3).
+
+    Deux emplois, et c'est le même objet parce que c'est la même question — « la combientième ? » :
+    les `ModelePhase` d'un format de **bibliothèque**, dont les étapes n'ont aucune identité
+    (ADR-0060 §5), et la **vue** qu'une édition concrète se donne d'elle-même pour entrer dans le
+    moteur et dans les anomalies, qui parlent à l'organisateur de « la phase 2 ».
+    """
+
+    ordre_source: int = field(kw_only=True)
+
     @staticmethod
     def par_rangs(
         ordre_source: int, rang_debut: int = 1, rang_fin: int | None = None
-    ) -> SourcePhase:
+    ) -> SourceModele:
         """« Les rangs `debut`..`fin` » — `fin=None` pour « et suivants »."""
-        return SourcePhase(ordre_source=ordre_source, rang_debut=rang_debut, rang_fin=rang_fin)
+        return SourceModele(ordre_source=ordre_source, rang_debut=rang_debut, rang_fin=rang_fin)
 
     @staticmethod
-    def par_issue_de_tour(ordre_source: int, tour: int, issue: IssueTour) -> SourcePhase:
+    def par_issue_de_tour(ordre_source: int, tour: int, issue: IssueTour) -> SourceModele:
         """« Les gagnants / les perdants du tour `tour` » de la phase `ordre_source`."""
-        return SourcePhase(
+        return SourceModele(
             ordre_source=ordre_source,
             nature=NatureSource.ISSUE_DE_TOUR,
             tour=tour,
@@ -317,20 +335,198 @@ class SourcePhase:
         )
 
     @staticmethod
-    def le_reste(ordre_source: int) -> SourcePhase:
+    def le_reste(ordre_source: int) -> SourceModele:
         """« Tout ce qu'aucune autre source n'a prélevé » dans la phase `ordre_source`."""
-        return SourcePhase(ordre_source=ordre_source, nature=NatureSource.RESTE)
+        return SourceModele(ordre_source=ordre_source, nature=NatureSource.RESTE)
+
+
+@dataclass(frozen=True)
+class SourcePhase(Prelevement):
+    """Un prélèvement qui désigne sa phase amont par son **identité** (ADR-0078 §2).
+
+    La forme d'une **édition concrète** : l'étape visée existe en base, donc elle a une identité, et
+    c'est elle qu'on cite. ⚠️ **Renuméroter la séquence ne touche plus à un prélèvement** — c'est
+    tout l'objet d'ADR-0078, et la raison pour laquelle `ServicePhases._remapper` n'existe plus.
+    """
+
+    etape_source_id: EtapeDerouleId = field(kw_only=True)
+
+    @staticmethod
+    def par_rangs(
+        etape_source_id: EtapeDerouleId, rang_debut: int = 1, rang_fin: int | None = None
+    ) -> SourcePhase:
+        """« Les rangs `debut`..`fin` » — `fin=None` pour « et suivants »."""
+        return SourcePhase(
+            etape_source_id=etape_source_id, rang_debut=rang_debut, rang_fin=rang_fin
+        )
+
+    @staticmethod
+    def par_issue_de_tour(
+        etape_source_id: EtapeDerouleId, tour: int, issue: IssueTour
+    ) -> SourcePhase:
+        """« Les gagnants / les perdants du tour `tour` » de l'étape visée."""
+        return SourcePhase(
+            etape_source_id=etape_source_id,
+            nature=NatureSource.ISSUE_DE_TOUR,
+            tour=tour,
+            issue=issue,
+        )
+
+    @staticmethod
+    def le_reste(etape_source_id: EtapeDerouleId) -> SourcePhase:
+        """« Tout ce qu'aucune autre source n'a prélevé » dans l'étape visée."""
+        return SourcePhase(etape_source_id=etape_source_id, nature=NatureSource.RESTE)
+
+
+def ancrer_sur_les_etapes(
+    sources: tuple[SourceModele, ...], ordre_vers_id: Mapping[int, EtapeDerouleId]
+) -> tuple[SourcePhase, ...]:
+    """Traduit des prélèvements **par rang** en prélèvements **par identité** (ADR-0078 §4).
+
+    Le sens bibliothèque → édition, dont l'unique appelant de production est l'application d'un
+    format. ⚠️ Un rang absent de la table lève plutôt que de deviner : c'est déjà une anomalie
+    **bloquante** (`SourceIntrouvable`), donc `appliquer` a refusé le format bien avant — le garde
+    est là pour que le jour où il cesserait de l'être, la panne soit bruyante.
+    """
+    return tuple(
+        SourcePhase(
+            etape_source_id=_identite_exigee(source.ordre_source, ordre_vers_id),
+            rang_debut=source.rang_debut,
+            rang_fin=source.rang_fin,
+            nature=source.nature,
+            tour=source.tour,
+            issue=source.issue,
+        )
+        for source in sources
+    )
+
+
+RANG_INTROUVABLE = 0
+"""Le rang d'une ancre que la table ne résout pas — hors de toute séquence, donc introuvable.
+
+⚠️ **La valeur importe** : aucune séquence ne commence à 0, donc `_anomalies_sources` localise
+`SourceIntrouvable` sur la phase plutôt que de rendre un défaut d'ordre. Même intention que
+l'`ordreOrphelin` du front, **valeur opposée** : lui prend `taille + 1`.
+"""
+
+
+def projeter_sur_les_rangs(
+    sources: tuple[SourcePhase, ...],
+    id_vers_ordre: Mapping[EtapeDerouleId, int],
+    *,
+    tolerante: bool = False,
+) -> tuple[SourceModele, ...]:
+    """Traduit des prélèvements **par identité** en prélèvements **par rang** (ADR-0078 §4).
+
+    Le sens édition → bibliothèque : la **promotion** d'un déroulé en format, et la **vue** du
+    moteur, qui raisonne en rangs (« la phase 2 »). ⚠️ **`tolerante` est réservé à la LECTURE**
+    (correctif de revue) : l'ancre non résolue y devient `RANG_INTROUVABLE`, que
+    `_anomalies_sources` **signale** au lieu de lever — sans quoi un créneau incomplet
+    (`DETTE-025`, base restaurée) fait tomber le suivi en 422 sur une route publique.
+    """
+    return tuple(
+        SourceModele(
+            ordre_source=_rang_projete(source.etape_source_id, id_vers_ordre, tolerante),
+            rang_debut=source.rang_debut,
+            rang_fin=source.rang_fin,
+            nature=source.nature,
+            tour=source.tour,
+            issue=source.issue,
+        )
+        for source in sources
+    )
+
+
+@dataclass(frozen=True)
+class VueParRangs:
+    """Une étape **vue par ses rangs**, le temps d'un contrôle ou d'une projection (ADR-0078 §4).
+
+    Satisfait `EtapeSequencee` **et** `EtapeProjetable` : c'est la forme sous laquelle une édition
+    concrète — déroulé ou avancement — entre dans le moteur, qui raisonne en rangs. Projection
+    jetable, jamais persistée. ⚠️ Elle porte **exactement** la surface des deux protocoles : un
+    champ de plus n'a de sens que si un protocole le réclame, sinon c'est une troisième
+    représentation d'une phase qui s'installe — et trois formes divergent (ADR-0076).
+    """
+
+    ordre: int
+    type: TypePhase
+    sources: tuple[SourceModele, ...]
+    effectif: int | None
+    bareme: BaremeQualification | None = None
+    validation: GrainValidation | None = None
+    poules: ReglageDePoules | None = None
+
+
+def vues_par_rangs(phases: Sequence[Phase]) -> tuple[VueParRangs, ...]:
+    """Projette des **avancements** sur leurs rangs, la table étant tirée d'eux-mêmes.
+
+    Les phases d'un départ jouent les étapes d'un même déroulé : chacune porte à la fois son
+    identité d'étape et le rang de celle-ci, si bien que la correspondance se lit sur le lot sans
+    rien aller chercher. ⚠️ Une phase **non persistée** (`etape_id` à `None`) n'entre pas dans la
+    table : son prélèvement est alors **signalé** comme introuvable, pas levé — c'est un chemin de
+    **lecture** (suivi du déroulé), et un créneau incomplet doit s'afficher dégradé, pas en erreur.
+    """
+    id_vers_ordre = {phase.etape_id: phase.ordre for phase in phases if phase.etape_id is not None}
+    return tuple(
+        VueParRangs(
+            ordre=phase.ordre,
+            type=phase.type,
+            sources=projeter_sur_les_rangs(phase.sources, id_vers_ordre, tolerante=True),
+            effectif=phase.effectif,
+            bareme=phase.bareme,
+            validation=phase.validation,
+            poules=phase.poules,
+        )
+        for phase in phases
+    )
+
+
+def rangs_aux_ancres_perdues(vues: Sequence[VueParRangs]) -> tuple[int, ...]:
+    """Les rangs des phases dont **au moins un** prélèvement n'a pas su se résoudre.
+
+    ⚠️ La sentinelle `RANG_INTROUVABLE` se lit **ici et nulle part ailleurs hors de ce module** :
+    un service qui la comparerait lui-même passerait à côté du jour où la valeur change
+    (3ᵉ passe de revue, axe A). Le seul appelant est le suivi du déroulé, qui journalise.
+    """
+    return tuple(
+        vue.ordre
+        for vue in vues
+        if any(source.ordre_source == RANG_INTROUVABLE for source in vue.sources)
+    )
+
+
+def _identite_exigee(ordre: int, ordre_vers_id: Mapping[int, EtapeDerouleId]) -> EtapeDerouleId:
+    identite = ordre_vers_id.get(ordre)
+    if identite is None:
+        raise SourceIntrouvable(
+            f"Aucune étape de rang {ordre} dans ce déroulé : le prélèvement ne désigne rien."
+        )
+    return identite
+
+
+def _rang_projete(
+    identite: EtapeDerouleId, id_vers_ordre: Mapping[EtapeDerouleId, int], tolerante: bool
+) -> int:
+    ordre = id_vers_ordre.get(identite)
+    if ordre is not None:
+        return ordre
+    if tolerante:
+        return RANG_INTROUVABLE
+    # ⚠️ Le message ne porte **pas** l'identifiant : il part au client en 422, et l'organisateur
+    # ne lit jamais un identifiant technique — c'est le choix déjà fait côté front (« d'une phase
+    # retirée »). L'identité reste au journal serveur, par la trace de l'exception.
+    raise SourceIntrouvable("Ce prélèvement désigne une phase absente du déroulé : réaffectez-le.")
 
 
 @dataclass(frozen=True)
 class Phase:
     """Une phase **d'un départ**. `id` vaut `None` tant qu'elle n'est pas persistée.
 
-    ⚠️ **D'un départ, pas d'un tournoi** (E01US025, ADR-0075) : un départ rejoue le tournoi en
-    entier — sa séquence, ses classements, ses tableaux. Deux archers de départs différents ne sont
-    jamais comparés, et un prélèvement ne traverse jamais un départ. `bareme` et `validation` ne
-    concernent que la **qualification** (ADR-0045 §2) ; `sources` dit d'où la phase tire ses
-    participants (`()` = première de la séquence) ; `effectif` borne les rangs prélevables.
+    ⚠️ **D'un départ, pas d'un tournoi** (E01US025, ADR-0075) : deux archers de départs
+    différents ne sont jamais comparés, et un prélèvement ne traverse jamais un départ. `bareme`
+    et `validation` ne concernent que la **qualification** (ADR-0045 §2). ⚠️ **`etape_id` porte le
+    lien, `ordre` seulement l'affichage** (ADR-0078) : le rang n'est **plus persisté ici**, il est
+    recopié depuis l'étape, donc il ne peut plus en diverger.
     """
 
     depart_id: DepartId
@@ -397,6 +593,14 @@ class Phase:
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
+    etape_id: EtapeDerouleId | None = None
+    """L'étape du déroulé que ce créneau joue (ADR-0078 §1) — la **clé** de la définition.
+
+    ⚠️ `None` seulement tant que l'étape n'est pas persistée : un avancement relu du dépôt en
+    porte toujours un, la colonne étant `NOT NULL`. Le `None` est la fenêtre d'une phase encore en
+    mémoire, pas un cas métier.
+    """
+
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (fabriques **et**
         `replace()`, qui repasse par ici)."""
@@ -415,12 +619,12 @@ class Phase:
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
             )
-        # DETTE-078
-        # ⚠️ **Ces gardes-ci arrivent APRÈS la persistance de l'étape, et c'est la dette.** Elles
-        # vivent sur `Phase`, donc à `instancier()`, or `ServicePhases.ajouter` fait rejoindre
-        # l'étape au déroulé **avant** : une requête refusée en 422 laisse une étape orpheline qui
-        # brûle un `ordre`. Seule `colline` est fermée (garde jumelle dans
-        # `EtapeDeroule.__post_init__`) ; les quatre autres sont héritées, résorption en US dédiée.
+        # ⚠️ **CINQ gardes vivent sur `Phase`, pas sur l'étape** : `profondeur` et `poules`
+        # ci-dessus, `big_shoot_off`, `suisse` et `barrage_jusqu_au` ci-dessous — `colline` et
+        # `decoupage` sont portés par `EtapeDeroule`. Elles ne se lèvent donc qu'à `instancier()`,
+        # **après** l'écriture de l'étape : d'où l'appel à `verifier_instanciable()` aux trois
+        # sites qui écrivent (E05US022). Retirer l'un d'eux ne fait rougir que son test dédié —
+        # d'API pour les deux de `ServicePhases`, de service pour celui du format.
         if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
             # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
             # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le
@@ -456,6 +660,7 @@ class Phase:
         depart_id: DepartId,
         bareme: BaremeQualification,
         validation: GrainValidation | None = None,
+        etape_id: EtapeDerouleId | None = None,
     ) -> Phase:
         """Crée la phase de **qualification** d'un départ (première de sa séquence, `ordre=1`).
 
@@ -464,6 +669,7 @@ class Phase:
         """
         return Phase(
             depart_id=depart_id,
+            etape_id=etape_id,
             ordre=1,
             type=TypePhase.QUALIFICATION,
             bareme=bareme,
@@ -480,6 +686,7 @@ class Phase:
         effectif: int | None = None,
         barrage_jusqu_au: int | None = None,
         profondeur: ProfondeurClassement | None = None,
+        etape_id: EtapeDerouleId | None = None,
     ) -> Phase:
         """Crée une phase **générique** (E05US001) à un rang donné de la séquence, statut `a venir`.
 
@@ -488,6 +695,7 @@ class Phase:
         """
         return Phase(
             depart_id=depart_id,
+            etape_id=etape_id,
             ordre=ordre,
             type=type,
             sources=sources,
@@ -566,17 +774,16 @@ class SequencePhases:
     phases: tuple[Phase, ...]
 
     def __post_init__(self) -> None:
-        verifier_sequence(self.phases)
+        verifier_sequence(vues_par_rangs(self.phases))
 
 
 class EtapeSequencee(Protocol):
     """Ce dont les contrôles de séquence ont besoin d'une étape — **rien de plus**.
 
-    Deux agrégats satisfont ce contrat : la `Phase` d'un départ et le `ModelePhase` d'un
-    `FormatTournoi` (ADR-0060 §5). Les contrôles ne regardent que `ordre`, `sources` et `effectif`
-    — ni le statut ni le départ, qui n'existent que sur une phase réelle. Membres déclarés en
-    **propriétés** : les deux implémentations sont `frozen`, et un protocole à attributs variables
-    exigerait qu'ils soient assignables (règle 4).
+    Les contrôles ne regardent que `ordre`, `sources` et `effectif`. Membres en **propriétés** :
+    les implémentations sont `frozen`, et un protocole à attributs variables exigerait qu'ils
+    soient assignables (règle 4). ⚠️ **Contrat ancré sur les rangs** (ADR-0078), les anomalies
+    désignant « la phase 2 » ; une édition concrète s'y ramène par `vues_du_deroule`.
     """
 
     @property
@@ -586,7 +793,7 @@ class EtapeSequencee(Protocol):
     def type(self) -> TypePhase: ...
 
     @property
-    def sources(self) -> tuple[SourcePhase, ...]: ...
+    def sources(self) -> tuple[SourceModele, ...]: ...
 
     @property
     def effectif(self) -> int | None: ...
@@ -746,10 +953,15 @@ def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
         for source in phase.sources:
             phase_source = par_ordre.get(source.ordre_source)
             if phase_source is None:
+                # ⚠️ La sentinelle ne se montre pas à l'organisateur : « une phase d'ordre 0 » ne
+                # veut rien dire pour lui. Même formulation que le front (« d'une phase retirée »).
+                # ⚠️ Un rang **hors de la séquence** ne se nomme pas à l'organisateur : « une
+                # phase d'ordre 0 » (sentinelle back) ou « d'ordre 4 » sur une séquence de 3
+                # (sentinelle front) ne veulent rien dire pour lui. Seul un rang qui *existe*
+                # dans la séquence mérite d'être cité — ce qui n'arrive pas ici par définition.
                 yield Anomalie(
                     SourceIntrouvable(
-                        f"La phase {phase.ordre} est alimentée par une phase d'ordre "
-                        f"{source.ordre_source}, qui n'existe pas dans la séquence."
+                        f"La phase {phase.ordre} est alimentée par une phase retirée du déroulé."
                     ),
                     phase.ordre,
                 )
@@ -810,7 +1022,16 @@ def _anomalies_recoupements(
     sautait quand cet effectif valait `None` — le cas par défaut —, si bien que deux plages
     entièrement bornées passaient sans examen (cf. `SourcePhase.intervalle`).
     """
-    doublons = [s for s in phase.sources if phase.sources.count(s) > 1]
+
+    # ⚠️ Les ancres **que la séquence ne résout pas** sortent du contrôle : deux prélèvements
+    # visant deux étapes *différentes* et absentes portent le même rang de sentinelle, donc
+    # deviennent égaux — d'où un doublon puis un recouvrement, tous deux faux. Le critère est
+    # « absente de `par_ordre` », **pas** « vaut `RANG_INTROUVABLE` » : il y a deux sentinelles
+    # (back 0, front `taille + 1`, cf. `features/deroule/sequence.ts`), la seconde arrivant ici
+    # par l'atelier. Perte assumée : deux prélèvements sur la *même* étape absente ne sont plus
+    # recoupés — le diagnostic revient dès qu'elle est recréée.
+    ancrees = tuple(s for s in phase.sources if s.ordre_source in par_ordre)
+    doublons = [s for s in ancrees if ancrees.count(s) > 1]
     if doublons:
         yield Anomalie(
             SourcesQuiSeRecoupent(
@@ -819,11 +1040,13 @@ def _anomalies_recoupements(
             ),
             phase.ordre,
         )
-    for ordre_source in sorted({source.ordre_source for source in phase.sources}):
-        etape_source = par_ordre.get(ordre_source)
-        effectif_source = None if etape_source is None else etape_source.effectif
+    for ordre_source in sorted({s.ordre_source for s in ancrees}):
+        # Indexation, pas `.get` : `ancrees` ne contient que des ancres **présentes** dans
+        # `par_ordre` (filtre ci-dessus). Un `KeyError` signalerait franchement une régression
+        # du filtre, là où un repli `None` la dissimulerait en « effectif inconnu ».
+        effectif_source = par_ordre[ordre_source].effectif
         intervalles: list[tuple[int, int]] = []
-        for source in phase.sources:
+        for source in ancrees:
             if source.ordre_source != ordre_source:
                 continue
             intervalle = source.intervalle(effectif_source)

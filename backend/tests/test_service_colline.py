@@ -516,7 +516,7 @@ def test_un_archer_seul_occupe_la_position_1_meme_sans_defi_appariable() -> None
 def test_le_classement_de_phase_est_l_ordre_final_de_la_colline() -> None:
     """**Le CA de l'US**, versant classement : c'est ce qui rend une phase avale alimentable.
 
-    Jusqu'ici `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un
+    Jusqu'ici `ServiceSaisieDuels._classement_de_l_etape` rendait `None` sur ce type, donc un
     prélèvement le visant restait **inerte** — la phase aval recevait tous les archers en lice, ce
     qui est plausible et faux.
     """

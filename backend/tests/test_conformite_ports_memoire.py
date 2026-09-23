@@ -104,10 +104,10 @@ def _contrat_phase(
     confusion qui a produit le défaut qu'ADR-0075 corrige.
 
     ⚠️ **Depuis ADR-0076, une phase n'est qu'un avancement** : sa définition (type, barème…) vient
-    de l'`EtapeDeroule` de même rang, dans le tournoi de son créneau. Le décor pose donc **d'abord**
-    le déroulé, une fois par tournoi, puis les instances — et le contrat vérifie que les deux
-    adapters **assemblent** pareil, ce qui est précisément ce qu'un second jeu d'adapters risque de
-    ne pas faire.
+    de l'`EtapeDeroule` qu'elle **désigne** (`etape_id`, ADR-0078 — c'était l'étape de même rang
+    jusque-là). Le décor pose donc **d'abord** le déroulé, une fois par tournoi, puis les
+    instances — et le contrat vérifie que les deux adapters **assemblent** pareil, ce qui est
+    précisément ce qu'un second jeu d'adapters risque de ne pas faire.
     """
     assert phases.par_id(999) is None, "par_id sur un identifiant absent → None."
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
@@ -126,19 +126,49 @@ def _contrat_phase(
 
     # Le déroulé, **une fois par tournoi** : c'est lui qui porte le type de chaque rang.
     # (On évite le type `qualification`, qui exigerait un barème — hors sujet ici.)
-    for ordre, type_etape in ((1, TypePhase.PLACEMENT), (2, TypePhase.ELIMINATION_DIRECTE)):
+    # ⚠️ **Dix étapes jetables d'abord** (E05US022, 3ᵉ puis 4ᵉ passe de revue) : les deux
+    # allocateurs partent de 1, si bien que les vraies étapes recevaient les identités 1, 2, 3 —
+    # c'est-à-dire leurs rangs. Le contrat éprouve précisément la jointure `phase.etape_id`
+    # (ADR-0078) : la coïncidence le rendait vert pour un adapter resté sur le rang. **Dix et non
+    # trois** : avec trois, les étapes prenaient 4-7 et les cinq phases 1-5, donc `PhaseId 4` et
+    # `PhaseId 5` valaient encore une identité d'étape — le recouvrement que ce décor doit
+    # précisément interdire. Supprimées **après** la pose réelle, sans quoi les `rowid` reviennent.
+    brulees = [
+        deroules.ajouter(
+            EtapeDeroule(tournoi_id=tournoi.id, ordre=900 + i, type=TypePhase.PLACEMENT)
+        )
+        for i in range(10)
+    ]
+    etapes = [
         deroules.ajouter(EtapeDeroule(tournoi_id=tournoi.id, ordre=ordre, type=type_etape))
-    deroules.ajouter(
-        EtapeDeroule(tournoi_id=tournoi.id, ordre=3, type=TypePhase.ELIMINATION_DIRECTE)
+        for ordre, type_etape in (
+            (1, TypePhase.PLACEMENT),
+            (2, TypePhase.ELIMINATION_DIRECTE),
+            (3, TypePhase.ELIMINATION_DIRECTE),
+        )
+    ]
+    for brulee in brulees:
+        assert brulee.id is not None
+        deroules.supprimer(brulee.id)
+    assert all(etape.id != etape.ordre for etape in etapes), "décor recoincidé : identité == rang"
+    ailleurs_etape = deroules.ajouter(
+        EtapeDeroule(tournoi_id=autre.id, ordre=1, type=TypePhase.PLACEMENT)
     )
-    deroules.ajouter(EtapeDeroule(tournoi_id=autre.id, ordre=1, type=TypePhase.PLACEMENT))
+    par_rang = {etape.ordre: etape for etape in etapes}
 
     # Les instances, ajoutées dans le désordre (3, 1, 2) : `par_depart` doit les rendre **triées**.
-    phases.ajouter(Phase.creer(matin.id, 3, TypePhase.ELIMINATION_DIRECTE))
-    phases.ajouter(Phase.creer(matin.id, 1, TypePhase.PLACEMENT))
-    phases.ajouter(Phase.creer(matin.id, 2, TypePhase.ELIMINATION_DIRECTE))
-    phases.ajouter(Phase.creer(apres_midi.id, 1, TypePhase.PLACEMENT))  # même tournoi, autre vague
-    phases.ajouter(Phase.creer(ailleurs.id, 1, TypePhase.PLACEMENT))  # d'un autre tournoi
+    for rang in (3, 1, 2):
+        etape = par_rang[rang]
+        phases.ajouter(etape.instancier(matin.id))
+    phases.ajouter(par_rang[1].instancier(apres_midi.id))  # même tournoi, autre vague
+    phases.ajouter(ailleurs_etape.instancier(ailleurs.id))  # d'un autre tournoi
+
+    # ⚠️ **Les deux espaces d'identifiants doivent être DISJOINTS**, pas seulement décalés du
+    # rang : c'est ce qui fait qu'un adapter confondant `PhaseId` et `EtapeDerouleId` tombe dans
+    # le vide au lieu de tomber sur une étape valide (`DETTE-044`).
+    identites_de_phase = {p.id for p in phases.par_tournoi(tournoi.id)}
+    identites_d_etape = {e.id for e in [*etapes, ailleurs_etape]}
+    assert identites_de_phase.isdisjoint(identites_d_etape), "décor recoincidé : PhaseId ↔ EtapeId"
 
     du_depart = phases.par_depart(matin.id)
     assert [p.ordre for p in du_depart] == [1, 2, 3], "par_depart filtre puis trie par ordre."
@@ -146,7 +176,7 @@ def _contrat_phase(
         TypePhase.PLACEMENT,
         TypePhase.ELIMINATION_DIRECTE,
         TypePhase.ELIMINATION_DIRECTE,
-    ], "la définition est **assemblée** depuis l'étape de même rang (ADR-0076)."
+    ], "la définition est **assemblée** depuis l'étape désignée (ADR-0076, ADR-0078)."
 
     # La vue transverse voit **les deux** créneaux du tournoi, et aucun de l'autre tournoi. Les
     # ordres y repartent de 1 à chaque départ : ce n'est pas une séquence, et c'est le propos.
@@ -160,11 +190,12 @@ def _contrat_phase(
         phases.par_depart_et_type(matin.id, TypePhase.QUALIFICATION) is None
     ), "par_depart_et_type → None si le type est absent."
 
-    # Une instance dont le rang n'existe pas au déroulé serait **invisible** à toute lecture (elle
+    # Une instance qui désigne une étape inexistante serait **invisible** à toute lecture (elle
     # n'a pas de définition à assembler) : les deux adapters refusent de l'écrire plutôt que de la
     # laisser croire posée. C'est exactement le genre d'écart qu'un second jeu d'adapters creuse.
+    inconnue = max(etape.id for etape in etapes if etape.id is not None) + 1_000
     with pytest.raises(InfrastructureError):
-        phases.ajouter(Phase.creer(matin.id, 9, TypePhase.PLACEMENT))
+        phases.ajouter(Phase.creer(matin.id, 9, TypePhase.PLACEMENT, etape_id=inconnue))
 
 
 def _contrat_archer(

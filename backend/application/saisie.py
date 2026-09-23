@@ -823,8 +823,20 @@ class ServiceSaisie:
         """
         if not phase.sources:
             return True
+        if phase.etape_id is None:
+            # ⚠️ **`False`, comme les deux replis ci-dessous** (3ᵉ passe de revue) : rendre `True`
+            # ferait admettre **tout le créneau** dans une phase prélevée, et muettement. Le cas
+            # est injoignable en production (`phase.etape_id` est `NOT NULL` depuis 0056) ; ce
+            # qu'un `True` rouvrirait vraiment, c'est le vert par coïncidence d'un décor écrit
+            # sans `etape_id` — l'état exact qui a caché le bloquant de la 2ᵉ passe. Ici, la
+            # dégradation retombe sur le repli **journalisé** de `_qualification_de_l_archer`.
+            return False
         try:
-            source = resoudre(phase.ordre)
+            # ⚠️ **Par l'identité de l'étape** (ADR-0078) — 4ᵉ appelant du résolveur, oublié au
+            # premier correctif de revue. Passer le rang rendait `False` pour **toutes** les
+            # qualifications, donc `admises` vide, donc le repli destructeur décrit plus bas :
+            # les archers de la *basse* écrivant dans la feuille de la *haute* (E05US025).
+            source = resoudre(phase.etape_id)
         except (ApplicationError, DomainError):
             return False
         if source is None:

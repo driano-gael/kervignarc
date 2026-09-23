@@ -249,7 +249,10 @@ def _garnir(session: Session, tournoi_id: int) -> None:
         ArcherORM(tournoi_id=tournoi_id, nom="Tell", prenom=p, categorie_id=categorie.id)
         for p in ("Guillaume", "Walter")
     ]
-    phase = PhaseORM(depart_id=departs[0].id, ordre=1, statut="a_venir")
+    etape = DerouleEtapeORM(tournoi_id=tournoi_id, ordre=1, type="qualification", config="{}")
+    session.add(etape)
+    session.flush()  # l'avancement désigne son étape par identité (ADR-0078)
+    phase = PhaseORM(depart_id=departs[0].id, etape_id=etape.id, statut="a_venir")
     session.add_all([*archers, phase])
     session.flush()
     # 3 inscriptions : les deux archers sur le 1er créneau, le premier aussi sur le second.

@@ -50,7 +50,7 @@ from domain.politiques import (
     AggregationParQualification,
     ProfondeurClassement,
 )
-from tests.conftest import FauxClubRepository, poser_phase_factice
+from tests.conftest import FauxClubRepository, identite_d_etape, poser_phase_factice
 from tests.test_service_routage import _MATIN, _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -666,7 +666,7 @@ def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
             type=TypePhase.QUALIFICATION,
             bareme=BaremeQualification.creer(1, 3),
             validation=GrainValidation.fin_de_serie(),
-            sources=(SourcePhase.par_rangs(1, 3),),  # « les rangs 3 et suivants »
+            sources=(SourcePhase.par_rangs(identite_d_etape(1), 3),),  # « les rangs 3 et suivants »
         ),
     )
     assert basse.id is not None

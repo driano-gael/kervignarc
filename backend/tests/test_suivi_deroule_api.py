@@ -237,12 +237,20 @@ def test_un_tableau_de_placement_ne_s_annonce_pas_finale(
             json={"type": "elimination_directe", "effectif": 8},
         )
         assert principal.status_code == 201, principal.text
+        amont = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()[0]
         placement = client.post(
             f"/api/v1/tournois/{tournoi_id}/phases",
             json={
                 "type": "placement",
                 "effectif": 4,
-                "sources": [{"nature": "rangs", "ordre_source": 1, "rang_debut": 5, "rang_fin": 8}],
+                "sources": [
+                    {
+                        "nature": "rangs",
+                        "etape_source_id": amont["id"],
+                        "rang_debut": 5,
+                        "rang_fin": 8,
+                    }
+                ],
             },
         )
         assert placement.status_code == 201, placement.text

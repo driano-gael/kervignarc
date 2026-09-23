@@ -46,6 +46,7 @@ from tests.conftest import (
     FauxInscriptionRepository,
     FauxLecteurPopulations,
     FauxPhaseRepository,
+    identite_d_etape,
 )
 
 _DEPART: DepartId = 7
@@ -738,7 +739,12 @@ def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
                 # `sources` renseignées : c'est ce qui rend la phase **prélevée**, donc
                 # discriminante. Sans elles, le service la traite comme une qualification de tête
                 # (qui accueille tout le monde) et le décor ne prouverait rien.
-                sources=(SourcePhase.par_rangs(1),),
+                sources=(SourcePhase.par_rangs(identite_d_etape(1)),),
+                # ⚠️ **Le rattachement, sans quoi le décor et le code se confortaient sur la
+                # MAUVAISE clé** (2ᵉ passe de revue) : `populations` était indexé par rang et
+                # `_admet` interrogeait par rang, si bien que le 4ᵉ appelant resté sur `ordre`
+                # restait vert ici tout en cassant la fourche en production.
+                etape_id=identite_d_etape(ordre),
             ).demarrer()
         )
         for ordre in (2, 3)
@@ -749,7 +755,10 @@ def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
     # reste commun aux trois tours), et c'est aussi ce qui donne un créneau à la saisie admin.
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     m.placer(autre.id, _DEPART, cible_index=1, position="B")
-    m.populations.populations = {2: [m.archer_id], 3: [autre.id]}
+    m.populations.populations = {
+        identite_d_etape(2): [m.archer_id],
+        identite_d_etape(3): [autre.id],
+    }
     # ⚠️ La qualification de **tête** admet tout le monde, comme en production : c'est ce qui rend
     # le départage entre phases admissibles non trivial — et c'est le défaut qu'un premier
     # correctif avait laissé passer (il rendait la tête pour tout le monde tant qu'elle était
@@ -1459,3 +1468,36 @@ def test_refermer_une_correction_trace_au_nom_du_scoreur() -> None:
     assert trace.action is ActionAuditee.VALIDATION
     assert trace.auteur == "ROUX"
     assert trace.objet is not None and "volée 1" in trace.objet
+
+
+def test_une_qualification_prelevee_sans_etape_ne_reclame_plus_personne() -> None:
+    """Le repli de `_admet` échoue **fermé** (4ᵉ passe de revue).
+
+    Le cas est injoignable en production (`phase.etape_id` est `NOT NULL` depuis la migration
+    `0056`) : ce que la garde protège est le **décor**. Rendre `True` — la rédaction d'avant —
+    faisait admettre **tout le créneau** par une phase prélevée, c'est-à-dire précisément le vert
+    par coïncidence qui avait caché le bloquant de la 2ᵉ passe : un décor oubliant `etape_id`
+    voyait sa fourche « marcher ». Avec `False`, la phase amputée cesse de réclamer qui que ce
+    soit, et la flèche part ailleurs.
+    """
+    m = Montage()
+    haute, basse, _autre = _monter_la_fourche(m)
+    amputee = m.phases.par_id(haute)
+    assert amputee is not None
+    m.phases.enregistrer(dataclasses.replace(amputee, etape_id=None))
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), role=Role.ADMIN)
+
+    assert (
+        m.series.par_archer(haute, m.archer_id) is None
+    ), "une phase prélevée sans étape ne réclame plus personne"
+    # ⚠️ **Et la flèche n'est pas perdue** : sans cette seconde moitié, un service qui n'écrirait
+    # nulle part passerait tout autant. Elle atterrit **quelque part** dans le créneau, par le
+    # repli « la phase en cours » — laquelle exactement n'est pas l'objet de ce test.
+    ecrite = [
+        phase.id
+        for phase in m.phases.par_depart(_DEPART)
+        if phase.id is not None and m.series.par_archer(phase.id, m.archer_id) is not None
+    ]
+    assert ecrite, "la saisie retombe sur le repli, elle ne disparaît pas"
+    assert haute not in ecrite and basse not in ecrite

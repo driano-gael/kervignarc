@@ -438,11 +438,15 @@ class ServicePalmares:
         `origine` porte la règle « décerne si rien ne prélève dedans », critère **structurel** et
         non par type. Les plages indécises deviennent des **fourchettes**.
         """
-        if phase.id is None:
+        if phase.id is None or phase.etape_id is None:
             return None
         resolveur = self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)
         try:
-            source = resolveur(phase.ordre)
+            # ⚠️ **Par l'identité de l'étape, jamais par le rang** (ADR-0078) : le résolveur a
+            # changé de clé, et `EtapeDerouleId` étant un alias d'`int` (`DETTE-044`), mypy ne
+            # distingue pas les deux. Correctif de revue — passer le rang rendait `None`, donc
+            # faisait **disparaître du palmarès** les poules et le système suisse.
+            source = resolveur(phase.etape_id)
         except (
             PhaseIntrouvable,
             PrelevementEnAttente,
@@ -546,10 +550,11 @@ class ServicePalmares:
         rang 1 donneraient à 60 archers la première place pendant qu'ils tirent. ⚠️ Le critère est
         `total > 0` : une phase où tout le monde aurait manqué resterait dehors — cela retarde.
         """
-        if not phase.sources:
+        if not phase.sources or phase.etape_id is None:
             return None
+        # Par l'identité de l'étape (ADR-0078) — cf. `_resultat_classant`, même piège.
         source = self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)(
-            phase.ordre
+            phase.etape_id
         )
         if source is None:
             return None
@@ -639,11 +644,14 @@ def _est_terminale(phase: Phase, phases: list[Phase]) -> bool:
     Le critère qui décide si une phase décerne des médailles ou se contente de classer. Il est
     **structurel** — lu sur le graphe des sources — et non « par type » : la même phase de poules
     titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne. ⚠️ Se lit
-    sur `ordre`, pas sur l'identité, parce que c'est ainsi qu'une source désigne sa phase
-    (`DETTE-026`).
+    sur l'**identité** de l'étape depuis ADR-0078 : c'est ainsi qu'une source désigne sa phase, et
+    la lecture ne dépend donc plus d'une renumérotation bien faite.
     """
+    if phase.etape_id is None:
+        # Une phase non persistée n'est citable par personne : rien ne prélève dedans.
+        return True
     return not any(
-        source.ordre_source == phase.ordre
+        source.etape_source_id == phase.etape_id
         for autre in phases
         if autre.id != phase.id
         for source in autre.sources

@@ -276,7 +276,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 367,
+   "occurrences": 370,
    "source": "application"
   },
   {
@@ -767,7 +767,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 352,
+   "occurrences": 355,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1592,16 +1592,8 @@ window.ATLAS.carte = {
      "nom": "DerouleEtapeRepositorySQL"
     },
     {
-     "fichier": "backend/infrastructure/db/repositories/moteur.py",
-     "nom": "PhaseRepositorySQL"
-    },
-    {
      "fichier": "backend/infrastructure/memory/repositories.py",
      "nom": "InMemoryDerouleRepository"
-    },
-    {
-     "fichier": "backend/infrastructure/memory/repositories.py",
-     "nom": "InMemoryPhaseRepository"
     }
    ],
    "couche": "domain",
@@ -1610,8 +1602,8 @@ window.ATLAS.carte = {
    "methodes": [
     "ajouter",
     "enregistrer",
+    "enregistrer_plusieurs",
     "par_tournoi",
-    "reordonner",
     "supprimer"
    ],
    "nom": "DerouleRepository",
@@ -1680,6 +1672,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/domain/phase.py",
      "nom": "Phase"
+    },
+    {
+     "fichier": "backend/domain/phase.py",
+     "nom": "VueParRangs"
     }
    ],
    "couche": "domain",
@@ -1722,6 +1718,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/domain/phase.py",
      "nom": "Phase"
+    },
+    {
+     "fichier": "backend/domain/phase.py",
+     "nom": "VueParRangs"
     }
    ],
    "couche": "domain",
@@ -2665,7 +2665,6 @@ window.ATLAS.carte = {
     "par_depart_et_type",
     "par_id",
     "par_tournoi",
-    "reordonner",
     "supprimer"
    ],
    "nom": "PhaseRepository",
@@ -3150,8 +3149,8 @@ window.ATLAS.carte = {
   "aretes_front": 179,
   "enchevetrements": 4,
   "features": 51,
-  "imports": 961,
-  "imports_entre_couches": 813,
+  "imports": 964,
+  "imports_entre_couches": 816,
   "plus_gros_noeud": 24,
   "ports": 72,
   "ports_hors_domaine": 28,

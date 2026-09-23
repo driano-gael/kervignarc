@@ -187,11 +187,12 @@ def _composer_seconde_qualification(client: TestClient, tournoi_id: int) -> int:
     qui écrirait l'étape par le repository n'éprouverait pas que la séquence l'accepte — or c'est
     précisément l'invariant qu'E05US025 lève.
     """
+    amont = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()[0]
     reponse = client.post(
         f"/api/v1/tournois/{tournoi_id}/phases",
         json={
             "type": "qualification",
-            "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 8}],
+            "sources": [{"etape_source_id": amont["id"], "rang_debut": 1, "rang_fin": 8}],
             "effectif": 8,
         },
     )
@@ -268,11 +269,12 @@ def test_regler_le_bareme_d_une_phase_qui_n_est_pas_une_qualification_409(
             f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
             json={"nb_volees": 20, "nb_fleches_par_volee": 3},
         )
+        qualif = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()[0]
         tableau = client.post(
             f"/api/v1/tournois/{tournoi_id}/phases",
             json={
                 "type": "elimination_directe",
-                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 8}],
+                "sources": [{"etape_source_id": qualif["id"], "rang_debut": 1, "rang_fin": 8}],
                 "effectif": 8,
             },
         )

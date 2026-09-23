@@ -1074,3 +1074,49 @@ def test_le_titre_dune_etape_survit_a_l_aller_retour_de_bibliotheque(
     format_relu = next(f for f in relu.json() if f["id"] == cree.json()["id"])
     etape = next(e for e in format_relu["etapes"] if e["ordre"] == 2)
     assert etape["titre"] == "Tableau des jeunes"
+
+
+def test_un_prelevement_a_l_ordre_zero_reste_lisible_et_diagnostique(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le rang **0** est la sentinelle du domaine, et il est **atteignable par un client**.
+
+    Une borne `Field(ge=1)` a été posée en 3ᵉ passe de revue puis **retirée** en 4ᵉ : ce DTO sert
+    aussi la **réponse**, donc un format déjà stocké à `ordre_source: 0` — persistable, un format
+    s'enregistre en brouillon (ADR-0063) — aurait fait tomber **toute** la liste du patrimoine en
+    500, sans écran pour le réparer. Ni la pose ni le retrait n'étaient couverts ; ce test tient
+    les deux sens (5ᵉ passe, axe B).
+
+    Ce que le CA exige : un brouillon **s'enregistre**, se **relit**, et le domaine **dit** ce qui
+    cloche. Pas que la frontière refuse.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        cree = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Ancre à zéro",
+                "etapes": [
+                    _QUALIFICATION,
+                    {
+                        "ordre": 2,
+                        "type": "elimination_directe",
+                        "sources": [
+                            {"nature": "rangs", "ordre_source": 0, "rang_debut": 1, "rang_fin": 8}
+                        ],
+                    },
+                ],
+            },
+        )
+        assert cree.status_code == 201, cree.text
+
+        # ⚠️ **Le 500 que la borne aurait produit** : la liste entière, pas seulement ce format.
+        liste = client.get("/api/v1/formats")
+        assert liste.status_code == 200, liste.text
+        assert "Ancre à zéro" in {f["nom"] for f in liste.json()}
+
+        diagnostic = client.get(f"/api/v1/formats/{cree.json()['id']}/diagnostic")
+        assert diagnostic.status_code == 200, diagnostic.text
+        assert diagnostic.json()["applicable"] is False
+        assert "source_phase_introuvable" in {a["code"] for a in diagnostic.json()["anomalies"]}

@@ -309,7 +309,7 @@
     `appareils.js`, **nominative, justifiée, locale et périssable** (les quatre bornes sont dans
     [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md) §4,
     chacune fermant un contournement **mesuré en revue**). ⚠️ **Voie préférée** : ne pas inscrire
-    du tout l'écran non livré dans la table — `enteteNav` le rend déjà « non livrée » en
+    du tout l'écran non livré dans la table — `navigationAdmin` le rend déjà « non livrée » en
     pointillés, mécanisme antérieur à l'US que l'échappatoire contredisait. ⚠️ **Asymétrie voulue** : une maquette *en avance* sur le produit se déclare et
     passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge **sans échappatoire**
     — c'est ce sens de dérive, et lui seul, qui fait relire des planches périmées.
@@ -317,8 +317,12 @@
     « atelier » de l'autre rougit. Gratuit — les deux structures portent déjà cette donnée.
   - **Périmètre : identifiants seulement, pas les libellés ni l'ordre** — `DETTE-110`. Ils vivent
     dans un tableau local à `CoquilleAdmin`, hors de portée d'un import ; les remonter serait la
-    **3ᵉ** occurrence du remède déjà appliqué à `AXE_PAR_DESTINATION` et `BESOIN_TOURNOI`, donc un
-    **remède structurel** — US dédiée, jamais en douce dans l'US courante.
+    **4ᵉ** `Record` exhaustif d'`axes.ts` (`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`,
+    `OUVRE_UN_ELEMENT`) : le pattern est **déjà établi**, donc la règle 16 l'autorise — elle
+    n'interdit que d'en **introduire** un sur pari. Le motif du report est le **coût** : 33
+    entrées à déplacer dans un composant de 759 lignes, au milieu d'une US d'outillage.
+    ⚠️ *(La 1ʳᵉ rédaction disait « 3ᵉ occurrence, donc remède structurel » : faux deux fois,
+    relevé en revue — `OUVRE_UN_ELEMENT` existe, et la règle 16 ne dit pas cela.)*
 - **Écart réel mesuré à la livraison** *(le garde-fou a été vu rouge avant d'être vu vert)* : **4
   destinations livrées absentes** des maquettes — `identite` (E16US006), `archer` (E16US010),
   `pret-demarrer` (E16US012), `audit` (E16US016) — et **1 fantôme**, `doublons`, retirée du produit

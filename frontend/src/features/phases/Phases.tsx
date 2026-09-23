@@ -7,7 +7,7 @@
 // affiche tous mais n'en **édite** qu'un, « par rangs » — toute phase hors de ce cas reste en
 // lecture (`editableIci`), la soumettre écraserait sa composition sans le dire.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { ConfigPhase, EtapeDeroule, SourcePhase, TypePhase } from './api'
 import {
@@ -77,7 +77,7 @@ import {
   PROFONDEUR_AU_PRESET,
 } from '../../shared/phases/profondeur'
 import { ordreApresDeplacement, type Direction } from './ordre'
-import { decrireSources, editableIci } from './source'
+import { decrireSources, editableIci, rangsParEtape } from './source'
 
 // Types composables ici (la qualification se règle via le barème). E05US015 peuple le catalogue :
 // chaque entrée a son moteur côté domaine, conformément à ADR-0045 §2.
@@ -95,6 +95,10 @@ const TYPES_AJOUTABLES: TypePhase[] = [
 export function Phases({ tournoiId }: { tournoiId: number }) {
   const phases = usePhases(tournoiId)
   const liste = phases.data ?? []
+  // La table identité → rang du déroulé, calculée **une fois** pour toutes les lignes.
+  // ⚠️ Dépend de `phases.data`, pas de `liste` : `?? []` fabrique un tableau neuf à chaque rendu,
+  // donc le `useMemo` ne mémoïserait **rien** (relevé par `react-hooks/exhaustive-deps`).
+  const rangs = useMemo(() => rangsParEtape(phases.data ?? []), [phases.data])
 
   return (
     <section>
@@ -115,6 +119,7 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
               tournoiId={tournoiId}
               phase={phase}
               phases={liste}
+              rangs={rangs}
               premier={index === 0}
               dernier={index === liste.length - 1}
             />
@@ -319,12 +324,16 @@ function LignePhase({
   tournoiId,
   phase,
   phases,
+  rangs,
   premier,
   dernier,
 }: {
   tournoiId: number
   phase: EtapeDeroule
   phases: EtapeDeroule[]
+  // ⚠️ **Calculée une fois par l'écran, pas par ligne** (correctif de revue) : `rangsParEtape`
+  // dans le corps du composant reconstruisait une `Map` neuve à chaque rendu de chaque ligne.
+  rangs: ReadonlyMap<number, number>
   premier: boolean
   dernier: boolean
 }) {
@@ -359,7 +368,7 @@ function LignePhase({
           {/* Le type n'est jamais perdu : il redevient un détail, il ne disparaît pas. Sans lui,
               deux phases nommées ne diraient plus ce qu'elles font. */}
           {phase.titre != null && `${LIBELLE_TYPE[phase.type]} · `}
-          {decrireSources(phase.sources)}
+          {decrireSources(phase.sources, rangs)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
           {/* Parité avec l'écran de composition, qui l'affiche déjà : sur un tournoi réel, le
               réglage le plus lourd de la journée ne doit pas n'être visible qu'en rouvrant le
@@ -544,8 +553,10 @@ export function FormulairePhase({
   )
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
-  const [ordreSource, setOrdreSource] = useState(
-    premiereSource != null ? String(premiereSource.ordre_source) : '',
+  // ⚠️ **L'identité de l'étape, pas son rang** (ADR-0078) : le `<select>` en porte la valeur, et
+  // le libellé continue d'annoncer « Phase 2 » — c'est ce que l'organisateur lit.
+  const [etapeSource, setEtapeSource] = useState(
+    premiereSource != null ? String(premiereSource.etape_source_id) : '',
   )
   const [rangDebut, setRangDebut] = useState(
     premiereSource != null ? String(premiereSource.rang_debut) : '1',
@@ -579,16 +590,16 @@ export function FormulairePhase({
 
   const construireSources = (): SourcePhase[] | 'invalide' => {
     if (!avecSource) return []
-    const os = Number(ordreSource)
+    const etapeId = Number(etapeSource)
     const rd = Number(rangDebut)
     // Rang de fin laissé vide = plage à fin ouverte (`null` côté serveur), pas une saisie fautive.
     const ouverte = rangFin.trim() === ''
     const rf = Number(rangFin)
-    if (!ordreSource || !Number.isInteger(rd) || rd < 1) return 'invalide'
+    if (!etapeSource || !Number.isInteger(rd) || rd < 1) return 'invalide'
     if (!ouverte && (!Number.isInteger(rf) || rf < rd)) return 'invalide'
     return [
       {
-        ordre_source: os,
+        etape_source_id: etapeId,
         nature: 'rangs',
         rang_debut: rd,
         rang_fin: ouverte ? null : rf,
@@ -711,7 +722,7 @@ export function FormulairePhase({
           setColline(depuisReglageColline(null))
           setArrets(ARRETS_PAR_DEFAUT)
           setAvecSource(false)
-          setOrdreSource('')
+          setEtapeSource('')
           setRangDebut('1')
           setRangFin('')
         },
@@ -839,13 +850,13 @@ export function FormulairePhase({
             <legend>Source de peuplement</legend>
             <select
               className="formulaire__champ"
-              value={ordreSource}
-              onChange={(e) => setOrdreSource(e.target.value)}
+              value={etapeSource}
+              onChange={(e) => setEtapeSource(e.target.value)}
               aria-label="Phase source"
             >
               <option value="">Phase source…</option>
               {sourcesPossibles.map((p) => (
-                <option key={p.id} value={String(p.ordre)}>
+                <option key={p.id} value={String(p.id)}>
                   {/* Le sélecteur restait anonyme alors que la ligne juste au-dessus est titrée
                       (correctif de revue) : choisir sa source parmi trois « Qualification » est le
                       geste que le titre doit précisément rendre possible. */}

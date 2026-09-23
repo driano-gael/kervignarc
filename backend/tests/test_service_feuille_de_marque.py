@@ -37,6 +37,7 @@ from domain.phase import Phase
 from domain.placement import Affectation
 from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 from tests.conftest import (
+    CaptureWarnings,
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxDepartRepository,
@@ -125,22 +126,6 @@ class FauxGenerateur:
     def generer(self, feuille: FeuilleDeMarque) -> bytes:
         self.derniere = feuille
         return self.SENTINELLE
-
-
-class _CaptureWarnings(logging.Handler):
-    """Capte les messages d'un logger via un handler **attaché directement** dessus.
-
-    Volontairement **pas** `caplog` : `caplog` capte par propagation vers le logger racine, et
-    d'autres tests (via `create_app`) reconfigurent le logging global, ce qui neutralise cette
-    propagation. Un handler posé sur le logger lui-même reçoit ses enregistrements quel que soit
-    l'état global (à condition de forcer `level`/`disabled`, cf. le test)."""
-
-    def __init__(self) -> None:
-        super().__init__(level=logging.WARNING)
-        self.messages: list[str] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.messages.append(record.getMessage())
 
 
 # --- Décor -------------------------------------------------------------------------------------
@@ -382,7 +367,7 @@ def test_affectation_orpheline_est_omise_et_journalisee() -> None:
     monde.poser_affectation_orpheline(cible_index=2, position="A")
 
     logger = logging.getLogger("application.feuille_de_marque")
-    capture = _CaptureWarnings()
+    capture = CaptureWarnings()
     niveau, desactive = logger.level, logger.disabled
     logger.addHandler(capture)
     logger.setLevel(logging.WARNING)

@@ -26,16 +26,17 @@ from application.erreurs import (
     PhaseIntrouvable,
     PhasePasUnTableau,
 )
-from application.saisie_duels import EtatDuel, ServiceSaisieDuels
+from application.saisie_duels import EtatDuel, ServiceSaisieDuels, amorce_du_cache
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
-from domain.classement import StatutClassement
+from domain.classement import Classement, StatutClassement
 from domain.depart import Depart
 from domain.duel import ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.phase import IssueTour, Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import (
@@ -53,6 +54,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    identite_d_etape,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
@@ -109,13 +111,19 @@ class _Monde:
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
-        phase = self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        phase = self.phases.ajouter(
+            Phase.creer(
+                self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE, etape_id=identite_d_etape(2)
+            )
+        )
         assert phase.id is not None
         self.phase_id = phase.id
         # Phase de qualification (pour les tests de scope de phase du forfait, E04US015) : le
         # classement lit ses forfaits, le tableau lit les siens — les deux ne se mélangent pas.
         qualif = self.phases.ajouter(
-            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
+            Phase.qualification(
+                self.depart_id, BaremeQualification.creer(1, 3), etape_id=identite_d_etape(1)
+            )
         )
         assert qualif.id is not None
         self.qualif_id = qualif.id
@@ -336,7 +344,9 @@ def test_phase_de_qualification_refusee() -> None:
     monde.inscrire_classe(("10", "10", "10"))
     monde.inscrire_classe(("9", "9", "9"))
     quali = monde.phases.ajouter(
-        Phase.qualification(monde.depart_id, BaremeQualification.preset_ffta_18m())
+        Phase.qualification(
+            monde.depart_id, BaremeQualification.preset_ffta_18m(), etape_id=identite_d_etape(1)
+        )
     )
     assert quali.id is not None
     service = monde.service()
@@ -523,7 +533,9 @@ def test_le_tableau_ne_prend_que_les_rangs_declares() -> None:
     repartait avec un tournoi qui ne se déroulait pas comme le schéma qu'il avait validé.
     """
     monde = _monde_classe(12)
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+    _prelever(
+        monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8)
+    )
 
     assert _effectif_du_tableau(monde) == 8
 
@@ -537,7 +549,9 @@ def test_le_tableau_prend_les_bons_archers_pas_seulement_le_bon_compte() -> None
     attendus = [
         ligne.archer_id for ligne in _classement_du(monde).pour_depart(monde.depart_id).lignes[:8]
     ]
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+    _prelever(
+        monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8)
+    )
 
     assert sorted(_archers_du_tableau(monde)) == sorted(attendus)
 
@@ -549,7 +563,7 @@ def test_une_plage_ouverte_se_resout_sur_l_effectif_reel() -> None:
     la seule composition. Le même déroulé doit accueillir un effectif qu'il ne connaissait pas.
     """
     monde = _monde_classe(12)
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=9))
+    _prelever(monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=9))
 
     assert _effectif_du_tableau(monde) == 4
 
@@ -557,9 +571,9 @@ def test_une_plage_ouverte_se_resout_sur_l_effectif_reel() -> None:
 def test_une_plage_ouverte_suit_l_effectif_quand_il_change() -> None:
     """Le même prélèvement, deux effectifs : c'est ce que « relative » veut dire."""
     petit = _monde_classe(10)
-    _prelever(petit, SourcePhase.par_rangs(ordre_source=1, rang_debut=5))
+    _prelever(petit, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=5))
     grand = _monde_classe(16)
-    _prelever(grand, SourcePhase.par_rangs(ordre_source=1, rang_debut=5))
+    _prelever(grand, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=5))
 
     assert (_effectif_du_tableau(petit), _effectif_du_tableau(grand)) == (6, 12)
 
@@ -586,7 +600,9 @@ def test_le_rang_preleve_suit_le_classement_au_moment_de_la_lecture() -> None:
     avant = [ligne.archer_id for ligne in _classement_du(monde).pour_depart(monde.depart_id).lignes]
     cinquieme, neuvieme = avant[4], avant[8]
     monde.forfaits.semer(_forfait(monde, cinquieme, monde.qualif_id))
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+    _prelever(
+        monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=8)
+    )
 
     archers = _archers_du_tableau(monde)
     assert _effectif_du_tableau(monde) == 8
@@ -603,7 +619,10 @@ def test_un_prelevement_par_issue_de_tour_reste_inerte() -> None:
     """
     monde = _monde_classe(12)
     _prelever(
-        monde, SourcePhase.par_issue_de_tour(ordre_source=1, tour=1, issue=IssueTour.GAGNANTS)
+        monde,
+        SourcePhase.par_issue_de_tour(
+            etape_source_id=identite_d_etape(1), tour=1, issue=IssueTour.GAGNANTS
+        ),
     )
 
     assert _effectif_du_tableau(monde) == 12
@@ -622,8 +641,8 @@ def test_deux_sources_de_rangs_se_cumulent() -> None:
     ]
     _prelever(
         monde,
-        SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4),
-        SourcePhase.par_rangs(ordre_source=1, rang_debut=9, rang_fin=12),
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=1, rang_fin=4),
+        SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=9, rang_fin=12),
     )
 
     assert _effectif_du_tableau(monde) == 8
@@ -643,7 +662,7 @@ def test_l_effectif_source_compte_les_classes_pas_les_inscrits() -> None:
     monde.forfaits.semer(
         _forfait(monde, dernier, monde.qualif_id, nature=NatureForfait.DISQUALIFICATION)
     )
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=9))
+    _prelever(monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=9))
 
     # 11 archers classés (le DSQ est sorti) → les rangs 9, 10 et 11, soit 3 archers.
     assert _effectif_du_tableau(monde) == 3
@@ -655,15 +674,17 @@ def test_une_source_visant_une_phase_absente_reste_inerte() -> None:
     ⚠️ **Ce test remplace `test_une_source_qui_ne_vise_pas_la_qualification_est_ignoree`**, tombé
     avec E05US024 — c'était le signal attendu, comme E05US020 avait fait tomber le sien. L'ancien
     était faux **deux fois** : il figeait le repli silencieux que cette US corrige, et son décor
-    déclarait `ordre_source=2` sur la phase d'ordre 2 — une phase se prélevant **elle-même**, que la
-    composition n'aurait jamais laissé passer (`verifier_sequence` exige une source *antérieure*).
+    faisait puiser la phase d'ordre 2 dans **elle-même**, ce que la composition n'aurait jamais
+    laissé passer (`verifier_sequence` exige une source *antérieure*).
     Il passait donc pour la mauvaise raison.
 
     Ce qui reste vrai, et qu'on garde : une source **illisible** fait retomber la phase sur les
     inscrits plutôt que d'inventer une population. Le prélèvement est **inerte**, pas faux.
     """
     monde = _monde_classe(12)
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=7, rang_debut=1, rang_fin=8))
+    _prelever(
+        monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(7), rang_debut=1, rang_fin=8)
+    )
 
     assert _effectif_du_tableau(monde) == 12
 
@@ -683,7 +704,9 @@ def test_un_deroule_qui_boucle_sur_lui_meme_est_refuse() -> None:
     l'écran projeté en salle.
     """
     monde = _monde_classe(12)
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8))
+    _prelever(
+        monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(2), rang_debut=1, rang_fin=8)
+    )
 
     with pytest.raises(DerouleCyclique, match="boucle") as leve:
         _effectif_du_tableau(monde)
@@ -701,7 +724,7 @@ def test_un_prelevement_le_reste_reste_inerte() -> None:
     les épingler tous les deux évite qu'un seul soit décidé en silence un jour.
     """
     monde = _monde_classe(12)
-    _prelever(monde, SourcePhase.le_reste(ordre_source=1))
+    _prelever(monde, SourcePhase.le_reste(etape_source_id=identite_d_etape(1)))
 
     assert _effectif_du_tableau(monde) == 12
 
@@ -717,7 +740,7 @@ def test_un_prelevement_qui_ne_garde_personne_refuse_de_monter_un_tableau() -> N
     corrige. Comportement **décidé**, pas accidentel (relevé en revue).
     """
     monde = _monde_classe(12)
-    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=33))
+    _prelever(monde, SourcePhase.par_rangs(etape_source_id=identite_d_etape(1), rang_debut=33))
 
     with pytest.raises(EffectifTableauInvalide):
         _effectif_du_tableau(monde)
@@ -850,3 +873,84 @@ def test_le_tableau_reste_lisible_pendant_la_pause() -> None:
     etat = service.etat_tableau(monde.tournoi_id, monde.phase_id)
 
     assert etat.duels, "le tableau doit rester consultable pendant la pause"
+
+
+def test_une_qualification_prelevee_rend_une_tranche_pas_le_creneau() -> None:
+    """**Une qualification PRÉLEVÉE ne s'amorce pas avec le classement du créneau entier.**
+
+    Correctif de 2ᵉ passe de revue, et trou ouvert par le correctif de la 1ʳᵉ : la valeur pré-posée
+    au cache est `pour_depart`, c'est-à-dire **tout le créneau** — ce que le résolveur ne rend que
+    pour une qualification **sans source**. Une qualification prélevée (licite, ADR-0082) rend une
+    tranche, avec son `rang_premier`. Tant que la clé était le rang, l'entrée n'était jamais lue et
+    la valeur fausse dormait ; réparer la clé l'a **activée**.
+
+    ⚠️ **Ce test pince la valeur, pas le garde-fou** — c'est `test_l_amorce_du_cache_ignore_une_
+    qualification_prelevee` qui pince le second, sur la fonction extraite à cet effet en 3ᵉ passe
+    de revue. Ici, `resolveur_de_classement` se crée son propre cache : l'amorçage de `_decor`
+    n'est pas traversé.
+    """
+    monde = _Monde()
+    for rang in range(8):
+        monde.inscrire_classe(("10", "10", str(max(1, 10 - rang))))
+    # Une seconde qualification, **prélevée** dans la première : c'est elle que le `next(...)`
+    # d'origine pouvait retenir, et l'amorcer avec le créneau entier était faux.
+    prelevee = monde.phases.ajouter(
+        Phase(
+            depart_id=monde.depart_id,
+            ordre=3,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(1, 3),
+            validation=GrainValidation.fin_de_serie(),
+            sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 4),),
+            etape_id=identite_d_etape(3),
+        )
+    )
+    assert prelevee.etape_id is not None
+
+    service = monde.service()
+    resolveur = service.resolveur_de_classement(monde.tournoi_id, monde.depart_id)
+    source = resolveur(prelevee.etape_id)
+
+    assert source is not None
+    # La tranche, pas le créneau : 4 prélevés sur 8 inscrits.
+    assert len(source.classement.lignes) == 4
+
+
+def test_l_amorce_du_cache_ignore_une_qualification_prelevee() -> None:
+    """**La garde `not p.sources`, pincée directement** (3ᵉ passe de revue).
+
+    L'amorçage offre au résolveur le classement du **créneau entier** ; seule une qualification
+    de tête le mérite. Sur un déroulé où la seule qualification est **prélevée** (ADR-0082), il
+    doit s'abstenir : l'amorcer estamperait une tranche sous l'identité d'une phase qui n'en
+    produit pas, et le tableau aval serait ensemencé de la mauvaise population — sans erreur.
+
+    Le test vit sur la fonction de module `amorce_du_cache` parce que `_decor` n'est atteignable
+    qu'à travers `etat_tableau`, dont aucun décor ne sait produire un créneau sans tête.
+    """
+    depart_id = 1
+    prelevee = Phase(
+        depart_id=depart_id,
+        ordre=2,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.creer(1, 3),
+        validation=GrainValidation.fin_de_serie(),
+        sources=(SourcePhase.par_rangs(identite_d_etape(1), 1, 4),),
+        etape_id=identite_d_etape(2),
+    )
+    classement = Classement(lignes=())
+
+    assert amorce_du_cache([prelevee], classement) is None
+
+    tete = Phase(
+        depart_id=depart_id,
+        ordre=1,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.creer(1, 3),
+        validation=GrainValidation.fin_de_serie(),
+        etape_id=identite_d_etape(1),
+    )
+    amorce = amorce_du_cache([prelevee, tete], classement)
+
+    assert amorce is not None
+    assert amorce[0] == identite_d_etape(1), "l'identité de la TÊTE, pas celle de la prélevée"
+    assert amorce[1].ordre == 1

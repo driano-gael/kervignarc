@@ -19,7 +19,7 @@ from application.erreurs import (
     TournoiSansPhase,
 )
 from domain.deroule import ProjectionDeroule
-from domain.deroule_etape import EtapeDeroule
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.erreurs import FormatSansDepart
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
@@ -185,12 +185,14 @@ class ServiceFormats:
         existantes = self._phases.par_tournoi(tournoi_id)
         self._exiger_sequence_remplacable(tournoi_id, existantes, format_tournoi)
 
-        # ⚠️ **Instancier AVANT de détruire** (E01US024). `format_tournoi.appliquer` peut lever :
-        # depuis ADR-0063 un format incohérent s'enregistre, et c'est ici que l'invariant est tenu.
-        # Les suppressions sont **committées** (une session par appel de repository, DETTE-025),
-        # donc une exception levée après elles laisserait le tournoi **sans aucun déroulé** — et
-        # sans son barème de qualification, que le troisième garde existe pour protéger.
-        etapes = format_tournoi.appliquer(tournoi_id)
+        # ⚠️ **Vérifier AVANT de détruire** (E01US024). Depuis ADR-0063 un format incohérent
+        # s'enregistre, et c'est ici que l'invariant est tenu. Les suppressions sont **committées**
+        # (une session par appel de repository, DETTE-025), donc une exception levée après elles
+        # laisserait le tournoi **sans aucun déroulé** — et sans son barème de qualification, que
+        # le troisième garde existe pour protéger. ⚠️ **La pose, elle, ne peut plus précéder la
+        # destruction** (ADR-0078) : une étape s'ancre sur l'identité des précédentes, qui n'existe
+        # qu'une fois écrite. D'où la séparation entre le contrôle et la matérialisation.
+        format_tournoi.verifier_applicable(tournoi_id)
 
         # Le domaine ignore les créneaux (ADR-0076) : c'est ici qu'on refuse un tournoi qui n'en a
         # aucun. Sans départ, le déroulé serait défini mais **personne ne le jouerait** — et le
@@ -213,7 +215,17 @@ class ServiceFormats:
             assert ancienne.id is not None, "une étape relue du dépôt porte un identifiant."
             self._deroules.supprimer(ancienne.id)
 
-        posees = [self._deroules.ajouter(etape) for etape in etapes]
+        # ⚠️ **Posées dans l'ordre, et la table s'enrichit au fur et à mesure** (ADR-0078 §4) :
+        # c'est ici, et nulle part ailleurs, que l'ancrage par rang du format devient un ancrage
+        # par identité. Une source ne visant jamais qu'une phase **antérieure** — invariant tenu
+        # par `verifier_applicable` juste au-dessus —, l'identité cherchée est toujours déjà là.
+        ordre_vers_id: dict[int, EtapeDerouleId] = {}
+        posees: list[EtapeDeroule] = []
+        for modele in format_tournoi.etapes_ordonnees:
+            posee = self._deroules.ajouter(modele.pour_tournoi(tournoi_id, ordre_vers_id))
+            assert posee.id is not None, "Une étape qu'on vient de poser porte son identifiant."
+            ordre_vers_id[posee.ordre] = posee.id
+            posees.append(posee)
         # **Un avancement par créneau et par étape** : c'est le seul éventail qui subsiste, et il
         # ne porte aucun réglage — juste « où en est ce départ de cette étape ».
         for depart_id in departs:

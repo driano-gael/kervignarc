@@ -365,9 +365,13 @@ class InMemoryDerouleRepository(_AllocateurId):
         self._items[etape.id] = etape
         return etape
 
-    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
-        """Réécrit le lot d'un coup. Sans contrainte d'unicité à ménager, une passe suffit ici —
-        le contrat visible (« ou tout, ou rien ») est le même que celui de l'adapter SQL."""
+    def enregistrer_plusieurs(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit le lot d'un coup — même contrat visible que l'adapter SQL (« ou tout, ou rien »).
+
+        ⚠️ Cet adapter n'a **jamais** eu de contrainte d'unicité à ménager : c'est précisément pour
+        cela qu'il ne prouvait rien sur la manœuvre en deux passes que l'adapter SQL portait, et
+        que la levée de `uq_deroule_tournoi_ordre` (ADR-0078) ne change rien ici.
+        """
         for etape in etapes:
             assert etape.id is not None
             self._items[etape.id] = etape
@@ -413,14 +417,19 @@ class InMemoryPhaseRepository(_AllocateurId):
         return self._departs is not None and self._deroules is not None
 
     def _etape(self, phase: Phase) -> EtapeDeroule | None:
-        """La définition de cette phase : l'étape de même rang, dans le tournoi de son créneau."""
-        if self._departs is None or self._deroules is None:
+        """La définition de cette phase : l'étape qu'elle **désigne** (`etape_id`, ADR-0078).
+
+        ⚠️ C'était « l'étape de même rang dans le tournoi de son créneau » jusqu'à ADR-0078 — un
+        rang mal renuméroté assemblait alors la phase avec la définition d'une autre étape, donc
+        un autre barème, sans erreur ni signal. Le jumeau SQL (`_etapes`) fait le même geste.
+        """
+        if self._departs is None or self._deroules is None or phase.etape_id is None:
             return None
         depart = self._departs.par_id(phase.depart_id)
         if depart is None:
             return None
         for etape in self._deroules.par_tournoi(depart.tournoi_id):
-            if etape.ordre == phase.ordre:
+            if etape.id == phase.etape_id:
                 return etape
         return None
 
@@ -452,7 +461,7 @@ class InMemoryPhaseRepository(_AllocateurId):
     def ajouter(self, phase: Phase) -> Phase:
         """Persiste l'**avancement** ; la définition portée par l'objet reçu est ignorée.
 
-        Écrire une instance dont le rang n'existe pas au déroulé du tournoi est une **erreur**, pas
+        Écrire une instance dont l'étape n'existe pas au déroulé du tournoi est une **erreur**, pas
         un cas limite : elle serait invisible à toute lecture (écartée comme orpheline) et le
         service la croirait posée. L'adapter SQL lève ici aussi.
         """
@@ -463,8 +472,8 @@ class InMemoryPhaseRepository(_AllocateurId):
         if assemblee is None:
             del self._items[identifiant]
             raise InfrastructureError(
-                "Phase créée sans étape de déroulé de même rang : le tournoi de ce créneau "
-                "n'a pas ce rang à son déroulé."
+                "Phase créée sans étape de déroulé : l'étape désignée n'existe pas au déroulé "
+                "du tournoi de ce créneau."
             )
         return assemblee
 
@@ -478,7 +487,10 @@ class InMemoryPhaseRepository(_AllocateurId):
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
         phases = [p for p in self._items.values() if p.depart_id == depart_id]
-        return self._assembler(sorted(phases, key=lambda p: p.ordre))
+        # ⚠️ **Assembler PUIS trier** (ADR-0078) : le rang vit sur l'étape, et la copie gardée
+        # en magasin se périme dès qu'on renumérote. Trier avant l'assemblage rendait l'ordre
+        # d'hier. L'adapter SQL fait le même geste, par une jointure.
+        return sorted(self._assembler(phases), key=lambda p: p.ordre)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         """Les phases de **tous les départs** du tournoi, triées (départ, ordre) — pas une séquence.
@@ -495,7 +507,7 @@ class InMemoryPhaseRepository(_AllocateurId):
             )
         departs = {d.id for d in self._departs.par_tournoi(tournoi_id)}
         phases = [p for p in self._items.values() if p.depart_id in departs]
-        return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
+        return sorted(self._assembler(phases), key=lambda p: (p.depart_id, p.ordre))
 
     def enregistrer(self, phase: Phase) -> Phase:
         """Met à jour l'**avancement** (statut, rang) ; la définition s'édite sur l'étape.
@@ -509,15 +521,9 @@ class InMemoryPhaseRepository(_AllocateurId):
         assert phase.id is not None
         assemblee = self._assembler_une(phase)
         if assemblee is None:
-            raise InfrastructureError("Phase mise à jour sans étape de déroulé de même rang.")
+            raise InfrastructureError("Phase mise à jour sans étape de déroulé.")
         self._items[phase.id] = phase
         return assemblee
-
-    def reordonner(self, phases: list[Phase]) -> None:
-        """Réaligne les rangs du lot. Seul l'`ordre` bouge, comme dans l'adapter SQL."""
-        for phase in phases:
-            assert phase.id is not None
-            self._items[phase.id] = dataclasses.replace(self._items[phase.id], ordre=phase.ordre)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         self._items.pop(phase_id, None)

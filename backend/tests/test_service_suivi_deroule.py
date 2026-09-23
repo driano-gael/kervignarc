@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import logging
+import re
 from collections.abc import Sequence
 
 import pytest
@@ -27,7 +29,15 @@ from domain.depart import Depart, DepartId
 from domain.deroule import projeter
 from domain.grain_validation import GrainValidation
 from domain.participant import Participant
-from domain.phase import NatureSource, Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
+from domain.phase import (
+    NatureSource,
+    Phase,
+    PhaseId,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+    vues_par_rangs,
+)
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
@@ -38,9 +48,11 @@ from domain.suivi_deroule import AvancementDePhase
 from domain.tableau import Tableau, construire_tableau
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
+    CaptureWarnings,
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxPhaseRepository,
+    identite_d_etape,
     poser_phase_factice,
 )
 
@@ -208,7 +220,14 @@ def _tableau_ed(depart_id: int, ordre: int, statut: StatutPhase) -> Phase:
         depart_id=depart_id,
         ordre=ordre,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8, nature=NatureSource.RANGS),),
+        sources=(
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=1,
+                rang_fin=8,
+                nature=NatureSource.RANGS,
+            ),
+        ),
         effectif=8,
     )
     if statut is StatutPhase.EN_COURS:
@@ -232,7 +251,7 @@ def test_la_projection_est_celle_de_l_atelier(ctx: Contexte) -> None:
 
     suivi = ctx.service.pour_depart(ctx.depart_id)
 
-    attendue = projeter(ctx.phases.par_depart(ctx.depart_id), 8)
+    attendue = projeter(vues_par_rangs(ctx.phases.par_depart(ctx.depart_id)), 8)
     assert suivi.projection == attendue
     assert suivi.effectif == 8
 
@@ -358,7 +377,12 @@ def test_un_tableau_alimente_par_une_tranche_haute_compte_correctement() -> None
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(ordre_source=1, rang_debut=9, rang_fin=16, nature=NatureSource.RANGS),
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=9,
+                rang_fin=16,
+                nature=NatureSource.RANGS,
+            ),
         ),
         effectif=8,
     ).demarrer()
@@ -398,7 +422,12 @@ def test_une_phase_ne_se_termine_jamais_avant_sa_finale() -> None:
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
-            SourcePhase(ordre_source=1, rang_debut=1, rang_fin=32, nature=NatureSource.RANGS),
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=1,
+                rang_fin=32,
+                nature=NatureSource.RANGS,
+            ),
         ),
         effectif=32,
     ).demarrer()
@@ -476,7 +505,14 @@ def test_un_exempt_n_est_pas_un_duel_joue() -> None:
         depart_id=ctx.depart_id,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=6, nature=NatureSource.RANGS),),
+        sources=(
+            SourcePhase(
+                etape_source_id=identite_d_etape(1),
+                rang_debut=1,
+                rang_fin=6,
+                nature=NatureSource.RANGS,
+            ),
+        ),
         effectif=6,
     ).demarrer()
     ctx.ajouter_phase(phase, 2)
@@ -519,6 +555,129 @@ def test_un_tableau_illisible_ne_fait_pas_tomber_le_suivi(ctx: Contexte) -> None
 
     assert bloc.duels_joues == 0
     assert bloc.duels_attendus == 7
+
+
+def _orpheline(depart_id: int) -> Phase:
+    """Un tableau de rang 2 qui prélève dans une étape **absente** du déroulé."""
+    return dataclasses.replace(
+        _tableau_ed(depart_id, 2, StatutPhase.A_VENIR),
+        sources=(
+            SourcePhase(
+                etape_source_id=identite_d_etape(99),
+                rang_debut=1,
+                rang_fin=8,
+                nature=NatureSource.RANGS,
+            ),
+        ),
+    )
+
+
+def test_une_ancre_perdue_degrade_le_suivi_mais_laisse_une_trace_au_journal(ctx: Contexte) -> None:
+    """La tolérance de `vues_par_rangs` ne doit pas être **silencieuse** (2ᵉ passe, E05US022).
+
+    Une phase qui prélève dans une étape absente du déroulé s'affiche dégradée — c'est voulu, un
+    écran de salle ne tombe pas —, mais sans trace serveur l'organisateur n'a **aucun** moyen de
+    remonter la cause : il voit un bloc vide et rien d'autre. Le journal est le seul recours.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_orpheline(ctx.depart_id), 2)
+
+    # ⚠️ **Pas `caplog`** : il capte par propagation vers la racine, que d'autres tests
+    # reconfigurent via `create_app` — le test devient alors vert seul et rouge en suite. Handler
+    # posé sur le logger lui-même, patron déjà éprouvé par `test_service_feuille_de_marque`.
+    logger = logging.getLogger("application.suivi_deroule")
+    capture = CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        suivi = ctx.service.pour_depart(ctx.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    assert len(suivi.avancement.blocs) == 2, "le suivi reste servi, dégradé"
+    assert capture.messages == [
+        f"Suivi du départ {ctx.depart_id} : la phase 2 est alimentée par une étape absente "
+        "du déroulé ; son bloc s'affiche dégradé."
+    ], "une seule trace, au singulier, nommant le créneau ET le rang — et pas une par appel"
+
+
+def test_une_ancre_perdue_ne_se_signale_qu_au_changement(ctx: Contexte) -> None:
+    """La route est **pollée toutes les 10 s** par chaque tablette (3ᵉ passe de revue).
+
+    Un déroulé cassé est un état **persistant** : le signaler à chaque appel produirait des
+    dizaines de milliers de lignes par jour et noierait le journal — à commencer par
+    l'avertissement bien plus urgent du repli de `ServiceSaisie`. Le remède au silence ne doit
+    pas être le bruit.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_orpheline(ctx.depart_id), 2)
+
+    logger = logging.getLogger("application.suivi_deroule")
+    capture = CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        for _ in range(5):
+            ctx.service.pour_depart(ctx.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    assert len(capture.messages) == 1, "cinq lectures d'un état inchangé, un seul avertissement"
+
+
+def test_une_ancre_perdue_de_plus_se_signale_et_la_reparation_reouvre_le_signal(
+    ctx: Contexte,
+) -> None:
+    """La dé-duplication porte sur **l'état**, pas sur « une fois pour toutes » (4ᵉ passe, axe B).
+
+    Un `if depart_id in deja_signales: return` garderait le test jumeau vert **et** perdrait
+    définitivement le signal quand une autre phase casse ensuite — c'est-à-dire exactement le cas
+    que l'organisateur a besoin de voir. On éprouve donc les deux transitions : l'aggravation, et
+    le retour à la normale suivi d'une rechute.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_orpheline(ctx.depart_id), 2)
+    troisieme = dataclasses.replace(_orpheline(ctx.depart_id), ordre=3)
+
+    logger = logging.getLogger("application.suivi_deroule")
+    capture = CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        ctx.service.pour_depart(ctx.depart_id)
+        ctx.ajouter_phase(troisieme, 3)
+        ctx.service.pour_depart(ctx.depart_id)
+        # Réparation : on retire la 3ᵉ, puis la 2ᵉ — le créneau redevient sain, puis rechute.
+        ctx.phases.supprimer(3)
+        ctx.service.pour_depart(ctx.depart_id)
+        ctx.phases.supprimer(2)
+        ctx.service.pour_depart(ctx.depart_id)
+        ctx.ajouter_phase(_orpheline(ctx.depart_id), 4)
+        ctx.service.pour_depart(ctx.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    # ⚠️ **Les rangs, pas la phrase** : le libellé exact est épinglé par le test jumeau, qui
+    # existe pour ça. Le recopier quatre fois de plus ferait réécrire trois tests à chaque
+    # retouche de formulation — et il y en a déjà eu deux en deux passes de revue.
+    assert [re.findall(r"\d+", m.split(" : ")[1]) for m in capture.messages] == [
+        ["2"],
+        ["2", "3"],
+        ["2"],
+        ["2"],
+    ], "aggravation, allègement, puis rechute après retour à la normale"
 
 
 # --- Portée : le suivi est celui d'un créneau, jamais du tournoi (ADR-0075) ----------------------

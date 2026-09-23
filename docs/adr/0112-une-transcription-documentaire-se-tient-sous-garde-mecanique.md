@@ -14,11 +14,11 @@
   - [ADR-0099](0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) — un commentaire est le seul
     artefact que **rien ne vérifie** ; c'est exactement ce statut qu'on retire ici à une copie
 
-> ⚠️ **Cet ADR ne figure PAS à la liste nominative d'[ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md).**
-> C'est une convention **documentaire et d'outillage**, comme `0099` et `0102` : il ne décide rien
-> du moteur sportif, de la portée, ni d'une politique injectable. Il porte tout de même sa section
-> « Porté dans le code par », parce qu'il nomme un contrôle exécutable — un ADR d'outillage dont
-> personne ne peut vérifier qu'il est tenu retombe au rang d'intention.
+> ⚠️ **Hors critère d'[ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md),
+> où il est inscrit nommément** — c'est cette liste qui fait foi, pas un plaidoyer chez soi
+> (ADR-0102 §1 : on pointe, on ne recopie pas). Il porte tout de même sa section « Porté dans le
+> code par » : un ADR d'outillage dont personne ne peut vérifier qu'il est tenu retombe au rang
+> d'intention.
 
 ## Contexte
 
@@ -63,14 +63,18 @@ C'est ce qui a écarté le patron des garde-fous existants du dépôt. `test_dom
 
 ### 2. Le parseur échoue **fermé**
 
-Toute ligne qui *ressemble* à une entrée et que le motif strict ne sait pas lire est **signalée**,
-jamais jetée. Sans cette règle, le contrôle échoue ouvert : une entrée écrite dans une forme
-inattendue disparaît de la comparaison au lieu de la faire rougir.
+La copie se lit par **liste blanche**, bornée au littéral : dans la table, une ligne qui n'est ni
+section, ni fermeture, ni entrée, ni commentaire, ni vide est **signalée** — de même qu'un bloc
+dont l'en-tête nomme une catégorie inconnue du produit, et qu'une écriture de la table faite hors
+du littéral. Sans cela le contrôle échoue **ouvert** : ce qu'il ne sait pas lire disparaît de la
+comparaison au lieu de la faire rougir.
 
-⚠️ **Ce n'est pas une précaution théorique.** Dans la rédaction initiale d'`E17US010`, un simple
-commentaire de fin de ligne — `['doublons', 'Doublons'], // à retirer un jour` — suffisait à
-escamoter le fantôme exact que l'US venait de retirer, la suite restant verte. Démontré par
-sabotage en revue, sur le fichier réel.
+⚠️ **Ce n'est pas une précaution théorique, et il a fallu DEUX passes pour le tenir.** En 1ʳᵉ
+rédaction, un commentaire de fin de ligne — `['doublons', 'Doublons'], // à retirer un jour` —
+escamotait le fantôme exact que l'US venait de retirer. Le correctif a **déplacé le trou d'un
+cran** : un bloc entier sous un axe inventé partait alors en silence. Les deux ont été mesurés
+par sabotage sur le fichier réel — c'est pourquoi la règle est une **liste blanche** et non une
+liste de cas connus : énumérer ce qu'on refuse laisse toujours passer le cas suivant.
 
 ### 3. L'asymétrie : la copie peut devancer le produit, jamais retarder sur lui
 
@@ -88,7 +92,9 @@ contournement mesuré en revue :
   sans y penser ;
 - **locale** — reçue dans un bloc ouvert seulement, sur la ligne qu'elle dispense. Posée dans la
   bannière du fichier, elle couvrait une entrée trois cents lignes plus bas ;
-- **périssable** — le jour où la destination est livrée, la déclaration **rougit**. C'est le point
+- **périssable** — le jour où la destination est livrée, la déclaration **rougit** ; et une
+  déclaration que **rien ne consomme** rougit aussi, sans quoi une échappatoire morte survit en
+  affirmant du faux. C'est le point
   qui la distingue d'un `skip` oublié : sans lui, le commentaire affirmerait « aucune route
   produit » indéfiniment après que la route existe, et rien ne le dirait — le mode de panne
   qu'ADR-0099 décrit.
@@ -101,8 +107,9 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
 
 - La copie cesse d'être un artefact que rien ne vérifie. C'est le statut qu'ADR-0099 réserve aux
   commentaires, et la raison pour laquelle il les borne : ici on ne borne pas, on **vérifie**.
-- Le contrôle ne couvre que ce qu'il dit couvrir. Les **libellés**, l'**ordre** et les `data-ecran`
-  des planches restent transcrits à la main — inscrits en `DETTE-110`, avec leur remède. Un
+- Le contrôle ne couvre que ce qu'il dit couvrir. Les **libellés**, l'**ordre**, la table `AXES`
+  de la copie (dont `besoinTournoi`, qui commande le sélecteur de tournoi sur tout un axe) et les
+  `data-ecran` des planches restent transcrits à la main — inscrits en `DETTE-110`, avec leur remède. Un
   garde-fou qui se croit plus large qu'il n'est éteint la vigilance : c'est pourquoi le périmètre
   exact est écrit dans `appareils.js`, dans `maquettes/README.md` et au registre.
 - **Un second candidat existe et n'est pas couvert** : `maquettes/assets/systeme.css` « transcrit la

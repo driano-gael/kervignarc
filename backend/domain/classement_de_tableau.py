@@ -35,6 +35,14 @@ class ClassementSource:
     classement: Classement
     plages_indecises: tuple[tuple[int, int], ...] = ()
     rang_premier: int = 1
+    ordre: int = 0
+    """Le **rang** de la phase qui a produit ce classement, pour les messages (ADR-0078).
+
+    ⚠️ Posé par l'appelant, comme `rang_premier` et pour la même raison : un classement ne sait pas
+    d'où il vient. Une source désigne désormais sa phase amont par son **identité**, mais
+    l'organisateur lit « la phase 2 » — sans ce rappel, un prélèvement en attente lui annoncerait
+    un identifiant technique. `0` vaut « non renseigné » : aucune séquence ne commence à 0.
+    """
 
     def coupe(self, debut: int, fin: int) -> tuple[int, int] | None:
         """La première plage indécise que la fenêtre `[debut..fin]` **coupe**, ou `None`.
