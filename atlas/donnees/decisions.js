@@ -10755,6 +10755,67 @@ window.ATLAS.decisions = {
     "E16US007",
     "E16US016"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-23",
+   "date_brute": "2026-09-23",
+   "extrait": "Quand une copie documentaire d'un fait du code est techniquement inévitable, elle n'est admise que si un contrôle de CI la compare à sa source. Sans ce contrôle, la règle d'ADR-0102 §1 s'applique sans exception : on cite, on ne recopie pas. Quatre points fixent la forme du contrôle. ### 1. Le sens de lecture : la source s'importe, la copie se parse Le contrôle importe la source produit (AXE_PAR_DESTINATION) et ne parse que la copie. La source est donc lue par le compilateur, jamais par une expression régulière : un seul des deux côtés peut mentir sur sa propre forme. C'est ce qui a écarté le patron des garde-fous existants du dépôt. test_domain_isolation.py et test_portee_sportive.py sont […]",
+   "fichier": "docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md",
+   "identifiant": "0112",
+   "liens": [
+    {
+     "cible": "E17US010",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0102",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0074",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0099",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "frontend/src/features/admin/axes.ts",
+     "existe": true,
+     "symboles": [
+      "AXE_PAR_DESTINATION"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/maquettes-navigation.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une transcription documentaire inévitable se tient **sous garde mécanique**",
+   "us": [
+    "E16US002",
+    "E16US010",
+    "E17US010"
+   ]
   }
  ]
 };

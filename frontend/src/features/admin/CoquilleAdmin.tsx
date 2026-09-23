@@ -201,6 +201,7 @@ function Coquille() {
   // vivait dans ce tableau local, aucun test ne pouvait vérifier « aucune destination de l'atelier
   // n'exige un tournoi » — l'invariant même qui solde DETTE-023. `rendu` n'est appelé que lorsque
   // ce garde est satisfait ; il est défini dans le composant pour fermer sur `courant`.
+  // Les libellés et l'ordre vivent ici, hors de portée d'un import : DETTE-110.
   const destinations: {
     // Typé par l'union des `id` d'aide (et non `string`) : ajouter une destination sans son entrée
     // dans `AIDE_ECRANS` ne compile plus — la couverture « une aide par écran » (E14US002) est

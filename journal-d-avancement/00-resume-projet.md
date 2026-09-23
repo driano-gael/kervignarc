@@ -606,8 +606,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
   autorité sur le compte —, la dernière **livraison** étant `E17US010`, un travail d'**outillage
   sans surface utilisateur** : le dossier de maquettes ne peut plus décrire en silence une
-  application qui n'existe plus — la CI rougit désormais sur toute destination d'écran en trop,
-  manquante ou rangée au mauvais endroit. Cinq US d'écart s'étaient accumulées sans que rien ne le
+  application qui n'existe plus — la CI rougit désormais sur tout écran en trop, manquant, rangé
+  au mauvais endroit ou listé deux fois. Cinq US d'écart s'étaient accumulées sans que rien ne le
   signale. La dernière livraison **visible par l'organisateur** reste `E06US009` — **un palmarès par
   départ, juxtaposés** : sur un tournoi à plusieurs créneaux, l'écran « Palmarès », le PDF et le
   tableur ne montraient que le **premier** — et rien ne le disait. Les trois rendent désormais un

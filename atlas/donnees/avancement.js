@@ -920,6 +920,7 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0112",
    "0104"
   ],
   "derniere": "E17US010"
@@ -4236,7 +4237,8 @@ window.ATLAS.avancement = {
     "0060",
     "0075",
     "0080",
-    "0095"
+    "0095",
+    "0112"
    ],
    "dettes_introduites": [
     "080",
@@ -4425,7 +4427,8 @@ window.ATLAS.avancement = {
     "0075",
     "0096",
     "0100",
-    "0102"
+    "0102",
+    "0112"
    ],
    "dettes_introduites": [
     "006",
@@ -4813,7 +4816,9 @@ window.ATLAS.avancement = {
    "titre_story": "Confronter les écrans publics et l'écran de salle à leurs planches"
   },
   {
-   "adr": [],
+   "adr": [
+    "0112"
+   ],
    "dettes_introduites": [
     "110"
    ],

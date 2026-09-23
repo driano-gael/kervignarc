@@ -17,9 +17,11 @@
      frontend/src/features/admin/axes.ts        (AXES, AXE_PAR_DESTINATION)
      frontend/src/features/admin/CoquilleAdmin.tsx (ordre et libellés)
      frontend/src/app/App.css                   (dimensions)
-   Les DESTINATIONS sont tenues sous garde mécanique depuis E17US010 : le test front
-   `features/admin/maquettes-navigation.test.ts` rend rouge tout écart avec `axes.ts`.
-   Les LIBELLÉS et l'ORDRE, eux, restent transcrits à la main — `DETTE-110`.
+   Les IDENTIFIANTS de DESTINATIONS sont sous garde mécanique depuis E17US010 (ADR-0112) :
+   `frontend/src/maquettes-navigation.test.ts` rougit sur une destination en trop, manquante,
+   mal rangée, listée deux fois, ou écrite dans une forme qu'il ne sait pas lire.
+   Restent transcrits à la main, donc HORS garde : les LIBELLÉS, l'ORDRE, et les `data-ecran`
+   des planches — `DETTE-110`.
 
    ---------------------------------------------------------------------------
    JEU DE CHIFFRES UNIQUE — le même tournoi sur les 145 planches, sinon la
@@ -71,9 +73,11 @@
   }
 
   // Ordre = celui du tableau `destinations` de CoquilleAdmin.tsx, filtré par axe.
-  // Écart vérifié à chaque CI par `frontend/src/features/admin/maquettes-navigation.test.ts`
-  // (E17US010) : une destination ajoutée, retirée ou déplacée ici sans l'être dans `axes.ts` rend
-  // le test rouge. Une planche en avance sur le produit se déclare `// PLANCHE-A-VENIR: <id>`.
+  // ⚠️ Une planche en avance sur le produit se montre normalement en LAISSANT son écran hors
+  // de cette table : `enteteNav` le rend alors « non livrée », en pointillés. N'inscrire ici un
+  // écran non livré — par `// PLANCHE-A-VENIR: <id> — <pourquoi>`, sur la ligne qu'elle
+  // dispense — que si l'entrée de sidebar elle-même doit figurer. La déclaration devient
+  // rouge le jour où l'écran est livré : elle ne peut pas se périmer en silence.
   var DESTINATIONS = {
     pilotage: [
       ['accueil', 'Accueil (tableau de bord)'],

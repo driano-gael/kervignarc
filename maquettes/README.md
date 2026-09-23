@@ -49,12 +49,16 @@ Quatre choses à savoir avant de toucher au dossier :
   visible sans défiler ? », impossible tant que les `.ui` s'étiraient au contenu.
 - **L'ossature est générée** depuis des attributs `data-*`, pas écrite dans chaque bloc — sans quoi une
   correction toucherait 151 endroits. Contrepartie : `appareils.js` **transcrit** `axes.ts` à la main.
-  Depuis `E17US010`, cette transcription est **sous garde mécanique** pour les *identifiants* de
-  destination : `frontend/src/features/admin/maquettes-navigation.test.ts` rougit dès qu'une
-  destination est en trop, manquante ou rangée dans le mauvais axe — la resynchronisation n'est
-  donc plus une consigne de reprise à se rappeler. Une planche **en avance** sur le produit reste
-  permise, à condition de se déclarer : `// PLANCHE-A-VENIR: <id> — <pourquoi>` dans
-  `appareils.js`. ⚠️ Les **libellés** et l'**ordre**, eux, restent transcrits à la main (`DETTE-110`).
+  Depuis `E17US010` ([ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)),
+  cette transcription est **sous garde mécanique** pour les *identifiants* de destination :
+  `frontend/src/maquettes-navigation.test.ts` rougit sur une destination en trop, manquante,
+  mal rangée, listée deux fois, ou écrite dans une forme qu'il ne sait pas lire — la
+  resynchronisation n'est donc plus une consigne de reprise à se rappeler. Une planche **en
+  avance** sur le produit se montre normalement en laissant son écran **hors** de la table (il
+  se rend « non livrée », en pointillés) ; l'y inscrire quand même exige de le déclarer
+  `// PLANCHE-A-VENIR: <id> — <pourquoi>`, et cette déclaration **rougit** le jour de la
+  livraison. ⚠️ Restent hors garde : les **libellés**, l'**ordre** et les `data-ecran` des
+  planches (`DETTE-110`).
 - **Le cadre est l'écran nu**, sans chrome navigateur. Exact pour la cible et le vidéoprojecteur, qui
   tournent en plein écran le jour J ; **optimiste d'environ 120 px** sur PC et téléphone, où une barre
   d'adresse mange le haut. Décision assumée, à ne pas « corriger » sans la rouvrir.

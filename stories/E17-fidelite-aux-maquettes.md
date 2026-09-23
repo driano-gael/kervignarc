@@ -306,7 +306,11 @@
     forme**. Un garde-fou Python (comme `test_domain_isolation.py`) aurait dû parser les *deux*
     fichiers — deux parseurs fragiles au lieu d'un.
   - **Déclaration d'une divergence volontaire** : `// PLANCHE-A-VENIR: <id> — <pourquoi>` dans
-    `appareils.js`. ⚠️ **Asymétrie voulue** : une maquette *en avance* sur le produit se déclare et
+    `appareils.js`, **nominative, justifiée, locale et périssable** (les quatre bornes sont dans
+    [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md) §4,
+    chacune fermant un contournement **mesuré en revue**). ⚠️ **Voie préférée** : ne pas inscrire
+    du tout l'écran non livré dans la table — `enteteNav` le rend déjà « non livrée » en
+    pointillés, mécanisme antérieur à l'US que l'échappatoire contredisait. ⚠️ **Asymétrie voulue** : une maquette *en avance* sur le produit se déclare et
     passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge **sans échappatoire**
     — c'est ce sens de dérive, et lui seul, qui fait relire des planches périmées.
   - **Le contrôle porte aussi l'axe** : une destination rangée sous « pilotage » d'un côté et
@@ -320,6 +324,9 @@
   `pret-demarrer` (E16US012), `audit` (E16US016) — et **1 fantôme**, `doublons`, retirée du produit
   par `E16US010`. Soit **cinq US** de dérive accumulée, plus **quatre libellés** périmés dont deux
   renommés par `E16US002` *précisément parce qu'ils portaient chacun le nom de l'autre*.
-  ⚠️ **Aucun ADR** : le dépôt avait déjà deux garde-fous mécaniques, ce troisième suit leur patron
-  sans rien décider de neuf.
+  ⚠️ **« Aucun ADR » était une erreur, corrigée en revue** : les deux garde-fous invoqués comme
+  patron sont chacun adossés à une décision écrite (règle 1 de `CLAUDE.md`, ADR-0075), et la
+  décision prise ici — *une copie documentaire inévitable est admise à condition d'être tenue
+  sous garde* — est une **exception bornée à ADR-0102 §1**, généralisable (un 2ᵉ candidat existe :
+  `maquettes/assets/systeme.css`). D'où [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md).
 - **Dépend de** : — · **Jalon** : J3
