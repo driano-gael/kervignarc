@@ -601,16 +601,18 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 ## Chiffres repères
 
 - **146 US livrées** (mergées, revues, CI verte) à la date du 23/09/2026 — la dernière à
-  **surface visible** étant `E06US009`, précédée côté moteur par `E05US022` (**remède structurel
-  sans surface visible** : la séquence s'ancre sur l'identité de l'étape, un créneau ne peut plus
-  jouer le barème d'une autre étape, `DETTE-026` soldée) — dont **deux
+  **surface visible** étant `E06US009` — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
   autorité sur le compte —, la dernière **livraison** étant `E17US010`, un travail d'**outillage
   sans surface utilisateur** : le dossier de maquettes ne peut plus décrire en silence une
   application qui n'existe plus — la CI rougit désormais sur tout écran en trop, manquant, rangé
   au mauvais endroit ou listé deux fois. Cinq US d'écart s'étaient accumulées sans que rien ne le
-  signale. **Un palmarès par
+  signale.
+  Avant elle, `E05US022` — **remède structurel sans surface visible** : la séquence s'ancre sur
+  l'**identité** de l'étape et non son rang, si bien qu'un créneau ne peut plus jouer le barème
+  d'une autre étape (`DETTE-026` soldée).
+  Avant elle, `E06US009` — **un palmarès par
   départ, juxtaposés** : sur un tournoi à plusieurs créneaux, l'écran « Palmarès », le PDF et le
   tableur ne montraient que le **premier** — et rien ne le disait. Les trois rendent désormais un
   bloc **titré par créneau**, chacun avec ses podiums, son classement des clubs et son classement
@@ -621,6 +623,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   raccourci vivait à **trois** endroits du code, dont un que ni la fiche ni le registre de dette ne
   citaient — et c'était le seul atteignable par une vraie page. La plus visible des anomalies de
   portée ouvertes par le passage du classement au créneau (`DETTE-045`) est soldée.
+  Avant elle, `E00US031` — la **porte mécanique en deux étages**.
   Avant elle, `E01US026` — **supprimer un tournoi :
   voir ce qui partira, puis confirmer** : la suppression d'un tournoi contenant quoi que ce soit
   finissait en « erreur serveur » depuis les premiers écrans (la plus ancienne anomalie du

@@ -20,8 +20,8 @@
    Les IDENTIFIANTS de DESTINATIONS sont sous garde mécanique depuis E17US010 (ADR-0112) :
    `frontend/src/maquettes-navigation.test.ts` rougit sur une destination en trop, manquante,
    mal rangée, listée deux fois, ou écrite dans une forme qu'il ne sait pas lire.
-   Restent transcrits à la main, donc HORS garde : les LIBELLÉS, l'ORDRE, la table `AXES`
-   ci-dessous (dont `besoinTournoi`) et les `data-ecran` des planches — `DETTE-110`.
+   Tout le reste du fichier est transcrit à la main et HORS garde : `DETTE-110` en tient la
+   liste, et c'est le seul endroit qui la tienne.
 
    ---------------------------------------------------------------------------
    JEU DE CHIFFRES UNIQUE — le même tournoi sur toutes les planches, sinon la

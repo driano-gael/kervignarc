@@ -315,7 +315,8 @@
     — c'est ce sens de dérive, et lui seul, qui fait relire des planches périmées.
   - **Le contrôle porte aussi l'axe** : une destination rangée sous « pilotage » d'un côté et
     « atelier » de l'autre rougit. Gratuit — les deux structures portent déjà cette donnée.
-  - **Périmètre : identifiants seulement, pas les libellés ni l'ordre** — `DETTE-110`. Ils vivent
+  - **Périmètre : les identifiants de destination seulement** — ce qui reste hors garde est
+    énuméré par `DETTE-110`, seul endroit qui le fasse. Ils vivent
     dans un tableau local à `CoquilleAdmin`, hors de portée d'un import ; les remonter serait la
     **4ᵉ** `Record` exhaustif d'`axes.ts` (`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`,
     `OUVRE_UN_ELEMENT`) : le pattern est **déjà établi**, donc la règle 16 l'autorise — elle

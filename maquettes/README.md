@@ -27,7 +27,7 @@ une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à
 | **Écrans pleins** | chaque planche est rendue à la **taille réelle de son appareil**, ossature comprise — PC 1600 × 900, tablette 1280 × 800, vidéoprojecteur 1920 × 1080, téléphone 390 × 844 |
 | **36 questionnaires saisissables** | trame en **onze sections**, générée depuis `assets/questionnaire.js` ; « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
 | **Système de design** | `assets/systeme.css` — transcrit la charte **mesurée** du CDC design §3.3, ratio de contraste en commentaire sur chaque token |
-| **Ossature** | `assets/appareils.js` — la navigation des trois axes est **transcrite d'`axes.ts`** (33 destinations), sous garde mécanique depuis `E17US010` |
+| **Ossature** | `assets/appareils.js` — la navigation des trois axes est **transcrite d'`axes.ts`** (toutes ses destinations), sous garde mécanique depuis `E17US010` |
 | **Revue** | **tour 1 clos** : les 36 questionnaires ont été remplis le 04/08/2026 et sont archivés dans `questionnaires/tour-1-2026-08-04/`. Le **tour 2** repart de zéro sur les écrans pleins. |
 | **Livré dans le code** | l'ossature de ce dossier **est implémentée** : E14US003, [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md). Le vocabulaire de salle aussi : E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md) |
 
@@ -57,8 +57,7 @@ Quatre choses à savoir avant de toucher au dossier :
   avance** sur le produit se montre normalement en laissant son écran **hors** de la table (il
   se rend « non livrée », en pointillés) ; l'y inscrire quand même exige de le déclarer
   `// PLANCHE-A-VENIR: <id> — <pourquoi>`, et cette déclaration **rougit** le jour de la
-  livraison. ⚠️ Restent hors garde : les **libellés**, l'**ordre**, la table `AXES`
-  (dont `besoinTournoi`) et les `data-ecran` des planches (`DETTE-110`).
+  livraison. ⚠️ Ce qui reste **hors garde** est énuméré à un seul endroit : `DETTE-110`.
 - **Le cadre est l'écran nu**, sans chrome navigateur. Exact pour la cible et le vidéoprojecteur, qui
   tournent en plein écran le jour J ; **optimiste d'environ 120 px** sur PC et téléphone, où une barre
   d'adresse mange le haut. Décision assumée, à ne pas « corriger » sans la rouvrir.

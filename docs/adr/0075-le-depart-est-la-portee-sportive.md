@@ -395,7 +395,7 @@ rétablie, appelants du point unique complétés. Réexaminé au critère à cet
 **outillage documentaire**, donc hors de la liste nominative. *(Placement et redite corrigés en
 2ᵉ passe de revue — l'insertion initiale coupait l'entrée en deux.)*), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
 que `0099` : une règle d'écriture ne touche ni portée, ni moteur, ni politique injectable.
-✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée), **`0107`** (E16US011 —
+✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée. ⚠️ **ROUVERT par `E17US010` le 23/09/2026** — son §1, sous *Décision*, gagne une **exception bornée** : une copie techniquement inévitable est admise sous contrôle de CI (ADR-0112). **Il reste hors critère**, une règle d'écriture ne touchant ni portée, ni moteur, ni politique injectable ; sa section « Porté dans le code par » a été relue dans le même commit — elle reste « rien à ce jour » pour ses quatre §, `E00US028`→`030` n'étant pas livrées, et gagne une ligne pour l'exception, qui, elle, est portée), **`0107`** (E16US011 —
 **politique d'autorisation** : un ordre entre rôles pour arbitrer une écriture concurrente ne touche
 ni la portée, ni le moteur sportif, ni une politique injectable au sens de la règle 2.
 ⚠️ **Inscrit en 2ᵉ passe de revue, et la série de quatre est rompue** : l'ADR argumentait son

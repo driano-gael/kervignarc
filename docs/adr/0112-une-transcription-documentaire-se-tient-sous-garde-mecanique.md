@@ -63,18 +63,20 @@ C'est ce qui a écarté le patron des garde-fous existants du dépôt. `test_dom
 
 ### 2. Le parseur échoue **fermé**
 
-La copie se lit par **liste blanche**, bornée au littéral : dans la table, une ligne qui n'est ni
-section, ni fermeture, ni entrée, ni commentaire, ni vide est **signalée** — de même qu'un bloc
-dont l'en-tête nomme une catégorie inconnue du produit, et qu'une écriture de la table faite hors
-du littéral. Sans cela le contrôle échoue **ouvert** : ce qu'il ne sait pas lire disparaît de la
-comparaison au lieu de la faire rougir.
+La copie se lit par **liste blanche des deux côtés du littéral**. *Dans* la table : une ligne qui
+n'est ni section, ni fermeture, ni entrée, ni commentaire, ni vide est **signalée** — de même
+qu'une catégorie inconnue du produit, ou **déclarée deux fois** (en JS le dernier bloc écrase le
+premier : le lecteur voit l'union, le navigateur non). *Hors* de la table : **toute** mention de
+la table qui n'est pas une des lectures connues est signalée. Sans cela le contrôle échoue
+**ouvert** : ce qu'il ne sait pas lire disparaît de la comparaison au lieu de la faire rougir.
 
-⚠️ **Ce n'est pas une précaution théorique, et il a fallu DEUX passes pour le tenir.** En 1ʳᵉ
-rédaction, un commentaire de fin de ligne — `['doublons', 'Doublons'], // à retirer un jour` —
-escamotait le fantôme exact que l'US venait de retirer. Le correctif a **déplacé le trou d'un
-cran** : un bloc entier sous un axe inventé partait alors en silence. Les deux ont été mesurés
-par sabotage sur le fichier réel — c'est pourquoi la règle est une **liste blanche** et non une
-liste de cas connus : énumérer ce qu'on refuse laisse toujours passer le cas suivant.
+⚠️ **Ce n'est pas une précaution théorique : il a fallu TROIS passes de revue pour le tenir, et
+chaque correctif a déplacé le trou d'un cran.** Le parseur échouait ouvert *dans* un bloc (un
+commentaire de fin de ligne escamotait un fantôme), puis *hors* d'un bloc (un axe inventé
+emportait ses entrées), puis *hors du littéral* (`.push` était énuméré, `.pop` et
+`Object.assign` non). Chaque étape a été mesurée par sabotage sur le fichier réel. C'est cette
+série, et non un principe abstrait, qui impose la **liste blanche** : énumérer ce qu'on refuse
+laisse toujours passer le cas suivant, trois fois de suite.
 
 ### 3. L'asymétrie : la copie peut devancer le produit, jamais retarder sur lui
 
@@ -107,9 +109,10 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
 
 - La copie cesse d'être un artefact que rien ne vérifie. C'est le statut qu'ADR-0099 réserve aux
   commentaires, et la raison pour laquelle il les borne : ici on ne borne pas, on **vérifie**.
-- Le contrôle ne couvre que ce qu'il dit couvrir. Les **libellés**, l'**ordre**, la table `AXES`
-  de la copie (dont `besoinTournoi`, qui commande le sélecteur de tournoi sur tout un axe) et les
-  `data-ecran` des planches restent transcrits à la main — inscrits en `DETTE-110`, avec leur remède. Un
+- Le contrôle ne couvre que ce qu'il dit couvrir : **`DETTE-110` énumère ce qui reste hors garde**
+  et c'est le seul endroit qui le fasse — la liste était recopiée à sept endroits et avait déjà
+  divergé dans le commit qui l'écrivait (ADR-0102 §1 appliqué à cet ADR lui-même). Ce résidu est
+  transcrit à la main — inscrits en `DETTE-110`, avec leur remède. Un
   garde-fou qui se croit plus large qu'il n'est éteint la vigilance : c'est pourquoi le périmètre
   exact est écrit dans `appareils.js`, dans `maquettes/README.md` et au registre.
 - **Un second candidat existe et n'est pas couvert** : `maquettes/assets/systeme.css` « transcrit la
@@ -117,6 +120,13 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
   est applicable ; aucun contrôle ne le tient à ce jour. C'est écrit ici plutôt que taire, pour ne pas
   reproduire le défaut d'ADR-0017 — un ADR dont on croit qu'il est porté partout alors qu'il ne
   l'est qu'à un endroit.
+- ⚠️ **Le contrôle compare deux textes ; il ne prouve pas que la table est celle qui s'affiche.**
+  Le rendu peut lire une autre source, ou ajouter des entrées — il le fait déjà pour marquer
+  « non livrée » un écran hors table, et §4 en fait la voie préférée. La barre latérale rendue est
+  donc, par conception, *table + extras*. Une **couture** fige les deux sites de lecture de la
+  table pour qu'un rendu qui cesserait de la lire rougisse ; la borne, elle, est écrite ici
+  plutôt que colmatée, parce qu'un garde-fou qui se croit plus large qu'il n'est éteint la
+  vigilance.
 - Le contrôle est exécuté par `npm test`, donc par la porte mécanique et par la CI (job `frontend`,
   bloquant). Le dossier `maquettes/` n'est pas dans le périmètre de prettier ni d'eslint, donc
   aucun outil ne reformate le fichier dans le dos du parseur.
@@ -133,3 +143,8 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
 
 ⚠️ **Non porté** : `maquettes/assets/systeme.css` (cf. Conséquences) et les attributs `data-ecran`
 des planches — nommés pour que leur absence soit lue comme un trou connu, pas comme un oubli.
+
+⚠️ **Deux des cibles ci-dessus sont hors du champ de l'atlas** : `_RACINES_DE_CODE`
+(`backend/atlas/sources/adr.py`) ne contient pas `maquettes/`, donc les deux entrées
+`maquettes/…` ne sont ni contrôlées ni signalées. Si l'une est renommée, cet ADR continuera de
+l'annoncer sans que rien ne rougisse — leur exactitude est tenue à la main.

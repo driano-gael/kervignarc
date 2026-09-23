@@ -4810,7 +4810,11 @@ de 500+ lignes, au milieu d'une US d'outillage documentaire.
 ⚠️ **Une 3ᵉ transcription à la main existe, et elle n'est pas sous garde non plus** : les
 attributs `data-ecran` des planches `maquettes/*.html` — et une **4ᵉ**, la table `AXES` de
 `appareils.js`, dont `besoinTournoi` commande le sélecteur de tournoi sur tout un axe.
-Les 16 valeurs distinctes de `data-ecran` sont toutes
+⚠️ **Une divergence de clés entre `AXES` et `DESTINATIONS` ne fait pas qu'afficher un réglage
+faux** : `navigationAdmin` déréférence `DESTINATIONS[axe]` sans garde, la planche part en
+`TypeError` et l'ossature cesse d'être construite. S'ajoute une **5ᵉ** transcription, le nombre
+de destinations, retiré de `maquettes/README.md` par la 3ᵉ passe de revue plutôt que laissé
+non gardé. Les 16 valeurs distinctes de `data-ecran` sont toutes
 couvertes aujourd'hui — le trou est théorique —, mais le dire ici évite de croire que le
 garde-fou couvre le dossier entier.
 
