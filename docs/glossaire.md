@@ -38,6 +38,8 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Volée** | `Volee` | Groupe de flèches tirées d'affilée (ex. 3 flèches). |
 | **Série** | `Serie` | Ensemble de volées validé d'un bloc. |
 | **Score** | `score` | Total de points (cumul en qualif, points de set en duel). |
+| **Cumul validé** | `Serie.cumul` | Le total **officiel** d'une série : somme des volées que le scoreur a **contresignées**. C'est lui que le **départage** du classement compte (`Serie.compter`), et lui que la surface scoreur affiche sous le libellé « Total validé ». ⚠️ Avec le grain « validation à la fin de la série », il vaut **0 tant que le scoreur n'est pas passé**. |
+| **Cumul saisi** | `cumulSaisi` (front) | Le total **provisoire** affiché à la cible : somme de **toutes** les volées entrées, validées ou non, **y compris celles parties hors ligne** que le serveur n'a pas encore reçues. C'est le « rappel sur la cible » demandé au questionnaire S02. ⚠️ **Jamais opposable** — ce n'est pas un score, et il ne sert à aucun classement (E17US008, `DETTE-111`). |
 | **Barème** | `Bareme` | Règle de calcul/victoire d'une phase (cumul, sets, shoot-off, BSO). |
 | **Barème de duel** | `BaremeDuel` | Format d'un **duel** (E04US013) : `mode` (sets / cumul), nombre de manches, flèches par volée, seuil de points de set. Presets FFTA classique (1er à **6**), poulies (**cumul**, A.7.5.2), club (1er à **4**). Résolu par **arme** (résolveur injecté, défaut FFTA — configurable en E01US011). Distinct du `BaremeQualification` (volées × flèches, cumul). |
 | **Qualification** | phase type `qualification` | Phase de classement par cumul de volées. |

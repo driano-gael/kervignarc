@@ -146,7 +146,7 @@ describe('PanneauRoutage — retour automatique', () => {
     // ⚠️ L'assertion porte sur le **bloc entier**, jamais sur la seule barre : celle-ci n'a pas de
     // texte par construction, donc son `textContent` est vide quoi qu'on écrive à côté. La version
     // précédente serait restée verte si l'on avait ajouté « 2:41 » à la mention voisine —
-    // c'est-à-dire précisément la variante C écartée au questionnaire S06 (relevé en revue).
+    // c'est-à-dire précisément « retour automatique compté », écarté au questionnaire S06.
     expect(signal.textContent ?? '').not.toMatch(/\d/)
     expect(signal.querySelector('[aria-valuenow]')).toBeNull()
   })

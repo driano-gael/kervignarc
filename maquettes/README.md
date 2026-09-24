@@ -92,7 +92,7 @@ Décisions actées avec le commanditaire :
 
 **Les questionnaires ont été remplis le 04/08 sur les vignettes ; les planches ont été redessinées le
 05/08 en écrans pleins.** Les variantes ont changé de nombre, de contenu et de **lettre**, les
-questionnaires non. Mesuré sur l'axe saisie par `E17US008` : **7 planches sur 9** sont touchées, et
+questionnaires non. Mesuré sur l'axe saisie par `E17US008` : **6 planches sur 9** sont touchées (`S02`, `S07`, `S09` concordent), et
 sur `S01` les lettres désignent **l'inverse** de ce qui a été voulu.
 
 Donc, et c'est [ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md) :

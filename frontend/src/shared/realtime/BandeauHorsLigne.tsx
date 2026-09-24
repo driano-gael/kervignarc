@@ -18,6 +18,12 @@ export function BandeauHorsLigne() {
   // `connexion` (lien en cours d'établissement) n'ouvre pas le bandeau : au chargement, il
   // clignoterait à chaque arrivée sur un écran.
   if (classe !== 'deconnecte' && classe !== 'synchronisation') return null
+  // ⚠️ **Lien rétabli = pas de bandeau, même file pleine.** `etatIndicateur` rend `deconnecte` dès
+  // que `nbEnAttente > 0`, quel que soit le lien : tolérable pour une pastille de 10 px, faux pour
+  // un aplat en travers de l'écran. Le cas n'est pas théorique — un rejeu interrompu sur un
+  // transitoire laisse la file pleine sans redéclencher (`useRejeuFileHorsLigne` n'écoute qu'une
+  // **transition** de statut), et la file est persistée. Le bandeau resterait à vie. `DETTE-112`.
+  if (statut === 'connecte' && !synchronisation) return null
 
   return (
     <p className={`bandeau-hors-ligne bandeau-hors-ligne--${classe}`} role="status">

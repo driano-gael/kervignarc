@@ -3962,6 +3962,8 @@ window.ATLAS.decisions = {
   },
   {
    "amende_par": [
+    "0074",
+    "0075",
     "0113"
    ],
    "date": "2026-08-05",
@@ -3975,6 +3977,24 @@ window.ATLAS.decisions = {
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
+    },
+    {
+     "cible": "0113",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
+    {
+     "cible": "0074",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
+    {
+     "cible": "0075",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
     },
     {
      "cible": "0058",
@@ -3991,7 +4011,8 @@ window.ATLAS.decisions = {
    "us": [
     "E01US016",
     "E17US001",
-    "E17US002"
+    "E17US002",
+    "E17US008"
    ]
   },
   {
@@ -11055,7 +11076,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-09-24",
    "date_brute": "2026-09-24",
-   "extrait": "1. Sur le corpus de maquettes, un arbitrage du commanditaire se lit par son intention — le libellé coché et le « pourquoi » écrit — et jamais par la lettre de la variante. La lettre n'est pas une référence stable : elle ne vaut que pour la version de la planche affichée le jour du questionnaire. 2. Un relevé d'écarts écrit sa table de correspondance. Quand il mesure un écran contre une variante retenue, il dit explicitement quelle variante de la planche d'aujourd'hui porte l'intention cochée hier, et à quel titre. Une traduction non écrite est une interprétation qui se transmettra comme un fait. 3. Quand l'intention ne se traduit plus, il n'y a pas d'étalon — et alors on ne résorbe rien. […]",
+   "extrait": "1. Sur le corpus de maquettes, un arbitrage du commanditaire se lit par son intention — le libellé coché et le « pourquoi » écrit — et jamais par la lettre de la variante. La lettre n'est pas une référence stable : elle ne vaut que pour la version de la planche affichée le jour du questionnaire. 2. Un relevé d'écarts écrit sa table de correspondance. Quand il mesure un écran contre une variante retenue, il dit explicitement quelle variante de la planche d'aujourd'hui porte l'intention cochée hier, et à quel titre. Une traduction non écrite est une interprétation qui se transmettra comme un fait. 3. Quand l'intention ne se traduit plus, il n'y a pas d'étalon — et alors on ne résorbe pas le […]",
    "fichier": "docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md",
    "identifiant": "0113",
    "liens": [

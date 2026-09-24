@@ -23,7 +23,7 @@ planches ont été **redessinées le 05/08/2026** en écrans pleins — c'est ce
 juger une mise en page plutôt qu'un composant, et c'était nécessaire. Mais les **variantes ont
 changé de nombre, de contenu et de lettre**, sans que les questionnaires bougent.
 
-Mesuré sur l'axe saisie : **7 planches sur 9** sont touchées.
+Mesuré sur l'axe saisie : **6 planches sur 9**, celles dont la variante retenue ne se lit plus par sa lettre. `S02`, `S07` et `S09` concordent — le compte se refait depuis la table du relevé.
 
 - `S01` — le commanditaire coche « **B** — le code court domine » ; la planche intitule sa variante
   **B** « Scan du QR ». La lettre désigne **l'inverse** de ce qu'il a voulu, et son « pourquoi »
@@ -56,23 +56,42 @@ variante retenue, il dit **explicitement** quelle variante de la planche d'aujou
 l'intention cochée hier, et à quel titre. Une traduction non écrite est une interprétation qui se
 transmettra comme un fait.
 
-**3. Quand l'intention ne se traduit plus, il n'y a pas d'étalon — et alors on ne résorbe rien.**
-C'est le point qui coûte : l'absence d'étalon est un **motif d'exclusion**, pas une invitation à
-choisir la variante la plus proche. S'aligner sur une planche que le commanditaire n'a pas jugée,
-c'est livrer un parti pris qu'il n'a pas retenu — exactement ce qu'ADR-0074 voulait empêcher. Le
-seul geste qui rouvre le dossier est de **reposer la question** (tour 2 du questionnaire), et c'est
-du temps du commanditaire : cela se **demande**, cela ne se contourne pas.
+**3. Quand l'intention ne se traduit plus, il n'y a pas d'étalon — et alors on ne résorbe pas le
+parti pris.** C'est le point qui coûte : l'absence d'étalon est un **motif d'exclusion**, pas une
+invitation à choisir la variante la plus proche. S'aligner sur une planche que le commanditaire n'a
+pas jugée, c'est livrer un **parti pris** qu'il n'a pas retenu — exactement ce qu'ADR-0074 voulait
+empêcher. Le seul geste qui rouvre le dossier est de **reposer la question** (tour 2 du
+questionnaire), et c'est du temps du commanditaire : cela se **demande**, cela ne se contourne pas.
+
+⚠️ **Ce qui est exclu, c'est le parti pris — la forme, la structure, l'agencement.** Un **contenu
+explicatif** que la planche porte *hors* du départage des variantes — une phrase qui dit au bénévole
+ce qu'il engage, identique d'une variante à l'autre — reste livrable comme **proposition**, à trois
+conditions : il ne change aucun parti pris, il est **écrit comme proposition** dans le relevé, et il
+est **reposé au tour 2**. Sans cette nuance, la règle interdirait de corriger un écran muet au motif
+que le commanditaire n'a pas arbitré sa mise en page. *(Nuance ajoutée en revue, axes B, C2 et D : la
+1ʳᵉ rédaction était **démentie par son propre commit**, qui livrait la phrase de `S04`.)*
 
 **4. Aucune lettre de questionnaire ne se cite dans le code.** Un commentaire cite le **libellé** et
 le **« pourquoi »**, qui sont stables, jamais « variante B ».
+
+⚠️ **Règle neuve, dette existante — et la distinction est le fond du sujet.** `E17US008` a fait la
+passe sur les sites qu'elle a trouvés (`EspacePoste.tsx`, `PanneauRoutage.tsx`, trois blocs
+d'`App.css`, `features/tableaux/presentation.ts`, et la planche `s01` elle-même). Rien ne l'empêche
+de revenir : **aucun garde mécanique** ne détecte « variante B » dans un commentaire, et il n'en est
+pas proposé — un `grep` sur cette forme rougirait sur des citations légitimes. C'est une règle de
+relecture, et elle est **énoncée comme telle** plutôt que présentée comme tenue.
 
 ## Conséquences
 
 - La procédure d'`EPIC-17` gagne un préalable : **vérifier la correspondance avant de mesurer**.
   `E17US009` (7 planches publiques `P**`) doit s'y attendre — le redessin du 05/08 a porté sur les
   36 planches, pas sur les 9 de la saisie.
-- Trois planches de saisie — `S04`, `S05`, `S08` — sont **hors résorption** jusqu'au tour 2. Le
-  besoin est porté au tracker comme une demande au commanditaire, pas comme une US.
+- Trois planches de saisie — `S04`, `S05`, `S08` — ont perdu leur étalon. `S05` et `S08` sont
+  **entièrement hors résorption** jusqu'au tour 2. `S04` l'est **pour son parti pris** (quelle forme
+  donner au sélecteur de marqueur) ; `E17US008` y a livré, au titre du point 3 ci-dessus, la seule
+  **phrase explicative** que la planche porte dans ses deux variantes — inscrite comme proposition
+  au relevé, et à reposer au tour 2. Le besoin est porté au tracker comme une demande au
+  commanditaire, pas comme une US.
 - ⚠️ **Cet ADR ne rend pas les questionnaires caducs.** Leurs **réponses aux questions ciblées**
   (« le cumul en permanence », « les autres archers doivent pouvoir relire », « oui, par admin et
   scoreur ») ne dépendent d'aucune variante : elles restent opposables telles quelles, et c'est

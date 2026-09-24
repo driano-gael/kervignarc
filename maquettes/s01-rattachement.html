@@ -103,10 +103,10 @@
     </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div style="max-width:520px;margin:40px auto 0;text-align:center"><div class="aplat-alerte forte" style="justify-content:center">▲ Ce code ne correspond à aucune cible</div><div class="champ plein" style="font-size:38px;padding:22px;letter-spacing:.3em;margin-top:18px">4 K 7 · 2 M 9</div><div class="carte" style="margin-top:18px;text-align:left"><div class="rang bloc" style="padding:16px"><p class="second" style="margin:0 0 8px">Trois causes possibles, dans l’ordre de fréquence :</p><p class="second" style="margin:0 0 4px">— le code vient d’une <b>fiche périmée</b> (les codes sont régénérés à chaque tournoi) ;</p><p class="second" style="margin:0 0 4px">— la fiche vient d’un <b>autre tournoi</b> ;</p><p class="second" style="margin:0">— la cible a été <b>déclarée indisponible</b> par l’organisateur.</p></div></div><div style="margin-top:18px"><span class="bouton principal">Réessayer</span></div></div>
+        <div style="max-width:520px;margin:40px auto 0;text-align:center"><div class="aplat-alerte forte" style="justify-content:center">▲ Ce code ne correspond à aucune cible</div><div class="champ plein" style="font-size:38px;padding:22px;letter-spacing:.3em;margin-top:18px">4 K 7 · 2 M 9</div><div class="carte" style="margin-top:18px;text-align:left"><div class="rang bloc" style="padding:16px"><p class="second" style="margin:0 0 8px">Trois causes possibles, dans l’ordre de fréquence :</p><p class="second" style="margin:0 0 4px">— un caractère a été <b>mal lu ou interverti</b> sur la fiche ;</p><p class="second" style="margin:0 0 4px">— la fiche vient d’un <b>tournoi terminé</b> (message distinct) ;</p><p class="second" style="margin:0">— la fiche vient d’une <b>édition dont les cibles n’existent plus</b>.</p></div></div><div style="margin-top:18px"><span class="bouton principal">Réessayer</span></div></div>
       </div>
     </div></div></div>
-        <p class="verdict"><span class="pouce oui">un refus qui aide</span> Trois causes ordonnées par fréquence, dont la première est une confusion de caractères. Le bénévole n’a personne à qui demander : le message doit faire le travail de l’organisateur absent.</p>
+        <p class="verdict"><span class="pouce oui">un refus qui aide</span> Les causes réelles, vérifiées dans le code : le serveur ne refuse un code que si <b>aucune cible ne le porte</b>. La confusion <b>0/O</b> n’en est plus une — le pavé livré ne propose ni l’un ni l’autre. Le bénévole n’a personne à qui demander : le message doit faire le travail de l’organisateur absent.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
@@ -154,7 +154,7 @@
 
 <h2 class="section">À trancher</h2>
 <ul class="exigences">
-  <li><strong>Les tablettes ont-elles toutes une caméra utilisable ?</strong> Ça départage A et B.</li>
+  <li><strong>Les tablettes ont-elles toutes une caméra utilisable ?</strong> Ça départage <em>la saisie du code</em> et <em>le scan du QR</em> — les <b>lettres</b> de variante ne valent plus, cf. <a href="../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md">ADR-0113</a>.</li>
   <li><strong>Mauvaise cible rattachée :</strong> correction possible par le bénévole lui-même, ou passage
   obligé par l'admin ?</li>
 </ul>

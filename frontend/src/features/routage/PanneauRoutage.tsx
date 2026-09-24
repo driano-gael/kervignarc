@@ -132,9 +132,9 @@ function LigneRoutage({ ligne }: { ligne: RoutageArcher }) {
 }
 
 // Le signal du retour automatique : une jauge et une mention, **jamais un chiffre**. Le compte à
-// rebours en secondes est la signature de la variante C du questionnaire S06, écartée au profit de
-// la variante A (ADR-0108). La mention existe parce qu'un écran qui disparaît sans prévenir se lit
-// comme un plantage.
+// rebours en secondes est la signature de « **retour automatique compté** », écartée au
+// questionnaire S06 au profit de « **vainqueur et perdant à égalité** » (ADR-0108). La mention
+// existe parce qu'un écran qui disparaît sans prévenir se lit comme un plantage.
 //
 // ⚠️ `role="img"` et non `progressbar` — patron déjà retenu par `Supervision.tsx`. Un
 // `progressbar` **publie** `aria-valuenow`, donc annonce « 45 pour cent » : le « jamais un chiffre »

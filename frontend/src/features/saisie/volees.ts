@@ -21,6 +21,9 @@ export function pointsZone(valeur: string): number {
 
 // Total provisoire d'une volée en cours de frappe (avant enregistrement). Le cumul **officiel** de
 // la série vient du serveur (volées validées uniquement) ; ceci n'est qu'un retour visuel immédiat.
+// ⚠️ Depuis E17US008, **aucun écran de saisie n'affiche plus `Serie.cumul`** : la grille et le pavé
+// montrent `cumulSaisi`. Le champ reste rendu par l'API et lu par la surface **scoreur**, qui le
+// libelle « Total validé ». Ne pas conclure de sa présence que la cible voit le score officiel.
 export function totalVolee(valeurs: readonly string[]): number {
   return valeurs.reduce((somme, valeur) => somme + pointsZone(valeur), 0)
 }

@@ -165,7 +165,7 @@ peuplée d'un tournoi de jeu d'essai (16 archers, 8 cibles, qualification en cou
 remplis le **04/08** sur les maquettes **en vignettes** ; les planches ont été **redessinées le
 05/08** en écrans pleins. Les lettres n'ont pas suivi. `maquettes/README.md` le signalait pour une
 planche (« le questionnaire d'A02 posait encore les questions de la v2 ») ; mesuré sur l'axe saisie,
-c'est **7 planches sur 9**.
+c'est **6 planches sur 9** — celles dont la variante retenue ne se lit plus par sa lettre (`S01`, `S03`, `S04`, `S05`, `S06`, `S08`). ⚠️ **Le chiffre est celui de la table ci-dessous, et il se recompte** : `S02`, `S07` et `S09` concordent. *(La 1ʳᵉ rédaction disait « 7 sur 9 », non recalculable depuis sa propre preuve — relevé par l'axe adversarial, dans l'US même dont l'objet est la fausse certitude qui se transmet comme un fait.)*
 
 | Planche | Le questionnaire faisait choisir entre | La planche dessine | Effet |
 |---|---|---|---|
@@ -230,7 +230,10 @@ Or la variante retenue de **S02** fonde son choix exactement là-dessus :
 | Carte de rattachement (**S01**) | `max-width:520px; margin:40px auto` — **colonne centrée** | carte à `x=145`, **alignée à gauche** |
 
 ⚠️ **Vérifié, pas supposé** : régler les deux jetons sur la surface tablette porte la ligne d'archer
-de **575 à 828 px**, essayé dans le navigateur avant d'écrire une ligne de code.
+de **575 à 828 px**, essayé dans le navigateur avant d'écrire une ligne de code. ⚠️ **Mesure du
+jeton seul** : la mise en côte-à-côte du pavé (résorption de l'écart suivant) reprend ensuite une
+colonne, et le chiffre livré est **694 px** — cf. le tableau de résorption. Les deux sont vrais, à
+des étapes différentes.
 
 ⚠️ **L'écart de S01 est le défaut d'A01, déjà corrigé.** `E17US003` a remplacé « une carte collée en
 haut à gauche » par une colonne centrée (`.connexion { max-width: 26rem; margin: 0 auto }`) sur
@@ -364,7 +367,7 @@ l'US se fixe :
 | `S01` nommait au lieu de demander | « Poste de saisie » → « **Quelle cible ?** », 26 px / 800 | |
 | `S01` : action principale minuscule | `.bouton--geant` — 56 px de haut, corps **18 px** (était 13 px) | |
 | Numéro de cible en 16 px | **48 px** dans l'état « Rattaché » (S01), **22 px** dans l'en-tête de grille (S02) | |
-| `S04` : liste nue de quatre noms | la phrase de la planche, qui dit ce qu'on engage en choisissant | |
+| `S04` : liste nue de quatre noms | la phrase de la planche, qui dit ce qu'on engage en choisissant. ⚠️ **Livrée comme PROPOSITION, pas comme résorption de fidélité** : `S04` n'a plus d'étalon pour son *parti pris*, et cette phrase est le seul contenu que la planche porte **identique dans ses deux variantes**. À reposer au tour 2 (ADR-0113 §3) | |
 | Pastilles d'état fausses | `s04` et `s06` passent à « écran existant », `s07` à « à concevoir » | |
 | La planche `S01` portait un diagnostic faux | « le 0 et le O se confondent » réécrit ; pavé désambiguïsé et sélecteur de départ inscrits | |
 
@@ -376,19 +379,28 @@ dans le JSX **sans aucune règle CSS** — le sélecteur de luminosité de `S01`
 
 **Laissé, et pourquoi** :
 
-- 🔴 **La ligne d'archer ne porte toujours pas la volée en cours.** Ce n'est pas un oubli : sa
-  résorption **heurte un invariant établi en revue**. La bande de relecture est délibérément *hors*
-  du bouton de ligne, parce qu'une zone tapable de plus y **détruisait le tampon de frappe du pavé**
-  — vérifier ses volées effaçait les flèches qu'on venait de taper, sans un mot (revue du
-  05/08/2026, axes C1 et adversarial ; le commentaire est toujours dans `Saisie.tsx`). Ajouter trois
-  cases de flèche tapables dans la ligne rejoue exactement cette classe de défauts. À traiter en US
-  dédiée, l'invariant en main. → **`E17US011`**
+- 🔴 **La ligne d'archer ne porte toujours pas la volée en cours.** Le motif est le **périmètre** :
+  mettre les trois flèches dans la ligne et y déplacer le déclencheur du pavé, c'est **redessiner
+  l'écran le plus utilisé du produit**, pas le rapprocher de sa planche. Une US de fidélité ne fait
+  pas ça en cinquième position ; `E17US011` le fait, et y résorbe `DETTE-111` dans le même geste.
+  ⚠️ **Ce motif est le second : le premier était FAUX, et sa correction vaut d'être lue.** La 1ʳᵉ
+  rédaction invoquait un invariant de revue du 05/08 — « une zone tapable de plus détruit le tampon
+  de frappe du pavé ». L'axe adversarial est allé lire le code : les brouillons ont été **remontés
+  dans `Saisie`** depuis, et le commentaire qui le dit (`Saisie.tsx`) précise que cela « **supprime
+  la classe entière de défauts** ». L'invariant était **mort**, et trois commentaires du code le
+  répétaient encore — corrigés ici. Leçon : un motif de report se vérifie **dans le code du jour**,
+  comme une section « Porté dans le code par » (ADR-0075). → **`E17US011`**
 - 🟠 **« Les lignes d'archer font toute la largeur » n'est tenu qu'à moitié** (575 → 694 px, pas
   1216). La cause est enchaînée à la précédente : tant que le pavé porte seul la saisie, il lui faut
   une colonne, et cette colonne est prise sur la grille. C'est **la résorption de l'écart ci-dessus
   qui débloque celle-ci** — la ligne portant la volée, le pavé rétrécit et rend sa colonne.
 - 🟠 **Les touches du pavé restent à 48 × 48 px**, là où S03 promet « plus de 90 px de large ». Même
   chaîne : 90 px par touche demandent la largeur d'une tablette entière pour le pavé.
+- 🟠 **Le côte-à-côte ne s'applique qu'au-delà de 60 rem.** Sous cette largeur — téléphone, **et
+  tablette en portrait** (768 px) —, le pavé reste empilé sous la grille : l'écart « le pavé s'ouvre
+  sous la ligne de flottaison » y est **inchangé, et non mesuré**. Or le questionnaire S02 répond
+  « tablette standard **ou téléphone** ». Le commentaire CSS présentait l'empilement comme le cas du
+  téléphone, ce qui le faisait passer pour un choix. *(Relevé par l'axe adversarial.)*
 - **`S05`, `S07`, `S08`** : hors périmètre, motifs au tableau plus haut. `S07` n'est pas un écart de
   fidélité mais une **US non livrée**.
 
@@ -398,9 +410,11 @@ dans le JSX **sans aucune règle CSS** — le sélecteur de luminosité de `S01`
 - **Il n'a pas pu juger la densité à la bonne taille** : Chrome reste bloqué à **1366 px** de large
   et **641 px** de haut sur le poste de relevé, là où les planches se jugent à 1280 × 800. Tout ce
   qui se décide à la ligne de flottaison est donc **mesuré, pas vu**.
-- **Les états système n'ont pas été provoqués** : hors-ligne, conflit, verrou et erreur récupérable
-  ont été lus dans le code et le CSS, pas déclenchés dans l'application. Un écart de *rendu* y reste
-  possible.
+- **Les états système n'ont pas été provoqués au moment du relevé** : **conflit, verrou et erreur
+  récupérable** ont été lus dans le code et le CSS, jamais déclenchés — un écart de *rendu* y reste
+  possible. Le **hors-ligne** fait exception : il a été provoqué pour de vrai (backend coupé) **à la
+  résorption**, pas au relevé. *(La 1ʳᵉ rédaction l'énumérait avec les trois autres et contredisait
+  le tableau de résorption — relevé par trois axes.)*
 - **S05 et S08 n'ont pas été parcourus en salle** : leur étalon étant perdu, une visite n'aurait
   produit que des impressions.
 

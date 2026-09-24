@@ -8,8 +8,18 @@
 > montre un écran est une E16 ; une US qui change **la ressemblance** entre l'écran et sa planche est
 > une E17.
 >
-> **La source du CA est ici la planche et la charte mesurée**, pas un questionnaire : les écarts se
-> constatent en superposant `maquettes/<code>-<slug>.html` et l'écran livré.
+> **La source du CA tient en deux moitiés, et les confondre est le piège de cet épic.** La **forme**
+> s'étalonne sur la planche et la charte mesurée : un écart se constate en superposant
+> `maquettes/<code>-<slug>.html` et l'écran livré. Mais **quelle variante** de la planche fait foi se
+> lit au **questionnaire** — par le libellé coché et le « pourquoi » écrit, **jamais par la lettre**
+> ([ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md)).
+>
+> ⚠️ **Les questionnaires ont été remplis le 04/08 sur les vignettes, les planches redessinées le
+> 05/08 en écrans pleins.** Les lettres n'ont pas suivi. **Vérifier la correspondance avant de
+> mesurer un écart** — sur l'axe saisie, `S01` avait ses lettres **inversées**. Quand l'intention ne
+> se traduit plus, il n'y a **pas d'étalon** : on ne résorbe pas le parti pris, on repose la question.
+> *(Reversé ici en revue d'`E17US008` : ce préambule disait « la source du CA est la planche, **pas
+> un questionnaire** » — l'inverse de l'arbitrage, et il gouverne les neuf US, dont `E17US009`.)*
 
 ---
 
@@ -261,7 +271,7 @@
     blocage qui survit à la levée de son blocage coûte une US : celle-ci a failli reporter l'axe.
   - ⚠️ **Le CA « questionnaire → variante retenue » n'est pas applicable tel quel sur cet axe** — tranché en [ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md). Les
     questionnaires ont été remplis le 04/08 sur les **vignettes**, les planches redessinées le 05/08
-    en écrans pleins : **7 planches sur 9** ne proposent plus les variantes qui ont été jugées, et
+    en écrans pleins : **6 planches sur 9** ne proposent plus les variantes qui ont été jugées (`S02`, `S07` et `S09` concordent), et
     sur `S01` les lettres sont **inversées**. La variante retenue se lit donc **par l'intention**,
     jamais par la lettre — tableau de correspondance dans le relevé. **Ne pas citer une lettre de
     questionnaire dans le code** : `EspacePoste.tsx` en portait une (« variante B »), corrigée.
@@ -299,13 +309,16 @@
   valoriser des volées **hors ligne** que le serveur n'a jamais reçues — `serieOptimiste` conserve le
   `cumul` serveur, qui les ignore. On sert la **règle**, pas le **résultat**. Cette US est le bon
   porteur parce qu'elle rouvre déjà `volees.ts`, la ligne d'archer et le pavé, avec leurs tests.
-- **Notes** : ⚠️ **L'invariant à tenir est écrit dans `Saisie.tsx`, et il a déjà coûté une revue.**
-  La bande de relecture est **hors** du bouton de ligne *délibérément* : placée dedans, elle
-  **démontait `PaveArcher` avec son tampon de frappe** — vérifier ses volées effaçait les flèches
-  qu'on venait de taper, sans un mot (revue du 05/08/2026, axes C1 et adversarial). Ajouter des
-  cases tapables dans la ligne rejoue exactement cette classe de défauts : le test se dérive **de
-  là** avant d'écrire une ligne. Les brouillons vivent dans `Saisie`, pas dans le pavé, ce qui est
-  précisément le correctif qui a supprimé la classe — s'appuyer dessus, ne pas le défaire.
+- **Notes** : ⚠️ **Ce qu'il faut tenir, c'est l'archer actif — pas un tampon de frappe.** La bande de
+  relecture est **hors** du bouton de ligne parce que la toucher **changerait d'archer** : le
+  `onClick` de la ligne est `setArcherChoisi`. Des cases de flèche tapables doivent donc **arrêter la
+  propagation**, sous peine de faire basculer l'archer à chaque saisie.
+  ⚠️ **Ne pas reprendre le motif historique** : « cela démontait `PaveArcher` avec son tampon de
+  frappe » a été vrai jusqu'au jour où les brouillons ont été **remontés dans `Saisie`** — ce qui,
+  dit le commentaire de `Saisie.tsx`, « supprime la classe entière de défauts ». `E17US008` avait
+  différé cette US **au nom de cet invariant mort** ; l'axe adversarial l'a relevé. Le test ne se
+  dérive **pas** de là : il se dérive de la planche `S02` (la ligne est `pos | nom | fl fl fl |
+  somme`) et de la réserve écrite deux fois au questionnaire.
 - **Dépend de** : E17US008 · **Jalon** : J3
 
 ### E17US009 — Confronter les écrans publics et l'écran de salle à leurs planches

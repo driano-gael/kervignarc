@@ -120,9 +120,14 @@ export function App() {
         </div>
       </header>
       {/* Sous l'en-tête et hors de lui : le bandeau de S09 prend **toute la largeur**, ce qu'une
-          place dans la barre d'actions lui interdirait. Pas sur un écran de salle — son propre
-          bandeau porte déjà l'état, et il n'y a personne devant pour en faire quoi que ce soit. */}
-      {surface !== 'salle' && <BandeauHorsLigne />}
+          place dans la barre d'actions lui interdirait.
+          ⚠️ **Tablette seulement, et c'est une question de vérité, pas de périmètre.** Le bandeau
+          promet que « la saisie continue » : cette garantie n'existe que là où une file hors-ligne
+          absorbe l'écriture, et `mettreEnFile` n'a qu'un appelant — `features/saisie/hooks.ts`. Sur
+          le PC d'organisation, une écriture pendant la coupure **échoue** ; lui promettre l'inverse
+          est pire que se taire. ⚠️ Le scoreur est exclu **aussi** : ses duels ont leur propre file
+          (`fileDuelsHorsLigneStore`) qu'`etatIndicateur` ne lit pas — `DETTE-112`. */}
+      {surface === 'tablette' && <BandeauHorsLigne />}
       <main className="app__contenu">
         {role === 'tablette' ? (
           <EspacePoste

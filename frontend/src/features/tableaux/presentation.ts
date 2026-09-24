@@ -199,7 +199,7 @@ export function parcoursToutesPhases(tableaux: TableauPublic[], archerId: number
     .filter((parcours) => parcours.etapes.length > 0)
 }
 
-/** L'arbre complet, groupé **par branche** — variante B de la maquette.
+/** L'arbre complet, groupé **par branche** — la disposition retenue sur la maquette du tableau.
  *
  * ⚠️ **Par libellé, pas par numéro de tour** : grouper par tour brut range la petite finale sous «
  * Finale », et sous profondeur intégrale le bloc « Demi-finales » contenait aussi les places 5-8.

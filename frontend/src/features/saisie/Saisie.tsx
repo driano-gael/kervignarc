@@ -84,6 +84,10 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
 
+  // L'état « Rattaché » de S01 : la tablette sait quelle cible elle sert, le tir n'a rien à montrer
+  // encore. Exclut le chargement et l'erreur dure, où un numéro géant n'aurait aucun sens.
+  const confirmation = (besoinDepart || grille.isSuccess) && lignes.length === 0
+
   // Bascule en panneau de routage (E04US018). « Close » = toutes les volées du barème saisies **et**
   // verrouillées par le scoreur (c'est lui qui clôt une série, pas le marqueur) — **ou** l'archer
   // est forfait (E04US015 : il reste dans la grille et sa série ne se complétera jamais ; sans cette
@@ -117,7 +121,7 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
     return (
       <div className="saisie">
         <div className="saisie__entete">
-          <strong>Cible {cibleIndex}</strong>
+          <h2 className="saisie__cible">Cible {cibleIndex}</h2>
         </div>
         <PanneauRoutage
           tournoiId={tournoiId}
@@ -135,10 +139,14 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   return (
     <div className="saisie">
-      {/* Tant que la grille n'est pas ouverte, cet en-tête **est** l'écran « Rattaché » de S01 : le
-          numéro y passe en 48 px, pour se vérifier depuis la ligne de tir. */}
-      <div className={`saisie__entete${lignes.length > 0 ? '' : ' saisie__entete--confirmation'}`}>
-        <strong>Cible {cibleIndex}</strong>
+      {/* ⚠️ **La confirmation, pas « zéro ligne ».** `lignes.length === 0` seul couvrait aussi le
+          chargement et l'erreur dure : le numéro s'affichait en 48 px puis retombait à 22 px à
+          chaque montage, et au-dessus d'un message d'erreur. Ici, l'état « Rattaché » de S01 — le
+          départ reste à choisir, ou la grille est vide et le serveur a répondu. */}
+      <div className={`saisie__entete${confirmation ? ' saisie__entete--confirmation' : ''}`}>
+        {/* `h2` et non `strong` : c'est le seul titre de l'écran de travail, donc le point d'entrée
+            d'une navigation par titres — la coquille ne porte plus que le `h1` de l'application. */}
+        <h2 className="saisie__cible">Cible {cibleIndex}</h2>
         {lignes.length > 0 && (
           <SelecteurMarqueur lignes={lignes} marqueur={marqueurActif} onChoisir={setMarqueur} />
         )}
@@ -183,13 +191,13 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 ligne={ligne}
                 nbVolees={bareme.data?.nb_volees ?? null}
                 actif={ligne.archer_id === archerActif}
-                // ⚠️ **Pas une bascule.** Une première version refermait le pavé quand on re-tapait
-                // la ligne ouverte — geste « inverse » séduisant, mais `PaveArcher` porte son tampon
-                // de frappe en état local : le refermer **jette la volée en cours**, sans un mot.
-                // Sur une cible, ce tap arrive tout seul (on re-touche le nom pour lire le cumul).
-                // La fermeture passe donc par **un seul geste explicite**, le bouton « Fermer » du
-                // pavé, qui sait ce qu'il y a dans le tampon et demande confirmation s'il n'est pas
-                // vide (revue du 05/08/2026, axes C1 et adversarial).
+                // ⚠️ **Pas une bascule** : re-taper la ligne ouverte ne referme pas le pavé. Sur une
+                // cible ce tap arrive tout seul (on re-touche le nom pour lire le cumul), et une
+                // fermeture accidentelle ferait perdre le fil de la volée en cours. La fermeture
+                // passe par **un geste explicite**, le bouton « Fermer ».
+                // ⚠️ Le motif historique — « le refermer jette le tampon de frappe » — **ne vaut
+                // plus** : les brouillons vivent dans `Saisie` depuis, donc refermer ne perd rien
+                // (cf. `brouillons` plus haut). Le geste reste, sa raison a changé.
                 onSelectionner={() => setArcherChoisi(ligne.archer_id)}
               />
             ))}
@@ -324,7 +332,7 @@ function SelecteurDepart({ tournoiId, obligatoire }: { tournoiId: number; obliga
   )
 }
 
-// Une ligne de la grille : position, nom, cumul (validé) et avancement. Tapable pour devenir
+// Une ligne de la grille : position, nom, cumul **saisi** (cf. `cumulSaisi`) et avancement. Tapable pour devenir
 // l'archer **actif** (celui dont le pavé saisit). Cible tactile ≥ 48 px (écran de saisie).
 function LigneArcher({
   tournoiId,
@@ -372,10 +380,11 @@ function LigneArcher({
           scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible. */}
 
       {/* ⚠️ **Hors du bouton, et c'est le point.** Placée dedans, cette bande — la plus large
-          zone tapable de la ligne — fermait le pavé et **démontait `PaveArcher` avec son tampon
-          de frappe** : vérifier ses volées effaçait les flèches que le marqueur venait de
-          taper, sans un mot (revue du 05/08/2026, axes C1 et adversarial). `role=group` : sans
-          rôle, le libellé était ignoré des lecteurs d'écran. */}
+          zone tapable de la ligne — ferait **changer d'archer actif** au moindre coup d'œil aux
+          volées : le `onClick` de la ligne est `setArcherChoisi`. `role=group` : sans rôle, le
+          libellé était ignoré des lecteurs d'écran.
+          ⚠️ Le motif d'origine (« cela démontait `PaveArcher` avec son tampon de frappe ») **ne
+          vaut plus** depuis que les brouillons vivent dans `Saisie`. */}
       {nbVolees !== null && nbVolees > 0 && (
         <span className="saisie__relecture" role="group" aria-label={`Volées de ${ligne.nom}`}>
           {Array.from({ length: nbVolees }, (_, i) => {
@@ -514,7 +523,9 @@ function PaveArcher({
         </span>
         {/* Le cumul de série **suit le pavé** (S02) : quand la grille est repoussée hors de l'écran
             sur un téléphone, c'est ici qu'on relit « où j'en suis ». */}
-        <span className="saisie__cumul-serie">Cumul {cumulSaisi(serie.data?.volees ?? [])}</span>
+        <span className="saisie__cumul-serie">
+          Cumul série {cumulSaisi(serie.data?.volees ?? [])}
+        </span>
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts
         </span>
