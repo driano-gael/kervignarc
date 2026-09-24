@@ -88,6 +88,23 @@ Décisions actées avec le commanditaire :
 - la **recherche change de nature selon l'axe** : toutes entités et ouverture en *modification* en
   atelier/gestion, archer *du tournoi* en *consultation* en pilotage.
 
+### ⚠️ Avant de mesurer un écart : les lettres des questionnaires ne valent plus
+
+**Les questionnaires ont été remplis le 04/08 sur les vignettes ; les planches ont été redessinées le
+05/08 en écrans pleins.** Les variantes ont changé de nombre, de contenu et de **lettre**, les
+questionnaires non. Mesuré sur l'axe saisie par `E17US008` : **7 planches sur 9** sont touchées, et
+sur `S01` les lettres désignent **l'inverse** de ce qui a été voulu.
+
+Donc, et c'est [ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md) :
+un arbitrage se lit **par son intention** — le libellé coché et le « pourquoi » écrit —, **jamais par
+la lettre** ; un relevé **écrit sa table de correspondance** ; et quand l'intention ne se traduit plus,
+il n'y a **pas d'étalon**, donc **on ne résorbe rien** — on repose la question.
+
+⚠️ **Ne citez jamais « variante B » dans le code ni dans une story.** Citez le libellé.
+
+**Le tour 2 reste à faire sur l'axe saisie** : `S04`, `S05` et `S08` sont sans étalon tant qu'il n'est
+pas rempli (feuilles dans `questionnaires/s0*.html`, bouton « Télécharger le .md »).
+
 ### Ce qui attend une décision du commanditaire
 
 1. **Les mots** — « Atelier », « Pilotage », « Gestion » sont de l'assistant ; le commanditaire a

@@ -53,16 +53,27 @@ export function EspacePoste({
     )
   }
 
-  return (
-    <section className="carte carte--large">
-      <h2 className="carte__titre">
-        {vocation === 'salle' ? 'Écran de salle' : 'Poste de saisie'}
-      </h2>
-      {jeton !== null && poste !== null ? (
+  // ⚠️ **Deux formes, pas une.** Le rattachement est une colonne étroite et centrée — planche S01,
+  // verdict « un écran, une question » —, et c'est la forme qu'`E17US003` a déjà donnée à A01 pour
+  // le même geste. Une fois rattaché, le même cadre porte la **grille de saisie**, qui veut au
+  // contraire toute la largeur de la tablette (S02) : resserrer ici la rétrécirait aussi.
+  if (jeton !== null && poste !== null) {
+    return (
+      <section className="carte carte--large">
         <PosteDeCible poste={poste} />
-      ) : (
-        <FormulaireRattachement codeInitial={codeInitial} vocation={vocation} />
-      )}
+        <BasculeTheme />
+      </section>
+    )
+  }
+
+  return (
+    <section className="carte rattachement">
+      {/* L'écran **demande**, il ne se nomme pas : c'est le parti pris de la planche, pas une
+          tournure. « Poste de saisie » disait au bénévole où il était, pas ce qu'on attend de lui. */}
+      <h2 className="carte__titre rattachement__titre">
+        {vocation === 'salle' ? 'Quel écran de salle ?' : 'Quelle cible ?'}
+      </h2>
+      <FormulaireRattachement codeInitial={codeInitial} vocation={vocation} />
       <BasculeTheme />
     </section>
   )
@@ -97,10 +108,10 @@ function FormulaireRattachement({
 
   return (
     <div>
-      {/* **Le code domine, le QR est le secours** — retour maquettes du 04/08/2026 (S01), variante B :
-          *« je ne suis pas sûr que les caméras soient toujours accessibles »*. L'ordre des deux
-          phrases était l'inverse ; sur un parc dont on ne sait pas si les appareils photo marchent,
-          annoncer le QR en premier envoie le bénévole vers la voie la moins sûre. */}
+      {/* **Le code domine, le QR est le secours** — questionnaire S01 du 04/08/2026 : *« je ne suis
+          pas sûr que les caméras soient toujours accessibles »*. ⚠️ Ne pas citer la **lettre** du
+          questionnaire (« variante B ») : ses lettres ne désignent plus les variantes de la planche,
+          redessinée le lendemain — c'est la planche **A** qui porte ce choix. Relevé, `epics/EPIC-17`. */}
       <p className="carte__etat">
         {salle
           ? 'Entrez le code imprimé sur l’écran de salle pour y rattacher cet appareil.'
@@ -113,7 +124,11 @@ function FormulaireRattachement({
           libelle={salle ? 'Code de l’écran de salle' : 'Code de la cible'}
           desactive={rattacher.isPending}
         />
-        <button type="submit" disabled={rattacher.isPending || !entreeValide}>
+        <button
+          type="submit"
+          className="bouton--geant"
+          disabled={rattacher.isPending || !entreeValide}
+        >
           {salle ? 'Rattacher cet écran' : 'Rattacher cet appareil'}
         </button>
       </form>

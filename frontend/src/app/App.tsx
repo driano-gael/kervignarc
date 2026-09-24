@@ -14,6 +14,7 @@ import { codePosteDepuisUrl } from '../features/poste/url'
 import { oublierCodeScoreurUrl, useCodeScoreurDArrivee } from '../features/scoreur-session/url'
 import { AccueilPublic } from '../features/public/AccueilPublic'
 import { EspaceScoreur } from '../features/scoreur-session/EspaceScoreur'
+import { BandeauHorsLigne } from '../shared/realtime/BandeauHorsLigne'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
 import { useSessionAdminStore } from '../shared/stores/sessionAdminStore'
 import { useSessionPosteStore } from '../shared/stores/sessionPosteStore'
@@ -118,6 +119,10 @@ export function App() {
           <IndicateurConnexion />
         </div>
       </header>
+      {/* Sous l'en-tête et hors de lui : le bandeau de S09 prend **toute la largeur**, ce qu'une
+          place dans la barre d'actions lui interdirait. Pas sur un écran de salle — son propre
+          bandeau porte déjà l'état, et il n'y a personne devant pour en faire quoi que ce soit. */}
+      {surface !== 'salle' && <BandeauHorsLigne />}
       <main className="app__contenu">
         {role === 'tablette' ? (
           <EspacePoste

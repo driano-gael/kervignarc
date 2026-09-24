@@ -1,0 +1,57 @@
+# 24 septembre 2026, 20 h 02 — la tablette de saisie prend sa largeur
+
+Les **neuf écrans de l'appli de saisie** n'avaient jamais été comparés aux planches que vous aviez
+validées. Seule l'administration l'avait été. C'est fait, et **cinq écrans ont été corrigés**.
+
+## Ce qui change pour le bénévole qui saisit
+
+- **Le pavé de saisie ne s'ouvre plus hors de l'écran.** Toute la saisie tenait dans une colonne de
+  640 px au milieu d'une tablette de 1280 : près de la moitié de l'écran restait vide, et le pavé se
+  retrouvait **sous** la grille des quatre archers, donc invisible. Chaque archer commençait par un
+  défilement — pour un geste qui se répète environ **4 300 fois par départ**. La grille et le pavé
+  sont maintenant **côte à côte**.
+- **Le cumul de l'archer ne reste plus à zéro.** Il ne comptait que les volées déjà contresignées
+  par le scoreur — qui ne passe qu'à la fin de la série. Le rappel que vous aviez demandé
+  (« en permanence, c'est un bon rappel sur la cible ») affichait donc **0** pendant toute la série.
+  Il compte désormais ce qui est saisi.
+- **Le « hors ligne » se voit.** C'était une pastille de la taille d'un grain de riz, en haut à
+  droite. C'est maintenant un **bandeau ambre plein sur toute la largeur**, qui dit la seule chose
+  utile : *la saisie continue, ce qui est tapé part tout seul au retour du réseau*.
+- **Rattacher la tablette** se fait dans une colonne centrée qui pose une question — « Quelle
+  cible ? » — au lieu d'une petite carte dans l'angle. Le bouton « Rattacher cet appareil » était
+  écrit **plus petit que chacune des touches** du pavé juste au-dessus ; il est désormais le plus
+  gros élément de l'écran. Et une fois rattachée, la tablette affiche **son numéro de cible en très
+  gros** : c'est le seul moyen de repérer une tablette posée devant la mauvaise cible avant que
+  quelqu'un ait tiré.
+- **Choisir le marqueur** ne se fait plus devant une liste nue de quatre noms : une phrase dit ce
+  que vous engagez — son nom accompagne chaque volée, c'est la première marque que le scoreur vient
+  contresigner, et les volées déjà saisies gardent le nom de qui les a entrées.
+
+## Ce que la comparaison a révélé, au-delà des écrans
+
+Deux constats méritent votre attention, parce qu'ils ne se corrigent pas en programmant.
+
+- **Trois écrans n'ont plus de base de comparaison.** Les questionnaires ont été remplis le 4 août
+  sur des **vignettes**, et les planches ont été **redessinées le lendemain** en écrans pleins. Sur
+  sept planches de saisie sur neuf, les propositions que vous avez jugées ne sont plus celles qui
+  sont dessinées — et sur l'écran de rattachement, les lettres sont même **inversées**. Pour
+  `S04 · marqueur`, `S05 · saisie de duel` et `S08 · validation de cible`, il n'y a donc **plus
+  d'étalon** : s'y aligner reviendrait à deviner ce que vous vouliez. Ces trois-là n'ont pas été
+  touchés. Le questionnaire du **tour 2** est saisissable en ligne et referme le point.
+- **`S07 · la file du scoreur` n'existe pas.** Pas « pas conforme » : **pas construit du tout**, ni à
+  l'écran ni côté serveur. Un tri antérieur l'avait rangé parmi les écrans « validés, rien à faire »
+  — son verdict était pourtant « validé tel quel, **on peut coder ça** », ce qui est un feu vert, pas
+  un constat. Votre critique de `S05` (« trop tassé », « sur deux hauteurs plutôt que deux colonnes »)
+  est dans le même cas : elle n'est portée par aucune tâche. Les deux sont maintenant écrites.
+
+## Ce qui reste à faire sur cet axe
+
+Sur la planche, la ligne de chaque archer porte **les trois flèches de la volée en cours**, et on
+tape directement dessus. C'est ce que vous aviez demandé : *« l'appel du pavé doit se faire à la
+sélection de la zone de saisie »*. Aujourd'hui, on touche **le nom de l'archer**.
+
+Ce changement a été **écarté volontairement** de cette livraison : il touche un mécanisme qui a déjà
+causé une perte de saisie en août — vérifier ses volées effaçait les flèches qu'on venait de taper —
+et il mérite d'être repris avec ce risque en tête plutôt qu'en fin de parcours. C'est aussi lui qui
+rendra à la grille **toute** la largeur de la tablette : tant que le pavé porte seul la saisie, il
+lui faut une colonne prise sur la grille.

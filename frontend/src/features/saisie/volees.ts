@@ -9,6 +9,10 @@ import type { Grain, SaisirVolee, Serie, Volee } from './api'
 // Points d'une valeur de zone. `M` (manqué) = 0 ; les autres sont numériques (« 10 » → 10). Pas de
 // « X » dans le vocabulaire FFTA retenu (cf. `domain/blason.ZoneScore`). Une valeur inattendue → 0
 // (défensif : le pavé ne propose que des zones légales, mais on ne fait pas confiance à l'affichage).
+//
+// ⚠️ `DETTE-111` — **jumeau de `_points_zone`** (`backend/domain/serie.py`). Il ne peut pas être
+// remplacé par une valeur servie : le hors-ligne exige de valoriser ce que le serveur ignore encore.
+// Remède prévu en `E17US011` : consulter un `points_par_zone` servi par le barème.
 export function pointsZone(valeur: string): number {
   if (valeur === 'M') return 0
   const points = Number.parseInt(valeur, 10)
@@ -19,6 +23,17 @@ export function pointsZone(valeur: string): number {
 // la série vient du serveur (volées validées uniquement) ; ceci n'est qu'un retour visuel immédiat.
 export function totalVolee(valeurs: readonly string[]): number {
   return valeurs.reduce((somme, valeur) => somme + pointsZone(valeur), 0)
+}
+
+// Cumul **saisi** de la série : toutes les volées entrées, validées ou non.
+//
+// ⚠️ Ce n'est **pas** `Serie.cumul`, et l'écart est voulu des deux côtés. Le serveur ne somme que
+// les volées **validées** — c'est le score officiel, celui que le départage du classement compte
+// (`domain/serie.py`). Mais avec le grain « validation à la fin de la série », ce total vaut **0
+// pendant toute la série** : le rappel demandé en S02 (« en permanence, c'est un bon rappel sur la
+// cible ») affichait zéro exactement quand il servait. Relevé de l'axe saisie, `epics/EPIC-17`.
+export function cumulSaisi(volees: readonly Volee[]): number {
+  return volees.reduce((somme, volee) => somme + totalVolee(volee.valeurs), 0)
 }
 
 // La prochaine volée à saisir : la **plus petite** (1..nbVolees) pas encore **saisie**. Une volée

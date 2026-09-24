@@ -116,3 +116,26 @@ describe('Saisie — un refus de préséance est expliqué', () => {
     expect(alerte).not.toHaveTextContent(/signalez/)
   })
 })
+
+describe('Saisie — le panneau du marqueur dit ce qu’on engage', () => {
+  // CA d'E17US008, planche S04 : la liste nue de quatre noms ne disait pas à quoi sert ce choix, et
+  // le verdict de la planche tranche — « sans elle, le geste paraît administratif ». Le test monte
+  // l'écran et **ouvre** le panneau : la phrase vit dans une branche conditionnelle, un test du seul
+  // libellé replié resterait vert si elle disparaissait.
+  it('la phrase de justification est rendue avec la liste des archers', async () => {
+    monter()
+
+    const declencheur = await screen.findByRole('button', { name: /Marqueur/ })
+    await userEvent.click(declencheur)
+
+    expect(screen.getByText(/l’archer qui tient la tablette/)).toBeInTheDocument()
+    expect(screen.getByText(/le scoreur vient contresigner/)).toBeInTheDocument()
+    // La moitié qui vient de la variante « changer en cours de série » : ce qui est déjà saisi ne
+    // change pas d'auteur. C'est elle qui lève la crainte de réécrire le passé.
+    expect(screen.getByText(/gardent le nom de qui les a entrées/)).toBeInTheDocument()
+
+    // La liste reste une liste, et elle porte bien l'archer de la grille.
+    const choix = screen.getByRole('listbox', { name: 'Choisir le marqueur' })
+    expect(within(choix).getByRole('button', { name: /DURAND/ })).toBeInTheDocument()
+  })
+})

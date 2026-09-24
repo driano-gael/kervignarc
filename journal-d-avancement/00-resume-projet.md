@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 4 septembre 2026
+# Résumé du projet — où on en est au 24 septembre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -218,6 +218,17 @@ page a mesuré, côté écrans, que **19 des 44 morceaux** sont pris dans un mê
 croisées — plus aucun ne peut être lu ni testé seul. Rien n'est corrigé : **quatre chantiers** ont
 été écrits et rangés en attente d'arbitrage. Détail dans
 [`2026-08-16-18h02-la-carte-du-code.md`](2026-08-16-18h02-la-carte-du-code.md).
+
+Le **24/09/2026**, les **neuf écrans de l'appli de saisie** ont été confrontés aux planches validées,
+comme l'administration l'avait été — et cinq d'entre eux corrigés. La tablette **prend enfin la
+largeur qu'elle a** : tout l'écran de saisie tenait dans une colonne étroite au milieu d'un écran de
+1280 px, si bien que le pavé de saisie s'ouvrait **hors de l'écran** et qu'il fallait faire défiler à
+chaque archer — pour un geste répété environ 4 300 fois par départ. Le **cumul de l'archer**, qui
+affichait 0 pendant toute la série parce qu'il ne comptait que les volées déjà contresignées par le
+scoreur, compte désormais ce qui est **saisi**. Et le **hors-ligne** n'est plus une pastille en haut
+à droite mais un **bandeau ambre plein sur toute la largeur**, qui dit la seule chose utile : *la
+saisie continue*. Détail dans
+[`2026-09-24-20h02-la-tablette-prend-sa-largeur.md`](2026-09-24-20h02-la-tablette-prend-sa-largeur.md).
 
 ---
 
@@ -600,11 +611,18 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **146 US livrées** (mergées, revues, CI verte) à la date du 23/09/2026 — la dernière à
-  **surface visible** étant `E06US009` — dont **deux
+- **147 US livrées** (mergées, revues, CI verte) à la date du 24/09/2026 — la dernière, `E17US008`,
+  étant aussi la dernière à **surface visible** — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, la dernière **livraison** étant `E17US010`, un travail d'**outillage
+  autorité sur le compte —, `E17US008` ayant **confronté les neuf planches de saisie au produit** et
+  corrigé cinq écrans : la tablette prend sa largeur, le pavé de saisie cesse de s'ouvrir hors de
+  l'écran, le cumul de l'archer ne reste plus à zéro toute la série, et le hors-ligne se voit du coin
+  de l'œil. ⚠️ **Trois planches restent sans base de comparaison** (`S04`, `S05`, `S08`) : les
+  questionnaires de 2026 portaient sur des dessins refaits le lendemain. Et `S07 · file du scoreur`
+  n'a **aucun écran** — ce n'est pas un écart de ressemblance, c'est une fonctionnalité non livrée,
+  qu'un tri antérieur avait classée « rien à faire ».
+  Avant elle, `E17US010`, un travail d'**outillage
   sans surface utilisateur** : le dossier de maquettes ne peut plus décrire en silence une
   application qui n'existe plus — la CI rougit désormais sur tout écran en trop, manquant, rangé
   au mauvais endroit ou listé deux fois. Cinq US d'écart s'étaient accumulées sans que rien ne le

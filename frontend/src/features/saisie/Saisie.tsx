@@ -31,6 +31,7 @@ import {
   prochaineASaisir,
   voleeApresEnregistrement,
   quelSaisiePar,
+  cumulSaisi,
   totalVolee,
   voleeExistante,
 } from './volees'
@@ -134,7 +135,9 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   return (
     <div className="saisie">
-      <div className="saisie__entete">
+      {/* Tant que la grille n'est pas ouverte, cet en-tête **est** l'écran « Rattaché » de S01 : le
+          numéro y passe en 48 px, pour se vérifier depuis la ligne de tir. */}
+      <div className={`saisie__entete${lignes.length > 0 ? '' : ' saisie__entete--confirmation'}`}>
         <strong>Cible {cibleIndex}</strong>
         {lignes.length > 0 && (
           <SelecteurMarqueur lignes={lignes} marqueur={marqueurActif} onChoisir={setMarqueur} />
@@ -167,7 +170,11 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
       )}
 
       {grille.isSuccess && lignes.length > 0 && (
-        <>
+        // ⚠️ Cette enveloppe n'est pas cosmétique : elle met la grille et le pavé **côte à côte**
+        // dès que la largeur le permet. Empilés, le pavé s'ouvrait à 742 px du haut sur une fenêtre
+        // de 641 — invisible sans défiler, pour le geste que S03 dit « répété ~4 300 fois par
+        // départ ». Le pavé reste **appelé** (variante retenue de S02), il n'est pas permanent.
+        <div className="saisie__travail">
           <ul className="saisie__grille">
             {lignes.map((ligne) => (
               <LigneArcher
@@ -211,7 +218,7 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
               Touchez un archer pour ouvrir le pavé de saisie.
             </p>
           )}
-        </>
+        </div>
       )}
 
       <p className="saisie__grain">{libelleGrain(grain.data ?? null)}</p>
@@ -242,23 +249,32 @@ function SelecteurMarqueur({
         Marqueur : <strong>{marqueur ?? '—'}</strong> ▾
       </button>
       {ouvert && (
-        <ul className="saisie__marqueur-choix" role="listbox" aria-label="Choisir le marqueur">
-          {lignes.map((ligne) => (
-            <li key={ligne.archer_id}>
-              <button
-                type="button"
-                className="lien"
-                aria-selected={ligne.nom === marqueur}
-                onClick={() => {
-                  onChoisir(ligne.nom)
-                  setOuvert(false)
-                }}
-              >
-                {ligne.nom} {ligne.prenom}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="saisie__marqueur-panneau">
+          {/* S04 : la planche porte cette phrase et son verdict dit pourquoi — « sans elle, le geste
+              paraît administratif ». Une liste nue de quatre noms ne dit pas ce qu'on engage. */}
+          <p className="saisie__marqueur-pourquoi">
+            Le marqueur est l’archer qui tient la tablette. Son nom accompagne chaque volée saisie :
+            c’est la première marque, celle que le scoreur vient contresigner. Les volées déjà
+            saisies gardent le nom de qui les a entrées.
+          </p>
+          <ul className="saisie__marqueur-choix" role="listbox" aria-label="Choisir le marqueur">
+            {lignes.map((ligne) => (
+              <li key={ligne.archer_id}>
+                <button
+                  type="button"
+                  className="lien"
+                  aria-selected={ligne.nom === marqueur}
+                  onClick={() => {
+                    onChoisir(ligne.nom)
+                    setOuvert(false)
+                  }}
+                >
+                  {ligne.nom} {ligne.prenom}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )
@@ -326,7 +342,7 @@ function LigneArcher({
   const serie = useSerie(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
   const nbSaisies = volees.length
-  const cumul = serie.data?.cumul ?? 0
+  const cumul = cumulSaisi(volees)
 
   return (
     <li>
@@ -346,8 +362,8 @@ function LigneArcher({
           {nbSaisies}/{nbVolees ?? '?'} volées
         </span>
         {/* Le cumul de série, **en permanence** (S02, question 3 : *« en permanence, c'est un bon
-            rappel sur la cible »*). Il l'était déjà ; il le reste maintenant que le pavé ne masque
-            plus la grille. */}
+            rappel sur la cible »*). ⚠️ Le cumul **saisi**, pas celui du serveur : voir `cumulSaisi`
+            — l'officiel ne compte que les volées validées et restait à 0 toute la série. */}
         <span className="saisie__cumul">{cumul}</span>
       </button>
 
@@ -498,7 +514,7 @@ function PaveArcher({
         </span>
         {/* Le cumul de série **suit le pavé** (S02) : quand la grille est repoussée hors de l'écran
             sur un téléphone, c'est ici qu'on relit « où j'en suis ». */}
-        <span className="saisie__cumul-serie">Cumul {serie.data?.cumul ?? 0}</span>
+        <span className="saisie__cumul-serie">Cumul {cumulSaisi(serie.data?.volees ?? [])}</span>
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts
         </span>

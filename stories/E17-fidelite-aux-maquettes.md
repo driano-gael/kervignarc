@@ -249,10 +249,64 @@
   ne peut donc pas en dériver de test au moment de brancher. Même plafond qu'`E17US007` — **six
   écrans dans une branche**, et ici il y en a neuf : le redécoupage est la règle, pas l'exception.
   `S09 · états système` est la planche à lire en premier — elle fixe le vocabulaire
-  visuel des états que les huit autres réemploient. **Recoupe `E16US011`**, dont l'une des deux
-  contradictions à arbitrer porte sur `S08` (validation de cible) **contre un endpoint vivant** :
-  l'attendre plutôt que de trancher ici.
+  visuel des états que les huit autres réemploient.
+- **Notes (livraison, 24/09/2026)** — le relevé des 9 planches est dans
+  [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) ; **cinq écrans résorbés** (`S01`, `S02`,
+  `S03`, `S04`, `S09`), sous le plafond. Quatre arbitrages tranchés en cours d'US, reversés ici :
+  - ✅ ~~**Recoupe `E16US011`** … l'attendre plutôt que de trancher ici~~ — **note périmée, levée.**
+    `E16US011` a été **close par découpage** le 10/09/2026 : `S08` est parti en `E16US019` (✅
+    11/09) et `S09` en `E16US020` (✅ 12/09, [ADR-0107](../docs/adr/0107-une-ecriture-concurrente-est-arbitree-par-le-role-de-qui-ecrit.md)).
+    Il n'y avait donc plus rien à attendre, et la contradiction annoncée « contre un endpoint
+    vivant » avait elle-même été **requalifiée** (elle était à moitié fausse). ⚠️ Une note de
+    blocage qui survit à la levée de son blocage coûte une US : celle-ci a failli reporter l'axe.
+  - ⚠️ **Le CA « questionnaire → variante retenue » n'est pas applicable tel quel sur cet axe** — tranché en [ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md). Les
+    questionnaires ont été remplis le 04/08 sur les **vignettes**, les planches redessinées le 05/08
+    en écrans pleins : **7 planches sur 9** ne proposent plus les variantes qui ont été jugées, et
+    sur `S01` les lettres sont **inversées**. La variante retenue se lit donc **par l'intention**,
+    jamais par la lettre — tableau de correspondance dans le relevé. **Ne pas citer une lettre de
+    questionnaire dans le code** : `EspacePoste.tsx` en portait une (« variante B »), corrigée.
+  - **`S04`, `S05` et `S08` n'ont plus d'étalon** et sont **exclues de toute résorption de
+    fidélité** — s'y aligner serait deviner. Le geste qui referme cela est **du temps du
+    commanditaire** : remplir le tour 2 des questionnaires `S**` sur les écrans pleins. Porté au
+    tracker, pas ici.
+  - **`S07 · file scoreur` n'a aucun écran ni endpoint.** Ce n'est pas un écart de fidélité mais une
+    **US non livrée** (comme A05 sur l'axe admin). ⚠️ Le tri d'`E16US011` le rangeait parmi les
+    « validés, rien à faire » : son verdict « ✅ validé tel quel — **on peut coder ça** » est un feu
+    vert, pas un constat de livraison. **Reste sans destinataire**, comme la critique de `S05`.
 - **Dépend de** : E17US002 · **Jalon** : J3
+
+### E17US011 — La ligne d'archer porte la volée en cours
+*En tant que* marqueur, *je veux* saisir en touchant la flèche que je remplis, *afin de* ne pas chercher où taper entre deux volées.
+
+- **Contexte** : sorti du relevé de l'axe saisie (`E17US008`, 24/09/2026), **seul écart 🔴 laissé
+  ouvert**. La planche `S02` fait de la ligne d'archer la **zone de saisie** — `pos | nom | fl fl fl
+  | somme`, la case en cours marquée. Le produit en fait un **bouton d'ouverture** : la ligne ne
+  porte qu'avancement, cumul et relecture des volées closes.
+- **CA** :
+  - la ligne d'archer affiche les **trois flèches de la volée en cours**, dont celle en train d'être
+    saisie, et la **somme** de cette volée — la structure de la planche ;
+  - **toucher une case de flèche** ouvre le pavé sur cette flèche : c'est la réserve écrite deux
+    fois au questionnaire `S02` (*« l'appel du pavé doit se faire à la sélection de la zone de
+    saisie »*), dont `E17US008` n'a tenu que la moitié (le pavé est appelé, mais par l'archer) ;
+  - le pavé, n'ayant plus à porter seul la volée, **rend sa colonne** : la grille reprend la largeur
+    de la tablette (S02 : « les lignes d'archer font toute la largeur ») et les touches peuvent
+    atteindre les **90 px** de S03. Les deux écarts 🟠 laissés par `E17US008` se ferment ici.
+- **CA — `DETTE-111` est résorbée au passage** *(arbitrage du commanditaire, 24/09/2026)* : la
+  conversion « zone de blason → points » est écrite **deux fois**, en Python (`_points_zone`, privé)
+  et en TypeScript (`pointsZone`). Le barème gagne un **`points_par_zone`** ; `_points_zone` devient
+  public et domicile unique ; `pointsZone` devient une **lecture de table**. ⚠️ **Ne pas appliquer le
+  remède de `DETTE-020`** (servir la valeur par le DTO et retirer le calcul du front) : le poste doit
+  valoriser des volées **hors ligne** que le serveur n'a jamais reçues — `serieOptimiste` conserve le
+  `cumul` serveur, qui les ignore. On sert la **règle**, pas le **résultat**. Cette US est le bon
+  porteur parce qu'elle rouvre déjà `volees.ts`, la ligne d'archer et le pavé, avec leurs tests.
+- **Notes** : ⚠️ **L'invariant à tenir est écrit dans `Saisie.tsx`, et il a déjà coûté une revue.**
+  La bande de relecture est **hors** du bouton de ligne *délibérément* : placée dedans, elle
+  **démontait `PaveArcher` avec son tampon de frappe** — vérifier ses volées effaçait les flèches
+  qu'on venait de taper, sans un mot (revue du 05/08/2026, axes C1 et adversarial). Ajouter des
+  cases tapables dans la ligne rejoue exactement cette classe de défauts : le test se dérive **de
+  là** avant d'écrire une ligne. Les brouillons vivent dans `Saisie`, pas dans le pavé, ce qui est
+  précisément le correctif qui a supprimé la classe — s'appuyer dessus, ne pas le défaire.
+- **Dépend de** : E17US008 · **Jalon** : J3
 
 ### E17US009 — Confronter les écrans publics et l'écran de salle à leurs planches
 *En tant que* spectateur, *je veux* que les écrans publics ressemblent à ce qui a été montré au club, *afin de* retrouver l'information là où on me l'a annoncée.

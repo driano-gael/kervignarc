@@ -39,9 +39,15 @@
 }
 
 /* Écran de cible — tablette **ou téléphone** (A00 : *« les tablettes de cible doivent pouvoir
-   s'adapter à un téléphone »*). La grille de saisie veut de la largeur quand elle en a. */
+   s'adapter à un téléphone »*). La grille de saisie veut de la largeur quand elle en a.
+   ⚠️ Les **trois** jetons, pas seulement le premier : cette surface n'élargissait que la colonne du
+   shell, et ses cartes restaient au défaut prudent — la grille était plafonnée à 640 px dans une
+   coquille de 1152. C'est la variante retenue de S02 qui fixe la cible (« à 1280 × 800, les lignes
+   d'archer font toute la largeur »), cf. le relevé de l'axe saisie dans `epics/EPIC-17`. */
 .app[data-monde='tablette'] {
   --largeur-app: 72rem;
+  --largeur-carte: 30rem;
+  --largeur-carte-l: 72rem;
 }
 
 /* Écran de salle — **plein cadre, sans coquille**. Un vidéoprojecteur n'a ni marge ni en-tête d'appli
@@ -156,6 +162,26 @@
 
 .indicateur--synchronisation .indicateur__pastille {
   animation: indicateur-pulse 1s ease-in-out infinite;
+}
+
+/* Bandeau hors ligne — planche S09, variante retenue : **aplat plein, toute la largeur**, et non
+   une bordure. Il double volontairement la pastille de l'en-tête : celle-ci ne se voit pas quand on
+   regarde une cible à 3 m. Couleurs prises aux jetons d'alerte (`DV-03` : ambre, jamais rouge) ;
+   `--sur-danger` est la seule teinte de texte contrastée sur cet aplat, dans les deux thèmes. */
+.bandeau-hors-ligne {
+  margin: 0;
+  padding: 10px var(--respiration);
+  text-align: center;
+  font-size: 15px;
+  background: var(--danger);
+  color: var(--sur-danger);
+}
+
+/* Escalade : le second ambre de la charte. L'encre est **redite** — un aplat qui change de fond sans
+   redire son encre est exactement le défaut que `charte.test.ts` refuse. */
+.bandeau-hors-ligne--deconnecte {
+  background: var(--danger-strong);
+  color: var(--sur-danger);
 }
 
 @keyframes indicateur-pulse {
@@ -738,6 +764,43 @@
 .carte--connexion {
   max-width: none;
   padding: 0;
+}
+
+/* Rattachement d'un poste (S01) — **colonne centrée**, comme `.connexion` pour A01 : même geste (un
+   écran, un champ, un bouton), donc même forme. 32rem ≈ les 520 px de la planche. La carte perdait
+   son sens dans l'angle d'une tablette de 1280 px. */
+.rattachement {
+  max-width: 32rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* ⚠️ Doublé de `.carte__titre` volontairement : à spécificité égale, c'est l'ordre du fichier qui
+   tranche, et `.carte__titre` est déclaré plus bas. Sans ce doublage la règle ne s'applique pas. */
+.carte__titre.rattachement__titre {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+/* Luminosité du poste (D-26). ⚠️ La classe existait dans le JSX **sans aucune règle** : les trois
+   options se rendaient collées au libellé — « LuminositéSystèmeClairSombre ». Vu à l'écran, pas au
+   test : rien ne vérifie qu'une classe posée dans un `className` existe en CSS. */
+.bascule-theme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* L'action principale d'un écran de rattachement : la planche la veut `geant`. Elle sortait à 13 px,
+   soit **plus petit que chaque touche du pavé de code** juste au-dessus — l'œil ne la trouvait pas.
+   ⚠️ Classe générique volontairement : le même défaut guette tout écran « un champ, un bouton ». */
+.bouton--geant {
+  min-height: 56px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 /* Bandeau de titre d'une carte — la `.tete-carte` des planches : petites capitales espacées, séparées
@@ -2541,6 +2604,52 @@ button:disabled {
   gap: 12px;
 }
 
+/* Grille + pavé. Empilés par défaut — c'est le cas du **téléphone**, que S02 couvre aussi. */
+.saisie__travail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Dès qu'il y a la largeur d'une tablette, les deux colonnes : le pavé cesse d'être poussé sous la
+   ligne de flottaison par une grille de quatre couloirs. `sticky` parce qu'une grille longue
+   l'emporterait hors de l'écran au défilement. */
+@media (min-width: 60rem) {
+  .saisie__travail {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .saisie__travail > .saisie__grille {
+    flex: 1 1 32rem;
+  }
+
+  /* Le pavé, mais aussi l'invite et le message d'erreur qui prennent sa place : sans quoi la
+     colonne de droite s'effondre et la grille saute en largeur quand le pavé s'ouvre. */
+  .saisie__travail > :not(.saisie__grille) {
+    position: sticky;
+    top: 12px;
+    flex: 1 1 24rem;
+  }
+}
+
+/* Le numéro de cible, taille de la grille (S02) : 22 px. Il sortait en 16 px, celle du texte
+   courant. */
+.saisie__entete > strong {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* ⚠️ **48 px avant que la grille s'ouvre** — et seulement là. C'est l'état « Rattaché » de S01, et
+   la planche dit pourquoi : « le seul moyen de repérer une tablette posée devant la mauvaise cible
+   **avant que quiconque tire** ». Consigne de sécurité, pas hiérarchie typographique. Le mettre
+   aussi sur la grille coûterait de la hauteur sur l'écran même où le pavé se bat pour rester
+   au-dessus de la ligne de flottaison. */
+.saisie__entete--confirmation > strong {
+  font-size: 48px;
+}
+
 .saisie__entete {
   display: flex;
   align-items: baseline;
@@ -2558,16 +2667,32 @@ button:disabled {
   font-size: 14px;
 }
 
+/* Le panneau du marqueur porte maintenant deux choses : pourquoi on demande, puis qui. La liste
+   garde sa boîte, le panneau l'enveloppe — sans quoi la phrase flotterait au-dessus, hors cadre. */
+.saisie__marqueur-panneau {
+  margin-top: 4px;
+  padding: 10px;
+  max-width: 24rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-1);
+}
+
+.saisie__marqueur-pourquoi {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
 .saisie__marqueur-choix {
-  margin: 4px 0 0;
-  padding: 4px;
+  margin: 0;
+  padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-1);
 }
 
 /* État d'attente légitime (pas d'erreur) : ambre, discret. */

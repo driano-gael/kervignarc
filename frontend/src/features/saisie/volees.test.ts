@@ -8,6 +8,7 @@ import {
   prochaineASaisir,
   quelSaisiePar,
   serieOptimiste,
+  cumulSaisi,
   totalVolee,
   voleeApresEnregistrement,
   voleeExistante,
@@ -26,6 +27,24 @@ function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
     saisie_le: null,
   }
 }
+
+describe('cumulSaisi', () => {
+  it('somme toutes les volées saisies, validées ou non', () => {
+    // Le cas qui motive la fonction : avec le grain « à la fin de la série », **aucune** volée n'est
+    // validée avant le passage du scoreur. `Serie.cumul` vaut alors 0 tout au long de la série, et
+    // le rappel demandé en S02 (« en permanence, c'est un bon rappel sur la cible ») affichait zéro.
+    expect(cumulSaisi([volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])])).toBe(54)
+  })
+
+  it('compte de la même façon une volée verrouillée par le scoreur', () => {
+    expect(cumulSaisi([volee(1, ['10', '9', '8'], true), volee(2, ['9', '9', '9'])])).toBe(54)
+  })
+
+  it('vaut 0 sans volée, et compte le M pour 0', () => {
+    expect(cumulSaisi([])).toBe(0)
+    expect(cumulSaisi([volee(1, ['M', 'M', '10'])])).toBe(10)
+  })
+})
 
 describe('pointsZone', () => {
   it('« M » (manqué) vaut 0 point', () => {
