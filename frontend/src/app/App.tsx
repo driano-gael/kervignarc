@@ -119,14 +119,12 @@ export function App() {
           <IndicateurConnexion />
         </div>
       </header>
-      {/* Sous l'en-tête et hors de lui : le bandeau de S09 prend **toute la largeur**, ce qu'une
-          place dans la barre d'actions lui interdirait.
-          ⚠️ **Tablette seulement, et c'est une question de vérité, pas de périmètre.** Le bandeau
-          promet que « la saisie continue » : cette garantie n'existe que là où une file hors-ligne
-          absorbe l'écriture, et `mettreEnFile` n'a qu'un appelant — `features/saisie/hooks.ts`. Sur
-          le PC d'organisation, une écriture pendant la coupure **échoue** ; lui promettre l'inverse
-          est pire que se taire. ⚠️ Le scoreur est exclu **aussi** : ses duels ont leur propre file
-          (`fileDuelsHorsLigneStore`) qu'`etatIndicateur` ne lit pas — `DETTE-112`. */}
+      {/* Le bandeau de S09, hors de l'en-tête pour prendre **toute la largeur**.
+          ⚠️ **Tablette seulement, et c'est une question de vérité.** Admin et public n'ont **aucune
+          file** : leur promettre que « la saisie continue » serait un mensonge, l'écriture échoue.
+          Le scoreur est exclu pour une **autre** raison — sa file existe, mais `etatIndicateur` ne
+          la compte pas, et son écran de duels a déjà son indicateur d'attente (`DETTE-112`, qui
+          demande de **rouvrir ici** à la résorption). */}
       {surface === 'tablette' && <BandeauHorsLigne />}
       <main className="app__contenu">
         {role === 'tablette' ? (

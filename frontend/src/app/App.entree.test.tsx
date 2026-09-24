@@ -8,6 +8,8 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useConnexionStore } from '../shared/stores/connexionStore'
+import { useFileHorsLigneStore } from '../shared/stores/fileHorsLigneStore'
 import { App } from './App'
 
 let estPoste = false
@@ -23,8 +25,9 @@ vi.mock('../shared/stores/sessionRoleStore', () => ({
   useSessionRoleStore: (selecteur: (etat: unknown) => unknown) =>
     selecteur({ role: null, choisir: vi.fn() }),
 }))
+let jetonAdmin: string | null = null
 vi.mock('../shared/stores/sessionAdminStore', () => ({
-  useSessionAdminStore: (selecteur: (etat: unknown) => unknown) => selecteur({ jeton: null }),
+  useSessionAdminStore: (selecteur: (etat: unknown) => unknown) => selecteur({ jeton: jetonAdmin }),
 }))
 vi.mock('../shared/stores/sessionScoreurStore', () => ({
   useSessionScoreurStore: (selecteur: (etat: unknown) => unknown) =>
@@ -136,5 +139,45 @@ describe('App — arrivée par le QR d’un scoreur', () => {
     expect(await screen.findByText('scoreur : null')).toBeInTheDocument()
     expect(codesRecus).toContain('AB12CD')
     expect(window.location.hash).toBe('')
+  })
+})
+
+describe('App — le bandeau hors ligne ne se monte que là où la garantie existe', () => {
+  // ⚠️ **Ce test épingle un BLOQUANT de revue**, et c'est le seul qui le fasse. Les tests de
+  // `BandeauHorsLigne` montent le composant **seul** : ils prouvent ce qu'il dit quand il s'affiche,
+  // jamais **où il a le droit de s'afficher** — or c'est cette moitié-là qui portait le mensonge.
+  // Un retour à `surface !== 'salle'` laisserait la porte verte à 14/14 sans ce cas.
+  //
+  // La raison, et non le comportement observé : le bandeau promet « la saisie continue », ce qui
+  // n'est vrai que là où une file hors-ligne absorbe l'écriture. Sur le PC d'organisation, une
+  // mutation pendant la coupure **échoue**.
+  beforeEach(() => {
+    estPoste = false
+    jetonAdmin = null
+    entrerModePoste.mockClear()
+    placerUrl('/')
+    useConnexionStore.setState({ statut: 'deconnecte' })
+    useFileHorsLigneStore.setState({ enAttente: [], synchronisation: false })
+  })
+
+  it('sur la tablette de cible : le bandeau est là', async () => {
+    estPoste = true
+    render(<App />)
+
+    expect(await screen.findByText(/la saisie continue/)).toBeInTheDocument()
+  })
+
+  it('sur le PC d’organisation : aucun bandeau', async () => {
+    jetonAdmin = 'jeton-admin'
+    render(<App />)
+
+    await screen.findByText('admin')
+    expect(screen.queryByText(/la saisie continue/)).not.toBeInTheDocument()
+  })
+
+  it('sur l’écran de choix : aucun bandeau non plus', async () => {
+    render(<App />)
+
+    expect(screen.queryByText(/la saisie continue/)).not.toBeInTheDocument()
   })
 })

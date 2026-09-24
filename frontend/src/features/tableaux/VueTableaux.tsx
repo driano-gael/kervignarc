@@ -190,7 +190,7 @@ function nomDeLOrdre(tableaux: TableauPublic[], ordre: number): string {
   return cible ? ` (${nommerType(cible.type)})` : ''
 }
 
-/** Variante A : l'arbre réduit à la trajectoire de chaque archer suivi. */
+/** Variante « par tour » : l'arbre réduit à la trajectoire de chaque archer suivi. */
 function MonChemin({ tableau, suivis }: { tableau: TableauPublic; suivis: number[] }) {
   if (suivis.length === 0) {
     // Défense en profondeur : l'interrupteur d'en-tête ne rend « suivis » qu'avec au moins un
@@ -287,7 +287,8 @@ function CheminArcher({ tableau, archerId }: { tableau: TableauPublic; archerId:
   )
 }
 
-/** Variante B : l'arbre complet, en **liste par tour** (concession mobile assumée, maquette P05).
+/** Variante « **groupé par branche** » de la planche `P05` : l'arbre complet, rendu en **liste par
+ * tour** — concession mobile assumée.
  *
  * ⚠️ `# DETTE-072` — `LigneDuel` ci-dessous rend la même ligne que
  * `shared/duels/LigneRencontre.tsx`, que les trois formats sans arbre partagent depuis E05US031.

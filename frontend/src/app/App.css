@@ -180,6 +180,14 @@
   color: var(--sur-danger);
 }
 
+/* L'état ordinaire du bandeau : rejeu en cours. ⚠️ Déclaré **explicitement** bien qu'identique au
+   défaut — le modificateur était émis par le composant sans règle, donc le rendu tombait sur l'ambre
+   de base par accident, pas par intention (`DETTE-113`, 3ᵉ occurrence). */
+.bandeau-hors-ligne--synchronisation {
+  background: var(--danger);
+  color: var(--sur-danger);
+}
+
 /* Escalade : le second ambre de la charte. L'encre est **redite** — un aplat qui change de fond sans
    redire son encre est exactement le défaut que `charte.test.ts` refuse. */
 .bandeau-hors-ligne--deconnecte {
@@ -778,16 +786,13 @@
   text-align: center;
 }
 
-/* ⚠️ Doublé de `.carte__titre` volontairement : à spécificité égale, c'est l'ordre du fichier qui
-   tranche, et `.carte__titre` est déclaré plus bas. Sans ce doublage la règle ne s'applique pas. */
-/* ⚠️ **`text-align: center` ne centre pas un bloc.** `.formulaire--colonne` porte `max-width: 320px`
-   sans marge auto : le pavé de code et le bouton se calaient à **gauche** de la colonne, pendant que
-   le titre et les phrases étaient centrés. Levé ici plutôt qu'en touchant la classe partagée, qui
-   sert des formulaires étroits ailleurs. `align-items: stretch` rend alors le bouton pleine largeur,
-   comme `.connexion__envoi` pour A01 — et le pavé de code y gagne ses colonnes. */
+/* ⚠️ **`text-align: center` ne centre pas un bloc.** `.formulaire--colonne` plafonne à 320 px : le
+   pavé de code et le bouton se calaient à **gauche** de la colonne, pendant que le titre et les
+   phrases étaient centrés. Levé ici plutôt qu'en touchant la classe partagée, qui sert des
+   formulaires étroits ailleurs. Le moteur du remplissage est `max-width: none` + le
+   `align-items: stretch` de `.formulaire--colonne` — pas une marge auto, inerte à pleine largeur. */
 .rattachement .formulaire--colonne {
   max-width: none;
-  margin-inline: auto;
 }
 
 /* ⚠️ Doublé de `.carte__titre` volontairement : à spécificité égale, c'est l'ordre du fichier qui
@@ -2701,7 +2706,13 @@ button:disabled {
   z-index: 2;
   margin-top: 4px;
   padding: 10px;
-  max-width: 24rem;
+  /* ⚠️ **`width` explicite, sinon le panneau s'effondre.** Hors du flux avec `left:auto; right:0`, la
+     largeur est un *shrink-to-fit* borné par le bloc conteneur — ici `.saisie__marqueur`, large du
+     seul bouton « Marqueur : … ▾ » (~160 px) : `max-width` devient un plafond inatteignable. Le
+     `min()` borne l'autre côté — 24 rem ancrés à droite sortent de l'écran par la gauche sur un
+     téléphone, sans défilement possible. */
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 2 * var(--respiration)));
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-1);
@@ -3612,8 +3623,14 @@ button:disabled {
    `.app__contenu--colonnes` (flex `flex-wrap: wrap`) empile déjà ses colonnes ; on relâche seulement
    les largeurs max des cartes qui les bornaient sur desktop. */
 @media (max-width: 600px) {
+  /* ⚠️ **Le jeton, pas le `padding`.** `.app__entete` et `.bandeau-hors-ligne` vont bord à bord par
+     une marge négative égale à `--respiration` : resserrer le seul `padding` les faisait déborder de
+     8 px de chaque côté, donc défiler horizontalement — sur l'écran de saisie, pendant une coupure.
+     Régler le jeton resserre aussi les `gap` et le rembourrage des cartes, ce qui est sa définition. */
   .app {
-    padding: 16px;
+    --respiration: 16px;
+
+    padding: var(--respiration);
   }
 
   .carte,

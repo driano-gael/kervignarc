@@ -23,7 +23,7 @@ planches ont été **redessinées le 05/08/2026** en écrans pleins — c'est ce
 juger une mise en page plutôt qu'un composant, et c'était nécessaire. Mais les **variantes ont
 changé de nombre, de contenu et de lettre**, sans que les questionnaires bougent.
 
-Mesuré sur l'axe saisie : **6 planches sur 9**, celles dont la variante retenue ne se lit plus par sa lettre. `S02`, `S07` et `S09` concordent — le compte se refait depuis la table du relevé.
+Mesuré sur l'axe saisie : **4 planches sur 9** dont la **variante retenue** ne se lit plus par sa lettre — `S01`, `S04`, `S06`, `S08` — auxquelles s'ajoute `S05`, dont le refus n'a plus de cible : **5 sur 9** où la lettre du questionnaire ne désigne plus rien d'utilisable. `S02`, `S03`, `S07` et `S09` concordent **sur leur variante retenue**, même quand d'autres lettres ont glissé — le compte se refait depuis la table du relevé.
 
 - `S01` — le commanditaire coche « **B** — le code court domine » ; la planche intitule sa variante
   **B** « Scan du QR ». La lettre désigne **l'inverse** de ce qu'il a voulu, et son « pourquoi »
@@ -67,7 +67,15 @@ questionnaire), et c'est du temps du commanditaire : cela se **demande**, cela n
 explicatif** que la planche porte *hors* du départage des variantes — une phrase qui dit au bénévole
 ce qu'il engage, identique d'une variante à l'autre — reste livrable comme **proposition**, à trois
 conditions : il ne change aucun parti pris, il est **écrit comme proposition** dans le relevé, et il
-est **reposé au tour 2**. Sans cette nuance, la règle interdirait de corriger un écran muet au motif
+est **reposé au tour 2**.
+
+⚠️ **« Ne change aucun parti pris » se juge sur le critère d'arbitrage ÉCRIT de la planche, pas à
+vue** — et la seule application de cette exception l'a franchi. `s04-marqueur.html` déclare en
+toutes lettres que « ces trois versions **se jugent à l'espace qu'elles volent au pavé** » ; la
+phrase livrée a **triplé la hauteur** du panneau, et il a fallu un second geste non arbitré (le
+sortir du flux) pour le neutraliser. Le contenu était bien neutre quant au *choix de forme*, pas
+quant à la *dimension que le commanditaire devait arbitrer*. La livraison tient — elle est écrite
+comme proposition — mais **le tour 2 doit reposer la phrase ET son encombrement**. Sans cette nuance, la règle interdirait de corriger un écran muet au motif
 que le commanditaire n'a pas arbitré sa mise en page. *(Nuance ajoutée en revue, axes B, C2 et D : la
 1ʳᵉ rédaction était **démentie par son propre commit**, qui livrait la phrase de `S04`.)*
 
@@ -106,7 +114,12 @@ relecture, et elle est **énoncée comme telle** plutôt que présentée comme t
 
 - [`epics/EPIC-17-fidelite-aux-maquettes.md`](../../epics/EPIC-17-fidelite-aux-maquettes.md) —
   section « Le maillon du milieu a bougé » : la **table de correspondance** des 9 planches de saisie
-  (point 2), et le tableau « Hors périmètre de résorption » qui applique le point 3.
+  (point 2) ; le tableau « Hors périmètre de résorption » qui applique le point 3 ; et le tableau
+  « Ce qu'`E17US008` a résorbé », qui inscrit la phrase de la planche du marqueur **comme
+  proposition** — l'exception du point 3.
+- [`journal-d-avancement/SUIVI-US.md`](../../journal-d-avancement/SUIVI-US.md) — la ligne 🔒 « tour 2
+  des questionnaires » porte la **3ᵉ condition** de l'exception : sans elle, une proposition livrée
+  ne serait jamais reposée.
 - [`stories/E17-fidelite-aux-maquettes.md`](../../stories/E17-fidelite-aux-maquettes.md) — notes de
   livraison d'`E17US008` (arbitrages reversés) et CA d'`E17US011`.
 - `frontend/src/features/poste/EspacePoste.tsx` — commentaire de `FormulaireRattachement` : porte

@@ -7,30 +7,50 @@
 
 import { useConnexionStore } from '../stores/connexionStore'
 import { useFileHorsLigneStore } from '../stores/fileHorsLigneStore'
-import { etatIndicateur } from './indicateur'
 
+// ⚠️ `DETTE-112` — **la priorité est écrite ici, pas dérivée d'`etatIndicateur`**, et cet écart est
+// voulu tant que la dette n'est pas résorbée. La pastille annonce « Hors ligne » dès que la file
+// n'est pas vide, **quel que soit le lien** : tolérable sur 10 px, faux sur un aplat pleine largeur.
+// Les deux se réuniront quand `etatIndicateur` gagnera son état « en attente ».
 export function BandeauHorsLigne() {
   const statut = useConnexionStore((state) => state.statut)
   const nbEnAttente = useFileHorsLigneStore((state) => state.enAttente.length)
   const synchronisation = useFileHorsLigneStore((state) => state.synchronisation)
-  const { classe, libelle } = etatIndicateur(statut, nbEnAttente, synchronisation)
 
-  // `connexion` (lien en cours d'établissement) n'ouvre pas le bandeau : au chargement, il
+  if (synchronisation) {
+    return (
+      <p className="bandeau-hors-ligne bandeau-hors-ligne--synchronisation" role="status">
+        <strong>Synchronisation…</strong> — les saisies en attente repartent vers le serveur.
+      </p>
+    )
+  }
+
+  if (statut === 'deconnecte') {
+    return (
+      <p className="bandeau-hors-ligne bandeau-hors-ligne--deconnecte" role="status">
+        <strong>Hors ligne{nbEnAttente > 0 ? ` · ${enAttente(nbEnAttente)}` : ''}</strong> — la
+        saisie continue. Ce qui est tapé part tout seul au retour du réseau.
+      </p>
+    )
+  }
+
+  // ⚠️ **Le cas qui ne se referme jamais** : lien revenu, file pleine, rejeu arrêté sur un
+  // transitoire — il n'écoute qu'une **transition** de statut, qui n'arrivera plus. Se taire ici
+  // laissait des saisies jamais parties sans un pixel pour le dire ; le message, lui, est vrai.
+  if (nbEnAttente > 0) {
+    return (
+      <p className="bandeau-hors-ligne bandeau-hors-ligne--synchronisation" role="status">
+        <strong>{enAttente(nbEnAttente)} d’envoi</strong> — rechargez l’écran si le compte ne
+        descend pas.
+      </p>
+    )
+  }
+
+  // `connexion` (lien en cours d'établissement) sans rien en attente : pas de bandeau, il
   // clignoterait à chaque arrivée sur un écran.
-  if (classe !== 'deconnecte' && classe !== 'synchronisation') return null
-  // ⚠️ **Lien rétabli = pas de bandeau, même file pleine.** `etatIndicateur` rend `deconnecte` dès
-  // que `nbEnAttente > 0`, quel que soit le lien : tolérable pour une pastille de 10 px, faux pour
-  // un aplat en travers de l'écran. Le cas n'est pas théorique — un rejeu interrompu sur un
-  // transitoire laisse la file pleine sans redéclencher (`useRejeuFileHorsLigne` n'écoute qu'une
-  // **transition** de statut), et la file est persistée. Le bandeau resterait à vie. `DETTE-112`.
-  if (statut === 'connecte' && !synchronisation) return null
+  return null
+}
 
-  return (
-    <p className={`bandeau-hors-ligne bandeau-hors-ligne--${classe}`} role="status">
-      <strong>{libelle}</strong>
-      {classe === 'deconnecte'
-        ? ' — la saisie continue. Ce qui est tapé part tout seul au retour du réseau.'
-        : ' — les saisies en attente repartent vers le serveur.'}
-    </p>
-  )
+function enAttente(nb: number): string {
+  return `${nb} saisie${nb > 1 ? 's' : ''} en attente`
 }

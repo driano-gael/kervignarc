@@ -6,7 +6,7 @@
 // et la correction sont l'acte du scoreur, sur sa propre surface. Depuis E04US018, second état :
 // cible entièrement validée → **panneau de routage**, au moment où l'archer range ses flèches.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
@@ -246,8 +246,29 @@ function SelecteurMarqueur({
   onChoisir: (nom: string) => void
 }) {
   const [ouvert, setOuvert] = useState(false)
+  const conteneur = useRef<HTMLDivElement>(null)
+
+  // ⚠️ **Le panneau recouvre la première ligne d'archer** depuis qu'il est hors du flux (il poussait
+  // la grille de ~90 px, cf. `App.css`). Un recouvrement sans porte de sortie bloque la cible
+  // tactile la plus tapée de l'écran : « j'ouvre pour vérifier, je referme » doit exister.
+  useEffect(() => {
+    if (!ouvert) return
+    const fermer = (e: MouseEvent) => {
+      if (!conteneur.current?.contains(e.target as Node)) setOuvert(false)
+    }
+    const auClavier = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOuvert(false)
+    }
+    document.addEventListener('pointerdown', fermer)
+    document.addEventListener('keydown', auClavier)
+    return () => {
+      document.removeEventListener('pointerdown', fermer)
+      document.removeEventListener('keydown', auClavier)
+    }
+  }, [ouvert])
+
   return (
-    <div className="saisie__marqueur">
+    <div className="saisie__marqueur" ref={conteneur}>
       <button
         type="button"
         className="lien saisie__marqueur-libelle"
@@ -524,7 +545,7 @@ function PaveArcher({
         {/* Le cumul de série **suit le pavé** (S02) : quand la grille est repoussée hors de l'écran
             sur un téléphone, c'est ici qu'on relit « où j'en suis ». */}
         <span className="saisie__cumul-serie">
-          Cumul série {cumulSaisi(serie.data?.volees ?? [])}
+          Cumul saisi {cumulSaisi(serie.data?.volees ?? [])}
         </span>
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts

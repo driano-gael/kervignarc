@@ -12,7 +12,9 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ErreurApi } from '../../shared/api/client'
+import type { Serie, Volee } from './api'
 import { Saisie } from './Saisie'
+import { serieOptimiste } from './volees'
 
 const LIGNE = {
   position: 'A',
@@ -23,7 +25,7 @@ const LIGNE = {
   forfait: false,
 }
 
-function volee(numero: number, valeurs: string[], extra: Record<string, unknown> = {}) {
+function volee(numero: number, valeurs: string[], extra: Partial<Volee> = {}): Volee {
   return {
     numero,
     valeurs,
@@ -38,16 +40,21 @@ function volee(numero: number, valeurs: string[], extra: Record<string, unknown>
   }
 }
 
-// ⚠️ **Mutable, et remise à zéro à chaque cas.** Le défaut que cette US corrige vivait dans le
+// ⚠️ **Mutables, et remises à zéro à chaque cas.** Le défaut que cette US corrige vivait dans le
 // **consommateur** (`LigneArcher` lisait `serie.cumul`), pas dans une fonction pure : le prouver
-// demande de faire diverger `cumul` et `volees`, donc de poser la série cas par cas.
-let SERIE: Record<string, unknown> = { archer_id: 12, cumul: 0, volees: [], grain: null }
+// demande de faire diverger `cumul` et `volees`, donc de poser la série cas par cas. ⚠️ **Typées** :
+// sans le type, un champ renommé côté API laisserait ces tests verts sur une forme qui n'existe plus.
+const SERIE_VIDE: Serie = { tournoi_id: 1, archer_id: 12, cumul: 0, volees: [] }
+let SERIE: Serie = SERIE_VIDE
+type EtatRequete = { data: unknown; isError: boolean; isSuccess: boolean; error: Error | null }
+const GRILLE_SERVIE: EtatRequete = { data: [LIGNE], isError: false, isSuccess: true, error: null }
+let GRILLE: EtatRequete = GRILLE_SERVIE
 
 let erreurSaisie: Error | null = null
 
 vi.mock('./hooks', () => ({
   useRejeuFileHorsLigne: () => undefined,
-  useGrille: () => ({ data: [LIGNE], isError: false, isSuccess: true, error: null }),
+  useGrille: () => GRILLE,
   useBareme: () => ({ data: { nb_volees: 2, nb_fleches_par_volee: 3 } }),
   useGrain: () => ({ data: null }),
   useDeparts: () => ({ data: [], isSuccess: true }),
@@ -96,7 +103,8 @@ describe('Saisie — un refus de préséance est expliqué', () => {
   // serait verte par ordre d'exécution, pas par construction.
   beforeEach(() => {
     erreurSaisie = null
-    SERIE = { archer_id: 12, cumul: 0, volees: [], grain: null }
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
   })
 
   it('dit QUI a écrit et QUEL est le recours', async () => {
@@ -169,7 +177,8 @@ describe('Saisie — le panneau du marqueur dit ce qu’on engage', () => {
 describe('Saisie — le cumul affiché est celui qui est SAISI', () => {
   beforeEach(() => {
     erreurSaisie = null
-    SERIE = { archer_id: 12, cumul: 0, volees: [], grain: null }
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
   })
 
   // ⚠️ **Le test doit vivre ICI, pas seulement dans `volees.test.ts`.** Le défaut n'était pas dans
@@ -180,12 +189,7 @@ describe('Saisie — le cumul affiché est celui qui est SAISI', () => {
   // Oracle : questionnaire `s02-poste-de-cible.md`, question 3 — « en permanence, c'est un bon
   // rappel sur la cible ». Avec le grain « fin de série », le serveur rend 0 tout au long.
   it('affiche 54 là où le serveur rend un cumul de 0', async () => {
-    SERIE = {
-      archer_id: 12,
-      cumul: 0,
-      volees: [volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])],
-      grain: null,
-    }
+    SERIE = { ...SERIE_VIDE, volees: [volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])] }
     monter()
 
     // ⚠️ Viser le **cumul**, pas un `getByText` : « 27 » figure aussi dans la bande de relecture,
@@ -197,12 +201,17 @@ describe('Saisie — le cumul affiché est celui qui est SAISI', () => {
     // La garantie d'E04US009, et la justification écrite de `DETTE-111` : le poste doit valoriser
     // ce que le serveur n'a **jamais reçu**. `serieOptimiste` ajoute la volée à `volees` sans
     // toucher `cumul` — si le rendu lisait `cumul`, le marqueur verrait 0 pendant la coupure.
-    SERIE = {
+    // ⚠️ Fixture construite par **`serieOptimiste` lui-même** — le code qui décide qu'une volée
+    // partie dans la file entre dans `volees` sans toucher `cumul`. Écrite à la main, elle
+    // n'aurait traversé aucun des deux.
+    SERIE = serieOptimiste(SERIE_VIDE, {
+      tournoi_id: 1,
       archer_id: 12,
-      cumul: 0,
-      volees: [volee(1, ['10', '9', '8'], { en_attente: true })],
-      grain: null,
-    }
+      numero: 1,
+      valeurs: ['10', '9', '8'],
+      saisie_par: 'DURAND',
+      identifiant_saisie: 'x1',
+    })
     monter()
 
     expect(await cumulAffiche()).toBe('27')
@@ -212,13 +221,51 @@ describe('Saisie — le cumul affiché est celui qui est SAISI', () => {
     // Côté serveur, une volée en correction **compte toujours** : son score tient. Le front doit
     // dire la même chose, sans quoi le total chuterait à l'instant du renvoi par le scoreur.
     SERIE = {
-      archer_id: 12,
-      cumul: 0,
+      ...SERIE_VIDE,
       volees: [volee(1, ['10', '9', '8'], { en_correction: true, validee_par: 'MOREAU' })],
-      grain: null,
     }
     monter()
 
     expect(await cumulAffiche()).toBe('27')
+  })
+})
+
+describe('Saisie — le numéro de cible ne passe en géant que dans l’état « Rattaché »', () => {
+  beforeEach(() => {
+    erreurSaisie = null
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
+  })
+
+  // Oracle : planche S01, état « Rattaché » — le numéro y est en 48 px, et la planche dit pourquoi :
+  // « le seul moyen de repérer une tablette posée devant la mauvaise cible AVANT que quiconque
+  // tire ». C'est une consigne de sécurité, donc la condition qui la déclenche mérite un test.
+  const enGeant = () => document.querySelector('.saisie__entete--confirmation') !== null
+
+  it('départ non fixé : le numéro est en géant', () => {
+    GRILLE = {
+      data: undefined,
+      isError: true,
+      isSuccess: false,
+      error: new ErreurApi(409, 'depart_courant_non_defini', 'Départ courant non défini.'),
+    }
+    monter()
+
+    expect(enGeant()).toBe(true)
+  })
+
+  it('grille en cours de chargement : PAS de géant', () => {
+    // ⚠️ Le défaut que la condition resserrée ferme : `lignes.length === 0` seul était vrai pendant
+    // le chargement, donc le numéro s'affichait en 48 px puis retombait à 22 px à chaque montage.
+    GRILLE = { data: undefined, isError: false, isSuccess: false, error: null }
+    monter()
+
+    expect(enGeant()).toBe(false)
+  })
+
+  it('grille servie avec ses archers : PAS de géant', () => {
+    monter()
+
+    expect(enGeant()).toBe(false)
   })
 })

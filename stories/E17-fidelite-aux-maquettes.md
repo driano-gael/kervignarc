@@ -217,9 +217,9 @@
   trois écrans (A01, A02, A13). **Le reste du relevé n'a aucune US.** Un relevé sans US de résorption
   se périme sur place : les planches vieillissent pendant qu'on les relit (risque déjà réalisé sur A15).
 - **CA** :
-  - **A06 · référentiels** passe au **panneau latéral d'édition** (variante **B** retenue) —
+  - **A06 · référentiels** passe au **panneau latéral d'édition** (variante « **panneau latéral d'édition** » retenue) —
     aujourd'hui `Blasons.tsx` bascule **tout l'écran** en formulaire ;
-  - **A09 · inscriptions** passe à **recherche d'abord, liste ensuite** (variante **B** retenue), avec
+  - **A09 · inscriptions** passe à **recherche d'abord, liste ensuite** (variante « **recherche d'abord, liste ensuite** » retenue), avec
     les compteurs d'entrée de la planche (inscrits, non placés, non réglés, doublons) ;
   - **A12 · postes**, **A08 · scoreurs** et **A04 · tournois** présentent leurs données en
     **carte-tableau à colonnes nommées**, celles de la planche, sans cesser d'être des `<table>`
@@ -230,7 +230,11 @@
   - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** (A04 :
     avancement, ce qui reste) est soit **alimentée**, soit **retirée de la planche** — jamais affichée
     vide. Le choix se fait par colonne et s'écrit.
-- **Notes** : ⚠️ **à redécouper si le relevé grossit** — six écrans dans une branche est le plafond.
+- **Notes** : ⚠️ **Vérifier la correspondance questionnaire ↔ planche AVANT de mesurer** — les
+  lettres `A**` sont aussi peu fiables que les `S**` (le redessin du 05/08 a porté sur les 36
+  planches), et un CA est la **source d'un test** : dériver d'une lettre, c'est dériver de rien
+  ([ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md)).
+  ⚠️ **à redécouper si le relevé grossit** — six écrans dans une branche est le plafond.
   **Ne pas traiter** ce qui est marqué « recoupe `E16Uxxx` » dans le relevé (A15 → `E16US008`,
   A18 → `E16US007`, A11 → `E16US005`) : l'US E16 porte le besoin, E17 n'ajoute que l'exigence de
   ressemblance, et le faire deux fois produit deux variantes. **A05 · identité** est hors périmètre
@@ -271,7 +275,7 @@
     blocage qui survit à la levée de son blocage coûte une US : celle-ci a failli reporter l'axe.
   - ⚠️ **Le CA « questionnaire → variante retenue » n'est pas applicable tel quel sur cet axe** — tranché en [ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md). Les
     questionnaires ont été remplis le 04/08 sur les **vignettes**, les planches redessinées le 05/08
-    en écrans pleins : **6 planches sur 9** ne proposent plus les variantes qui ont été jugées (`S02`, `S07` et `S09` concordent), et
+    en écrans pleins : **4 planches sur 9** ne proposent plus la variante qui a été retenue (`S01`, `S04`, `S06`, `S08` ; `S05` n'en avait aucune), et
     sur `S01` les lettres sont **inversées**. La variante retenue se lit donc **par l'intention**,
     jamais par la lettre — tableau de correspondance dans le relevé. **Ne pas citer une lettre de
     questionnaire dans le code** : `EspacePoste.tsx` en portait une (« variante B »), corrigée.
@@ -279,6 +283,12 @@
     fidélité** — s'y aligner serait deviner. Le geste qui referme cela est **du temps du
     commanditaire** : remplir le tour 2 des questionnaires `S**` sur les écrans pleins. Porté au
     tracker, pas ici.
+  - **Le bandeau hors-ligne de `S09` n'est monté que sur la tablette de cible.** La promesse « la
+    saisie continue » n'est vraie que là où une file absorbe l'écriture : sur le PC d'organisation
+    et le public, une écriture pendant la coupure **échoue**. Le **scoreur** est exclu pour une
+    autre raison — sa file existe, mais `etatIndicateur` ne la compte pas (`DETTE-112`), et son
+    écran de duels porte déjà son propre indicateur d'attente. ⚠️ **Ne pas le relever comme écart de
+    fidélité en `E17US009`** : c'est un arbitrage, pas un oubli.
   - **`S07 · file scoreur` n'a aucun écran ni endpoint.** Ce n'est pas un écart de fidélité mais une
     **US non livrée** (comme A05 sur l'axe admin). ⚠️ Le tri d'`E16US011` le rangeait parmi les
     « validés, rien à faire » : son verdict « ✅ validé tel quel — **on peut coder ça** » est un feu
@@ -301,7 +311,7 @@
   - le pavé, n'ayant plus à porter seul la volée, **rend sa colonne** : la grille reprend la largeur
     de la tablette (S02 : « les lignes d'archer font toute la largeur ») et les touches peuvent
     atteindre les **90 px** de S03. Les deux écarts 🟠 laissés par `E17US008` se ferment ici.
-- **CA — `DETTE-111` est résorbée au passage** *(arbitrage du commanditaire, 24/09/2026)* : la
+- **CA — `DETTE-111` est résorbée pour la conversion « zone → points »** *(arbitrage du commanditaire, 24/09/2026)* : la
   conversion « zone de blason → points » est écrite **deux fois**, en Python (`_points_zone`, privé)
   et en TypeScript (`pointsZone`). Le barème gagne un **`points_par_zone`** ; `_points_zone` devient
   public et domicile unique ; `pointsZone` devient une **lecture de table**. ⚠️ **Ne pas appliquer le
@@ -309,6 +319,9 @@
   valoriser des volées **hors ligne** que le serveur n'a jamais reçues — `serieOptimiste` conserve le
   `cumul` serveur, qui les ignore. On sert la **règle**, pas le **résultat**. Cette US est le bon
   porteur parce qu'elle rouvre déjà `volees.ts`, la ligne d'archer et le pavé, avec leurs tests.
+  ⚠️ **La seconde moitié de `DETTE-111` reste ouverte** : « quelles volées comptent dans un total »
+  est posé unilatéralement côté front et n'a **aucun domicile au domaine**. `points_par_zone` ne
+  transporte que la valeur d'une zone. Ne pas cocher la dette comme résorbée.
 - **Notes** : ⚠️ **Ce qu'il faut tenir, c'est l'archer actif — pas un tampon de frappe.** La bande de
   relecture est **hors** du bouton de ligne parce que la toucher **changerait d'archer** : le
   `onClick` de la ligne est `setArcherChoisi`. Des cases de flèche tapables doivent donc **arrêter la

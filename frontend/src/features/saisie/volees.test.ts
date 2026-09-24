@@ -29,13 +29,11 @@ function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
 }
 
 describe('pointsZone — le miroir du domaine', () => {
-  // ⚠️ **Ce test ne relie pas les deux langages**, et ne prétend pas le faire : seul le
-  // `points_par_zone` servi par le barème le fera (`DETTE-111`). Il **fige les onze zones d'un
-  // côté**, pour qu'un ajout non répercuté casse au moins un test au lieu de zéro. Même geste bon
-  // marché que `codeTerrain.test.ts` pour l'alphabet des codes de poste.
-  //
-  // Les onze valeurs sont celles de `domain/blason.ZoneScore` (art. B.2.1.2) — pas de « X », qui est
-  // le centre du 10 et non un score.
+  // ⚠️ **Moitié front d'un cliquet en deux moitiés** ; l'autre fige la même liste côté domaine
+  // (`test_domain_blason.py`) et renvoie ici. Une zone ajoutée casse alors **un** test au lieu de
+  // zéro, et qui le répare lit le pointeur vers l'autre langage. Ça ne **relie** pas les deux
+  // langages pour autant : seul `points_par_zone` le fera (`DETTE-111`).
+  // Les onze valeurs sont celles de `ZoneScore` (art. B.2.1.2) — pas de « X », centre du 10.
   it('donne à chaque zone du vocabulaire FFTA sa valeur, M valant 0', () => {
     const zones = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
     expect(zones.map(pointsZone)).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])

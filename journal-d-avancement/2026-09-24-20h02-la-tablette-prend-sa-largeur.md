@@ -36,11 +36,15 @@ Deux constats méritent votre attention, parce qu'ils ne se corrigent pas en pro
 
 - **Trois écrans n'ont plus de base de comparaison.** Les questionnaires ont été remplis le 4 août
   sur des **vignettes**, et les planches ont été **redessinées le lendemain** en écrans pleins. Sur
-  six planches de saisie sur neuf, les propositions que vous avez jugées ne sont plus celles qui
-  sont dessinées — et sur l'écran de rattachement, les lettres sont même **inversées**. Pour
+  quatre planches de saisie sur neuf, la proposition que vous aviez retenue n'est plus celle que
+  porte sa lettre — et sur l'écran de rattachement, les lettres sont même **inversées**. Pour
   `S04 · marqueur`, `S05 · saisie de duel` et `S08 · validation de cible`, il n'y a donc **plus
-  d'étalon** : s'y aligner reviendrait à deviner ce que vous vouliez. Ces trois-là n'ont pas été
-  touchés. Le questionnaire du **tour 2** est saisissable en ligne et referme le point.
+  d'étalon** : s'y aligner reviendrait à deviner ce que vous vouliez. `S05` et `S08` n'ont pas été
+  touchés. **Sur `S04`, une seule chose a été ajoutée** — la phrase qui explique à quoi sert le
+  marqueur. Elle est identique dans les deux versions de la planche, donc elle ne choisit aucune
+  forme ; elle vous est soumise comme **proposition**, à confirmer au tour 2. ⚠️ Elle a tout de même
+  un effet à juger : le panneau est devenu plus haut, et c'est justement « l'espace volé au pavé »
+  que la planche vous demandait d'arbitrer. Le questionnaire du **tour 2** referme le point.
 - **`S07 · la file du scoreur` n'existe pas.** Pas « pas conforme » : **pas construit du tout**, ni à
   l'écran ni côté serveur. Un tri antérieur l'avait rangé parmi les écrans « validés, rien à faire »
   — son verdict était pourtant « validé tel quel, **on peut coder ça** », ce qui est un feu vert, pas

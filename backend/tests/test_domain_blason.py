@@ -248,3 +248,27 @@ def test_le_message_ne_leve_pas_sur_une_valeur_irrepresentable() -> None:
     """
     with pytest.raises(ZonesBlasonInvalides):
         Blason.creer(1, "Blason", 0.5, 1, zones=[10**10_000, "M"])  # type: ignore[list-item]
+
+
+def test_le_vocabulaire_de_zones_est_fige_et_le_front_en_tient_une_copie() -> None:
+    """Les onze valeurs de `ZoneScore`, dans l'ordre canonique (art. B.2.1.2).
+
+    ⚠️ `DETTE-111` — **ce test est la moitié serveur d'un cliquet.** `pointsZone`
+    (`frontend/src/features/saisie/volees.ts`) réécrit en TypeScript la règle « une zone vaut son
+    chiffre, `M` vaut 0 », parce que le poste doit valoriser des volées hors ligne que le serveur
+    n'a jamais reçues. Ajouter ou retirer une zone ici **doit** être répercuté là-bas ; rien ne le
+    vérifie, mais ce test force au moins à lire ce pointeur.
+    """
+    assert [zone.value for zone in ZoneScore] == [
+        "10",
+        "9",
+        "8",
+        "7",
+        "6",
+        "5",
+        "4",
+        "3",
+        "2",
+        "1",
+        "M",
+    ]

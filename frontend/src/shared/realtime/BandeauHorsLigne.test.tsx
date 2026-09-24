@@ -1,8 +1,8 @@
 // Test de rendu du bandeau hors ligne (E17US008, planche S09).
 //
-// ⚠️ **Monter le composant, pas `etatIndicateur`.** La règle qui décide de l'ouverture vit dans deux
-// `return null` du composant, pas dans la fonction pure — un test de `etatIndicateur` resterait vert
-// si l'un d'eux disparaissait. C'est le motif de `DETTE-085`, déjà cité par `Saisie.test.tsx`.
+// ⚠️ **Monter le composant, pas `etatIndicateur`.** La règle qui décide de l'ouverture vit dans le
+// composant, pas dans la fonction pure — un test de `etatIndicateur` resterait vert si l'un des cas
+// disparaissait. C'est le motif de `DETTE-085`, déjà cité par `Saisie.test.tsx`.
 //
 // L'oracle est le questionnaire `s09-etats-systeme.md` du 04/08/2026 : variante unique cochée,
 // verdict ✅, et « l'aplat ambre plein est-il trop agressif ? » → **non**.
@@ -11,22 +11,35 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { useConnexionStore } from '../stores/connexionStore'
-import { useFileHorsLigneStore } from '../stores/fileHorsLigneStore'
+import { useFileHorsLigneStore, type VoleeEnFile } from '../stores/fileHorsLigneStore'
 import { BandeauHorsLigne } from './BandeauHorsLigne'
+
+// ⚠️ Fixture **typée** : un `as never` sur le `setState` éteindrait le contrôle de forme du store —
+// un champ renommé poserait une clé morte, la file resterait vide, et le cas « lien rétabli et file
+// pleine » passerait au vert **sans jamais avoir de file**. C'est le seul cas qui garde `DETTE-112`.
+function volee(i: number): VoleeEnFile {
+  return {
+    tournoi_id: 1,
+    archer_id: 12,
+    numero: i + 1,
+    valeurs: ['10', '9', '8'],
+    saisie_par: 'DURAND',
+    identifiant_saisie: `x${i}`,
+  }
+}
 
 function poser(statut: 'connexion' | 'connecte' | 'deconnecte', enAttente = 0, sync = false) {
   useConnexionStore.setState({ statut })
   useFileHorsLigneStore.setState({
-    // Seule la **longueur** est lue par l'indicateur ; le contenu n'a pas à être plausible ici.
-    enAttente: Array.from({ length: enAttente }, (_, i) => ({ identifiant_saisie: `x${i}` })),
+    enAttente: Array.from({ length: enAttente }, (_, i) => volee(i)),
     synchronisation: sync,
-  } as never)
+  })
 }
 
 describe('BandeauHorsLigne', () => {
   beforeEach(() => poser('connecte'))
 
-  it('hors ligne : un aplat pleine largeur qui dit que la saisie continue', () => {
+  it('hors ligne : un aplat qui dit que la saisie continue', () => {
     poser('deconnecte')
     render(<BandeauHorsLigne />)
 
@@ -37,12 +50,11 @@ describe('BandeauHorsLigne', () => {
     expect(bandeau.className).toContain('bandeau-hors-ligne--deconnecte')
   })
 
-  it('pendant la connexion initiale : aucun bandeau', () => {
-    // Sans cette garde, le bandeau clignoterait à chaque arrivée sur un écran.
-    poser('connexion')
+  it('hors ligne avec des saisies en attente : le compte est dit', () => {
+    poser('deconnecte', 2)
     render(<BandeauHorsLigne />)
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/2 saisies en attente/)
   })
 
   it('synchronisation : le bandeau dit que les saisies repartent', () => {
@@ -54,12 +66,31 @@ describe('BandeauHorsLigne', () => {
     expect(bandeau.className).toContain('bandeau-hors-ligne--synchronisation')
   })
 
-  it('lien rétabli et file encore pleine : aucun bandeau', () => {
-    // ⚠️ Le cas qui a motivé la seconde garde (revue, axe C1). `etatIndicateur` rend `deconnecte`
-    // dès que la file n'est pas vide, **quel que soit le lien** : sans cette garde, un rejeu
-    // interrompu sur un transitoire laisserait « Hors ligne — la saisie continue » en travers de
-    // l'écran alors que le réseau est revenu et que rien ne repartira. Faux sur les deux moitiés.
-    poser('connecte', 2, false)
+  it('lien rétabli et file encore pleine : le bandeau DIT le compte, il ne se tait pas', () => {
+    // ⚠️ Le cas qui ne se referme jamais (`DETTE-112`) : le rejeu s'arrête sur un transitoire et
+    // n'écoute plus qu'une **transition** de statut, qui n'arrivera pas. Une 1ʳᵉ version rendait
+    // `null` ici — elle remplaçait un message faux (« Hors ligne ») par **aucun** message, sur des
+    // saisies jamais parties. Relevé en revue, axe C1.
+    poser('connecte', 2)
+    render(<BandeauHorsLigne />)
+
+    const bandeau = screen.getByRole('status')
+    expect(bandeau).toHaveTextContent(/2 saisies en attente d’envoi/)
+    expect(bandeau).not.toHaveTextContent(/Hors ligne/)
+  })
+
+  it('pendant la connexion initiale, file pleine : le compte est dit aussi', () => {
+    // La file est **persistée** : une tablette qui recharge après coupure arrive ici. Une garde qui
+    // ne fermait que `statut === 'connecte'` laissait alors passer « Hors ligne », faux.
+    poser('connexion', 3)
+    render(<BandeauHorsLigne />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(/3 saisies en attente d’envoi/)
+  })
+
+  it('pendant la connexion initiale, rien en attente : aucun bandeau', () => {
+    // Sans cette sortie, le bandeau clignoterait à chaque arrivée sur un écran.
+    poser('connexion')
     render(<BandeauHorsLigne />)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
