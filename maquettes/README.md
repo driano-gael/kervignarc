@@ -24,7 +24,7 @@ une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à
 | | |
 |---|---|
 | **36 écrans maquettés** | 1 porte d'entrée · 19 admin · 9 saisie · 7 publique |
-| **Écrans pleins** | chaque planche est rendue à la **taille réelle de son appareil**, ossature comprise — PC 1600 × 900, tablette 1280 × 800, vidéoprojecteur 1920 × 1080, téléphone 390 × 844 |
+| **Écrans pleins** | chaque planche est rendue à la **taille réelle de son appareil** (dimensions dans `assets/appareils.js`), ossature comprise — PC 1600 × 900, tablette 1280 × 800, vidéoprojecteur 1920 × 1080, téléphone 390 × 844 |
 | **36 questionnaires saisissables** | trame en **onze sections**, générée depuis `assets/questionnaire.js` ; « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
 | **Système de design** | `assets/systeme.css` — transcrit la charte **mesurée** du CDC design §3.3, ratio de contraste en commentaire sur chaque token |
 | **Ossature** | `assets/appareils.js` — la navigation des trois axes est **transcrite d'`axes.ts`** (toutes ses destinations), sous garde mécanique depuis `E17US010` |

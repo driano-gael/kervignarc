@@ -20,25 +20,29 @@ const APPAREILS = join(process.cwd(), '..', 'maquettes', 'assets', 'appareils.js
 
 const DEBUT_TABLE = /^\s*var DESTINATIONS = \{\s*$/
 const FIN_TABLE = /^\s*\}\s*$/
-const SECTION = /^\s*['"]?([a-z0-9-]+)['"]?:\s*\[\s*$/
+const SECTION = /^\s*(['"])([a-z0-9-]+)\1?:\s*\[\s*$/
 const FERMETURE = /^\s*\],?\s*$/
 const CHAINE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/.source
-const COUPLE = new RegExp(`^\\s*\\[\\s*['"]([a-z0-9-]+)['"],\\s*(?:${CHAINE})\\s*\\],?\\s*$`)
-const COMMENTAIRE = /^\s*(?:\/\/|\/\*|\*)/
+const COUPLE = new RegExp(`^\\s*\\[\\s*(['"])([a-z0-9-]+)\\1,\\s*(?:${CHAINE})\\s*\\],?\\s*$`)
+const SECTION_NUE = /^\s*([a-z0-9-]+):\s*\[\s*$/
+const LIGNE = /^\s*\/\//
 
-// ⚠️ **Liste blanche des deux côtés.** Dans la table, une ligne qui n'est ni section, ni fermeture,
-// ni entrée, ni commentaire, ni vide est signalée ; **hors** de la table, toute mention de
-// `DESTINATIONS` qui n'est pas une des deux lectures connues l'est aussi. Énumérer ce qu'on refuse
-// laisse passer le cas suivant : `.push` était listé, `.pop` et `Object.assign` ne l'étaient pas.
+// ⚠️ **Liste blanche des deux côtés, sur la LIGNE ENTIÈRE.** Une lecture tolérée qui ne couvre
+// qu'un fragment amnistiait tout le reste de la ligne : `DESTINATIONS.pilotage.pop(); …forEach(` a
+// été mesuré vert. L'identifiant de boucle est libre — le figer faisait rougir un renommage pur,
+// et c'est la **forme** de la lecture qui porte l'invariant, pas le nom de la variable.
 const MENTION_TABLE = /\bDESTINATIONS\b/
-const LECTURE_TOLEREE = /\bDESTINATIONS\[axe\](?:\.forEach\(|\s*\|\|)/
+const LECTURES_TOLEREES = [
+  /^\s*DESTINATIONS\[[A-Za-z_$][\w$]*\]\.forEach\(function \(\w+\) \{$/,
+  /^\s*var \w+ = DESTINATIONS\[[A-Za-z_$][\w$]*\] \|\| \[\]$/,
+]
 
 // Divergence volontaire, prévue par le CA : une planche peut montrer une destination **à venir**.
 // ⚠️ Motif **strict** — identifiant, tiret cadratin, puis une raison d'au moins deux mots. Une
 // échappatoire gratuite se pose sans y penser, et c'est le seul mécanisme capable de désarmer ce
 // contrôle. `A_VENIR_BRUT` rattrape les formes ratées pour que le rouge nomme la bonne ligne.
 const A_VENIR = /^\s*\/\/\s*PLANCHE-A-VENIR:\s*([a-z0-9-]+)\s+—\s+\S+(?:\s+\S+)+\s*$/
-const A_VENIR_BRUT = /^\s*\/\/\s*PLANCHE-A-VENIR/
+const A_VENIR_BRUT = /^\s*\/\/\s*PLANCHE-A-VENIR:\s*[a-z0-9-]/
 
 interface Navigation {
   parDestination: Map<string, Axe>
@@ -48,6 +52,33 @@ interface Navigation {
   axesInconnus: string[]
   axesDupliques: string[]
   aVenirNonConsommees: string[]
+  lignesDeCode: string[]
+}
+
+/** Retire de la ligne ce qui est commenté, en suivant l'état de bloc d'une ligne à l'autre.
+ *
+ * ⚠️ **État lexical, pas motif de ligne.** Les quatre trous des passes 1 à 4 avaient la même
+ * racine : un scan ligne à ligne sans mémoire. Un bloc `/* … *\/` posé dans la table faisait
+ * compter ses entrées comme vivantes ; un `*\/` suivi de code faisait ignorer ce code.
+ */
+function decommenter(ligne: string, dansBloc: boolean): [string, boolean] {
+  let reste = ligne
+  let ouvert = dansBloc
+  let sortie = ''
+  for (;;) {
+    if (ouvert) {
+      const fin = reste.indexOf('*/')
+      if (fin === -1) return [sortie, true]
+      reste = reste.slice(fin + 2)
+      ouvert = false
+      continue
+    }
+    const debut = reste.indexOf('/*')
+    if (debut === -1) return [sortie + reste, false]
+    sortie += reste.slice(0, debut)
+    reste = reste.slice(debut + 2)
+    ouvert = true
+  }
 }
 
 function lireNavigation(source: string): Navigation {
@@ -58,30 +89,35 @@ function lireNavigation(source: string): Navigation {
   const axesInconnus: string[] = []
   const axesDupliques: string[] = []
   const aVenirNonConsommees: string[] = []
+  const lignesDeCode: string[] = []
   const axesVus = new Set<string>()
-  let dansTable = false
   let dansBloc = false
+  let dansTable = false
+  let tableVue = false
   let courant: Axe | null = null
   // ⚠️ Une **annonce**, pas un ensemble : la déclaration ne vaut que pour la ligne qui la suit
   // immédiatement. Accumulée, elle dispensait un fantôme d'un autre axe cent lignes plus bas,
   // pendant que trois documents promettaient « sur la ligne qu'elle dispense ».
   let annonce: string | null = null
 
-  for (const ligne of source.split('\n')) {
+  for (const brute of source.split('\n')) {
+    const commentaire = LIGNE.test(brute.trimStart()) ? brute : ''
+    const [ligne, encore] = decommenter(brute, dansBloc)
+    dansBloc = encore
+    const nue = ligne.trim()
+    if (nue !== '') lignesDeCode.push(ligne)
+
     if (!dansTable) {
-      if (dansBloc) {
-        if (ligne.includes('*/')) dansBloc = false
-        continue
-      }
-      if (/^\s*\/\*/.test(ligne) && !ligne.includes('*/')) {
-        dansBloc = true
-        continue
-      }
-      if (DEBUT_TABLE.test(ligne)) dansTable = true
-      else if (A_VENIR_BRUT.test(ligne)) nonReconnues.push(ligne.trim())
-      else if (COMMENTAIRE.test(ligne)) continue
-      else if (MENTION_TABLE.test(ligne) && !LECTURE_TOLEREE.test(ligne))
-        nonReconnues.push(ligne.trim())
+      if (DEBUT_TABLE.test(ligne)) {
+        // ⚠️ Un **second** littéral `var DESTINATIONS = {` n'est pas une continuation : en JS la
+        // dernière affectation gagne, donc tout le premier disparaît du rendu.
+        if (tableVue) nonReconnues.push(nue)
+        tableVue = true
+        dansTable = true
+      } else if (A_VENIR_BRUT.test(commentaire)) nonReconnues.push(commentaire.trim())
+      else if (LIGNE.test(nue) || nue === '') continue
+      else if (MENTION_TABLE.test(ligne) && !LECTURES_TOLEREES.some((m) => m.test(ligne)))
+        nonReconnues.push(nue)
       continue
     }
     if (FIN_TABLE.test(ligne)) {
@@ -91,28 +127,28 @@ function lireNavigation(source: string): Navigation {
       annonce = null
       continue
     }
-    if (A_VENIR_BRUT.test(ligne)) {
-      const declare = A_VENIR.exec(ligne)?.[1]
+    if (A_VENIR_BRUT.test(commentaire)) {
+      const declare = A_VENIR.exec(commentaire)?.[1]
       if (annonce !== null) aVenirNonConsommees.push(annonce)
       if (declare !== undefined && courant) annonce = declare
       else {
         annonce = null
-        nonReconnues.push(ligne.trim())
+        nonReconnues.push(commentaire.trim())
       }
       continue
     }
     // L'annonce se consomme **ici ou jamais** : toute autre ligne la périme, y compris un
     // commentaire ou une ligne vide. C'est ce qui fait tenir « sur la ligne qu'elle dispense ».
-    const destination = COUPLE.exec(ligne)?.[1]
+    const destination = COUPLE.exec(ligne)?.[2]
     if (destination !== undefined && courant && annonce === destination) aVenir.add(destination)
     else if (annonce !== null) aVenirNonConsommees.push(annonce)
     annonce = null
-    if (COMMENTAIRE.test(ligne) || ligne.trim() === '') continue
+    if (LIGNE.test(nue) || nue === '') continue
     if (FERMETURE.test(ligne)) {
       courant = null
       continue
     }
-    const axe = SECTION.exec(ligne)?.[1]
+    const axe = SECTION.exec(ligne)?.[2] ?? SECTION_NUE.exec(ligne)?.[1]
     if (axe !== undefined) {
       // ⚠️ En JS, une clé répétée n'est pas une erreur : le **dernier** bloc écrase le premier.
       // Le parseur, lui, lisait leur union — donc neuf destinations pouvaient disparaître du rendu
@@ -124,7 +160,7 @@ function lireNavigation(source: string): Navigation {
       continue
     }
     if (destination === undefined || !courant) {
-      nonReconnues.push(ligne.trim())
+      nonReconnues.push(nue)
       continue
     }
     // ⚠️ `Map.set` écrase : sans ce relevé, une destination listée sous deux axes ne compte qu'une
@@ -134,6 +170,7 @@ function lireNavigation(source: string): Navigation {
     parDestination.set(destination, courant)
   }
   if (annonce !== null) aVenirNonConsommees.push(annonce)
+  if (dansBloc) nonReconnues.push('commentaire de bloc jamais refermé')
   return {
     parDestination,
     aVenir,
@@ -142,6 +179,7 @@ function lireNavigation(source: string): Navigation {
     axesInconnus,
     axesDupliques,
     aVenirNonConsommees,
+    lignesDeCode,
   }
 }
 
@@ -209,12 +247,15 @@ describe('la navigation des maquettes suit celle du produit', () => {
     expect(ecarts(source).aVenirNonConsommees).toEqual([])
   })
 
-  it('garde la table comme seule source de la barre latérale', () => {
-    // ⚠️ **Couture, pas équivalence.** Ce contrôle compare deux textes ; il ne peut pas prouver que
-    // la table est celle qui s'affiche. Figer les deux sites de lecture fait rougir un rendu qui
-    // cesserait de lire la table, ou qui y ajouterait des entrées — limite écrite en ADR-0112
-    // § Conséquences, parce qu'un garde-fou qui se croit plus large qu'il n'est éteint la vigilance.
-    expect(source.match(/\bDESTINATIONS\[axe\]/g)).toHaveLength(2)
+  it('fige les deux lignes de code qui lisent la table', () => {
+    // ⚠️ **Couture, et rien de plus.** Elle voit qu'aucune ligne de code n'est ajoutée ni retirée
+    // aux deux lectures connues. Elle ne voit **pas** ce qu'on fait de l'alias qu'une lecture rend
+    // (`var liste = DESTINATIONS[axe] || []` puis `liste.splice(…)`) : cette borne est écrite en
+    // ADR-0112 § Conséquences, parce qu'un garde-fou qui se croit plus large éteint la vigilance.
+    const lectures = lireNavigation(source).lignesDeCode.filter((l) =>
+      LECTURES_TOLEREES.some((m) => m.test(l)),
+    )
+    expect(lectures).toHaveLength(2)
   })
 })
 
@@ -235,8 +276,7 @@ describe('le garde-fou lui-même', () => {
   it('signale une destination qui porte le nom d’une propriété héritée d’Object', () => {
     // `'constructor' in AXE_PAR_DESTINATION` vaut `true` : `in` la déclarerait livrée, et le
     // fantôme passerait. C'est le seul test qui épingle le choix de `Object.hasOwn`.
-    const source = pilotage(["      ['constructor', 'Piège de prototype'],"])
-    expect(ecarts(source).fantomes).toEqual(['constructor'])
+    expect(ecarts(pilotage(["      ['constructor', 'Piège']"])).fantomes).toEqual(['constructor'])
   })
 
   it('tolère la même destination si elle est déclarée à venir, avec sa raison', () => {
@@ -254,6 +294,13 @@ describe('le garde-fou lui-même', () => {
     expect(ecarts(source).fantomes).toEqual(['jamais-livre'])
   })
 
+  it('laisse la documentation citer le gabarit sans le prendre pour une déclaration', () => {
+    // Faux positif mesuré : l'en-tête d'`appareils.js` **documente** cette syntaxe. `<id>` n'est
+    // pas un identifiant plausible, donc la citation ne doit rien déclarer ni rien signaler.
+    const source = ['  // PLANCHE-A-VENIR: <id> — <pourquoi>', pilotage([ACCUEIL])].join('\n')
+    expect(ecarts(source).nonReconnues).toEqual([])
+  })
+
   it('refuse une déclaration « à venir » posée hors de la table, et la signale', () => {
     const declaration = '  // PLANCHE-A-VENIR: jamais-livre — posée avant la table'
     const source = [declaration, pilotage([REVE])].join('\n')
@@ -262,10 +309,12 @@ describe('le garde-fou lui-même', () => {
   })
 
   it('refuse une déclaration « à venir » qui ne précède pas immédiatement sa ligne', () => {
-    // La borne « sur la ligne qu'elle dispense » est écrite dans ADR-0112 §4, dans `appareils.js`
-    // et dans la story : accumulée, elle dispensait un fantôme d'un **autre axe**.
     const source = factice([...bloc('pilotage', [DECLARE]), ...bloc('atelier', [REVE])])
     expect(ecarts(source).fantomes).toEqual(['jamais-livre'])
+  })
+
+  it('refuse une déclaration « à venir » séparée de sa ligne par une ligne vide', () => {
+    expect(ecarts(pilotage([DECLARE, '', REVE])).fantomes).toEqual(['jamais-livre'])
   })
 
   it('signale une déclaration « à venir » que rien ne consomme', () => {
@@ -274,8 +323,7 @@ describe('le garde-fou lui-même', () => {
 
   it('ne laisse pas une déclaration « à venir » tenir lieu de destination', () => {
     // ⚠️ Depuis que l'annonce est locale, `aVenir ⊆ parDestination` : le masquage d'une manquante
-    // est structurellement impossible. Ce test fixe qu'une déclaration seule n'inscrit rien **et
-    // se signale** — c'est la seconde assertion qui rougit si la péremption saute.
+    // est structurellement impossible. C'est la seconde assertion qui rougit si la péremption saute.
     const source = pilotage(['      // PLANCHE-A-VENIR: accueil — tentative de masquage'])
     expect(ecarts(source).manquantes).toContain('accueil')
     expect(ecarts(source).aVenirNonConsommees).toEqual(['accueil'])
@@ -301,25 +349,43 @@ describe('le garde-fou lui-même', () => {
   })
 
   it('signale une catégorie déclarée deux fois, que le navigateur écraserait', () => {
-    // Trou de la 3ᵉ passe : le parseur lisait l'union des deux blocs, le navigateur ne garde que
-    // le dernier — neuf destinations livrées disparaissaient du rendu, suite verte.
     const source = factice([...bloc('pilotage', [ACCUEIL]), ...bloc('pilotage', [REVE])])
     expect(ecarts(source).axesDupliques).toEqual(['pilotage'])
   })
 
+  it('signale une seconde table, dont le navigateur ne garderait que la dernière', () => {
+    const source = [pilotage([ACCUEIL]), factice(bloc('gestion', [REVE]))].join('\n')
+    expect(ecarts(source).nonReconnues).toContain('var DESTINATIONS = {')
+  })
+
   it('signale un bloc dont l’axe est inconnu du produit, sans avaler ses lignes', () => {
-    // Trou de la 2ᵉ passe : `if (!courant) continue` sautait le filet, donc un axe inventé
-    // emportait toutes ses destinations en silence. Prouvé par sabotage.
     const source = factice(bloc('reglages', [REVE]))
     expect(ecarts(source).axesInconnus).toEqual(['reglages'])
     expect(ecarts(source).nonReconnues).toEqual(["['jamais-livre', 'Écran rêvé'],"])
   })
 
   it('signale une ligne de couple que le motif strict ne sait pas lire', () => {
-    // Trou de la 1ʳᵉ passe : un commentaire de fin de ligne escamotait un fantôme, parce qu'une
-    // ligne non reconnue était **jetée** au lieu d'être signalée.
     const source = pilotage(["      ['doublons', 'Doublons'], // fantôme escamoté"])
     expect(ecarts(source).nonReconnues).toEqual(["['doublons', 'Doublons'], // fantôme escamoté"])
+  })
+
+  it('ne compte pas vivantes les entrées mises en commentaire de bloc dans la table', () => {
+    // Trou de la 4ᵉ passe : le suivi de bloc ne valait qu'en dehors de la table, donc le geste le
+    // plus banal — mettre un groupe de côté le temps d'une refonte — escamotait ses entrées.
+    const source = pilotage(['      /* mis de côté', ACCUEIL, '      */'])
+    expect(ecarts(source).manquantes).toContain('accueil')
+  })
+
+  it('examine le code écrit après la fin d’un commentaire de bloc', () => {
+    // Régression de la 3ᵉ passe, trouvée par différentiel : `*/ <mutation>` était rouge, puis vert.
+    const source = `${pilotage([ACCUEIL])}\n  /* note\n  */ DESTINATIONS.pilotage.pop()`
+    expect(ecarts(source).nonReconnues).toEqual(['DESTINATIONS.pilotage.pop()'])
+  })
+
+  it('signale un commentaire de bloc que rien ne referme', () => {
+    expect(ecarts(`${pilotage([ACCUEIL])}\n  /* jamais refermé`).nonReconnues).toEqual([
+      'commentaire de bloc jamais refermé',
+    ])
   })
 
   it('accepte un libellé qui porte une apostrophe droite entre guillemets doubles', () => {
@@ -328,30 +394,45 @@ describe('le garde-fou lui-même', () => {
     expect(ecarts(source).manquantes).not.toContain('accueil')
   })
 
+  it('refuse un identifiant dont les guillemets sont dépareillés', () => {
+    // JS lirait `accueil"` ; le parseur lisait `accueil`, donc la planche cessait en silence de
+    // marquer son lien actif.
+    expect(ecarts(pilotage(["      ['accueil\", 'Accueil'],"])).manquantes).toContain('accueil')
+  })
+
   it('signale une ligne intruse dans la table', () => {
     const source = pilotage([ACCUEIL]).replace('    ],', '    ].concat(HERITAGE),')
     expect(ecarts(source).nonReconnues).toEqual(['].concat(HERITAGE),'])
   })
 
-  it('signale toute mention de la table hors du littéral qui n’est pas une lecture connue', () => {
-    // ⚠️ Liste **blanche** et non liste noire : `.push` était énuméré, `.pop`, `.sort`, `delete` et
-    // `Object.assign` ne l'étaient pas — et chacun retire ou ajoute une entrée à la sidebar.
-    const mutations = [
-      "  DESTINATIONS.gestion.push(['doublons', 'Doublons'])",
-      '  DESTINATIONS.pilotage.pop()',
-      '  delete DESTINATIONS.atelier',
-      "  Object.assign(DESTINATIONS, { reglages: [['x', 'X']] })",
-      '  var alias = DESTINATIONS',
-    ]
-    for (const mutation of mutations) {
-      expect(ecarts(`${pilotage([])}\n${mutation}`).nonReconnues).toEqual([mutation.trim()])
-    }
+  const horsLitteral = [
+    "  DESTINATIONS.gestion.push(['doublons', 'Doublons'])",
+    '  DESTINATIONS.pilotage.pop()',
+    '  delete DESTINATIONS.atelier',
+    "  Object.assign(DESTINATIONS, { reglages: [['x', 'X']] })",
+    '  var alias = DESTINATIONS',
+    '  DESTINATIONS.gestion.length = 0; DESTINATIONS[axe].forEach(function (d) {',
+  ]
+  it.each(horsLitteral)('signale « %s » hors du littéral', (mutation) => {
+    // ⚠️ Liste **blanche** sur la ligne entière : `.push` était énuméré, `.pop` non ; et une lecture
+    // tolérée présente sur la ligne amnistiait tout le reste. Les deux ont été mesurés verts.
+    expect(ecarts(`${pilotage([])}\n${mutation}`).nonReconnues).toEqual([mutation.trim()])
   })
 
   it('laisse passer les deux lectures connues de la table', () => {
     const lectures = [
-      '  DESTINATIONS[axe].forEach(function (d) {',
-      '  var l = DESTINATIONS[axe] || []',
+      '    DESTINATIONS[axe].forEach(function (d) {',
+      '    var liste = DESTINATIONS[axe] || []',
+    ]
+    expect(ecarts(`${pilotage([])}\n${lectures.join('\n')}`).nonReconnues).toEqual([])
+  })
+
+  it('laisse passer les deux lectures après un renommage de la variable de boucle', () => {
+    // Faux positif mesuré : figer le nom `axe` faisait rougir un renommage pur, avec un message
+    // qui ne nommait ni le fichier ni le défaut. C'est la forme qui porte l'invariant.
+    const lectures = [
+      '    DESTINATIONS[axeOuvert].forEach(function (entree) {',
+      '    var entrees = DESTINATIONS[axeOuvert] || []',
     ]
     expect(ecarts(`${pilotage([])}\n${lectures.join('\n')}`).nonReconnues).toEqual([])
   })

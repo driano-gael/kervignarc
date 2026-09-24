@@ -12,18 +12,23 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 23/09/2026, 20 h 45** · **146 US livrées** · dernière : `E17US010`
+**Dernière mise à jour : 24/09/2026, 07 h 50** · **146 US livrées** · dernière : `E17US010`
 *(**le dossier de maquettes ne peut plus dériver du produit en silence** — la navigation des
 planches était transcrite à la main depuis `axes.ts`, et **cinq US** d'écart s'étaient accumulées
 sans que rien ne le dise : 4 destinations livrées absentes, 1 fantôme, 4 libellés périmés. Un test
 front **importe** désormais la source produit et rougit sur toute destination en trop, manquante,
 mal rangée, listée deux fois ou illisible — [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md).
-⚠️ **La revue a rendu, en TROIS passes, 4 bloquants et 31 majeurs, tous sur le garde-fou
-lui-même — et chaque correctif a déplacé le trou d'un cran.** Il était vert *dans* un bloc (un
+⚠️ **La revue a rendu, en QUATRE passes, 7 bloquants et 46 majeurs** (comptes de fusion, cf.
+[`docs/metriques-revue.md`](../docs/metriques-revue.md) pour le détail par axe), **l'essentiel sur
+le garde-fou lui-même — et chaque correctif a déplacé le trou d'un cran.** Il était vert *dans* un bloc (un
 commentaire de fin de ligne escamotait un fantôme), puis *hors* d'un bloc (un axe inventé
 emportait ses entrées), puis *hors du littéral* (`.push` était énuméré, `.pop` non), et une
-catégorie déclarée deux fois passait aussi. Tout est fermé par une **liste blanche des deux
-côtés**, et **reprouvé par neuf sabotages** sur le fichier réel.
+catégorie déclarée deux fois passait aussi, puis un commentaire de bloc posé **dans** la table.
+➡️ Ce qui a rompu la série n'est pas un cas de plus mais un **changement de nature** : le
+contrôle lit désormais par **liste blanche sur la ligne entière**, avec trois **états lexicaux**
+(commentaire de bloc, catégorie déjà vue, table déjà vue). **14 sabotages rougissent** sur le
+fichier réel, et **2 faux positifs** — renommer la variable de boucle, citer le gabarit dans la
+doc — restent verts.
 ⚠️ **Un bloquant venait d'ailleurs que du code** : la PR d'`E05US022` avait été mergée entre
 temps, et les deux compteurs annonçaient 145 pour des ensembles différents — `main` serait parti
 rouge. Branche rattrapée sur `main` avant la PR. ⚠️ **Mon argument de dette était faux** : ce n'était

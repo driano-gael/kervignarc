@@ -67,8 +67,11 @@ La copie se lit par **liste blanche des deux côtés du littéral**. *Dans* la t
 n'est ni section, ni fermeture, ni entrée, ni commentaire, ni vide est **signalée** — de même
 qu'une catégorie inconnue du produit, ou **déclarée deux fois** (en JS le dernier bloc écrase le
 premier : le lecteur voit l'union, le navigateur non). *Hors* de la table : **toute** mention de
-la table qui n'est pas une des lectures connues est signalée. Sans cela le contrôle échoue
-**ouvert** : ce qu'il ne sait pas lire disparaît de la comparaison au lieu de la faire rougir.
+la table dont la **ligne entière** ne correspond pas à une lecture connue est signalée — une
+lecture tolérée présente en **fragment** amnistiait tout le reste de sa ligne. Le contrôle tient
+enfin trois **états lexicaux** : commentaire de bloc (où qu'il soit, refermement compris),
+catégorie déjà vue, table déjà vue. Sans eux il échoue **ouvert** : ce qu'il ne sait pas lire
+disparaît de la comparaison au lieu de la faire rougir.
 
 ⚠️ **Ce n'est pas une précaution théorique : il a fallu TROIS passes de revue pour le tenir, et
 chaque correctif a déplacé le trou d'un cran.** Le parseur échouait ouvert *dans* un bloc (un
@@ -109,10 +112,10 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
 
 - La copie cesse d'être un artefact que rien ne vérifie. C'est le statut qu'ADR-0099 réserve aux
   commentaires, et la raison pour laquelle il les borne : ici on ne borne pas, on **vérifie**.
-- Le contrôle ne couvre que ce qu'il dit couvrir : **`DETTE-110` énumère ce qui reste hors garde**
-  et c'est le seul endroit qui le fasse — la liste était recopiée à sept endroits et avait déjà
-  divergé dans le commit qui l'écrivait (ADR-0102 §1 appliqué à cet ADR lui-même). Ce résidu est
-  transcrit à la main — inscrits en `DETTE-110`, avec leur remède. Un
+- Le contrôle ne couvre que ce qu'il dit couvrir : **`DETTE-110` énumère ce qui reste hors garde
+  pour la navigation**, et `appareils.js` comme `maquettes/README.md` y **renvoient** au lieu de
+  recopier — la liste vivait à sept endroits et avait déjà divergé dans le commit qui l'écrivait
+  (ADR-0102 §1 appliqué à cet ADR lui-même). Ce résidu est transcrit à la main — inscrit en `DETTE-110`, avec son remède. Un
   garde-fou qui se croit plus large qu'il n'est éteint la vigilance : c'est pourquoi le périmètre
   exact est écrit dans `appareils.js`, dans `maquettes/README.md` et au registre.
 - **Un second candidat existe et n'est pas couvert** : `maquettes/assets/systeme.css` « transcrit la
@@ -123,13 +126,20 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
 - ⚠️ **Le contrôle compare deux textes ; il ne prouve pas que la table est celle qui s'affiche.**
   Le rendu peut lire une autre source, ou ajouter des entrées — il le fait déjà pour marquer
   « non livrée » un écran hors table, et §4 en fait la voie préférée. La barre latérale rendue est
-  donc, par conception, *table + extras*. Une **couture** fige les deux sites de lecture de la
-  table pour qu'un rendu qui cesserait de la lire rougisse ; la borne, elle, est écrite ici
-  plutôt que colmatée, parce qu'un garde-fou qui se croit plus large qu'il n'est éteint la
-  vigilance.
+  donc, par conception, *table + extras*. Une **couture** fige les deux **lignes de code** qui
+  lisent la table : en ajouter ou en retirer une rougit. ⚠️ Elle ne voit **pas** ce qu'on fait de
+  l'alias qu'une lecture rend — `var liste = DESTINATIONS[axe] || []` puis `liste.splice(…)` ou
+  `liste.push(…)` change bel et bien la barre latérale et reste vert (mesuré en revue). Cette
+  borne est **écrite** plutôt que colmatée : un garde-fou qui se croit plus large qu'il n'est
+  éteint la vigilance, et la fermer supposerait de figer aussi le corps des boucles.
 - Le contrôle est exécuté par `npm test`, donc par la porte mécanique et par la CI (job `frontend`,
   bloquant). Le dossier `maquettes/` n'est pas dans le périmètre de prettier ni d'eslint, donc
   aucun outil ne reformate le fichier dans le dos du parseur.
+  ⚠️ **La contrepartie est du même ordre, et elle a coûté un bloquant** : aucun outil ne lit ce
+  fichier comme du **JavaScript** non plus — ni `no-dupe-keys` (d'où le relevé des catégories
+  dupliquées dans ce contrôle), ni même un contrôle de **syntaxe**. Un guillemet non fermé tue
+  l'IIFE et vide toutes les planches pendant que ce contrôle reste vert (mesuré en revue). La
+  phrase rassurante et la cause du trou sont la même phrase.
 
 ## Porté dans le code par
 
@@ -137,7 +147,7 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
   qui échoue fermé, asymétrie, et les quatre bornes de l'échappatoire. Sa seconde suite éprouve le
   garde-fou sur une source factice, chaque détection ayant été vue rouge.
 - `maquettes/assets/appareils.js` — la copie tenue sous garde (table `DESTINATIONS`), et l'en-tête
-  qui énonce le périmètre exact du contrôle.
+  qui **renvoie** au périmètre exact (`DETTE-110`).
 - `frontend/src/features/admin/axes.ts` — la source, `AXE_PAR_DESTINATION`.
 - `maquettes/README.md` — la règle rendue au lecteur du dossier de maquettes.
 
