@@ -4117,7 +4117,8 @@ window.ATLAS.decisions = {
     "E16US016",
     "E16US017",
     "E16US019",
-    "E16US020"
+    "E16US020",
+    "E17US010"
    ]
   },
   {
@@ -9516,7 +9517,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-08-30",
    "date_brute": "2026-08-30",
-   "extrait": "### §1 — Un fait, un lieu ; les autres pointent Chaque type de document a une responsabilité et n'énonce en propre que ce qui relève d'elle. Ce qui vient d'ailleurs se cite en une ligne, avec un lien, jamais recopié. | Document | Ce qu'il énonce en propre | Ce qu'il ne fait que pointer | |---|---|---| | stories/ | le CA et les arbitrages — c'est l'oracle des tests (règle 9) | le raisonnement (ADR), le geste (fiche fonctionnelle) | | docs/adr/ | le pourquoi — seul lieu du raisonnement long | le CA, l'état d'avancement | | docs/fonctionnel/ | le geste utilisateur d'aujourd'hui, en français non technique | le pourquoi, l'absence (cf. §2) | | docs/dette.md | le raccourci assumé et son critère […]",
+   "extrait": "### §1 — Un fait, un lieu ; les autres pointent Chaque type de document a une responsabilité et n'énonce en propre que ce qui relève d'elle. Ce qui vient d'ailleurs se cite en une ligne, avec un lien, jamais recopié. ⚠️ Une exception bornée existe depuis E17US010 : quand la citation est techniquement impossible — un fichier statique ne peut pas import un module du produit — la copie n'est admise que sous contrôle de CI, jamais nue (ADR-0112). | Document | Ce qu'il énonce en propre | Ce qu'il ne fait que pointer | |---|---|---| | stories/ | le CA et les arbitrages — c'est l'oracle des tests (règle 9) | le raisonnement (ADR), le geste (fiche fonctionnelle) | | docs/adr/ | le pourquoi — seul […]",
    "fichier": "docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md",
    "identifiant": "0102",
    "liens": [
@@ -9569,7 +9570,8 @@ window.ATLAS.decisions = {
     "E00US030",
     "E16US007",
     "E16US008",
-    "E16US010"
+    "E16US010",
+    "E17US010"
    ]
   },
   {
@@ -10984,6 +10986,67 @@ window.ATLAS.decisions = {
     "E06US009",
     "E16US007",
     "E16US016"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-23",
+   "date_brute": "2026-09-23",
+   "extrait": "Quand une copie documentaire d'un fait du code est techniquement inévitable, elle n'est admise que si un contrôle de CI la compare à sa source. Sans ce contrôle, la règle d'ADR-0102 §1 s'applique sans exception : on cite, on ne recopie pas. Quatre points fixent la forme du contrôle. ### 1. Le sens de lecture : la source s'importe, la copie se parse Le contrôle importe la source produit (AXE_PAR_DESTINATION) et ne parse que la copie. La source est donc lue par le compilateur, jamais par une expression régulière : un seul des deux côtés peut mentir sur sa propre forme. C'est ce qui a écarté le patron des garde-fous existants du dépôt. test_domain_isolation.py et test_portee_sportive.py sont […]",
+   "fichier": "docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md",
+   "identifiant": "0112",
+   "liens": [
+    {
+     "cible": "E17US010",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0102",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0074",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0099",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "frontend/src/features/admin/axes.ts",
+     "existe": true,
+     "symboles": [
+      "AXE_PAR_DESTINATION"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/maquettes-navigation.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une transcription documentaire inévitable se tient **sous garde mécanique**",
+   "us": [
+    "E16US002",
+    "E16US010",
+    "E17US010"
    ]
   }
  ]

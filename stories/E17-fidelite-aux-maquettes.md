@@ -299,4 +299,39 @@
   Ce n'est **pas** une US de fidélité visuelle : elle protège l'**outil** de relecture, sans quoi
   toutes les autres E17 se font sur une base fausse. À prendre **avant** `E17US008` et `E17US009`,
   qui vont relire 16 planches.
+- **Arbitrages rendus** *(livrée le 23/09/2026 — reversés ici dans le commit de l'US, règle 9)* :
+  - **Forme du contrôle : test front**, comme le pressentaient les Notes — mais la raison n'était pas
+    « la CI front tourne déjà ». C'est que le test **importe** `AXE_PAR_DESTINATION` : la source
+    produit est lue par `tsc`, jamais regexée, donc **un seul des deux côtés peut mentir sur sa
+    forme**. Un garde-fou Python (comme `test_domain_isolation.py`) aurait dû parser les *deux*
+    fichiers — deux parseurs fragiles au lieu d'un.
+  - **Déclaration d'une divergence volontaire** : `// PLANCHE-A-VENIR: <id> — <pourquoi>` dans
+    `appareils.js`, **nominative, justifiée, locale et périssable** (les quatre bornes sont dans
+    [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md) §4,
+    chacune fermant un contournement **mesuré en revue**). ⚠️ **Voie préférée** : ne pas inscrire
+    du tout l'écran non livré dans la table — `navigationAdmin` le rend déjà « non livrée » en
+    pointillés, mécanisme antérieur à l'US que l'échappatoire contredisait. ⚠️ **Asymétrie voulue** : une maquette *en avance* sur le produit se déclare et
+    passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge **sans échappatoire**
+    — c'est ce sens de dérive, et lui seul, qui fait relire des planches périmées.
+  - **Le contrôle porte aussi l'axe** : une destination rangée sous « pilotage » d'un côté et
+    « atelier » de l'autre rougit. Gratuit — les deux structures portent déjà cette donnée.
+  - **Périmètre : les identifiants de destination seulement** — ce qui reste hors garde est
+    énuméré par `DETTE-110`, seul endroit qui le fasse. **Ce résidu — libellés et ordre —** vit
+    dans un tableau local à `CoquilleAdmin`, hors de portée d'un import ; les remonter serait la
+    **4ᵉ** `Record` exhaustif d'`axes.ts` (`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`,
+    `OUVRE_UN_ELEMENT`) : le pattern est **déjà établi**, donc la règle 16 l'autorise — elle
+    n'interdit que d'en **introduire** un sur pari. Le motif du report est le **coût** : 33
+    entrées à déplacer dans un composant de 759 lignes, au milieu d'une US d'outillage.
+    ⚠️ *(La 1ʳᵉ rédaction disait « 3ᵉ occurrence, donc remède structurel » : faux deux fois,
+    relevé en revue — `OUVRE_UN_ELEMENT` existe, et la règle 16 ne dit pas cela.)*
+- **Écart réel mesuré à la livraison** *(le garde-fou a été vu rouge avant d'être vu vert)* : **4
+  destinations livrées absentes** des maquettes — `identite` (E16US006), `archer` (E16US010),
+  `pret-demarrer` (E16US012), `audit` (E16US016) — et **1 fantôme**, `doublons`, retirée du produit
+  par `E16US010`. Soit **cinq US** de dérive accumulée, plus **quatre libellés** périmés dont deux
+  renommés par `E16US002` *précisément parce qu'ils portaient chacun le nom de l'autre*.
+  ⚠️ **« Aucun ADR » était une erreur, corrigée en revue** : les deux garde-fous invoqués comme
+  patron sont chacun adossés à une décision écrite (règle 1 de `CLAUDE.md`, ADR-0075), et la
+  décision prise ici — *une copie documentaire inévitable est admise à condition d'être tenue
+  sous garde* — est une **exception bornée à ADR-0102 §1**, généralisable (un 2ᵉ candidat existe :
+  `maquettes/assets/systeme.css`). D'où [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md).
 - **Dépend de** : — · **Jalon** : J3

@@ -395,7 +395,7 @@ rétablie, appelants du point unique complétés. Réexaminé au critère à cet
 **outillage documentaire**, donc hors de la liste nominative. *(Placement et redite corrigés en
 2ᵉ passe de revue — l'insertion initiale coupait l'entrée en deux.)*), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
 que `0099` : une règle d'écriture ne touche ni portée, ni moteur, ni politique injectable.
-✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée), **`0107`** (E16US011 —
+✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée. ⚠️ **ROUVERT par `E17US010` le 23/09/2026** — son §1, sous *Décision*, gagne une **exception bornée** : une copie techniquement inévitable est admise sous contrôle de CI (ADR-0112). **Il reste hors critère**, une règle d'écriture ne touchant ni portée, ni moteur, ni politique injectable ; sa section « Porté dans le code par » a été relue dans le même commit — elle reste « rien à ce jour » pour ses quatre §, `E00US028`→`030` n'étant pas livrées, et gagne une ligne pour l'exception, qui, elle, est portée), **`0107`** (E16US011 —
 **politique d'autorisation** : un ordre entre rôles pour arbitrer une écriture concurrente ne touche
 ni la portée, ni le moteur sportif, ni une politique injectable au sens de la règle 2.
 ⚠️ **Inscrit en 2ᵉ passe de revue, et la série de quatre est rompue** : l'ADR argumentait son
@@ -407,7 +407,13 @@ et sa *Conséquence* sur `DETTE-065` passe du conditionnel au tranché. **Il res
 ordre entre rôles n'est toujours ni portée, ni moteur, ni politique injectable. Sa section « Porté
 dans le code par » a été **réécrite** dans le même commit — la 1ʳᵉ rédaction, une table
 `décision | module | test`, produisait sept faux `portage-symbole-absent` en réclamant les noms de
-tests dans les modules de production) —
+tests dans les modules de production), **`0112`** (E17US010 — **convention documentaire et
+d'outillage** : une règle d'écriture d'une **copie** ne touche ni portée, ni moteur, ni politique
+injectable, au même titre que `0099` et `0102` dont il se réclame. Il porte sa section « Porté
+dans le code par », exigée sans condition. ⚠️ **Inscrit ici en 2ᵉ passe de revue, et non plaidé
+chez lui** : la 1ʳᵉ rédaction argumentait son exclusion dans son propre encadré — **7ᵉ**
+occurrence du mode de panne que ce paragraphe décrit, et de nouveau en revendiquant `0102`
+comme patron. Le patron avait encore été copié sur la forme, pas sur le geste) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

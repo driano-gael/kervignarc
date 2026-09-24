@@ -17,11 +17,14 @@
      frontend/src/features/admin/axes.ts        (AXES, AXE_PAR_DESTINATION)
      frontend/src/features/admin/CoquilleAdmin.tsx (ordre et libellés)
      frontend/src/app/App.css                   (dimensions)
-   Toute US qui ajoute ou renomme une destination désynchronise ce fichier.
-   Le point de reprise du README porte la consigne de resynchronisation.
+   Les IDENTIFIANTS de DESTINATIONS sont sous garde mécanique depuis E17US010 (ADR-0112) :
+   `frontend/src/maquettes-navigation.test.ts` rougit sur une destination en trop, manquante,
+   mal rangée, listée deux fois, ou écrite dans une forme qu'il ne sait pas lire.
+   Tout le reste du fichier est transcrit à la main et HORS garde : `DETTE-110` en tient la
+   liste, et c'est le seul endroit qui la tienne.
 
    ---------------------------------------------------------------------------
-   JEU DE CHIFFRES UNIQUE — le même tournoi sur les 145 planches, sinon la
+   JEU DE CHIFFRES UNIQUE — le même tournoi sur toutes les planches, sinon la
    critique portera sur l'incohérence plutôt que sur la mise en page :
 
      Tournoi     « Challenge des champions » — 22/11/2026, salle de Kervignarc
@@ -70,15 +73,22 @@
   }
 
   // Ordre = celui du tableau `destinations` de CoquilleAdmin.tsx, filtré par axe.
+  // ⚠️ Une planche en avance sur le produit se montre normalement en LAISSANT son écran hors
+  // de cette table : `navigationAdmin` le rend alors « non livrée », en pointillés. N'inscrire ici un
+  // écran non livré — par `// PLANCHE-A-VENIR: <id> — <pourquoi>`, sur la ligne qu'elle
+  // dispense — que si l'entrée de sidebar elle-même doit figurer. La déclaration devient
+  // rouge le jour où l'écran est livré : elle ne peut pas se périmer en silence.
   var DESTINATIONS = {
     pilotage: [
       ['accueil', 'Accueil (tableau de bord)'],
       ['assemblage', 'Assemblage'],
       ['plan', 'Plan de salle'],
       ['bareme', 'Barème & validation'],
-      ['phases', 'Phases (format)'],
+      ['identite', 'Identité visuelle'],
+      ['phases', 'Phases du tournoi'],
       ['departs', 'Départs & tarifs'],
       ['scoreurs', 'Scoreurs'],
+      ['archer', 'Fiche d’un archer'],
       ['placement', 'Placement'],
       ['duels', 'Plan de duels'],
       ['postes', 'Postes de cible'],
@@ -87,22 +97,23 @@
       ['ecrans', 'Écrans de salle'],
       ['suivi-deroule', 'Suivi du déroulé'],
       ['feu-vert', 'Feu vert'],
-      ['completude', 'Complétude'],
+      ['pret-demarrer', 'Prêt à démarrer ?'],
+      ['completude', 'Prêt à terminer ?'],
       ['classement', 'Classement en direct'],
       ['palmares', 'Palmarès'],
     ],
     gestion: [
       ['inscriptions', 'Inscriptions'],
-      ['doublons', 'Doublons'],
       ['paiements', 'Paiements'],
       ['exports', 'Exports'],
+      ['audit', 'Journal d’audit'],
       ['archive', 'Archive'],
     ],
     atelier: [
+      ['formats', 'Formats de tournoi'],
       ['categories', 'Catégories'],
       ['blasons', 'Blasons'],
-      ['formats', 'Formats (déroulés)'],
-      ['deroule', 'Composer un déroulé'],
+      ['deroule', 'Composer un format'],
       ['gabarits', 'Gabarits (modèles)'],
       ['clubs', 'Clubs'],
       ['jeu-essai', 'Jeu d’essai'],

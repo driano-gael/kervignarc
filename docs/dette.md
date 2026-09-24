@@ -40,6 +40,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
+| [DETTE-110](#dette-110--les-libellés-et-lordre-de-la-navigation-des-maquettes-restent-transcrits-à-la-main) | technique | mineur | `frontend/src/features/admin/CoquilleAdmin.tsx` (tableau local `destinations`, marqueur `DETTE-110` — c'est **là** qu'est le raccourci) · `maquettes/assets/appareils.js` (en-tête, marqueur — dont la table `AXES`, les libellés, l'ordre et les dimensions d'appareil) · `maquettes/*.html` (les `data-ecran`). ⚠️ **La liste complète de ce qui reste hors garde est dans le détail ci-dessous**, pas dans cette colonne | `E17US010` met les **identifiants** de destination sous garde mécanique, pas leurs **libellés** ni leur **ordre** : ceux-ci vivent dans un tableau local au composant `CoquilleAdmin`, donc hors de portée d'un import — seuls les identifiants sont exposés par `axes.ts` | **Quatre** libellés avaient dérivé et sont corrigés ici, dont deux — « Phases (format) » et « Composer un déroulé » — renommés par `E16US002` **un mois plus tôt** sans que rien ne le signale. Le prochain renommage repartira de zéro | **`E17US010`** (23/09/2026), périmètre assumé : remonter les libellés touche **une entrée par destination livrée** dans `CoquilleAdmin.tsx` (759 lignes) et son lecteur — un refactor de composant, hors du périmètre d'une US d'outillage documentaire. ⚠️ Le **pattern, lui, est déjà établi** : `axes.ts` porte trois `Record` exhaustifs (`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`, `OUVRE_UN_ELEMENT`), un 4ᵉ n'introduit aucune abstraction neuve. C'est un argument de coût, pas de conception | Remonter un `LIBELLE_PAR_DESTINATION` dans `axes.ts` (`Record` exhaustif, comme ses deux voisins), `CoquilleAdmin` le consommant ; le garde-fou compare alors aussi les libellés. ⚠️ **L'ordre est un autre sujet** : il ne vit pas dans `axes.ts` et n'a pas à y entrer sans raison — la sidebar des maquettes peut légitimement s'en écarter |
 | [DETTE-109](#dette-109--la-barre-de-progression-du-cockpit-peut-dépasser-100-) | technique | mineur | `backend/application/pilotage_simulation.py` (`_etat`, `duels_total`, marqueur `DETTE-109`) · `frontend/src/features/simulation/Simulation.tsx` (la barre) | `duels_total` vaut `somme(effectif - 1)` par tableau, ce qui compte les duels d'un arbre **sans son match pour la 3ᵉ place**. `duels_faits`, lui, compte tous les duels joués | La barre de progression du cockpit affiche **plus de 100 %** dès qu'une petite finale est jouée : mesuré à `duels_faits=8` pour `duels_total=6` sur deux créneaux de quatre archers. Surface de démo/QA derrière `exiger_admin` ; rien d'autre ne lit ce compteur | **Antérieure à `E06US009`** (la formule n'a pas changé), mais la ligne a été **réécrite** par elle — le doublon de reconstruction d'arbres y a été supprimé — et c'est à cette occasion qu'un axe de revue a mesuré l'écart. Tracée plutôt que corrigée en douce : changer la sémantique d'un compteur n'est pas du ressort d'une US de palmarès | Compter les duels réellement portés par l'arbre plutôt que de les dériver de l'effectif (`len([d for d in etat.duels if not d.est_bye])`), ou aligner `duels_faits` sur la même définition. ⚠️ **Vérifier les deux compteurs ensemble** : les corriger séparément déplacerait l'écart au lieu de le fermer |
 | [DETTE-108](#dette-108--les-dto-du-front-sont-des-miroirs-manuels-que-rien-ne-valide) | conception | majeur | `frontend/src/shared/api/client.ts` (`fetchJson`, marqueur `DETTE-108`) · `frontend/src/features/*/api.ts` (les miroirs) · la coquille d'application (aucun `ErrorBoundary`) | Chaque DTO front est un **miroir écrit à la main** d'un modèle Pydantic, et `fetchJson<T>` **transtype sans valider**. Une dérive de contrat est donc invisible à `tsc` **et** à `vitest`. Amplificateur : `frontend/src` n'a **aucun** `ErrorBoundary`, donc un `TypeError` de rendu démonte **tout** l'arbre React | C'est la cause du **seul bloquant** de la 1ʳᵉ passe de revue d'`E06US009` : le serveur avait changé `EtatSessionReponse`, le miroir non, et l'appli admin **entière** tombait en page blanche au premier clic sur « Simulation » — pendant que la porte rendait **14/14** | **Ouverte en 2ᵉ passe de revue d'`E06US009`** (19/09/2026). La classe ne vivait que dans deux commentaires, et le renvoi qu'ils portaient (`DETTE-081`) désignait **autre chose** — un champ manquant sur `EtapeDTO`. Deux précédents du registre disent la règle : une dette assumée en commentaire n'est jamais prise | Deux gestes indépendants. **(a)** Un `ErrorBoundary` racine — ~30 lignes, zéro dépendance — borne le rayon à un écran au lieu de l'appli. **(b)** Valider les réponses (types générés depuis `/openapi.json`, ou un validateur) est un **ajout de dépendance** : règle 11, donc arbitrage du commanditaire + ADR + US dédiée. ⚠️ **L'option « rien » est défendable** (un seul incident constaté, LAN mono-club, règle 12) : ce qui manquait était l'**inscription**, pas le remède |
 | [DETTE-106](#dette-106--cinq-orthographes-du-libellé-de-créneau) | conception | mineur | `backend/domain/depart.py` (`libelle_creneau`) · `frontend/src/features/departs/libelle.ts` (`libelleCreneau`) · `frontend/src/features/placement/PlanCiblesPublic.tsx` (`libelleDepart`) · `frontend/src/features/inscriptions/InscriptionsArcher.tsx` (`libelleDepart`) · `frontend/src/features/admin/BandeauContexte.tsx` (composé en ligne) | **Cinq sites composent le libellé d'un créneau**, dans **deux orthographes** au moins : « Départ **n°**2 — 14:00 » côté serveur, « Départ 2 — 14:00 » côté front, plus trois variantes locales qui y ajoutent l'état, le tarif ou changent le séparateur. Les docstrings des deux principaux affirment **chacune** être « le domicile unique » / « un seul, partout » : elles sont fausses toutes les deux | Le même créneau se lit différemment d'un écran à l'autre, et depuis `E06US009` **sur le même écran** : le palmarès affiche la forme serveur, le sélecteur de créneau juste à côté la forme front. ⚠️ La forme serveur est **persistée verbatim** dans `remboursement.creneau` ([ADR-0057](adr/0057-registre-de-remboursements.md)) : elle ne peut pas changer sans faire diverger un registre d'argent de ses lignes historiques | **Découverte en cadrant `E06US009`** (19/09/2026), en cherchant d'où le serveur tirerait le nom de ses sections. Non traitée dans l'US : unifier cinq sites est un **remède structurel**, donc ADR + US dédiée (règle « jamais en douce dans l'US courante ») | Aligner les quatre sites front sur `Depart.libelle_creneau` (la forme persistée fait foi), les deux composites gardant leur suffixe. ⚠️ **Le libellé devra descendre dans la réponse** là où le front ne l'a pas : c'est ce qu'`E06US009` a fait pour le seul palmarès. Marqueurs `DETTE-106` sur les **deux sites du raccourci** — `Depart.libelle_creneau` et `libelleCreneau` —, plus deux renvois sur les consommateurs (`SectionPalmares.libelle`, `features/palmares/api.ts`). ⚠️ **Les marqueurs ont d'abord été posés sur les seuls consommateurs** : un `grep DETTE-106` ramenait alors zéro des cinq fichiers à corriger (relevé par deux axes de revue). |
@@ -4776,6 +4777,58 @@ toucher les deux autres l'élargit, et c'est exactement ce qui vient de se produ
 **Résorption.** Une fonction `replier(texte)` unique dans `shared/`, les trois sites migrés dessus,
 un test d'ancrage sur les cas qui distinguent les variantes. ~8 lignes, aucune abstraction neuve —
 même forme que `DETTE-029` (une règle réécrite à N sites), qui renvoie elle aussi à une US dédiée.
+
+### DETTE-110 — les libellés et l'ordre de la navigation des maquettes restent transcrits à la main
+
+**Où** : `frontend/src/features/admin/CoquilleAdmin.tsx` — le tableau local `destinations`
+(marqueur `DETTE-110`), **site du raccourci** : c'est là qu'il faut écrire pour résorber.
+`maquettes/assets/appareils.js` — la table `DESTINATIONS`, la table `AXES` et l'en-tête
+(marqueur), **site de la copie**. `maquettes/*.html` — les `data-ecran`.
+
+`E17US010` rend la dérive **détectable** sur les identifiants de destination : le test front
+`frontend/src/maquettes-navigation.test.ts` importe `AXE_PAR_DESTINATION` et rougit sur toute
+destination en trop, manquante ou rangée dans le mauvais axe. Il ne peut pas en faire autant des
+**libellés** ni de l'**ordre** : ils vivent dans un tableau local à la fonction composant, donc
+hors de portée d'un `import`. C'est exactement le défaut qu'`axes.ts` décrit déjà pour
+`BESOIN_TOURNOI` — « elle vivait dans un tableau local, donc hors de portée des tests ».
+
+**Constaté, pas supposé** : deux libellés avaient dérivé depuis `E16US002` (22/08/2026) — les
+maquettes disaient encore « Phases (format) » et « Composer un déroulé », alors que ce sont
+précisément les deux menus qu'elle a renommés « Phases du tournoi » et « Composer un format »
+*parce qu'ils portaient chacun le nom de l'autre*. Un troisième (« Formats (déroulés) ») et le
+libellé de `completude` étaient dans le même cas. Tous corrigés par cette US ; rien n'empêche le
+suivant.
+
+⚠️ **Inscrite plutôt que résolue, et l'argument est le COÛT, pas la conception.** La 1ʳᵉ
+rédaction invoquait la règle du remède structurel — « 3ᵉ occurrence, donc US dédiée » : c'était
+faux **deux fois**, et la revue l'a relevé. `axes.ts` porte déjà **trois** `Record` exhaustifs
+(`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`, `OUVRE_UN_ELEMENT` — E16US010) : ce serait le **4ᵉ**.
+Et la règle 16 **autorise** d'appliquer un pattern déjà établi, elle n'interdit que d'en
+introduire un sur pari. Le vrai motif est le périmètre : une entrée par destination livrée à
+déplacer dans un composant de **759 lignes**, au milieu d'une US d'outillage documentaire.
+
+⚠️ **Une 3ᵉ transcription à la main existe, et elle n'est pas sous garde non plus** : les
+attributs `data-ecran` des planches `maquettes/*.html` — et une **4ᵉ**, la table `AXES` de
+`appareils.js`, dont `besoinTournoi` commande le sélecteur de tournoi sur tout un axe.
+⚠️ **Une divergence de clés entre `AXES` et `DESTINATIONS` ne fait pas qu'afficher un réglage
+faux** : `navigationAdmin` déréférence `DESTINATIONS[axe]` sans garde, la planche part en
+`TypeError` et l'ossature cesse d'être construite. **Liste complète du hors-garde** (ce fichier en est le seul lieu) : les **libellés**,
+l'**ordre**, la table **`AXES`** (dont `besoinTournoi`), les **`data-ecran`** des planches, et
+les **dimensions d'appareil** recopiées par `maquettes/README.md` depuis `APPAREILS`. Le nombre
+de destinations, lui, a été **retiré** du README par la 3ᵉ passe plutôt que laissé non gardé ;
+les chiffres qui subsistent ici sont des **chiffrages datés du coût**, pas des descriptions du
+produit.
+
+⚠️ **Deux résidus du garde-fou, écrits plutôt que colmatés** (ADR-0112 § Conséquences) : ce
+qu'on fait des **alias** qu'une lecture de la table rend (`liste.splice(…)`, le corps du
+`forEach`), et un ouvrant de bloc écrit dans une **littérale d'expression régulière**, qui
+demanderait un tokenizer JS complet. Aucune des deux formes n'existe dans le fichier ce jour.
+
+⚠️ **Aucun outil du dépôt ne lit `maquettes/assets/*.js` comme du JavaScript** — ni eslint
+(donc pas de `no-dupe-keys`), ni prettier, ni un contrôle de syntaxe : un guillemet non fermé
+vide toutes les planches sans rien faire rougir. Mesuré en 4ᵉ passe de revue. Les 16 valeurs distinctes de `data-ecran` sont toutes
+couvertes aujourd'hui — le trou est théorique —, mais le dire ici évite de croire que le
+garde-fou couvre le dossier entier.
 
 ### DETTE-109 — la barre de progression du cockpit peut dépasser 100 %
 

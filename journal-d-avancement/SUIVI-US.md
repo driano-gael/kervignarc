@@ -12,42 +12,37 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 20/09/2026, 18 h 05** · **145 US livrées** · dernière : `E05US022`
-*(**la séquence s'ancre sur l'identité de l'étape** — remède structurel, **aucun changement
-visible** : `DETTE-026` est soldée. Une phase recevait sa définition de l'étape de **même
-rang** et un prélèvement citait sa source par **rang** ; depuis ADR-0076 un rang mal
-renuméroté ne faisait donc plus seulement pointer une source ailleurs, il faisait **exécuter à
-un créneau le barème d'une autre étape**, sans erreur ni signal. Quatre écrivains devaient y
-penser ; il n'y a plus rien à remapper. ⚠️ **Deux points d'ADR-0078 étaient faux et ont été
-amendés en le mettant en œuvre** : §5 promettait la disparition des **deux** `reordonner` —
-seul celui des phases disparaît de lui-même, l'autre tenait à la contrainte SQL
-`uq_deroule_tournoi_ordre`, **levée sur arbitrage du commanditaire** ; et §4 ne nommait qu'un
-sens de conversion alors que la **promotion** d'un déroulé en format emprunte l'autre.
-⚠️ **`FormatTournoi.appliquer` cesse d'être une fonction pure** — ancrer demande une identité
-que seule la persistance attribue. ⚠️ **`DETTE-025` n'est pas allégée comme l'ADR l'annonçait**
-— même nombre d'écritures non atomiques, mais leur conséquence change de nature : une
-numérotation trouée à l'écran, plus un barème joué de travers. Migration `0056`, aller-retour
-`upgrade`/`downgrade` joué sur données réelles)*.
-Avant elle, `E06US009`
-*(**un palmarès par départ, juxtaposés** — l'écran, le PDF et le tableur rendent `N` blocs titrés,
-un par créneau, au lieu du seul premier. `DETTE-045` est soldée. ⚠️ **Le raccourci vivait à trois
-endroits et la fiche en nommait deux faux** : le site *tracé* (`simulation.py`) n'a aucun appelant
-de production, le site *atteignable* (`pilotage_simulation.py`, servi par `/api/v1/simulations/*`)
-n'était marqué nulle part, et `simulation_format.py`, cité par le registre, n'était pas concerné —
-il ne fabrique qu'un créneau, unicité désormais **gardée** plutôt que supposée. ⚠️
-**[ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) est
-amendé** (décision 9, arbitrage du commanditaire) : le trophée des clubs se juxtapose lui aussi,
-`N` créneaux font `N` lauréats — ce qui retire de son § Contexte la promesse d'un club « le plus
-performant **de la journée** ». ⚠️ **Une régression de performance a été évitée par un test
-existant** : les noms de clubs, lus dans le calcul, l'étaient `N` fois par rendu sur une route
-publique pollée par chaque tablette ; ils sont hissés hors de la boucle. ⚠️ **Le sabotage a payé** —
-sur quatre tests neufs, **un seul** attrapait la régression au premier jet ; deux étaient des
-placebos, réécrits. Ouvre `DETTE-106` : cinq orthographes concurrentes du libellé de créneau,
-remède structurel renvoyé en US dédiée)*.
+**Dernière mise à jour : 24/09/2026, 07 h 50** · **146 US livrées** · dernière : `E17US010`
+*(**le dossier de maquettes ne peut plus dériver du produit en silence** — la navigation des
+planches était transcrite à la main depuis `axes.ts`, et **cinq US** d'écart s'étaient accumulées
+sans que rien ne le dise : 4 destinations livrées absentes, 1 fantôme, 4 libellés périmés. Un test
+front **importe** désormais la source produit et rougit sur toute destination en trop, manquante,
+mal rangée, listée deux fois ou illisible — [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md).
+⚠️ **La revue a rendu, en QUATRE passes, 7 bloquants et 46 majeurs** (comptes de fusion, cf.
+[`docs/metriques-revue.md`](../docs/metriques-revue.md) pour le détail par axe), **l'essentiel sur
+le garde-fou lui-même — et chaque correctif a déplacé le trou d'un cran.** Il était vert *dans* un bloc (un
+commentaire de fin de ligne escamotait un fantôme), puis *hors* d'un bloc (un axe inventé
+emportait ses entrées), puis *hors du littéral* (`.push` était énuméré, `.pop` non), et une
+catégorie déclarée deux fois passait aussi, puis un commentaire de bloc posé **dans** la table.
+➡️ Ce qui a rompu la série n'est pas un cas de plus mais un **changement de nature** : le
+contrôle lit désormais par **liste blanche sur la ligne entière**, avec trois **états lexicaux**
+(commentaire de bloc, chaîne, commentaire de ligne, catégorie déjà vue, table déjà vue).
+⚠️ **Trois des cinq trous étaient des régressions du correctif précédent**, trouvées en
+comparant les deux versions du parseur — la relecture seule ne les voyait pas. Le garde-fou
+compte **45 tests** ; chaque détection a été vue rouge sur le **fichier réel** par sabotage, et
+quatre éditions légitimes (renommage de variable, index de boucle, point-virgule, citation du
+gabarit) restent vertes.
+⚠️ **Un bloquant venait d'ailleurs que du code** : la PR d'`E05US022` avait été mergée entre
+temps, et les deux compteurs annonçaient 145 pour des ensembles différents — `main` serait parti
+rouge. Branche rattrapée sur `main` avant la PR. ⚠️ **Mon argument de dette était faux** : ce n'était
+pas la 3ᵉ occurrence d'un remède mais la **4ᵉ**, et la règle 16 autorise d'appliquer un pattern
+établi — `DETTE-110` garde le motif réel, le **coût**. Prochaine : `E17US008`)*.
+Avant elle, `E05US022` *(la séquence s'ancre sur l'**identité** de l'étape et non son rang ; `DETTE-026` soldée — remède structurel sans surface visible)*.
+Avant elle, `E06US009` *(un palmarès par départ, juxtaposés ; `DETTE-045` soldée, ADR-0104 amendé)*.
 Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
 Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée après treize mois)*.
 
-> ⚠️ **145 fiches closes, mais 143 livraisons.** Le total ci-dessus est **écrit à la main** et
+> ⚠️ **146 fiches closes, mais 144 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
 > sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches sont closes sans
 > livraison propre — `E01US016` (absorbée par `E16US006`, 25/08/2026) et `E16US011` (**close par
@@ -365,7 +360,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E01US026`~~ | **Livrée le 19/09/2026** — la **plus ancienne dette du registre** (`DETTE-001`, treize mois) est soldée : un tournoi peuplé se supprime après un signalement **chiffré**, en une transaction, sans aucun `ON DELETE CASCADE`. ⚠️ **`DETTE-018` refermée avec elle**, sur arbitrage du commanditaire — même code de cascade. Deux arbitrages de CA reversés dans `stories/` et dans ADR-0077. |
 > | ~~🎯~~ ✅ | ~~`E06US009`~~ | **Livrée le 19/09/2026** — un palmarès par créneau, juxtaposés (`DETTE-045`, ouverte par `E01US025`). Le palmarès, le rejeu de simulation **et la session de simulation pilotée** cessaient de voir autre chose que le premier départ ; ADR-0104 est amendé (le trophée des clubs se juxtapose aussi). |
 > | ~~🎯~~ ✅ | ~~`E05US022`~~ | **Livrée le 20/09/2026** — la dernière résorption tranchée le 07/08 est faite : la séquence s'ancre sur l'**identité** de l'étape (`DETTE-026`, ADR-0078). Deux points de l'ADR ont été amendés en le mettant en œuvre, dont un arbitrage du commanditaire (lever `uq_deroule_tournoi_ordre`). |
-> | 🎯 **à choisir** | — | **La file est de nouveau vide.** Restent : `E02US007` (**import inscript'arc**), **bloquée** tant que le format exact du fichier (QT1) n'est pas fourni ; et les deux US ci-dessous, qui se débloquent d'une réponse de votre part. |
+> | ~~🎯~~ ✅ | ~~`E17US010`~~ | **Livrée le 23/09/2026 — le dossier de maquettes ne peut plus dériver en silence.** Choisie par le commanditaire en tête du fil `EPIC-17`, **avant** `E17US008` et `E17US009` qui vont relire 16 planches : corriger des écarts que rien n'empêche de revenir, c'est remettre le compteur à zéro. ⚠️ **La dérive était réelle et mesurée avant tout correctif** — 4 destinations livrées absentes de la sidebar des maquettes (`identite`, `archer`, `pret-demarrer`, `audit`), 1 fantôme (`doublons`, retirée par `E16US010`), 4 libellés périmés : **cinq US d'écart accumulé**, dont deux libellés renommés par `E16US002` *parce qu'ils portaient chacun le nom de l'autre*. ⚠️ **Le point de conception est le sens de lecture** : le test **importe** `AXE_PAR_DESTINATION` au lieu de regexer `axes.ts`, donc **un seul des deux côtés peut mentir sur sa forme** — un garde-fou Python, sur le patron de `test_domain_isolation.py`, aurait eu deux parseurs fragiles au lieu d'un. ⚠️ **Asymétrie assumée** : une planche *en avance* sur le produit se déclare (`// PLANCHE-A-VENIR: <id>`) et passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge sans échappatoire. ⚠️ **Périmètre tenu, extension refusée** : les **libellés** et l'**ordre** vivent dans un tableau local à `CoquilleAdmin`, hors de portée d'un import. Les remonter serait un **4ᵉ** `Record` exhaustif d'`axes.ts` — pattern **déjà établi**, donc autorisé par la règle 16 ; le motif du report est le **coût** (33 entrées dans un composant de 759 lignes), pas la conception. Inscrit en `DETTE-110`. ⚠️ **[ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)** — « aucun ADR » était une **erreur, corrigée en revue** : une copie documentaire inévitable ne s'admet que sous garde mécanique, exception bornée à ADR-0102 §1. **Aucune dépendance**, aucune migration. ➡️ **Prochaine : `E17US008`** (9 planches de saisie `S**`), puis `E17US009`. |
+> | 🎯 **1** | `E17US008` | **Confronter les 9 planches de saisie `S**` au code livré**, puis `E17US009` (7 planches publiques `P**`). Ordre voulu : `E17US010` a posé le garde-fou **avant** ces deux relectures, pour que les écarts qu'elles corrigeront ne reviennent pas en silence. ⚠️ **Hors de ce fil**, la file reste à composer : `E05US022` (ancrage par identité, `DETTE-026`) est **livrée et mergée** (PR #189, le 23/09/2026) ; `E02US007` (import inscript'arc) reste **bloquée** tant que le format exact du fichier (QT1) n'est pas fourni. |
 > | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
 >
 > ---
@@ -1315,7 +1311,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > (égalité 5–5 en duel) et le **conflit de saisie** (deux postes sur la même volée) : ils sont
 > maquettés, pas décidés.
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (4/10)**
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (5/10)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),
@@ -1333,7 +1329,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US007 | **Résorber** les écarts relevés sur les écrans d'administration | J3 | ⬜ *(le relevé est fait depuis le 06/08 ; c'est l'US qui le solde qui manquait — A06, A09, A12, A08, A04, A17)* |
 | E17US008 | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ⬜ |
 | E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
-| E17US010 | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ⬜ *(resynchroniser `appareils.js` **et** rendre la dérive mécaniquement détectable ; **à prendre avant** E17US008/E17US009)* |
+| ~~E17US010~~ | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ✅ *(livrée le 23/09/2026 — `appareils.js` resynchronisé (4 destinations manquantes, 1 fantôme, 4 libellés périmés) et la dérive **rendue rouge** par un test front qui **importe** `axes.ts` ; `DETTE-110` pour les libellés et l'ordre)* |
 
 ## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**
 

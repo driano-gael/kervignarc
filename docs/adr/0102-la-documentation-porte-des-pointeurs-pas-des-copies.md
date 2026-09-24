@@ -72,6 +72,11 @@ qui a manqué n'est pas l'outil : c'est qu'un signal sans conséquence n'est pas
 Chaque type de document a **une** responsabilité et n'énonce en propre que ce qui relève d'elle. Ce
 qui vient d'ailleurs se cite en **une ligne, avec un lien**, jamais recopié.
 
+⚠️ **Une exception bornée existe depuis E17US010** : quand la citation est techniquement
+impossible — un fichier statique ne peut pas `import` un module du produit — la copie n'est
+admise que **sous contrôle de CI**, jamais nue
+([ADR-0112](0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)).
+
 | Document | Ce qu'il énonce **en propre** | Ce qu'il ne fait que **pointer** |
 |---|---|---|
 | `stories/` | le **CA** et les **arbitrages** — c'est l'oracle des tests (règle 9) | le raisonnement (ADR), le geste (fiche fonctionnelle) |
@@ -141,7 +146,10 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
 
 ## Porté dans le code par
 
-⚠️ **Rien à ce jour, et c'est écrit exprès.**
+⚠️ **Rien à ce jour pour les quatre §, et c'est écrit exprès** — à une exception près, ajoutée
+par `E17US010` : l'**exception bornée du §1** (une copie inévitable n'est admise que sous contrôle
+de CI, [ADR-0112](0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)) est,
+elle, portée — par `frontend/src/maquettes-navigation.test.ts`. La règle générale du §1, non.
 
 La décision est **acceptée** ; sa réalisation ne l'est pas encore. Nommer ici un module « qui
 portera » la décision serait reproduire exactement le défaut d'`ADR-0017` — un ADR qui déclare porté
