@@ -4819,6 +4819,11 @@ de destinations, lui, a été **retiré** du README par la 3ᵉ passe plutôt qu
 les chiffres qui subsistent ici sont des **chiffrages datés du coût**, pas des descriptions du
 produit.
 
+⚠️ **Deux résidus du garde-fou, écrits plutôt que colmatés** (ADR-0112 § Conséquences) : ce
+qu'on fait des **alias** qu'une lecture de la table rend (`liste.splice(…)`, le corps du
+`forEach`), et un ouvrant de bloc écrit dans une **littérale d'expression régulière**, qui
+demanderait un tokenizer JS complet. Aucune des deux formes n'existe dans le fichier ce jour.
+
 ⚠️ **Aucun outil du dépôt ne lit `maquettes/assets/*.js` comme du JavaScript** — ni eslint
 (donc pas de `no-dupe-keys`), ni prettier, ni un contrôle de syntaxe : un guillemet non fermé
 vide toutes les planches sans rien faire rougir. Mesuré en 4ᵉ passe de revue. Les 16 valeurs distinctes de `data-ecran` sont toutes

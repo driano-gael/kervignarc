@@ -69,17 +69,20 @@ qu'une catégorie inconnue du produit, ou **déclarée deux fois** (en JS le der
 premier : le lecteur voit l'union, le navigateur non). *Hors* de la table : **toute** mention de
 la table dont la **ligne entière** ne correspond pas à une lecture connue est signalée — une
 lecture tolérée présente en **fragment** amnistiait tout le reste de sa ligne. Le contrôle tient
-enfin trois **états lexicaux** : commentaire de bloc (où qu'il soit, refermement compris),
-catégorie déjà vue, table déjà vue. Sans eux il échoue **ouvert** : ce qu'il ne sait pas lire
-disparaît de la comparaison au lieu de la faire rougir.
+cinq **états** : commentaire de bloc, **chaîne littérale**, **commentaire de ligne**, catégorie
+déjà vue, table déjà vue. Les trois premiers vont ensemble : sans eux, un ouvrant écrit dans une
+chaîne ou derrière un `//` ouvrait un bloc **qui n'existe pas en JS**, et tout ce qu'il couvrait
+sortait de la comparaison — y compris une mutation de la table, qui, elle, s'exécutait.
 
-⚠️ **Ce n'est pas une précaution théorique : il a fallu TROIS passes de revue pour le tenir, et
-chaque correctif a déplacé le trou d'un cran.** Le parseur échouait ouvert *dans* un bloc (un
-commentaire de fin de ligne escamotait un fantôme), puis *hors* d'un bloc (un axe inventé
-emportait ses entrées), puis *hors du littéral* (`.push` était énuméré, `.pop` et
-`Object.assign` non). Chaque étape a été mesurée par sabotage sur le fichier réel. C'est cette
-série, et non un principe abstrait, qui impose la **liste blanche** : énumérer ce qu'on refuse
-laisse toujours passer le cas suivant, trois fois de suite.
+⚠️ **Il a fallu CINQ passes de revue pour le tenir, et chaque correctif a déplacé le trou d'un
+cran.** Le parseur échouait ouvert *dans* un bloc (un commentaire de fin de ligne escamotait un
+fantôme), puis *hors* d'un bloc (un axe inventé emportait ses entrées), puis *hors du littéral*
+(`.push` était énuméré, `.pop` non), puis *dans un bloc posé dans la table*, puis sur un
+**faux** bloc — un ouvrant écrit dans une chaîne ou derrière un `//`, qui n'ouvre rien en JS.
+Chaque étape a été mesurée par sabotage sur le fichier réel, et **trois** des derniers trous
+étaient des **régressions du correctif précédent**, trouvées en comparant les deux versions du
+parseur. C'est cette série, et non un principe abstrait, qui impose la liste blanche **et** les
+états lexicaux : énumérer ce qu'on refuse laisse passer le cas suivant, cinq fois de suite.
 
 ### 3. L'asymétrie : la copie peut devancer le produit, jamais retarder sur lui
 
@@ -126,12 +129,19 @@ réservé qu'au cas où l'entrée de barre latérale doit elle-même figurer.
 - ⚠️ **Le contrôle compare deux textes ; il ne prouve pas que la table est celle qui s'affiche.**
   Le rendu peut lire une autre source, ou ajouter des entrées — il le fait déjà pour marquer
   « non livrée » un écran hors table, et §4 en fait la voie préférée. La barre latérale rendue est
-  donc, par conception, *table + extras*. Une **couture** fige les deux **lignes de code** qui
-  lisent la table : en ajouter ou en retirer une rougit. ⚠️ Elle ne voit **pas** ce qu'on fait de
-  l'alias qu'une lecture rend — `var liste = DESTINATIONS[axe] || []` puis `liste.splice(…)` ou
-  `liste.push(…)` change bel et bien la barre latérale et reste vert (mesuré en revue). Cette
-  borne est **écrite** plutôt que colmatée : un garde-fou qui se croit plus large qu'il n'est
-  éteint la vigilance, et la fermer supposerait de figer aussi le corps des boucles.
+  donc, par conception, *table + extras*. Une **couture** exige que **chacune** des deux formes
+  de lecture paraisse **exactement une fois** : en ajouter, en retirer, en reformater ou
+  **échanger l'une contre l'autre** rougit (compter le total laissait passer l'échange). ⚠️ Elle ne voit **pas** ce qu'on fait de
+  les **alias** qu'une lecture rend — `var liste = DESTINATIONS[axe] || []` puis
+  `liste.splice(…)`, **mais aussi le paramètre de la boucle et tout le corps du `forEach`**, où
+  un `return` conditionnel retire une entrée de la barre latérale. Les deux sont mesurés verts.
+  Cette borne est **écrite** plutôt que colmatée : la fermer supposerait de figer le corps des
+  boucles, et un garde-fou qui se croit plus large qu'il n'est éteint la vigilance.
+- ⚠️ **Second résidu écrit, non fermé** : un ouvrant de bloc placé dans une **littérale
+  d'expression régulière** reste pris pour un vrai ouvrant. Distinguer ce `/` d'une division
+  demanderait un **tokenizer JS complet**, hors de proportion pour un garde-fou de deux cents
+  lignes sur un dossier de maquettes (règle 12). `appareils.js` n'en contient aucune ce jour —
+  vérifié, pas supposé. Inscrit en `DETTE-110`.
 - Le contrôle est exécuté par `npm test`, donc par la porte mécanique et par la CI (job `frontend`,
   bloquant). Le dossier `maquettes/` n'est pas dans le périmètre de prettier ni d'eslint, donc
   aucun outil ne reformate le fichier dans le dos du parseur.

@@ -20,7 +20,7 @@ const APPAREILS = join(process.cwd(), '..', 'maquettes', 'assets', 'appareils.js
 
 const DEBUT_TABLE = /^\s*var DESTINATIONS = \{\s*$/
 const FIN_TABLE = /^\s*\}\s*$/
-const SECTION = /^\s*(['"])([a-z0-9-]+)\1?:\s*\[\s*$/
+const SECTION = /^\s*(['"])([a-z0-9-]+)\1:\s*\[\s*$/
 const FERMETURE = /^\s*\],?\s*$/
 const CHAINE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/.source
 const COUPLE = new RegExp(`^\\s*\\[\\s*(['"])([a-z0-9-]+)\\1,\\s*(?:${CHAINE})\\s*\\],?\\s*$`)
@@ -33,8 +33,8 @@ const LIGNE = /^\s*\/\//
 // et c'est la **forme** de la lecture qui porte l'invariant, pas le nom de la variable.
 const MENTION_TABLE = /\bDESTINATIONS\b/
 const LECTURES_TOLEREES = [
-  /^\s*DESTINATIONS\[[A-Za-z_$][\w$]*\]\.forEach\(function \(\w+\) \{$/,
-  /^\s*var \w+ = DESTINATIONS\[[A-Za-z_$][\w$]*\] \|\| \[\]$/,
+  /^\s*DESTINATIONS\[[A-Za-z_$][\w$]*\]\.forEach\(function \((?:\w+, )*\w+\) \{\s*$/,
+  /^\s*var \w+ = DESTINATIONS\[[A-Za-z_$][\w$]*\] \|\| \[\];?\s*$/,
 ]
 
 // Divergence volontaire, prévue par le CA : une planche peut montrer une destination **à venir**.
@@ -55,32 +55,50 @@ interface Navigation {
   lignesDeCode: string[]
 }
 
-/** Retire de la ligne ce qui est commenté, en suivant l'état de bloc d'une ligne à l'autre.
+/** Retire de la ligne ce qui est commenté, en suivant l'état d'une ligne à l'autre.
  *
- * ⚠️ **État lexical, pas motif de ligne.** Les quatre trous des passes 1 à 4 avaient la même
- * racine : un scan ligne à ligne sans mémoire. Un bloc `/* … *\/` posé dans la table faisait
- * compter ses entrées comme vivantes ; un `*\/` suivi de code faisait ignorer ce code.
+ * ⚠️ **Trois états, parce qu'un scan textuel ne suffit pas.** Un ouvrant écrit dans une chaîne
+ * ou derrière un `//` n'ouvre **rien** en JS ; le prendre pour un ouvrant escamotait la suite du
+ * fichier, y compris une mutation de la table qui, elle, s'exécutait.
  */
 function decommenter(ligne: string, dansBloc: boolean): [string, boolean] {
-  let reste = ligne
-  let ouvert = dansBloc
   let sortie = ''
-  for (;;) {
-    if (ouvert) {
-      const fin = reste.indexOf('*/')
-      if (fin === -1) return [sortie, true]
-      reste = reste.slice(fin + 2)
-      ouvert = false
+  let bloc = dansBloc
+  let guillemet: string | null = null
+  for (let i = 0; i < ligne.length; i++) {
+    const c = ligne[i]
+    if (bloc) {
+      if (c === '*' && ligne[i + 1] === '/') {
+        bloc = false
+        i++
+      }
       continue
     }
-    const debut = reste.indexOf('/*')
-    if (debut === -1) return [sortie + reste, false]
-    sortie += reste.slice(0, debut)
-    reste = reste.slice(debut + 2)
-    ouvert = true
+    if (guillemet !== null) {
+      sortie += c
+      if (c === '\\') {
+        sortie += ligne[i + 1] ?? ''
+        i++
+      } else if (c === guillemet) guillemet = null
+      continue
+    }
+    if (c === "'" || c === '"') {
+      guillemet = c
+      sortie += c
+      continue
+    }
+    // ⚠️ Le commentaire de ligne est **conservé** : le tronquer ferait passer
+    // `['x', 'X'], // note` pour une entrée valide, trou de la 1ʳᵉ passe.
+    if (c === '/' && ligne[i + 1] === '/') return [sortie + ligne.slice(i), bloc]
+    if (c === '/' && ligne[i + 1] === '*') {
+      bloc = true
+      i++
+      continue
+    }
+    sortie += c
   }
+  return [sortie, bloc]
 }
-
 function lireNavigation(source: string): Navigation {
   const parDestination = new Map<string, Axe>()
   const aVenir = new Set<string>()
@@ -101,8 +119,10 @@ function lireNavigation(source: string): Navigation {
   let annonce: string | null = null
 
   for (const brute of source.split('\n')) {
-    const commentaire = LIGNE.test(brute.trimStart()) ? brute : ''
     const [ligne, encore] = decommenter(brute, dansBloc)
+    // ⚠️ Lue sur la ligne **décommentée** : une déclaration enterrée dans un bloc est du texte
+    // mort, elle ne doit rien dispenser.
+    const commentaire = LIGNE.test(ligne.trimStart()) ? ligne : ''
     dansBloc = encore
     const nue = ligne.trim()
     if (nue !== '') lignesDeCode.push(ligne)
@@ -160,7 +180,9 @@ function lireNavigation(source: string): Navigation {
       continue
     }
     if (destination === undefined || !courant) {
-      nonReconnues.push(nue)
+      // ⚠️ Nommer le cas « hors section » : sinon une entrée coupée en deux lignes fait
+      // dénoncer tout le reste du bloc, soit le diagnostic trompeur que ce contrôle évite.
+      nonReconnues.push(courant ? nue : `entrée hors section : ${nue}`)
       continue
     }
     // ⚠️ `Map.set` écrase : sans ce relevé, une destination listée sous deux axes ne compte qu'une
@@ -248,14 +270,12 @@ describe('la navigation des maquettes suit celle du produit', () => {
   })
 
   it('fige les deux lignes de code qui lisent la table', () => {
-    // ⚠️ **Couture, et rien de plus.** Elle voit qu'aucune ligne de code n'est ajoutée ni retirée
-    // aux deux lectures connues. Elle ne voit **pas** ce qu'on fait de l'alias qu'une lecture rend
-    // (`var liste = DESTINATIONS[axe] || []` puis `liste.splice(…)`) : cette borne est écrite en
-    // ADR-0112 § Conséquences, parce qu'un garde-fou qui se croit plus large éteint la vigilance.
-    const lectures = lireNavigation(source).lignesDeCode.filter((l) =>
-      LECTURES_TOLEREES.some((m) => m.test(l)),
-    )
-    expect(lectures).toHaveLength(2)
+    // ⚠️ **Couture, et rien de plus.** Elle exige que **chacune** des deux formes paraisse une
+    // fois : compter le total laissait échanger l'une contre l'autre. Elle ne voit **pas** ce
+    // qu'on fait des alias qu'une lecture rend — ni `liste.splice(…)`, ni le corps du `forEach`,
+    // où un `return` conditionnel retire une entrée. Borne écrite en ADR-0112 § Conséquences.
+    const lignes = lireNavigation(source).lignesDeCode
+    expect(LECTURES_TOLEREES.map((m) => lignes.filter((l) => m.test(l)).length)).toEqual([1, 1])
   })
 })
 
@@ -361,7 +381,9 @@ describe('le garde-fou lui-même', () => {
   it('signale un bloc dont l’axe est inconnu du produit, sans avaler ses lignes', () => {
     const source = factice(bloc('reglages', [REVE]))
     expect(ecarts(source).axesInconnus).toEqual(['reglages'])
-    expect(ecarts(source).nonReconnues).toEqual(["['jamais-livre', 'Écran rêvé'],"])
+    expect(ecarts(source).nonReconnues).toEqual([
+      "entrée hors section : ['jamais-livre', 'Écran rêvé'],",
+    ])
   })
 
   it('signale une ligne de couple que le motif strict ne sait pas lire', () => {
@@ -435,6 +457,44 @@ describe('le garde-fou lui-même', () => {
       '    var entrees = DESTINATIONS[axeOuvert] || []',
     ]
     expect(ecarts(`${pilotage([])}\n${lectures.join('\n')}`).nonReconnues).toEqual([])
+  })
+
+  it('n’ouvre pas de bloc sur un ouvrant écrit dans un commentaire de ligne', () => {
+    // Le développeur croit avoir commenté ; en JS la ligne du milieu **s'exécute**, et le
+    // contrôle lui donnait raison en restant vert. Mesuré sur le fichier réel.
+    const faux = ['  // mis de côté /*', '  DESTINATIONS.pilotage.pop()', '  // fin */']
+    const source = [pilotage([ACCUEIL]), ...faux].join('\n')
+    expect(ecarts(source).nonReconnues).toContain('DESTINATIONS.pilotage.pop()')
+  })
+
+  it('n’ouvre pas de bloc sur un ouvrant écrit dans une chaîne', () => {
+    const faux = ["  var ouvre = '/*'", '  DESTINATIONS.pilotage.pop()', "  var ferme = '*/'"]
+    const source = [pilotage([ACCUEIL]), ...faux].join('\n')
+    expect(ecarts(source).nonReconnues).toContain('DESTINATIONS.pilotage.pop()')
+  })
+
+  it('refuse une clé de catégorie dont le guillemet n’est pas refermé', () => {
+    // Cette ligne lève une `SyntaxError` et vide **toutes** les planches ; la backréférence
+    // était posée pour l'attraper, un `?` la désarmait, et aucun test ne l'exerçait.
+    const source = pilotage([ACCUEIL]).replace('    pilotage: [', "    'pilotage: [")
+    expect(ecarts(source).manquantes).toContain('accueil')
+  })
+
+  it('ne reçoit pas une déclaration « à venir » écrite dans un commentaire de bloc', () => {
+    const source = pilotage(['      /* note', DECLARE, `      */ ${REVE.trim()}`])
+    expect(ecarts(source).fantomes).toEqual(['jamais-livre'])
+  })
+
+  it('exige que chacune des deux formes de lecture paraisse une fois', () => {
+    // Compter le total laissait échanger une forme contre l'autre : le sabotage devenait
+    // indiscernable d'un refactor neutre.
+    const deuxFois = [
+      '    var entrees = DESTINATIONS[axe] || []',
+      '    var autres = DESTINATIONS[axe] || []',
+    ]
+    const lignes = lireNavigation(deuxFois.join('\n')).lignesDeCode
+    const compte = LECTURES_TOLEREES.map((m) => lignes.filter((l) => m.test(l)).length)
+    expect(compte).toEqual([0, 2])
   })
 
   it('signale une destination du produit que les maquettes oublient', () => {

@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-09-24 | `E17US010` *(5ᵉ passe, sur les correctifs — deux axes seulement)* | 16 | +900/−93 | ~14 min (14/14 vertes) | ~16 min | C1 (08:14→08:30) | — | — | majeur:2 mineur:3 | — | majeur:4 mineur:4 | **C1 et D**, par **différentiel entre les deux versions du parseur** : trois des cinq défauts étaient des **régressions** du correctif de la 4ᵉ passe, invisibles à la relecture | 0 |
 | 2026-09-24 | `E17US010` *(4ᵉ passe, sur les correctifs)* | 16 | +818/−87 | ~14 min (14/14 vertes) | ~16 min | D (21:52→22:08) | **bloquant:1** majeur:2 mineur:5 suggestion:1 | majeur:4 mineur:6 | majeur:6 mineur:6 suggestion:2 | majeur:5 mineur:5 suggestion:3 | **bloquant:3** majeur:2 mineur:4 suggestion:2 | **D** et **A** (le commentaire de bloc posé *dans* la table) — B et C2 le trouvent aussi ; **C1 a prouvé par différentiel une RÉGRESSION** du correctif de la 3ᵉ passe | 0 |
 | 2026-09-23 | `E17US010` *(3ᵉ passe, sur les correctifs)* | 16 | +698/−85 | ~14 min (14/14 vertes, après 1 rouge prettier) | ~20 min | D (20:56→21:12) | majeur:2 mineur:3 suggestion:2 | majeur:2 mineur:3 suggestion:1 | majeur:5 mineur:1 suggestion:2 | majeur:4 mineur:3 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:1 | **D** (liste blanche non portée hors du littéral) — C1 et C2 le trouvent aussi, classé *majeur* ; la catégorie dupliquée vient de **C1**, promue par l'auteur au sabotage | 1 |
 | 2026-09-23 | `E17US010` *(2ᵉ passe, sur les correctifs)* | 14 | +587/−54 | ~13 min (14/14 vertes) | ~19 min | D (20:09→20:28) | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:5 suggestion:1 | majeur:6 mineur:2 suggestion:2 | majeur:6 mineur:3 suggestion:2 | **bloquant:1** majeur:3 mineur:6 suggestion:1 | **D** (la PR d'E05US022 avait été mergée : `main` serait parti rouge — invisible depuis le dépôt local) + l'auteur au sabotage (le correctif de la 1ʳᵉ passe avait déplacé le trou) | 1 |
@@ -836,6 +837,19 @@ parce que c'était **hors du dépôt local** : la PR d'`E05US022` avait été me
 compteurs des deux côtés annonçaient le même total pour des ensembles différents — `main` serait
 parti rouge. En 3ᵉ, il a reconstruit son harnais et trouvé le trou suivant. La colonne décisive
 **interdit donc de raccourcir l'axe D** sur cette US.
+
+⚠️ **Le geste qui a fini par payer : le DIFFÉRENTIEL entre deux versions du parseur.** À la 4ᵉ et
+à la 5ᵉ passe, l'axe C1 a rejoué les mêmes sabotages sur la version **précédente** et sur la
+version **courante**, et a trouvé ainsi **quatre régressions** que personne ne voyait en relisant —
+des cas qui rougissaient avant le correctif et passaient après. Une relecture compare le code à
+l'intention ; le différentiel compare le code à **lui-même la veille**. À réclamer explicitement
+à chaque passe où un parseur, un garde-fou ou une machine à états est réécrit ; il ne coûte que
+parce que l'ancienne version reste accessible par `git show`.
+
+⚠️ **Et un chiffre inventé s'est glissé dans deux livrables** : « 14 sabotages », repris du corps
+de commit au tracker, ne correspondait à rien de dénombrable dans le fichier. Relevé par C1 en
+5ᵉ passe. C'est le défaut que l'US existe pour supprimer, commis dans le commit qui la livre :
+un chiffre non vérifiable se périme en silence.
 
 ⚠️ **Le vrai enseignement est ailleurs : chaque correctif a déplacé le trou d'un cran, trois fois
 de suite.** Le parseur échouait ouvert *dans* un bloc ; corrigé, *hors* d'un bloc ; corrigé, *hors

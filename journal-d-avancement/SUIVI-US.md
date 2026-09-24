@@ -26,9 +26,12 @@ emportait ses entrées), puis *hors du littéral* (`.push` était énuméré, `.
 catégorie déclarée deux fois passait aussi, puis un commentaire de bloc posé **dans** la table.
 ➡️ Ce qui a rompu la série n'est pas un cas de plus mais un **changement de nature** : le
 contrôle lit désormais par **liste blanche sur la ligne entière**, avec trois **états lexicaux**
-(commentaire de bloc, catégorie déjà vue, table déjà vue). **14 sabotages rougissent** sur le
-fichier réel, et **2 faux positifs** — renommer la variable de boucle, citer le gabarit dans la
-doc — restent verts.
+(commentaire de bloc, chaîne, commentaire de ligne, catégorie déjà vue, table déjà vue).
+⚠️ **Trois des cinq trous étaient des régressions du correctif précédent**, trouvées en
+comparant les deux versions du parseur — la relecture seule ne les voyait pas. Le garde-fou
+compte **45 tests** ; chaque détection a été vue rouge sur le **fichier réel** par sabotage, et
+quatre éditions légitimes (renommage de variable, index de boucle, point-virgule, citation du
+gabarit) restent vertes.
 ⚠️ **Un bloquant venait d'ailleurs que du code** : la PR d'`E05US022` avait été mergée entre
 temps, et les deux compteurs annonçaient 145 pour des ensembles différents — `main` serait parti
 rouge. Branche rattrapée sur `main` avant la PR. ⚠️ **Mon argument de dette était faux** : ce n'était
