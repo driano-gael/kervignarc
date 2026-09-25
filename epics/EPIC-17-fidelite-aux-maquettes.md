@@ -76,9 +76,8 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 - [ ] Trancher la **couleur d'une action destructrice** — trou de la charte (`DV-03` exclut le rouge,
       rien n'est prévu pour ce cas) : aujourd'hui contour ambre — `E17US006`.
       ⛔ **Arbitrage en attente** : ADR attendu, l'US est spécifiée, **pas prenable**.
-- [ ] **Résorber** les écarts relevés sur les planches `A**` (admin) — `E17US007`.
-      *(Le relevé est **fait** ; ce qui manquait était l'US qui le solde. Un relevé sans US de
-      résorption se périme sur place.)*
+- [x] **Résorber** les écarts 🔴 des planches `A**` (admin) — `E17US007` : A06 et A09.
+- [ ] Les quatre écarts 🟠 — tableaux à colonnes A04, A08, A12, bandeau de totaux A17 — `E17US012`.
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur) et résorber — `E17US008`.
 - [x] Confronter les 7 planches `P**` (public & écran de salle) et résorber — `E17US009`.
 - [ ] Resynchroniser `maquettes/assets/appareils.js` sur `axes.ts`, **et rendre la dérive détectable

@@ -216,20 +216,15 @@
   [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md)) ; `E17US003` et `E17US004` en ont traité
   trois écrans (A01, A02, A13). **Le reste du relevé n'a aucune US.** Un relevé sans US de résorption
   se périme sur place : les planches vieillissent pendant qu'on les relit (risque déjà réalisé sur A15).
-- **CA** :
+- **CA** *(rétréci le 25/09/2026 sur arbitrage du commanditaire : les deux écrans 🔴 ici, les
+  quatre 🟠 en [`E17US012`](#e17us012--les-écrans-dadministration-en-carte-tableau))* :
   - **A06 · référentiels** passe au **panneau latéral d'édition** (variante « **panneau latéral d'édition** » retenue) —
     aujourd'hui `Blasons.tsx` bascule **tout l'écran** en formulaire ;
   - **A09 · inscriptions** passe à **recherche d'abord, liste ensuite** (variante « **recherche d'abord, liste ensuite** » retenue), avec
     les compteurs d'entrée de la planche (inscrits, non placés, non réglés, doublons) ;
-  - **A12 · postes**, **A08 · scoreurs** et **A04 · tournois** présentent leurs données en
-    **carte-tableau à colonnes nommées**, celles de la planche, sans cesser d'être des `<table>`
-    (CA d'`E17US002` : l'apparence, pas le balisage) ;
-  - **A17 · paiements** gagne son **bandeau de totaux** (attendu / encaissé / restant dû / archers
-    concernés) et l'**ancienneté** de la dette ; l'export trésorier **relève d'`E16US007`** et n'est
-    pas traité ici ;
-  - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** (A04 :
-    avancement, ce qui reste) est soit **alimentée**, soit **retirée de la planche** — jamais affichée
-    vide. Le choix se fait par colonne et s'écrit.
+  - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** est soit
+    **alimentée**, soit **retirée de la planche** — jamais affichée vide. Le choix se fait par
+    colonne et s'écrit.
 - **Notes** : ⚠️ **Vérifier la correspondance questionnaire ↔ planche AVANT de mesurer** — les
   lettres `A**` sont aussi peu fiables que les `S**` (le redessin du 05/08 a porté sur les 36
   planches), et un CA est la **source d'un test** : dériver d'une lettre, c'est dériver de rien
@@ -240,7 +235,55 @@
   ressemblance, et le faire deux fois produit deux variantes. **A05 · identité** est hors périmètre
   tant qu'`E01US016` est ⬜ — l'écran n'existe pas. **A07 · phases** est hors périmètre
   définitivement (« à refaire », aucune variante retenue) : c'est `E16US002`.
+- **Notes (livraison, 25/09/2026)** — livrée dans la PR d'`E17US009`/`E17US011` (demande du
+  commanditaire). Correspondance vérifiée d'abord (ADR-0113) : **les six écrans ont un étalon** —
+  le libellé coché se retrouve dans une variante de la planche actuelle, aucune lettre n'a glissé.
+  Arbitrages tranchés en cours d'US, reversés ici :
+  - **A06** — la liste est un `<table>` groupé par **origine** (`<tbody>` + `th scope="rowgroup"`),
+    « **Référentiel FFTA** » puis « **Créés par l'organisation** » : c'est la réserve du 04/08
+    (« séparer les unités officielles FFTA de celles créées par l'admin »). ⚠️ Jamais
+    « officiels » : l'origine dit la **provenance**, pas la conformité (ADR-0060 §4). La
+    suppression passe **dans le panneau**, avec sa confirmation. Les colonnes **diamètre,
+    distances, emploi** de la planche n'existent pas au modèle : **retirées de la planche**.
+  - **A09** — sans recherche ni compteur choisi, **rien n'est listé** (sinon c'est la variante A,
+    écartée). Les compteurs sont des **filtres** (bascule, `aria-pressed`) ; « Non placés » = en
+    **réserve** d'au moins un plan (le plan persisté y range tout inscrit sans affectation), « Non
+    réglés » = reste dû > 0. Une population illisible s'affiche « ? », **jamais 0**. Une fiche
+    ouverte par l'adresse (recherche transverse, E16US010) **reste listée** — sans quoi le
+    résultat cliqué ne mènerait nulle part. La phrase « N rapprochements de fiches » est
+    **remplacée** par le compteur « Doublons », qui la chiffre et filtre en plus.
+  - ⚠️ **Les deux populations sont lues par un conteneur de l'admin (`InscriptionsAdmin`)**, pas
+    par l'écran : les lire dans `archers` le faisait dépendre de `placement` et `paiements`, qui
+    dépendent déjà de lui — l'atlas a mesuré le plus gros nœud d'enchevêtrement passant de **24 à
+    29** features. Remis à 24 par ce détour.
+  - **Non fait** : le bloc « Derniers gestes sur ce poste » de la planche B — absent du CA, il
+    suppose un historique local qui n'existe pas. **Non vérifié au navigateur** : le navigateur
+    piloté affichait une page d'erreur sur l'admin alors que le serveur répondait 200 — le contrôle
+    visuel d'A06 et d'A09 reste à faire.
+  - `DETTE-114` ouverte : la normalisation de recherche en est à sa 4ᵉ copie.
 - **Dépend de** : E17US002 · **Jalon** : J3
+
+### E17US012 — Les écrans d'administration en carte-tableau
+*En tant qu'*organisateur, *je veux* que les listes de l'administration aient les colonnes nommées des planches, *afin de* lire tournois, scoreurs, postes et paiements comme je les ai validés.
+
+- **Contexte** : fille d'`E17US007`, découpée le 25/09/2026 (arbitrage du commanditaire) — les
+  quatre écarts 🟠 du relevé admin. Les étalons ont été **vérifiés** à ce moment (ADR-0113) :
+  A04 « A — liste dense avec statut », A08 « A — liste simple avec état de connexion », A12
+  « A — liste des postes avec dernier signe de vie », A17 « A — liste des dus » (✅).
+- **CA** *(repris d'`E17US007`, inchangés)* :
+  - **A12 · postes**, **A08 · scoreurs** et **A04 · tournois** présentent leurs données en
+    **carte-tableau à colonnes nommées**, celles de la planche, sans cesser d'être des `<table>`
+    (CA d'`E17US002` : l'apparence, pas le balisage) ;
+  - **A17 · paiements** gagne son **bandeau de totaux** (attendu / encaissé / restant dû / archers
+    concernés) et l'**ancienneté** de la dette ; l'export trésorier **relève d'`E16US007`** ;
+  - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** (A04 :
+    avancement, ce qui reste — **absents** de `TournoiReponse`) est soit **alimentée**, soit
+    **retirée de la planche** — jamais affichée vide. Le choix se fait par colonne et s'écrit.
+- **Notes** : ⚠️ **A04, A08 et A17 ont bougé depuis le relevé du 06/08** (`E01US026`,
+  `E16US015`) : **re-mesurer**, ne pas se fier au relevé. Les évolutions écrites au questionnaire
+  font partie de la cible — A08 et A12 : « chaque ligne doit ouvrir le QR et le code de
+  raccrochement » ; A04 : classer par statut puis date ; A12 : bandeau repliable par type d'écran.
+- **Dépend de** : E17US007 · **Jalon** : J3
 
 ### E17US008 — Confronter les écrans de saisie à leurs planches
 *En tant que* scoreur, *je veux* que le pavé de saisie et l'écran de duel ressemblent à ce qui a été validé, *afin de* retrouver à 3 m d'une cible les repères vus sur la maquette.
