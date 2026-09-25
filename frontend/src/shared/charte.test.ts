@@ -8,6 +8,10 @@
 // en dur, découpage par accolades, dérogations comparées exactement. Il ne se relâche pas.
 
 /// <reference types="node" />
+// ⚠️ `DETTE-113` — **site du remède prévu**, pas du raccourci : confronter les littéraux de
+// `className` aux sélecteurs des feuilles. `sourcesDe` ci-dessous parcourt déjà les `.tsx` et les
+// `.css` ; le coût n'est pas l'abstraction mais la **liste blanche** des classes composées.
+
 import { describe, expect, it } from 'vitest'
 
 // Lecture **sur disque**, pas par `import.meta.glob(..., '?raw')` : Vite traite une feuille `.css`

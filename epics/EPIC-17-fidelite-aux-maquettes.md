@@ -151,6 +151,273 @@ L'écart le plus **systématique** : les planches présentent les données d'adm
 - Un écart marqué « recoupe `E16Uxxx` » **ne doit pas être traité deux fois** : l'US E16 porte déjà le
   besoin, E17 n'ajoute que l'exigence de ressemblance.
 
+## Relevé d'écarts — les 9 planches de saisie (24/09/2026)
+
+Même méthode que l'axe admin — **questionnaire → variante retenue → écran livré** —, mais elle a
+buté d'entrée sur un obstacle que l'axe admin n'avait rencontré que sur A02. Sources vérifiées :
+questionnaires du 04/08, balisage des planches, code des features, **et l'application réelle**
+peuplée d'un tournoi de jeu d'essai (16 archers, 8 cibles, qualification en cours), flèches saisies
+à la main.
+
+### ⚠️ Le maillon du milieu a bougé — lire ceci avant d'utiliser le relevé
+
+**Les questionnaires ne décrivent plus les variantes des planches.** Les questionnaires ont été
+remplis le **04/08** sur les maquettes **en vignettes** ; les planches ont été **redessinées le
+05/08** en écrans pleins. Les lettres n'ont pas suivi. `maquettes/README.md` le signalait pour une
+planche (« le questionnaire d'A02 posait encore les questions de la v2 ») ; mesuré sur l'axe saisie,
+c'est **4 planches sur 9** dont la **variante retenue** ne se lit plus par sa lettre — `S01`, `S04`, `S06`, `S08` — auxquelles s'ajoute `S05`, dont le refus n'a plus de cible : **5 sur 9** où la lettre du questionnaire ne désigne plus rien d'utilisable. `S02`, `S03`, `S07` et `S09` concordent **sur leur variante retenue**, même quand d'autres lettres ont glissé. ⚠️ **Le chiffre se recompte depuis la table ci-dessous**, et il a fallu **deux** passes de revue pour qu'il le devienne : « 7 sur 9 » puis « 6 sur 9 » n'étaient recalculables ni l'un ni l'autre. Dans l'US même dont l'objet est la fausse certitude qui se transmet comme un fait.
+
+| Planche | Le questionnaire faisait choisir entre | La planche dessine | Effet |
+|---|---|---|---|
+| **S01** | A « le QR domine » / **B « le code court domine »** / C « liste des cibles libres » | A « Saisie du code » / B « Scan du QR » | 🔴 **lettres inversées** — le retenu est la planche **A**. Le « pourquoi » le prouve (*« pas sûr que les caméras soient accessibles »*). C a disparu |
+| **S02** | **A « grille complète, pavé appelé »** / B « un archer à la fois » / C « grille + pavé permanent » | A « Grille complète, pavé appelé » / B « Pavé permanent » / C « une cible à quatre couloirs » | 🟢 **A concorde** (même libellé). B et C ont glissé |
+| **S03** | **A « pavé numérique complet »** / B « blason tactile » / C « décroissant contextuel » | A « Pavé à dix touches » / B « pavé réduit au blason » / C « saisie par la cible » | 🟢 **la variante retenue concorde** (« pavé numérique complet » ↔ « pavé à dix touches ») ; ce sont les **non retenues** qui ont glissé — « blason tactile » est devenu **C**, pas B |
+| **S04** | **A « feuille appelée par un lien discret »** / B « sélecteur permanent » / C « confirmation à la validation » | A « Choisir le marqueur » / B « Changer en cours de série » | 🔴 **les trois options jugées n'existent plus** |
+| **S05** | A « deux colonnes symétriques » / B « score de set dominant » / C « archer actif agrandi » — **aucune retenue** | A « Le duel en set-system » / B « Le pavé de duel » | 🔴 **le refus porte sur des variantes disparues** |
+| **S06** | **A « vainqueur et perdant à égalité »** / B « plein écran vainqueur » / C « retour automatique compté » | A « Où tire-t-on ensuite » / B « Après la bascule » | 🟡 aucune lettre ne correspond, mais le refus de C est **déjà intégré** à la planche (*« la barre prévient sans compter »*) |
+| **S07** | **A « liste par ancienneté d'attente »** / B « carte unique » / C « groupé par zone » | A « La file d'attente » / B « Validation d'une cible » | 🟢 A concorde par l'intention |
+| **S08** | **A « totaux par volée, détail sur demande »** / B « détail flèche à flèche déplié » | A « Validation à la cible » / B « Validation à distance » | 🔴 **ce n'est pas la même question** : densité d'affichage d'un côté, place du scoreur de l'autre |
+| **S09** | **A « vocabulaire proposé »** (option unique) | 10 états, sans lettres | 🟢 concorde |
+
+**Conséquence — tranchée en [ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md),
+qui amende la réserve 2 d'ADR-0074 :** sur cet axe comme sur les suivants, la variante retenue se
+lit **par l'intention** — le libellé coché et le « pourquoi » —, **jamais par la lettre**. C'est
+exactement le piège d'A00 que le CA d'épic nomme (« jamais la première variante venue »), un cran
+plus haut : ici même la *lettre* du questionnaire est une fausse piste. Les trois planches où
+l'intention ne se traduit plus (**S04**, **S05**, **S08**) n'ont **plus d'étalon** : elles sont
+relevées ci-dessous mais **exclues de toute résorption de fidélité** — s'aligner y serait deviner.
+
+**Le geste qui referme ceci** : remplir le **tour 2** des questionnaires `S**` sur les écrans pleins
+(les feuilles existent, `maquettes/questionnaires/s0*.html`, et produisent le `.md`). C'est du temps
+du commanditaire, donc ce n'est pas une tâche que l'assistant peut prendre — d'où sa place au
+tracker, pas ici.
+
+### Hors périmètre de résorption, et pourquoi
+
+| Planche | Motif |
+|---|---|
+| **S07 · file scoreur** | 🔴 **L'écran n'existe pas** — ni front, ni serveur. Toutes les routes de validation sont **par archer** (`GET /saisie/series/{tournoi}/{archer}`) ; aucune ne rend les cibles en attente, encore moins triées par ancienneté. Comme A05 dans le relevé admin : ce n'est pas un écart de fidélité, c'est une **US non livrée**. ⚠️ **Le tri d'`E16US011` le rangeait parmi les « validés ✅, rien à faire »** — exact sur ses *réponses* (les deux questions ciblées sont restées vides), faux sur son *verdict* : « ✅ validé tel quel — **on peut coder ça** » est un **feu vert**, pas un constat de livraison. Un ✅ sur une planche sans écran veut dire l'inverse de ce que le tri en a conclu |
+| **S05 · saisie de duel** | 🔴 **Étalon perdu** (tableau ci-dessus). ⚠️ Et sa critique n'a **aucun destinataire** : *« trop tassé »*, *« les emplacements de saisie de volée sont trop étroits »*, *« au lieu de 2 colonnes je préférerais sur 2 hauteurs, adapté tablette et téléphone »* ne sont portés par **aucune US**, ni E16 ni E17 — S05 n'est ni dans les « retours écartés » d'`E16-retours-maquettes.md`, ni dans une US fille d'`E16US011` |
+| **S08 · validation de cible** | 🔴 **Étalon perdu**, et doublement : la variante retenue (« totaux par volée, détail sur demande ») est **contredite par la réponse ciblée de la même feuille** — *« les deux, flèches et total »*. L'écran existe depuis `E16US019` |
+| **S04 · marqueur** | Étalon perdu pour le **parti pris** ; les écarts relevés ci-dessous portent sur ce que la planche **actuelle** montre, et sont donc à prendre comme des propositions, pas comme des manquements mesurés |
+| **S06 · routage** | **Conforme.** `PanneauRoutage` (`E16US018`, 10/09/2026) porte les trois minutes, le signal non chiffré et la poignée de réouverture — la planche a d'ailleurs été mise à jour ce jour-là. Seule sa **pastille d'état** ment (voir plus bas) |
+
+### 🔴 Un seul défaut de mise en page en produit quatre — l'axe saisie ne prend pas la tablette
+
+C'est le **point de levier du relevé** : quatre écarts distincts ont une cause unique, et elle tient
+en deux jetons CSS.
+
+**Mesuré dans l'application** : la coquille `.app[data-monde='tablette']` porte bien
+`--largeur-app: 72rem` (1152 px), mais la surface tablette **n'a pas réglé ses deux autres jetons** —
+`--largeur-carte` et `--largeur-carte-l` restent au **défaut prudent** (24 rem / 40 rem) que l'en-tête
+d'`App.css` décrit comme « celui de l'écran de choix et de tout monde à venir », en demandant que
+« chaque surface l'élargisse ou le resserre selon **sa** contrainte physique ». L'**admin** a bien
+surchargé les trois ; la **tablette** n'en a surchargé qu'un. Résultat : la grille de saisie est
+plafonnée à **640 px** dans une coquille de 1152, et la ligne d'archer fait **575 px** sur un écran
+de 1366.
+
+Or la variante retenue de **S02** fonde son choix exactement là-dessus :
+
+> « ce que la tablette permet enfin — à 1280 × 800, **les lignes d'archer font toute la largeur** : le
+> nom se lit sans abréger, les flèches sont des cibles tactiles de **40 px**, et le cumul de série
+> tient à côté sans rien chasser. »
+
+| Écart | Planche | Livré (mesuré) |
+|---|---|---|
+| Largeur de la ligne d'archer | toute la largeur de la tablette | **575 px** sur 1366 — 624 px (46 %) de vide à droite |
+| Touches du pavé (**S03**) | « plus de **90 px** de large », corps **19 px** | **48 × 48 px**, corps **16 px** |
+| Cases de relecture de volée | — | **31 × 21 px** |
+| Carte de rattachement (**S01**) | `max-width:520px; margin:40px auto` — **colonne centrée** | carte à `x=145`, **alignée à gauche** |
+
+⚠️ **Vérifié, pas supposé** : régler les deux jetons sur la surface tablette porte la ligne d'archer
+de **575 à 828 px**, essayé dans le navigateur avant d'écrire une ligne de code. ⚠️ **Mesure du
+jeton seul** : la mise en côte-à-côte du pavé (résorption de l'écart suivant) reprend ensuite une
+colonne, et le chiffre livré est **694 px** — cf. le tableau de résorption. Les deux sont vrais, à
+des étapes différentes.
+
+⚠️ **L'écart de S01 est le défaut d'A01, déjà corrigé.** `E17US003` a remplacé « une carte collée en
+haut à gauche » par une colonne centrée (`.connexion { max-width: 26rem; margin: 0 auto }`) sur
+l'écran de connexion. La correction **n'a pas traversé l'axe** : le rattachement du poste, qui est le
+même geste (un écran, un champ, un bouton), est resté dans l'angle.
+
+### 🔴 Le pavé de saisie s'ouvre sous la ligne de flottaison
+
+**Mesuré** : toucher un archer ouvre le pavé à **742 px du haut de page**, dans une fenêtre de
+**641 px** — la page passe à 1282 px. Le pavé est **entièrement invisible sans défiler**. Or S03
+énonce son propre enjeu : « le geste répété **~4 300 fois par départ** : un demi-geste économisé ici
+pèse plus que n'importe quelle élégance ailleurs. »
+
+⚠️ **Deux nuances, parce qu'un constat gonflé se retourne contre le relevé.** (a) Le pavé **reste
+ouvert et enchaîne** sur la volée suivante : le défilement est payé **une fois par archer**, pas par
+volée. (b) La fenêtre de mesure faisait **641 px de haut, pas 800** — Chrome ne descend pas sous
+1366 px de large sur le poste de relevé. À 800 px de haut moins la barre du navigateur, le pavé
+serait **au ras du bord**, pas confortablement visible : l'écart tient, sa sévérité est à confirmer
+sur une vraie tablette.
+
+### 🔴 Le hors-ligne est une pastille de 10 px, là où la planche impose un aplat
+
+**S09** retient « Hors ligne — **aplat ambre plein, sur toute la largeur** », et son verdict tranche
+la question de forme : « **l'aplat, pas la bordure** — un bandeau plein se voit du coin de l'œil
+pendant qu'on regarde la cible. Une bordure colorée, non. » Le commanditaire a répondu **« non »** à
+« l'aplat ambre plein est-il trop agressif ? ». **S02** appelle cette garantie « **la promesse la
+plus importante du produit** », « écrite en toutes lettres à l'endroit où le doute naît ».
+
+**Livré** : `IndicateurConnexion` rend une pastille de **10 px** et un libellé de **14 px**, en ligne,
+dans l'en-tête, en haut à droite (`.indicateur--deconnecte`). ✅ La règle transverse « jamais la
+couleur seule » **est** tenue (`role="status"` + libellé).
+
+⚠️ **Ne pas confondre avec `E17US006`.** `App.css` documente un aplat « essayé et rejeté sur pièce »
+— mais c'était l'aplat de l'**action destructrice**, un autre sujet, et celui-là est bloqué sur
+arbitrage. Rien n'a jamais été tranché sur le **bandeau hors ligne**.
+
+### 🔴 La ligne d'archer ne porte pas la volée en cours
+
+**Planche S02** : la ligne est `pos | nom | fl fl fl | somme` — les **trois flèches de la volée en
+cours** y sont, dont celle en train d'être tapée (`fl saisie`). La ligne **est** la zone de saisie.
+
+**Livré** : la ligne est un **bouton d'ouverture** portant `position | nom | avancement | cumul`, plus
+une relecture des volées **closes**. Aucune case de flèche.
+
+⚠️ **La réserve du commanditaire n'est tenue qu'à moitié**, et il faut être précis sur la moitié
+tenue. Il l'a écrite **deux fois** dans la même feuille (« pourquoi ce choix » *et* « évolutions
+souhaitées ») : *« l'appel du pavé doit se faire à la sélection de **la zone de saisie** »*. Le code
+la cite et y a répondu — `Saisie.tsx` explique que le pavé était ouvert d'office sur l'archer A et
+qu'il est devenu **appelé**. C'est la bonne moitié. L'autre ne l'est pas : le déclencheur est
+**l'archer**, pas la zone de saisie, et l'invite le dit en toutes lettres — « Touchez un **archer**
+pour ouvrir le pavé de saisie ». Il n'y a pas de zone de saisie à sélectionner, faute de cases de
+flèche dans la ligne.
+
+✅ En revanche la **contre-vérification** (exigence de S02, confirmée « oui » au questionnaire) est
+bien rendue : chaque volée close affiche son total et ses trois flèches (`27` / `10 9 8`).
+
+### 🟠 Le cumul affiché n'est pas celui qui a été demandé
+
+Le questionnaire S02 répond à « le cumul de série affiché en permanence est-il utile ? » par
+« **en permanence**, c'est un bon rappel sur la cible ». Le code s'en réclame — un commentaire de
+`Saisie.tsx` cite la question et se déclare conforme.
+
+**Il ne l'est pas.** Vérifié jusqu'au domaine : `Serie.cumul` est la somme des volées **validées**
+(`domain/serie.py`), décision saine et documentée — c'est le score officiel, celui que le départage
+du classement compte. Mais avec le grain « validation à la fin de la série », il vaut **0 pendant
+toute la série** : à l'écran, 27 points marqués, cumul « 0 ». Le rappel affiche zéro exactement quand
+il servirait.
+
+La planche, elle, distingue **trois** nombres : la **somme de la volée** (`27`), le **cumul de
+série** (`Cumul série : 55`) et le **total** (`332`). Le produit n'en montre qu'un — et c'est le
+seul des trois qui reste à zéro.
+
+⚠️ **Cas d'école de la règle 13** : le commentaire affirme la conformité, et **rien ne le vérifie** —
+ni test, ni type, ni compilateur. La phrase a survécu à la livraison.
+
+### 🟡 Écarts de forme, peu coûteux
+
+| Planche | Écart |
+|---|---|
+| **S01 · rattachement** | Le numéro de cible s'affiche en **16 px / 700** ; la planche l'impose à **48 px / 800** *et dit pourquoi* : « le seul moyen de repérer une tablette posée devant la mauvaise cible **avant que quiconque tire** » |
+| **S01 · rattachement** | **L'action principale est le plus petit texte de l'écran** : « Rattacher cet appareil » en **13 px**, contre 18 px par touche du pavé et 13,5 px pour « ← Corriger ». La planche demande un `bouton principal geant` |
+| **S01 · rattachement** | L'écran **nomme** au lieu de **demander** : « Poste de saisie » (18 px) contre « **Quelle cible ?** » (26 px / 800). Le verdict de la planche est « **un écran, une question** » — c'est le parti pris, pas une tournure |
+| **S02 · poste de cible** | L'en-tête ne porte pas le repère **« Série 2 · volée 8 sur 12 »** de la planche ; l'avancement n'existe que par archer (« 1/20 volées ») |
+| **S04 · marqueur** | Le lien discret est conforme, mais il ouvre une **liste nue de quatre noms**. La planche porte la phrase qui justifie le geste — « son nom accompagne chaque volée saisie : c'est la première marque, celle que le scoreur vient contresigner » — et son verdict dit « **sans elle, le geste paraît administratif** ». Le changement en cours de série ne dit pas non plus que « les volées déjà saisies **gardent le nom du marqueur qui les a entrées** » |
+
+### 🟢 Là où c'est la planche qui est en retard
+
+Le CA d'épic tranche : « là où fidélité et usage s'opposent, **l'usage gagne et la planche est
+corrigée** ». Trois cas, et le premier porte une information devenue **fausse**.
+
+- **Le pavé alphanumérique de S01 n'est pas dessiné.** Le produit en a un, à alphabet désambiguïsé —
+  ni `I`, ni `O`, ni `0`, ni `1` —, ce qui est exactement l'évolution demandée au questionnaire
+  (« un pavé de saisie ok **mais qui ne laisse pas de caractère non accessible**, adapté tablette et
+  téléphone »). ⚠️ **Effet de bord** : la planche « Code refusé » donne comme **première cause, par
+  ordre de fréquence**, « le **0** et le **O** se confondent ». Cette cause est devenue
+  **impossible** — aucun des deux caractères n'est saisissable. La planche affirme un diagnostic que
+  le produit a rendu faux.
+- **Le sélecteur de départ du poste** (« Choisissez le départ que sert cette cible ») n'apparaît sur
+  aucune planche : ajout d'`E04US002`, légitime, à verser dans S01.
+- **Le grain de validation** est affiché (« Validation à la fin de la série »), ce que l'exigence de
+  S02 réclamait (`D-11`) — la planche ne le montre pas à cet endroit.
+
+### 🟠 Une transcription documentaire de plus, et elle n'est pas sous garde
+
+**Les pastilles d'état des planches sont fausses, dans les deux sens** :
+
+| Planche | Dit | Réalité |
+|---|---|---|
+| `s04-marqueur` | « à concevoir » | `SelecteurMarqueur` **existe** (`features/saisie/Saisie.tsx`) |
+| `s06-routage` | « à concevoir » | `PanneauRoutage` **existe** depuis `E16US018` (10/09/2026) |
+| `s07-file-scoreur` | « **écran existant** » | **aucun écran**, aucun endpoint |
+
+`index.html` en porte une **seconde couche**, par axe. Ces pastilles décrivent l'état du **produit** :
+c'est une transcription au sens d'[ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md),
+et elle n'est ni sous garde, ni **énumérée** dans `DETTE-110` — dont la liste du hors-garde se
+déclare pourtant « **le seul lieu** » où elle vit. La ligne est donc à élargir, pas à doubler.
+
+
+### Ce qu'`E17US008` a résorbé, et ce qu'elle a laissé
+
+**Résorbé** — cinq écrans touchés (`S01`, `S02`, `S03`, `S04`, `S09`), sous le plafond de six que
+l'US se fixe :
+
+| Écart | Ce qui a été fait | Vérifié |
+|---|---|---|
+| La tablette ne prenait pas sa largeur | `--largeur-carte` / `--largeur-carte-l` réglés sur `.app[data-monde='tablette']`, comme l'admin règle les siens | ligne d'archer **575 → 694 px** |
+| Le pavé sous la ligne de flottaison | grille et pavé **côte à côte** dès 60 rem (`.saisie__travail`) ; le pavé reste **appelé**, il n'est pas permanent | pavé à `y=275` au lieu de `y=742`, page **1282 → 896 px** |
+| Le hors-ligne en pastille de 10 px | `BandeauHorsLigne` — aplat ambre **pleine largeur** sous l'en-tête, texte « la saisie continue ». ⚠️ **Sur la surface tablette seulement** : ailleurs aucune file n'absorbe l'écriture (le scoreur a la sienne, mais l'indicateur ne la compte pas — `DETTE-112`). Ce n'est **pas** un écart à relever en `E17US009` | **provoqué pour de vrai** (backend coupé) : aplat `#ffd400`, encre `#1d1d1b`, 1104 px |
+| Le cumul restait à 0 toute la série | `cumulSaisi` — somme des volées **saisies** ; `Serie.cumul` (validées) reste intact côté domaine | 27 points marqués → **27** affiché |
+| `S01` collé en haut à gauche | colonne centrée `.rattachement`, comme `.connexion` pour A01 | |
+| `S01` nommait au lieu de demander | « Poste de saisie » → « **Quelle cible ?** », 26 px / 800 | |
+| `S01` : action principale minuscule | `.bouton--geant` — 56 px de haut, corps **18 px** (était 13 px) | |
+| Numéro de cible en 16 px | **48 px** dans l'état « Rattaché » (S01), **22 px** dans l'en-tête de grille (S02) | |
+| `S04` : liste nue de quatre noms | la phrase de la planche, qui dit ce qu'on engage en choisissant. ⚠️ **Livrée comme PROPOSITION, pas comme résorption de fidélité** : `S04` n'a plus d'étalon pour son *parti pris*, et cette phrase est le seul contenu que la planche porte **identique dans ses deux variantes**. À reposer au tour 2 (ADR-0113 §3) | |
+| Pastilles d'état fausses | `s04` et `s06` passent à « écran existant », `s07` à « à concevoir » | |
+| La planche `S01` portait un diagnostic faux | « le 0 et le O se confondent » réécrit ; pavé désambiguïsé et sélecteur de départ inscrits | |
+
+⚠️ **Un défaut trouvé en chemin, qu'aucun relevé ne cherchait** : la classe `.bascule-theme` existait
+dans le JSX **sans aucune règle CSS** — le sélecteur de luminosité de `S01` se rendait
+« LuminositéSystèmeClairSombre », d'un seul tenant. Rien ne vérifie qu'une classe posée dans un
+`className` existe en CSS ; seul le fait d'ouvrir l'écran le montre. C'est l'argument du CA
+« vérification au navigateur », payé une seconde fois après `E17US002`.
+
+**Laissé, et pourquoi** :
+
+- 🔴 **La ligne d'archer ne porte toujours pas la volée en cours.** Le motif est le **périmètre** :
+  mettre les trois flèches dans la ligne et y déplacer le déclencheur du pavé, c'est **redessiner
+  l'écran le plus utilisé du produit**, pas le rapprocher de sa planche. Une US de fidélité ne fait
+  pas ça en cinquième position ; `E17US011` le fait, et y résorbe `DETTE-111` dans le même geste.
+  ⚠️ **Ce motif est le second : le premier était FAUX, et sa correction vaut d'être lue.** La 1ʳᵉ
+  rédaction invoquait un invariant de revue du 05/08 — « une zone tapable de plus détruit le tampon
+  de frappe du pavé ». L'axe adversarial est allé lire le code : les brouillons ont été **remontés
+  dans `Saisie`** depuis, et le commentaire qui le dit (`Saisie.tsx`) précise que cela « **supprime
+  la classe entière de défauts** ». L'invariant était **mort**, et trois commentaires du code le
+  répétaient encore — corrigés ici. Leçon : un motif de report se vérifie **dans le code du jour**,
+  comme une section « Porté dans le code par » (ADR-0075). → **`E17US011`**
+- 🟠 **« Les lignes d'archer font toute la largeur » n'est tenu qu'à moitié** (575 → 694 px, pas
+  1216). La cause est enchaînée à la précédente : tant que le pavé porte seul la saisie, il lui faut
+  une colonne, et cette colonne est prise sur la grille. C'est **la résorption de l'écart ci-dessus
+  qui débloque celle-ci** — la ligne portant la volée, le pavé rétrécit et rend sa colonne.
+- 🟠 **Les touches du pavé restent à 48 × 48 px**, là où S03 promet « plus de 90 px de large ». Même
+  chaîne : 90 px par touche demandent la largeur d'une tablette entière pour le pavé.
+- 🟠 **Le côte-à-côte ne s'applique qu'au-delà de 60 rem.** Sous cette largeur — téléphone, **et
+  tablette en portrait** (768 px) —, le pavé reste empilé sous la grille : l'écart « le pavé s'ouvre
+  sous la ligne de flottaison » y est **inchangé, et non mesuré**. Or le questionnaire S02 répond
+  « tablette standard **ou téléphone** ». Le commentaire CSS présentait l'empilement comme le cas du
+  téléphone, ce qui le faisait passer pour un choix. *(Relevé par l'axe adversarial.)*
+- **`S05`, `S07`, `S08`** : hors périmètre, motifs au tableau plus haut. `S07` n'est pas un écart de
+  fidélité mais une **US non livrée**.
+
+### Ce que ce relevé ne dit pas
+
+- Il compare des **structures**, pas des pixels — comme celui de l'axe admin.
+- **Il n'a pas pu juger la densité à la bonne taille** : Chrome reste bloqué à **1366 px** de large
+  et **641 px** de haut sur le poste de relevé, là où les planches se jugent à 1280 × 800. Tout ce
+  qui se décide à la ligne de flottaison est donc **mesuré, pas vu**.
+- **Les états système n'ont pas été provoqués au moment du relevé** : **conflit, verrou et erreur
+  récupérable** ont été lus dans le code et le CSS, jamais déclenchés — un écart de *rendu* y reste
+  possible. Le **hors-ligne** fait exception : il a été provoqué pour de vrai (backend coupé) **à la
+  résorption**, pas au relevé. *(La 1ʳᵉ rédaction l'énumérait avec les trois autres et contredisait
+  le tableau de résorption — relevé par trois axes.)*
+- **S05 et S08 n'ont pas été parcourus en salle** : leur étalon étant perdu, une visite n'aurait
+  produit que des impressions.
+
 ## Critères d'acceptation (epic)
 
 - Un écran livré et sa planche sont **superposables** : mêmes zones, même hiérarchie, mêmes formes,

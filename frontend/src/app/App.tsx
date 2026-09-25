@@ -14,6 +14,7 @@ import { codePosteDepuisUrl } from '../features/poste/url'
 import { oublierCodeScoreurUrl, useCodeScoreurDArrivee } from '../features/scoreur-session/url'
 import { AccueilPublic } from '../features/public/AccueilPublic'
 import { EspaceScoreur } from '../features/scoreur-session/EspaceScoreur'
+import { BandeauHorsLigne } from '../shared/realtime/BandeauHorsLigne'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
 import { useSessionAdminStore } from '../shared/stores/sessionAdminStore'
 import { useSessionPosteStore } from '../shared/stores/sessionPosteStore'
@@ -118,6 +119,13 @@ export function App() {
           <IndicateurConnexion />
         </div>
       </header>
+      {/* Le bandeau de S09, hors de l'en-tête pour prendre **toute la largeur**.
+          ⚠️ **Tablette seulement, et c'est une question de vérité.** Admin et public n'ont **aucune
+          file** : leur promettre que « la saisie continue » serait un mensonge, l'écriture échoue.
+          Le scoreur est exclu pour une **autre** raison — sa file existe, mais `etatIndicateur` ne
+          la compte pas, et son écran de duels a déjà son indicateur d'attente (`DETTE-112`, qui
+          demande de **rouvrir ici** à la résorption). */}
+      {surface === 'tablette' && <BandeauHorsLigne />}
       <main className="app__contenu">
         {role === 'tablette' ? (
           <EspacePoste

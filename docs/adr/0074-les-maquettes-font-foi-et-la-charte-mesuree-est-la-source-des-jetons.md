@@ -3,6 +3,13 @@
 - **Statut** : accepté
 - **Date** : 05/08/2026
 - **US** : E17US001
+- **Amendé par** : [ADR-0113](0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md)
+  (24/09/2026, `E17US008`) — la **réserve 2** ci-dessous suppose qu'un arbitrage du commanditaire
+  soit identifiable sur la planche. Il ne l'est plus : les questionnaires ont été remplis sur les
+  **vignettes** du 04/08, les planches redessinées le 05/08, et les variantes ont changé de lettre.
+  ⚠️ **Un arbitrage se lit donc par son intention, jamais par la lettre** ; sans étalon, on ne
+  résorbe pas le parti pris. Inscrit **en en-tête** et non dans la *Décision* : ADR-0074 n'est pas
+  rouvert au sens d'ADR-0075 §2 et n'appelle donc pas de section « Porté dans le code par ».
 - **Amende** : [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) *(inchangé sur le
   fond — l'ossature à trois axes est confirmée, c'est sa **palette** qui change)* ·
   [`epics/EPIC-16`](../../epics/EPIC-16-retours-maquettes.md) § Exclus

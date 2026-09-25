@@ -39,7 +39,7 @@ describe('avancementLibelle', () => {
   })
 })
 
-// — Tuile de supervision (E17US004, planche A13 variante B « grille de tuiles »).
+// — Tuile de supervision (E17US004, planche A13, variante « grille de tuiles »).
 //
 // Les deux dérivations que la tuile ajoute au tableau. Elles partagent avec `avancementLibelle` la
 // même définition de « avancement situable » : c'est l'invariant à ne pas casser, sinon une tuile

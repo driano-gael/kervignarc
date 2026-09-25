@@ -8,6 +8,7 @@ import {
   prochaineASaisir,
   quelSaisiePar,
   serieOptimiste,
+  cumulSaisi,
   totalVolee,
   voleeApresEnregistrement,
   voleeExistante,
@@ -26,6 +27,36 @@ function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
     saisie_le: null,
   }
 }
+
+describe('pointsZone — le miroir du domaine', () => {
+  // ⚠️ **Moitié front d'un cliquet en deux moitiés** ; l'autre fige la même liste côté domaine
+  // (`test_domain_blason.py`) et renvoie ici. Une zone ajoutée casse alors **un** test au lieu de
+  // zéro, et qui le répare lit le pointeur vers l'autre langage. Ça ne **relie** pas les deux
+  // langages pour autant : seul `points_par_zone` le fera (`DETTE-111`).
+  // Les onze valeurs sont celles de `ZoneScore` (art. B.2.1.2) — pas de « X », centre du 10.
+  it('donne à chaque zone du vocabulaire FFTA sa valeur, M valant 0', () => {
+    const zones = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
+    expect(zones.map(pointsZone)).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+  })
+})
+
+describe('cumulSaisi', () => {
+  it('somme toutes les volées saisies, validées ou non', () => {
+    // Le cas qui motive la fonction : avec le grain « à la fin de la série », **aucune** volée n'est
+    // validée avant le passage du scoreur. `Serie.cumul` vaut alors 0 tout au long de la série, et
+    // le rappel demandé en S02 (« en permanence, c'est un bon rappel sur la cible ») affichait zéro.
+    expect(cumulSaisi([volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])])).toBe(54)
+  })
+
+  it('compte de la même façon une volée verrouillée par le scoreur', () => {
+    expect(cumulSaisi([volee(1, ['10', '9', '8'], true), volee(2, ['9', '9', '9'])])).toBe(54)
+  })
+
+  it('vaut 0 sans volée, et compte le M pour 0', () => {
+    expect(cumulSaisi([])).toBe(0)
+    expect(cumulSaisi([volee(1, ['M', 'M', '10'])])).toBe(10)
+  })
+})
 
 describe('pointsZone', () => {
   it('« M » (manqué) vaut 0 point', () => {

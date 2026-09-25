@@ -84,7 +84,7 @@ import { GestionTournois } from '../tournois/Tournois'
 export function CoquilleAdmin() {
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   if (estAdmin) return <Coquille />
-  // Mise en page de la planche A01, variante **A — « formulaire sobre plein cadre »** (retenue au
+  // Mise en page de la planche A01, variante **« formulaire sobre plein cadre »** (retenue au
   // questionnaire du 04/08/2026, E17US003) : une **colonne centrée**, et non une carte posée dans
   // l'angle haut-gauche de l'écran. Le titre « Administration » disparaît : l'en-tête d'application
   // dit déjà « Kervignarc », et le bandeau de la carte dit ce qu'on y fait — la planche ne porte

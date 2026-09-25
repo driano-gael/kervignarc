@@ -101,7 +101,7 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-/** Une cible, en tuile — planche A13, variante **B « grille de tuiles (30 d'un œil) »**, retenue et
+/** Une cible, en tuile — planche A13, variante **« grille de tuiles (30 d'un œil) »**, retenue et
  * validée sans réserve (E17US004).
  *
  * Le motif du choix est dans le nom de la variante : trente lignes ne se balaient pas d'un regard,

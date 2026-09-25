@@ -6,7 +6,7 @@
 // et la correction sont l'acte du scoreur, sur sa propre surface. Depuis E04US018, second état :
 // cible entièrement validée → **panneau de routage**, au moment où l'archer range ses flèches.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
@@ -31,6 +31,7 @@ import {
   prochaineASaisir,
   voleeApresEnregistrement,
   quelSaisiePar,
+  cumulSaisi,
   totalVolee,
   voleeExistante,
 } from './volees'
@@ -83,6 +84,10 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
 
+  // L'état « Rattaché » de S01 : la tablette sait quelle cible elle sert, le tir n'a rien à montrer
+  // encore. Exclut le chargement et l'erreur dure, où un numéro géant n'aurait aucun sens.
+  const confirmation = (besoinDepart || grille.isSuccess) && lignes.length === 0
+
   // Bascule en panneau de routage (E04US018). « Close » = toutes les volées du barème saisies **et**
   // verrouillées par le scoreur (c'est lui qui clôt une série, pas le marqueur) — **ou** l'archer
   // est forfait (E04US015 : il reste dans la grille et sa série ne se complétera jamais ; sans cette
@@ -116,7 +121,7 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
     return (
       <div className="saisie">
         <div className="saisie__entete">
-          <strong>Cible {cibleIndex}</strong>
+          <h2 className="saisie__cible">Cible {cibleIndex}</h2>
         </div>
         <PanneauRoutage
           tournoiId={tournoiId}
@@ -134,8 +139,14 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   return (
     <div className="saisie">
-      <div className="saisie__entete">
-        <strong>Cible {cibleIndex}</strong>
+      {/* ⚠️ **La confirmation, pas « zéro ligne ».** `lignes.length === 0` seul couvrait aussi le
+          chargement et l'erreur dure : le numéro s'affichait en 48 px puis retombait à 22 px à
+          chaque montage, et au-dessus d'un message d'erreur. Ici, l'état « Rattaché » de S01 — le
+          départ reste à choisir, ou la grille est vide et le serveur a répondu. */}
+      <div className={`saisie__entete${confirmation ? ' saisie__entete--confirmation' : ''}`}>
+        {/* `h2` et non `strong` : c'est le seul titre de l'écran de travail, donc le point d'entrée
+            d'une navigation par titres — la coquille ne porte plus que le `h1` de l'application. */}
+        <h2 className="saisie__cible">Cible {cibleIndex}</h2>
         {lignes.length > 0 && (
           <SelecteurMarqueur lignes={lignes} marqueur={marqueurActif} onChoisir={setMarqueur} />
         )}
@@ -167,7 +178,11 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
       )}
 
       {grille.isSuccess && lignes.length > 0 && (
-        <>
+        // ⚠️ Cette enveloppe n'est pas cosmétique : elle met la grille et le pavé **côte à côte**
+        // dès que la largeur le permet. Empilés, le pavé s'ouvrait à 742 px du haut sur une fenêtre
+        // de 641 — invisible sans défiler, pour le geste que S03 dit « répété ~4 300 fois par
+        // départ ». Le pavé reste **appelé** (variante retenue de S02), il n'est pas permanent.
+        <div className="saisie__travail">
           <ul className="saisie__grille">
             {lignes.map((ligne) => (
               <LigneArcher
@@ -176,13 +191,13 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 ligne={ligne}
                 nbVolees={bareme.data?.nb_volees ?? null}
                 actif={ligne.archer_id === archerActif}
-                // ⚠️ **Pas une bascule.** Une première version refermait le pavé quand on re-tapait
-                // la ligne ouverte — geste « inverse » séduisant, mais `PaveArcher` porte son tampon
-                // de frappe en état local : le refermer **jette la volée en cours**, sans un mot.
-                // Sur une cible, ce tap arrive tout seul (on re-touche le nom pour lire le cumul).
-                // La fermeture passe donc par **un seul geste explicite**, le bouton « Fermer » du
-                // pavé, qui sait ce qu'il y a dans le tampon et demande confirmation s'il n'est pas
-                // vide (revue du 05/08/2026, axes C1 et adversarial).
+                // ⚠️ **Pas une bascule** : re-taper la ligne ouverte ne referme pas le pavé. Sur une
+                // cible ce tap arrive tout seul (on re-touche le nom pour lire le cumul), et une
+                // fermeture accidentelle ferait perdre le fil de la volée en cours. La fermeture
+                // passe par **un geste explicite**, le bouton « Fermer ».
+                // ⚠️ Le motif historique — « le refermer jette le tampon de frappe » — **ne vaut
+                // plus** : les brouillons vivent dans `Saisie` depuis, donc refermer ne perd rien
+                // (cf. `brouillons` plus haut). Le geste reste, sa raison a changé.
                 onSelectionner={() => setArcherChoisi(ligne.archer_id)}
               />
             ))}
@@ -211,7 +226,7 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
               Touchez un archer pour ouvrir le pavé de saisie.
             </p>
           )}
-        </>
+        </div>
       )}
 
       <p className="saisie__grain">{libelleGrain(grain.data ?? null)}</p>
@@ -231,8 +246,29 @@ function SelecteurMarqueur({
   onChoisir: (nom: string) => void
 }) {
   const [ouvert, setOuvert] = useState(false)
+  const conteneur = useRef<HTMLDivElement>(null)
+
+  // ⚠️ **Le panneau recouvre la première ligne d'archer** depuis qu'il est hors du flux (il poussait
+  // la grille de ~90 px, cf. `App.css`). Un recouvrement sans porte de sortie bloque la cible
+  // tactile la plus tapée de l'écran : « j'ouvre pour vérifier, je referme » doit exister.
+  useEffect(() => {
+    if (!ouvert) return
+    const fermer = (e: MouseEvent) => {
+      if (!conteneur.current?.contains(e.target as Node)) setOuvert(false)
+    }
+    const auClavier = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOuvert(false)
+    }
+    document.addEventListener('pointerdown', fermer)
+    document.addEventListener('keydown', auClavier)
+    return () => {
+      document.removeEventListener('pointerdown', fermer)
+      document.removeEventListener('keydown', auClavier)
+    }
+  }, [ouvert])
+
   return (
-    <div className="saisie__marqueur">
+    <div className="saisie__marqueur" ref={conteneur}>
       <button
         type="button"
         className="lien saisie__marqueur-libelle"
@@ -242,23 +278,32 @@ function SelecteurMarqueur({
         Marqueur : <strong>{marqueur ?? '—'}</strong> ▾
       </button>
       {ouvert && (
-        <ul className="saisie__marqueur-choix" role="listbox" aria-label="Choisir le marqueur">
-          {lignes.map((ligne) => (
-            <li key={ligne.archer_id}>
-              <button
-                type="button"
-                className="lien"
-                aria-selected={ligne.nom === marqueur}
-                onClick={() => {
-                  onChoisir(ligne.nom)
-                  setOuvert(false)
-                }}
-              >
-                {ligne.nom} {ligne.prenom}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="saisie__marqueur-panneau">
+          {/* S04 : la planche porte cette phrase et son verdict dit pourquoi — « sans elle, le geste
+              paraît administratif ». Une liste nue de quatre noms ne dit pas ce qu'on engage. */}
+          <p className="saisie__marqueur-pourquoi">
+            Le marqueur est l’archer qui tient la tablette. Son nom accompagne chaque volée saisie :
+            c’est la première marque, celle que le scoreur vient contresigner. Les volées déjà
+            saisies gardent le nom de qui les a entrées.
+          </p>
+          <ul className="saisie__marqueur-choix" role="listbox" aria-label="Choisir le marqueur">
+            {lignes.map((ligne) => (
+              <li key={ligne.archer_id}>
+                <button
+                  type="button"
+                  className="lien"
+                  aria-selected={ligne.nom === marqueur}
+                  onClick={() => {
+                    onChoisir(ligne.nom)
+                    setOuvert(false)
+                  }}
+                >
+                  {ligne.nom} {ligne.prenom}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )
@@ -308,7 +353,7 @@ function SelecteurDepart({ tournoiId, obligatoire }: { tournoiId: number; obliga
   )
 }
 
-// Une ligne de la grille : position, nom, cumul (validé) et avancement. Tapable pour devenir
+// Une ligne de la grille : position, nom, cumul **saisi** (cf. `cumulSaisi`) et avancement. Tapable pour devenir
 // l'archer **actif** (celui dont le pavé saisit). Cible tactile ≥ 48 px (écran de saisie).
 function LigneArcher({
   tournoiId,
@@ -326,7 +371,7 @@ function LigneArcher({
   const serie = useSerie(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
   const nbSaisies = volees.length
-  const cumul = serie.data?.cumul ?? 0
+  const cumul = cumulSaisi(volees)
 
   return (
     <li>
@@ -346,8 +391,8 @@ function LigneArcher({
           {nbSaisies}/{nbVolees ?? '?'} volées
         </span>
         {/* Le cumul de série, **en permanence** (S02, question 3 : *« en permanence, c'est un bon
-            rappel sur la cible »*). Il l'était déjà ; il le reste maintenant que le pavé ne masque
-            plus la grille. */}
+            rappel sur la cible »*). ⚠️ Le cumul **saisi**, pas celui du serveur : voir `cumulSaisi`
+            — l'officiel ne compte que les volées validées et restait à 0 toute la série. */}
         <span className="saisie__cumul">{cumul}</span>
       </button>
 
@@ -356,10 +401,11 @@ function LigneArcher({
           scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible. */}
 
       {/* ⚠️ **Hors du bouton, et c'est le point.** Placée dedans, cette bande — la plus large
-          zone tapable de la ligne — fermait le pavé et **démontait `PaveArcher` avec son tampon
-          de frappe** : vérifier ses volées effaçait les flèches que le marqueur venait de
-          taper, sans un mot (revue du 05/08/2026, axes C1 et adversarial). `role=group` : sans
-          rôle, le libellé était ignoré des lecteurs d'écran. */}
+          zone tapable de la ligne — ferait **changer d'archer actif** au moindre coup d'œil aux
+          volées : le `onClick` de la ligne est `setArcherChoisi`. `role=group` : sans rôle, le
+          libellé était ignoré des lecteurs d'écran.
+          ⚠️ Le motif d'origine (« cela démontait `PaveArcher` avec son tampon de frappe ») **ne
+          vaut plus** depuis que les brouillons vivent dans `Saisie`. */}
       {nbVolees !== null && nbVolees > 0 && (
         <span className="saisie__relecture" role="group" aria-label={`Volées de ${ligne.nom}`}>
           {Array.from({ length: nbVolees }, (_, i) => {
@@ -498,7 +544,9 @@ function PaveArcher({
         </span>
         {/* Le cumul de série **suit le pavé** (S02) : quand la grille est repoussée hors de l'écran
             sur un téléphone, c'est ici qu'on relit « où j'en suis ». */}
-        <span className="saisie__cumul-serie">Cumul {serie.data?.cumul ?? 0}</span>
+        <span className="saisie__cumul-serie">
+          Cumul saisi {cumulSaisi(serie.data?.volees ?? [])}
+        </span>
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts
         </span>

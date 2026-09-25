@@ -40,7 +40,10 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-110](#dette-110--les-libellés-et-lordre-de-la-navigation-des-maquettes-restent-transcrits-à-la-main) | technique | mineur | `frontend/src/features/admin/CoquilleAdmin.tsx` (tableau local `destinations`, marqueur `DETTE-110` — c'est **là** qu'est le raccourci) · `maquettes/assets/appareils.js` (en-tête, marqueur — dont la table `AXES`, les libellés, l'ordre et les dimensions d'appareil) · `maquettes/*.html` (les `data-ecran`). ⚠️ **La liste complète de ce qui reste hors garde est dans le détail ci-dessous**, pas dans cette colonne | `E17US010` met les **identifiants** de destination sous garde mécanique, pas leurs **libellés** ni leur **ordre** : ceux-ci vivent dans un tableau local au composant `CoquilleAdmin`, donc hors de portée d'un import — seuls les identifiants sont exposés par `axes.ts` | **Quatre** libellés avaient dérivé et sont corrigés ici, dont deux — « Phases (format) » et « Composer un déroulé » — renommés par `E16US002` **un mois plus tôt** sans que rien ne le signale. Le prochain renommage repartira de zéro | **`E17US010`** (23/09/2026), périmètre assumé : remonter les libellés touche **une entrée par destination livrée** dans `CoquilleAdmin.tsx` (759 lignes) et son lecteur — un refactor de composant, hors du périmètre d'une US d'outillage documentaire. ⚠️ Le **pattern, lui, est déjà établi** : `axes.ts` porte trois `Record` exhaustifs (`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`, `OUVRE_UN_ELEMENT`), un 4ᵉ n'introduit aucune abstraction neuve. C'est un argument de coût, pas de conception | Remonter un `LIBELLE_PAR_DESTINATION` dans `axes.ts` (`Record` exhaustif, comme ses deux voisins), `CoquilleAdmin` le consommant ; le garde-fou compare alors aussi les libellés. ⚠️ **L'ordre est un autre sujet** : il ne vit pas dans `axes.ts` et n'a pas à y entrer sans raison — la sidebar des maquettes peut légitimement s'en écarter |
+| [DETTE-113](#dette-113--une-classe-css-posée-dans-un-classname-sans-règle-correspondante-ne-se-voit-pas) | technique | mineur | `frontend/src/shared/charte.test.ts` (marqueur `DETTE-113`) — **site du remède** ; le raccourci, lui, n'a pas de lieu | Rien ne vérifie qu'une classe écrite dans un `className` **existe** en CSS : ni `tsc`, ni `eslint`, ni un test de rendu. Le composant se rend, sans style | **3 occurrences** : `E17US002` (portes d'accueil, action destructrice), `E17US008` (`.bascule-theme`, « LuminositéSystèmeClairSombre » d'un seul tenant) et `E17US008` 2ᵉ passe (`bandeau-hors-ligne--synchronisation`). Aucune trouvée par un outil | **3ᵉ occurrence atteinte en 2ᵉ passe de revue** (`bandeau-hors-ligne--synchronisation`, émis sans règle et **affirmé par un test**). La règle 16 rend donc le remède **proposable** — et veut un ADR + une US dédiée, pas un garde-fou glissé dans l'US courante | Confronter les littéraux de `className` aux sélecteurs des feuilles dans `charte.test.ts`, qui parcourt déjà les deux. ⚠️ La **liste blanche** des classes composées est le vrai coût : mal faite, le garde-fou devient bruyant, et un garde-fou bruyant se désactive |
+| [DETTE-112](#dette-112--lindicateur-de-connexion-ne-voit-quune-file-sur-deux-et-aucune-ne-se-vide-seule) | conception | **majeur** | `frontend/src/shared/realtime/indicateur.ts` (`etatIndicateur`, marqueur `DETTE-112`) — site du raccourci · `frontend/src/shared/realtime/BandeauHorsLigne.tsx` (marqueur) · `frontend/src/app/App.tsx` (garde de surface, marqueur) | Trois défauts d'un même mécanisme : la file des **duels** n'est pas lue ; `nbEnAttente > 0` prime sur l'état du **lien** ; et une file que le rejeu a laissée pleine **ne se redéclenche pas** (transition de statut seule), alors qu'elle est persistée sans être scopée au poste | ⚠️ **Conjugués, ils produisent un état qui ne se referme jamais** : une file pleine que rien ne vide et que l'indicateur annonce « Hors ligne » alors que le réseau est revenu. Un scoreur resynchronisant des duels ne voit rien **dans l'indicateur global** — son écran de duels porte, lui, son propre `IndicateurAttente` | **`E17US008`** (24/09/2026) **contourne** : `BandeauHorsLigne` écrit sa **propre priorité** au lieu de dériver d'`etatIndicateur`, et dit « N saisies en attente d'envoi » là où la pastille dit « Hors ligne ». ⚠️ Les deux **divergent donc volontairement** jusqu'à la résorption. Ni la file des duels ni le rejeu bloqué ne sont touchés | Un 4ᵉ état `'en-attente'` dans `etatIndicateur` (fonction pure, déjà testée), la lecture des **deux** files, et un rejeu qui se redéclenche autrement que sur une transition de statut. ⚠️ **Et alors rouvrir `BandeauHorsLigne` sur la surface scoreur** (`App.tsx`, garde `surface === 'tablette'`) : sa garantie y est **réelle**, seul le compte était faux. Sans cette clause, le scoreur reste sans bandeau pour toujours. ⚠️ Le **scopage de la file au poste** est un sujet à part, non tranché |
+| [DETTE-111](#dette-111--la-conversion--zone-de-blason--points--est-écrite-des-deux-côtés) | conception | mineur | `backend/domain/serie.py` (`_points_zone`, marqueur `DETTE-111`) — domicile de référence, et **privé** · `frontend/src/features/saisie/volees.ts` (`pointsZone`, marqueur `DETTE-111`) — site du raccourci | « une zone vaut son chiffre, `M` vaut 0 » est écrit **deux fois**, en Python et en TypeScript. 2ᵉ cas de la famille de [DETTE-020](#dette-020--le-libellé-de-tour-a-deux-domiciles) | ⚠️ **Le remède de DETTE-020 (servir la valeur par le DTO) est inapplicable** : le front doit valoriser des volées que le serveur n'a **jamais reçues** — `serieOptimiste` conserve le `cumul` serveur, qui les ignore. Un total servi par le back serait figé pendant toute la coupure, donc pendant la garantie d'`E04US009`. Risque **rare** (`ZoneScore` est fermé par le règlement FFTA) mais **silencieux** : rien ne relie les deux sites | **`E17US008`** (24/09/2026) l'**aggrave** — `cumulSaisi` est un 3ᵉ consommateur, et le premier à porter un nombre lu comme un score. Non corrigée dans l'US : une US de fidélité aux maquettes n'a touché aucune ligne de Python, traverser les cinq couches y aurait élargi la revue pour le même résultat | Servir la **règle**, pas le résultat : `points_par_zone` au DTO de barème (qui porte déjà `zones` et est mis en cache **en mémoire** côté front), `_points_zone` rendu public et domicile unique, `pointsZone` devient une lecture de table — le hors-ligne est préservé. **Planifié dans `E17US011`**. ⚠️ **Ce remède ne ferme qu'UNE des deux règles** : « quelles volées comptent » reste sans domicile au domaine, cf. le détail. Ne pas cocher la dette comme résorbée |
+| [DETTE-110](#dette-110--les-libellés-et-lordre-de-la-navigation-des-maquettes-restent-transcrits-à-la-main) | technique | mineur | `frontend/src/features/admin/CoquilleAdmin.tsx` (tableau local `destinations`, marqueur `DETTE-110` — c'est **là** qu'est le raccourci) · `maquettes/assets/appareils.js` (en-tête, marqueur — dont la table `AXES`, les libellés, l'ordre et les dimensions d'appareil) · `maquettes/*.html` (les `data-ecran` **et les pastilles d'état**, élargi par `E17US008`) · `maquettes/index.html` (les pastilles par axe). ⚠️ **La liste complète de ce qui reste hors garde est dans le détail ci-dessous**, pas dans cette colonne | `E17US010` met les **identifiants** de destination sous garde mécanique, pas leurs **libellés** ni leur **ordre** : ceux-ci vivent dans un tableau local au composant `CoquilleAdmin`, donc hors de portée d'un import — seuls les identifiants sont exposés par `axes.ts` | **Quatre** libellés avaient dérivé et sont corrigés ici, dont deux — « Phases (format) » et « Composer un déroulé » — renommés par `E16US002` **un mois plus tôt** sans que rien ne le signale. Le prochain renommage repartira de zéro | **`E17US010`** (23/09/2026), périmètre assumé : remonter les libellés touche **une entrée par destination livrée** dans `CoquilleAdmin.tsx` (759 lignes) et son lecteur — un refactor de composant, hors du périmètre d'une US d'outillage documentaire. ⚠️ Le **pattern, lui, est déjà établi** : `axes.ts` porte trois `Record` exhaustifs (`AXE_PAR_DESTINATION`, `BESOIN_TOURNOI`, `OUVRE_UN_ELEMENT`), un 4ᵉ n'introduit aucune abstraction neuve. C'est un argument de coût, pas de conception | Remonter un `LIBELLE_PAR_DESTINATION` dans `axes.ts` (`Record` exhaustif, comme ses deux voisins), `CoquilleAdmin` le consommant ; le garde-fou compare alors aussi les libellés. ⚠️ **L'ordre est un autre sujet** : il ne vit pas dans `axes.ts` et n'a pas à y entrer sans raison — la sidebar des maquettes peut légitimement s'en écarter |
 | [DETTE-109](#dette-109--la-barre-de-progression-du-cockpit-peut-dépasser-100-) | technique | mineur | `backend/application/pilotage_simulation.py` (`_etat`, `duels_total`, marqueur `DETTE-109`) · `frontend/src/features/simulation/Simulation.tsx` (la barre) | `duels_total` vaut `somme(effectif - 1)` par tableau, ce qui compte les duels d'un arbre **sans son match pour la 3ᵉ place**. `duels_faits`, lui, compte tous les duels joués | La barre de progression du cockpit affiche **plus de 100 %** dès qu'une petite finale est jouée : mesuré à `duels_faits=8` pour `duels_total=6` sur deux créneaux de quatre archers. Surface de démo/QA derrière `exiger_admin` ; rien d'autre ne lit ce compteur | **Antérieure à `E06US009`** (la formule n'a pas changé), mais la ligne a été **réécrite** par elle — le doublon de reconstruction d'arbres y a été supprimé — et c'est à cette occasion qu'un axe de revue a mesuré l'écart. Tracée plutôt que corrigée en douce : changer la sémantique d'un compteur n'est pas du ressort d'une US de palmarès | Compter les duels réellement portés par l'arbre plutôt que de les dériver de l'effectif (`len([d for d in etat.duels if not d.est_bye])`), ou aligner `duels_faits` sur la même définition. ⚠️ **Vérifier les deux compteurs ensemble** : les corriger séparément déplacerait l'écart au lieu de le fermer |
 | [DETTE-108](#dette-108--les-dto-du-front-sont-des-miroirs-manuels-que-rien-ne-valide) | conception | majeur | `frontend/src/shared/api/client.ts` (`fetchJson`, marqueur `DETTE-108`) · `frontend/src/features/*/api.ts` (les miroirs) · la coquille d'application (aucun `ErrorBoundary`) | Chaque DTO front est un **miroir écrit à la main** d'un modèle Pydantic, et `fetchJson<T>` **transtype sans valider**. Une dérive de contrat est donc invisible à `tsc` **et** à `vitest`. Amplificateur : `frontend/src` n'a **aucun** `ErrorBoundary`, donc un `TypeError` de rendu démonte **tout** l'arbre React | C'est la cause du **seul bloquant** de la 1ʳᵉ passe de revue d'`E06US009` : le serveur avait changé `EtatSessionReponse`, le miroir non, et l'appli admin **entière** tombait en page blanche au premier clic sur « Simulation » — pendant que la porte rendait **14/14** | **Ouverte en 2ᵉ passe de revue d'`E06US009`** (19/09/2026). La classe ne vivait que dans deux commentaires, et le renvoi qu'ils portaient (`DETTE-081`) désignait **autre chose** — un champ manquant sur `EtapeDTO`. Deux précédents du registre disent la règle : une dette assumée en commentaire n'est jamais prise | Deux gestes indépendants. **(a)** Un `ErrorBoundary` racine — ~30 lignes, zéro dépendance — borne le rayon à un écran au lieu de l'appli. **(b)** Valider les réponses (types générés depuis `/openapi.json`, ou un validateur) est un **ajout de dépendance** : règle 11, donc arbitrage du commanditaire + ADR + US dédiée. ⚠️ **L'option « rien » est défendable** (un seul incident constaté, LAN mono-club, règle 12) : ce qui manquait était l'**inscription**, pas le remède |
 | [DETTE-106](#dette-106--cinq-orthographes-du-libellé-de-créneau) | conception | mineur | `backend/domain/depart.py` (`libelle_creneau`) · `frontend/src/features/departs/libelle.ts` (`libelleCreneau`) · `frontend/src/features/placement/PlanCiblesPublic.tsx` (`libelleDepart`) · `frontend/src/features/inscriptions/InscriptionsArcher.tsx` (`libelleDepart`) · `frontend/src/features/admin/BandeauContexte.tsx` (composé en ligne) | **Cinq sites composent le libellé d'un créneau**, dans **deux orthographes** au moins : « Départ **n°**2 — 14:00 » côté serveur, « Départ 2 — 14:00 » côté front, plus trois variantes locales qui y ajoutent l'état, le tarif ou changent le séparateur. Les docstrings des deux principaux affirment **chacune** être « le domicile unique » / « un seul, partout » : elles sont fausses toutes les deux | Le même créneau se lit différemment d'un écran à l'autre, et depuis `E06US009` **sur le même écran** : le palmarès affiche la forme serveur, le sélecteur de créneau juste à côté la forme front. ⚠️ La forme serveur est **persistée verbatim** dans `remboursement.creneau` ([ADR-0057](adr/0057-registre-de-remboursements.md)) : elle ne peut pas changer sans faire diverger un registre d'argent de ses lignes historiques | **Découverte en cadrant `E06US009`** (19/09/2026), en cherchant d'où le serveur tirerait le nom de ses sections. Non traitée dans l'US : unifier cinq sites est un **remède structurel**, donc ADR + US dédiée (règle « jamais en douce dans l'US courante ») | Aligner les quatre sites front sur `Depart.libelle_creneau` (la forme persistée fait foi), les deux composites gardant leur suffixe. ⚠️ **Le libellé devra descendre dans la réponse** là où le front ne l'a pas : c'est ce qu'`E06US009` a fait pour le seul palmarès. Marqueurs `DETTE-106` sur les **deux sites du raccourci** — `Depart.libelle_creneau` et `libelleCreneau` —, plus deux renvois sur les consommateurs (`SectionPalmares.libelle`, `features/palmares/api.ts`). ⚠️ **Les marqueurs ont d'abord été posés sur les seuls consommateurs** : un `grep DETTE-106` ramenait alors zéro des cinq fichiers à corriger (relevé par deux axes de revue). |
@@ -4813,8 +4816,17 @@ attributs `data-ecran` des planches `maquettes/*.html` — et une **4ᵉ**, la t
 ⚠️ **Une divergence de clés entre `AXES` et `DESTINATIONS` ne fait pas qu'afficher un réglage
 faux** : `navigationAdmin` déréférence `DESTINATIONS[axe]` sans garde, la planche part en
 `TypeError` et l'ossature cesse d'être construite. **Liste complète du hors-garde** (ce fichier en est le seul lieu) : les **libellés**,
-l'**ordre**, la table **`AXES`** (dont `besoinTournoi`), les **`data-ecran`** des planches, et
-les **dimensions d'appareil** recopiées par `maquettes/README.md` depuis `APPAREILS`. Le nombre
+l'**ordre**, la table **`AXES`** (dont `besoinTournoi`), les **`data-ecran`** des planches, les
+**dimensions d'appareil** recopiées par `maquettes/README.md` depuis `APPAREILS`, et — ajoutées par
+`E17US008` — les **pastilles d'état** (`.etat-pill`, « écran existant » / « à concevoir »), à la
+fois sur chaque planche et **par axe** dans `maquettes/index.html`.
+
+⚠️ **Les pastilles ont été trouvées fausses dans les deux sens**, ce qui n'était pas prévu : `s04`
+et `s06` se disaient « à concevoir » alors que leurs écrans existent (le second depuis `E16US018`,
+un mois plus tôt), et `s07` se disait « écran existant » alors qu'**aucun écran ni endpoint** ne le
+porte. Une transcription fausse dans le sens « pas encore fait » se corrige quand on livre ; dans le
+sens « déjà fait », elle **éteint la question** — c'est elle qui a fait ranger `S07` parmi les
+planches sans suite au tri d'`E16US011`. Corrigées à la main par `E17US008`, toujours hors garde. Le nombre
 de destinations, lui, a été **retiré** du README par la 3ᵉ passe plutôt que laissé non gardé ;
 les chiffres qui subsistent ici sont des **chiffrages datés du coût**, pas des descriptions du
 produit.
@@ -4955,3 +4967,145 @@ ces décors pour une autre raison**. Pas d'US dédiée : le geste est mécanique
 une branche entière de renommage de doublures coûterait plus qu'elle ne rapporte (règle 12).
 ⚠️ **Aucun marqueur `DETTE-104` n'est posé en code** — 29 marqueurs seraient précisément la
 duplication qu'on déplore. La mesure est le `grep` de la colonne « Portée ».
+
+### DETTE-111 — la conversion « zone de blason → points » est écrite des deux côtés
+
+**Où** : `backend/domain/serie.py` — `_points_zone` (marqueur `DETTE-111`), **domicile de
+référence**, et **privé** : rien n'y signale qu'il a un jumeau.
+`frontend/src/features/saisie/volees.ts` — `pointsZone` (marqueur `DETTE-111`), **site du
+raccourci**, consommé par `totalVolee`, `cumulSaisi` et le total provisoire du pavé.
+
+⚠️ **Une seconde règle voyage avec celle-ci, et le remède ci-dessous n'en ferme qu'une.** `cumulSaisi`
+porte une règle d'**agrégation** : *quelles volées comptent dans un total affiché*. Ce n'est **pas**
+une duplication — c'est une règle **sans domicile au domaine** : le domaine en tient une version
+(`validee`, avec les alignements de `Serie.cumul`, `compter`, `nb_fleches_validees`, `est_complete`),
+le front en pose une autre (`toutes`), et **rien ne surveille l'écart**.
+
+⚠️ L'instabilité d'`E16US019` (`validee` ≠ `verrouillee`, ADR-0109) ne peut **pas** atteindre
+`cumulSaisi`, qui ne lit aucun de ces champs — l'argument serait faux s'il était écrit ainsi. Le
+risque réel est ailleurs, et il est plus étroit : le jour où le domaine introduira un état de volée
+qui **ne doit pas compter même comme saisie** (annulée, rejetée), `cumulSaisi` la comptera.
+⚠️ « Rien » est ici **défendable** : porter `cumul_saisi` au domaine et le servir ne supprimerait pas
+la duplication, le chemin hors ligne devant de toute façon recalculer localement. Ce qui manque est
+le **lien documentaire**, pas l'implémentation. *(Requalifié en 2ᵉ passe de revue, axes A et C2.)*
+
+**La règle, deux fois** : « une zone vaut son chiffre, `M` vaut 0 ». Le domaine l'écrit
+`0 if zone is ZoneScore.MANQUE else int(zone.value)` ; le front l'écrit `'M' → 0, sinon parseInt`.
+Même raisonnement, deux langages — le second cas de cette famille après
+[`DETTE-020`](#dette-020--le-libellé-de-tour-a-deux-domiciles) (le libellé de tour), et
+[ADR-0006](adr/0006-ubiquitous-language.md) veut un domicile unique pour le vocabulaire métier.
+
+⚠️ **Le remède de `DETTE-020` ne s'applique PAS ici**, et c'est tout l'intérêt de la ligne. Celui-là
+prescrit « servir la valeur par le DTO et retirer le calcul du front ». Impossible sur les points :
+le front doit valoriser des volées que **le serveur n'a jamais reçues**. Vérifié dans
+`serieOptimiste` — une volée partie dans la file hors-ligne est ajoutée à `volees`, mais la fonction
+renvoie `{ ...base, volees }` et **conserve le `cumul` du serveur**, qui par construction l'ignore.
+Un total servi par le back serait donc figé pendant toute la coupure, c'est-à-dire pendant la
+garantie d'`E04US009`.
+
+⚠️ **Le risque est rare mais silencieux, et il faut dire lequel des deux.** `ZoneScore` est un
+vocabulaire **fermé par le règlement FFTA** (art. B.2.1.2, onze valeurs ; la mouche `X` en est
+explicitement exclue — « le centre du 10, pas un score »). Il ne bouge que si la fédération change
+sa règle du 18 m : ce n'est pas une évolution probable, c'est une évolution **externe**. Mais le
+jour où elle arrive, l'auteur édite une `Enum` du domaine et **rien** ne lui dit que le front en
+tient une copie — ni test, ni type, ni compilateur. Le défaut n'est pas la fréquence, c'est
+l'absence de signal.
+
+**Aggravée par `E17US008`** (24/09/2026), et c'est pourquoi elle est écrite maintenant : `cumulSaisi`
+ajoute un **troisième** consommateur de `pointsZone`, et le fait porter un nombre que le marqueur lit
+comme un score — là où les deux premiers ne servaient qu'un total provisoire de volée en cours.
+
+**Remède retenu — servir la RÈGLE, pas le résultat.** Le barème traverse déjà la frontière et est mis
+en cache **en mémoire** côté front par `useBareme` (`nb_volees`, `nb_fleches_par_volee`, les `zones` du
+blason) : il gagne un `points_par_zone`. ⚠️ **En mémoire, pas persisté** — le cache ne survit pas à
+un rechargement hors ligne ; la conclusion tient quand même, le pavé étant de toute façon
+inutilisable sans barème, dont il dépend **déjà** pour `nb_fleches_par_volee`. Le front cesse de *parser* une chaîne et *consulte* une table qu'il
+possède déjà — donc le hors-ligne est préservé —, et `_points_zone` devient le domicile unique,
+rendu public. Une zone ajoutée un jour suit toute seule, des deux côtés.
+
+⚠️ **Ce n'est pas un remède structurel au sens de la règle 16** : aucun pattern neuf. Le DTO de
+barème existe, il porte déjà `zones` ; on lui ajoute un champ.
+
+**Planifié dans `E17US011`** *(arbitrage du commanditaire, 24/09/2026)* — l'US qui met les flèches
+dans la ligne d'archer rouvre précisément `volees.ts`, la ligne et le pavé, avec leurs tests. Faire
+traverser les cinq couches à une US de **fidélité aux maquettes**, qui n'a pas touché une ligne de
+Python, aurait coûté une revue plus large pour le même résultat.
+
+### DETTE-112 — l'indicateur de connexion ne voit qu'une file sur deux, et aucune ne se vide seule
+
+**Où** : `frontend/src/shared/realtime/indicateur.ts` — `etatIndicateur` (marqueur `DETTE-112`),
+**site du raccourci** ; `frontend/src/shared/realtime/BandeauHorsLigne.tsx` (marqueur), qui pose la
+garde de contournement ; `frontend/src/shared/stores/fileHorsLigneStore.ts` et son jumeau
+`features/saisie-duels/*`.
+
+**Trois défauts d'un même mécanisme**, tous constatés en revue d'`E17US008` (axe C1) :
+
+1. **Une file sur deux est ignorée.** `etatIndicateur` ne lit que `fileHorsLigneStore` (les volées de
+   qualification). Les duels ont leur **propre** file (`fileDuelsHorsLigneStore`), que ni la pastille
+   ni le bandeau ne consultent : un scoreur en pleine resynchronisation de duels ne voit **rien**.
+2. **`nbEnAttente > 0` prime sur le lien.** `etatIndicateur` rend `deconnecte` dès que la file n'est
+   pas vide, **quel que soit `statut`** — donc aussi pendant `connexion`, et la file étant persistée,
+   c'est le cas normal d'une tablette qui recharge après coupure. Tolérable pour une pastille de
+   10 px ; faux pour un aplat en travers de l'écran.
+3. **Une file pleine ne se rejoue pas toujours.** `rejouer` s'arrête sur un transitoire (401/5xx) et
+   **laisse la file pleine** ; `useRejeuFileHorsLigne` ne redéclenche que sur une **transition** de
+   `statut` ou de jeton — qui n'arrivera pas si le WebSocket est resté connecté. Et la file est
+   **persistée en `localStorage` sans être scopée au poste** : une file orpheline (poste détaché,
+   navigateur réutilisé) survit indéfiniment.
+
+⚠️ **Conjugués, les trois produisent un état qui ne se referme jamais** : bandeau « Hors ligne ·
+2 saisies en attente — la saisie continue » affiché en permanence alors que le réseau est revenu et
+que rien ne repartira. **Faux sur ses deux moitiés.**
+
+**Contourné, pas résorbé, par `E17US008`** : `BandeauHorsLigne` **écrit sa propre priorité** au lieu
+de dériver d'`etatIndicateur` — synchronisation, puis lien rompu, puis file non vide. Le défaut (2)
+disparaît donc de son affichage, et le cas (3) est **énoncé au lieu d'être tu** (« N saisies en attente
+d'envoi — rechargez l'écran si le compte ne descend pas »). ⚠️ **Une 1ʳᵉ version rendait `null` dans
+ce cas** : elle remplaçait un message faux par **aucun** message, sur des saisies jamais parties —
+relevé en 2ᵉ passe de revue. Le défaut (1) n'est pas touché, la file ne se vide toujours pas seule,
+et **la pastille garde le comportement d'origine** : les deux divergent volontairement jusqu'à la
+résorption.
+
+**Remède** : un 4ᵉ état à `etatIndicateur` — `'en-attente'`, libellé « N saisies en attente d'envoi »
+pour `connecte && nbEnAttente > 0 && !synchronisation` —, la lecture des **deux** files, et un rejeu
+qui se redéclenche autrement que sur une transition de statut (minuterie, ou bouton explicite). La
+fonction est pure et déjà couverte par `indicateur.test.ts` : le test s'y ajoute en trois lignes.
+
+⚠️ **Le scopage de la file au poste est un sujet à part**, plus lourd (il touche la persistance et le
+rejeu), et il n'est pas tranché ici.
+
+### DETTE-113 — une classe CSS posée dans un `className` sans règle correspondante ne se voit pas
+
+**Où** : `frontend/src/shared/charte.test.ts` — **site du remède**, pas du raccourci : c'est ce test
+qui parcourt déjà `src` et lit les `.css` comme les `.tsx` (`sourcesDe`). Aucun marqueur dans le code
+de production : le défaut n'a pas de lieu, c'est précisément son problème.
+
+**Rien ne vérifie qu'une classe écrite dans un `className` existe en CSS.** Ni `tsc`, ni `eslint`, ni
+`prettier`, ni un test de rendu — le composant se rend, sans style. Le symptôme est toujours le même :
+un écran « presque bon » que personne ne signale.
+
+**Trois occurrences, toutes dans le code d'aujourd'hui** — et la troisième est née dans la branche
+qui inscrit cette dette :
+
+- `E17US002` (05/08/2026) — des portes d'accueil en graisse 800 et une action destructrice en aplat,
+  relevées **au navigateur**, pas au test ;
+- `E17US008` (24/09/2026) — `.bascule-theme` existait dans le JSX **sans aucune règle CSS** depuis
+  `E17US001` : le sélecteur de luminosité de `S01` se rendait « LuminositéSystèmeClairSombre », d'un
+  seul tenant. Trouvé en ouvrant l'écran, par une US qui ne le cherchait pas ;
+- `E17US008`, **2ᵉ passe de revue** — `bandeau-hors-ligne--synchronisation` était émis par le
+  composant **sans règle** ; le rendu tombait sur l'ambre de base par accident, et le test ajouté à la
+  1ʳᵉ passe **affirmait la classe présente**. Trouvé par l'axe adversarial, pas par un outil.
+
+⚠️ **La 3ᵉ occurrence lève le report, elle ne l'annule pas.** La règle 16 rend le remède
+**proposable**, et elle veut alors un **ADR + une US dédiée**, jamais un garde-fou glissé en douce
+dans l'US courante. C'est donc `E17US008` qui le propose, pas qui le livre.
+
+⚠️ **Le coût n'est pas l'abstraction, c'est la liste blanche.** Ce remède est un **garde-fou
+mécanique**, pas un pattern : la règle 16 n'y oppose aucune indirection. Ce qu'il faut savoir
+dimensionner, c'est l'exception — les classes composées (`` `saisie__entete${…}` ``) sont nombreuses,
+et un garde-fou bruyant se désactive.
+
+**Remède** : dans `charte.test.ts`, collecter les littéraux de `className` et les confronter aux
+sélecteurs de classe des feuilles, avec une liste blanche pour les classes composées dynamiquement
+(`` `saisie__entete${…}` ``, nombreuses). ⚠️ **La liste blanche est le vrai coût** : mal faite, elle
+rend le garde-fou bruyant, et un garde-fou bruyant se désactive.

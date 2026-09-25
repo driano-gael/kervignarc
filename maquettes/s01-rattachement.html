@@ -103,10 +103,10 @@
     </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div style="max-width:520px;margin:40px auto 0;text-align:center"><div class="aplat-alerte forte" style="justify-content:center">▲ Ce code ne correspond à aucune cible</div><div class="champ plein" style="font-size:38px;padding:22px;letter-spacing:.3em;margin-top:18px">4 K 7 · 2 M 9</div><div class="carte" style="margin-top:18px;text-align:left"><div class="rang bloc" style="padding:16px"><p class="second" style="margin:0 0 8px">Trois causes possibles, dans l’ordre de fréquence :</p><p class="second" style="margin:0 0 4px">— le code a été mal lu (le <b>0</b> et le <b>O</b> se confondent) ;</p><p class="second" style="margin:0 0 4px">— la fiche vient d’un <b>autre tournoi</b> ;</p><p class="second" style="margin:0">— la cible a été <b>déclarée indisponible</b> par l’organisateur.</p></div></div><div style="margin-top:18px"><span class="bouton principal">Réessayer</span></div></div>
+        <div style="max-width:520px;margin:40px auto 0;text-align:center"><div class="aplat-alerte forte" style="justify-content:center">▲ Ce code ne correspond à aucune cible</div><div class="champ plein" style="font-size:38px;padding:22px;letter-spacing:.3em;margin-top:18px">4 K 7 · 2 M 9</div><div class="carte" style="margin-top:18px;text-align:left"><div class="rang bloc" style="padding:16px"><p class="second" style="margin:0 0 8px">Le serveur ne refuse un code que si <b>aucune cible ne le porte</b>. Deux cas :</p><p class="second" style="margin:0 0 4px">— un caractère a été <b>mal lu ou interverti</b> sur la fiche ;</p><p class="second" style="margin:0 0 4px">— le <b>tournoi de la fiche a été supprimé</b>.</p><p class="second" style="margin:12px 0 0"><b>⚠️ Le piège n’est pas ce refus, c’est son absence.</b> Une fiche d’un <b>autre tournoi encore ouvert</b> ne produit <b>aucune erreur</b> : le code est cherché sans distinction de tournoi, la tablette se rattache à cette autre salle. Le seul garde-fou est le <b>numéro de cible affiché en grand</b> à l’écran suivant. Un tournoi <b>terminé</b>, lui, donne un message distinct.</p></div></div><div style="margin-top:18px"><span class="bouton principal">Réessayer</span></div></div>
       </div>
     </div></div></div>
-        <p class="verdict"><span class="pouce oui">un refus qui aide</span> Trois causes ordonnées par fréquence, dont la première est une confusion de caractères. Le bénévole n’a personne à qui demander : le message doit faire le travail de l’organisateur absent.</p>
+        <p class="verdict"><span class="pouce oui">un refus qui aide</span> Causes vérifiées dans <code>application/postes.py</code>. La confusion <b>0/O</b> n’en est plus une — le pavé livré ne propose ni l’un ni l’autre. ⚠️ Le cas qui coûte cher n’est pas listé ici parce qu’il <b>ne déclenche pas cet écran</b> : un code d’un autre tournoi ouvert rattache sans rien dire. Il est traité juste au-dessus. Le bénévole n’a personne à qui demander : le message doit faire le travail de l’organisateur absent.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
@@ -138,9 +138,23 @@
 
 </div>
 
+<h2 class="section">Ce que le produit a livré en plus</h2>
+<ul class="exigences">
+  <li><strong>Un pavé alphanumérique</strong> remplace le clavier système pour entrer le code — demandé au
+  questionnaire du 04/08 (<em>« un pavé de saisie ok mais qui ne laisse pas de caractère non accessible,
+  adapté tablette et téléphone »</em>). Son alphabet <strong>exclut les caractères confusables</strong> :
+  ni <code>I</code>, ni <code>O</code>, ni <code>0</code>, ni <code>1</code>.</li>
+  <li>⚠️ <strong>C'est pourquoi la première cause de refus a été réécrite ci-dessus</strong> : « le 0 et le O
+  se confondent » était devenu <em>impossible</em>, aucun des deux n'étant saisissable. Une planche qui garde
+  un diagnostic que le produit a rendu faux est pire qu'une planche muette.</li>
+  <li>Un <strong>sélecteur de départ</strong> suit le rattachement (« Choisissez le départ que sert cette
+  cible ») : un poste sert un départ à la fois (<span class="ref">ADR-0034</span>). Aucune planche ne le
+  montre — ajout d'<code>E04US002</code>, à dessiner au prochain tour.</li>
+</ul>
+
 <h2 class="section">À trancher</h2>
 <ul class="exigences">
-  <li><strong>Les tablettes ont-elles toutes une caméra utilisable ?</strong> Ça départage A et B.</li>
+  <li><strong>Les tablettes ont-elles toutes une caméra utilisable ?</strong> Ça départage <em>la saisie du code</em> et <em>le scan du QR</em> — les <b>lettres</b> de variante ne valent plus, cf. <a href="../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md">ADR-0113</a>.</li>
   <li><strong>Mauvaise cible rattachée :</strong> correction possible par le bénévole lui-même, ou passage
   obligé par l'admin ?</li>
 </ul>

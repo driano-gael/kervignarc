@@ -3961,7 +3961,11 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0074",
+    "0075",
+    "0113"
+   ],
    "date": "2026-08-05",
    "date_brute": "05/08/2026",
    "extrait": "1. Les planches de maquettes/ deviennent la référence opposable de mise en page du front. Un écart entre l'écran livré et sa planche est un défaut, constatable en revue, et non plus une divergence tolérée. Les CDC restent au-dessus : en cas de conflit planche ↔ charte, la charte mesurée l'emporte (elle porte les ratios de contraste), et la planche est corrigée. Deux réserves, permanentes, à lire avec la règle : - La fidélité porte sur la mise en page, pas sur le balisage. Là où la planche décrit un rendu qu'une structure sémantique rend mieux — un \u003ctable> contre une pile de \u003cdiv> —, le produit garde la structure et n'en prend que l'apparence. Une planche est dessinée, elle n'est pas lue par […]",
@@ -3973,6 +3977,24 @@ window.ATLAS.decisions = {
      "libelle": "US",
      "sens": "sortant",
      "type": "us"
+    },
+    {
+     "cible": "0113",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
+    {
+     "cible": "0074",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
+    {
+     "cible": "0075",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
     },
     {
      "cible": "0058",
@@ -3989,7 +4011,8 @@ window.ATLAS.decisions = {
    "us": [
     "E01US016",
     "E17US001",
-    "E17US002"
+    "E17US002",
+    "E17US008"
    ]
   },
   {
@@ -11047,6 +11070,62 @@ window.ATLAS.decisions = {
     "E16US002",
     "E16US010",
     "E17US010"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-24",
+   "date_brute": "2026-09-24",
+   "extrait": "1. Sur le corpus de maquettes, un arbitrage du commanditaire se lit par son intention — le libellé coché et le « pourquoi » écrit — et jamais par la lettre de la variante. La lettre n'est pas une référence stable : elle ne vaut que pour la version de la planche affichée le jour du questionnaire. 2. Un relevé d'écarts écrit sa table de correspondance. Quand il mesure un écran contre une variante retenue, il dit explicitement quelle variante de la planche d'aujourd'hui porte l'intention cochée hier, et à quel titre. Une traduction non écrite est une interprétation qui se transmettra comme un fait. 3. Quand l'intention ne se traduit plus, il n'y a pas d'étalon — et alors on ne résorbe pas le […]",
+   "fichier": "docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md",
+   "identifiant": "0113",
+   "liens": [
+    {
+     "cible": "E17US008",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0074",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "epics/EPIC-17-fidelite-aux-maquettes.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/poste/EspacePoste.tsx",
+     "existe": true,
+     "symboles": [
+      "FormulaireRattachement"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "stories/E17-fidelite-aux-maquettes.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un arbitrage de maquette se lit par l'intention, jamais par la lettre",
+   "us": [
+    "E17US008",
+    "E17US009",
+    "E17US011"
    ]
   }
  ]

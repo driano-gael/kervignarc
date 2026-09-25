@@ -21,6 +21,10 @@ function saisiesEnAttente(nbEnAttente: number): string {
 
 // Priorité : un **rejeu en cours** prime (on est en train de renvoyer) ; sinon des saisies en attente
 // signalent qu'on est hors-ligne avec du retard à rattraper ; sinon on reflète l'état du lien.
+//
+// ⚠️ `DETTE-112` — deux angles morts : la file des **duels** (`fileDuelsHorsLigneStore`) n'est jamais
+// lue, et `nbEnAttente > 0` rend `deconnecte` **même lien rétabli**. `BandeauHorsLigne` contourne le
+// second par une garde locale ; la pastille garde le comportement d'origine.
 export function etatIndicateur(
   statut: StatutConnexion,
   nbEnAttente: number,

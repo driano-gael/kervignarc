@@ -12,31 +12,33 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 24/09/2026, 07 h 50** · **146 US livrées** · dernière : `E17US010`
-*(**le dossier de maquettes ne peut plus dériver du produit en silence** — la navigation des
-planches était transcrite à la main depuis `axes.ts`, et **cinq US** d'écart s'étaient accumulées
-sans que rien ne le dise : 4 destinations livrées absentes, 1 fantôme, 4 libellés périmés. Un test
-front **importe** désormais la source produit et rougit sur toute destination en trop, manquante,
-mal rangée, listée deux fois ou illisible — [ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md).
-⚠️ **La revue a rendu, en QUATRE passes, 7 bloquants et 46 majeurs** (comptes de fusion, cf.
-[`docs/metriques-revue.md`](../docs/metriques-revue.md) pour le détail par axe), **l'essentiel sur
-le garde-fou lui-même — et chaque correctif a déplacé le trou d'un cran.** Il était vert *dans* un bloc (un
-commentaire de fin de ligne escamotait un fantôme), puis *hors* d'un bloc (un axe inventé
-emportait ses entrées), puis *hors du littéral* (`.push` était énuméré, `.pop` non), et une
-catégorie déclarée deux fois passait aussi, puis un commentaire de bloc posé **dans** la table.
-➡️ Ce qui a rompu la série n'est pas un cas de plus mais un **changement de nature** : le
-contrôle lit désormais par **liste blanche sur la ligne entière**, avec trois **états lexicaux**
-(commentaire de bloc, chaîne, commentaire de ligne, catégorie déjà vue, table déjà vue).
-⚠️ **Trois des cinq trous étaient des régressions du correctif précédent**, trouvées en
-comparant les deux versions du parseur — la relecture seule ne les voyait pas. Le garde-fou
-compte **45 tests** ; chaque détection a été vue rouge sur le **fichier réel** par sabotage, et
-quatre éditions légitimes (renommage de variable, index de boucle, point-virgule, citation du
-gabarit) restent vertes.
-⚠️ **Un bloquant venait d'ailleurs que du code** : la PR d'`E05US022` avait été mergée entre
-temps, et les deux compteurs annonçaient 145 pour des ensembles différents — `main` serait parti
-rouge. Branche rattrapée sur `main` avant la PR. ⚠️ **Mon argument de dette était faux** : ce n'était
-pas la 3ᵉ occurrence d'un remède mais la **4ᵉ**, et la règle 16 autorise d'appliquer un pattern
-établi — `DETTE-110` garde le motif réel, le **coût**. Prochaine : `E17US008`)*.
+**Dernière mise à jour : 24/09/2026, 20 h 02** · **147 US livrées** · dernière : `E17US008`
+*(**les neuf écrans de l'appli de saisie ont été confrontés à leurs planches**, comme l'admin
+l'avait été — relevé dans [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md), **5 écrans
+résorbés** (`S01`, `S02`, `S03`, `S04`, `S09`), sous le plafond de six que l'US se fixe.
+⚠️ **Un seul défaut de mise en page en produisait quatre** : la surface tablette élargissait
+`--largeur-app` mais laissait ses jetons de carte au défaut prudent — grille plafonnée à 640 px dans
+une coquille de 1152. Ligne d'archer **575 → 694 px**, pavé de saisie **y=742 → y=275** (il s'ouvrait
+entièrement sous la ligne de flottaison, pour un geste répété ~4 300 fois par départ), hors-ligne
+passé d'une **pastille de 10 px** à un **aplat ambre pleine largeur** — provoqué pour de vrai, backend
+coupé —, et le cumul de l'archer cesse d'afficher **0 pendant toute la série** (il ne sommait que les
+volées **validées**, or le scoreur ne passe qu'à la fin ; `Serie.cumul` reste intact au domaine).
+⚠️ **Le CA « questionnaire → variante retenue » a cédé sur cet axe, et c'est le constat le plus
+lourd** : les questionnaires ont été remplis le 04/08 sur les **vignettes**, les planches redessinées
+le **05/08** en écrans pleins. **4 planches sur 9** ne proposent plus la variante retenue (`S05` n'en avait aucune), et sur
+`S01` les lettres sont **inversées** — le code en citait une (« variante B »), corrigée. La variante
+retenue se lit donc **par l'intention**, jamais par la lettre — [**ADR-0113**](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md), qui amende la réserve 2 d'ADR-0074. `S04`, `S05`, `S08` n'ont **plus
+d'étalon** : hors résorption, le tour 2 des questionnaires est demandé au commanditaire.
+⚠️ **`S07 · file du scoreur` n'a aucun écran ni endpoint** — US non livrée, pas écart de fidélité ; le
+tri d'`E16US011` l'avait rangée « rien à faire » en lisant son ✅ comme un constat alors que « on peut
+coder ça » est un feu vert. La critique de `S05` est dans le même cas : **sans porteur**.
+⚠️ **L'écart 🔴 restant part en `E17US011`, pour une raison de périmètre** : mettre les flèches dans
+la ligne d'archer redessine l'écran le plus utilisé du produit. ⚠️ **Le motif d'origine était FAUX** —
+un invariant de revue du 05/08 que le code a supprimé depuis (les brouillons ont été remontés dans
+`Saisie`) ; relevé par l'axe adversarial, avec trois commentaires périmés du code, corrigés. ⚠️ **Défaut trouvé en chemin, qu'aucun relevé ne
+cherchait** : `.bascule-theme` existait dans le JSX **sans aucune règle CSS** — rien ne vérifie qu'une
+classe posée dans un `className` existe. Vu à l'écran, pas au test.
+**Aucune dépendance**, aucune migration)*. Précédente : `E17US010` *(le dossier de maquettes sous garde mécanique — détail dans sa ligne du tableau)*.
 Avant elle, `E05US022` *(la séquence s'ancre sur l'**identité** de l'étape et non son rang ; `DETTE-026` soldée — remède structurel sans surface visible)*.
 Avant elle, `E06US009` *(un palmarès par départ, juxtaposés ; `DETTE-045` soldée, ADR-0104 amendé)*.
 Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
@@ -360,9 +362,12 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E01US026`~~ | **Livrée le 19/09/2026** — la **plus ancienne dette du registre** (`DETTE-001`, treize mois) est soldée : un tournoi peuplé se supprime après un signalement **chiffré**, en une transaction, sans aucun `ON DELETE CASCADE`. ⚠️ **`DETTE-018` refermée avec elle**, sur arbitrage du commanditaire — même code de cascade. Deux arbitrages de CA reversés dans `stories/` et dans ADR-0077. |
 > | ~~🎯~~ ✅ | ~~`E06US009`~~ | **Livrée le 19/09/2026** — un palmarès par créneau, juxtaposés (`DETTE-045`, ouverte par `E01US025`). Le palmarès, le rejeu de simulation **et la session de simulation pilotée** cessaient de voir autre chose que le premier départ ; ADR-0104 est amendé (le trophée des clubs se juxtapose aussi). |
 > | ~~🎯~~ ✅ | ~~`E05US022`~~ | **Livrée le 20/09/2026** — la dernière résorption tranchée le 07/08 est faite : la séquence s'ancre sur l'**identité** de l'étape (`DETTE-026`, ADR-0078). Deux points de l'ADR ont été amendés en le mettant en œuvre, dont un arbitrage du commanditaire (lever `uq_deroule_tournoi_ordre`). |
-> | ~~🎯~~ ✅ | ~~`E17US010`~~ | **Livrée le 23/09/2026 — le dossier de maquettes ne peut plus dériver en silence.** Choisie par le commanditaire en tête du fil `EPIC-17`, **avant** `E17US008` et `E17US009` qui vont relire 16 planches : corriger des écarts que rien n'empêche de revenir, c'est remettre le compteur à zéro. ⚠️ **La dérive était réelle et mesurée avant tout correctif** — 4 destinations livrées absentes de la sidebar des maquettes (`identite`, `archer`, `pret-demarrer`, `audit`), 1 fantôme (`doublons`, retirée par `E16US010`), 4 libellés périmés : **cinq US d'écart accumulé**, dont deux libellés renommés par `E16US002` *parce qu'ils portaient chacun le nom de l'autre*. ⚠️ **Le point de conception est le sens de lecture** : le test **importe** `AXE_PAR_DESTINATION` au lieu de regexer `axes.ts`, donc **un seul des deux côtés peut mentir sur sa forme** — un garde-fou Python, sur le patron de `test_domain_isolation.py`, aurait eu deux parseurs fragiles au lieu d'un. ⚠️ **Asymétrie assumée** : une planche *en avance* sur le produit se déclare (`// PLANCHE-A-VENIR: <id>`) et passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge sans échappatoire. ⚠️ **Périmètre tenu, extension refusée** : les **libellés** et l'**ordre** vivent dans un tableau local à `CoquilleAdmin`, hors de portée d'un import. Les remonter serait un **4ᵉ** `Record` exhaustif d'`axes.ts` — pattern **déjà établi**, donc autorisé par la règle 16 ; le motif du report est le **coût** (33 entrées dans un composant de 759 lignes), pas la conception. Inscrit en `DETTE-110`. ⚠️ **[ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)** — « aucun ADR » était une **erreur, corrigée en revue** : une copie documentaire inévitable ne s'admet que sous garde mécanique, exception bornée à ADR-0102 §1. **Aucune dépendance**, aucune migration. ➡️ **Prochaine : `E17US008`** (9 planches de saisie `S**`), puis `E17US009`. |
-> | 🎯 **1** | `E17US008` | **Confronter les 9 planches de saisie `S**` au code livré**, puis `E17US009` (7 planches publiques `P**`). Ordre voulu : `E17US010` a posé le garde-fou **avant** ces deux relectures, pour que les écarts qu'elles corrigeront ne reviennent pas en silence. ⚠️ **Hors de ce fil**, la file reste à composer : `E05US022` (ancrage par identité, `DETTE-026`) est **livrée et mergée** (PR #189, le 23/09/2026) ; `E02US007` (import inscript'arc) reste **bloquée** tant que le format exact du fichier (QT1) n'est pas fourni. |
+> | ~~🎯~~ ✅ | ~~`E17US010`~~ | **Livrée le 23/09/2026 — le dossier de maquettes ne peut plus dériver en silence.** Choisie par le commanditaire en tête du fil `EPIC-17`, **avant** `E17US008` et `E17US009` qui vont relire 16 planches : corriger des écarts que rien n'empêche de revenir, c'est remettre le compteur à zéro. ⚠️ **La dérive était réelle et mesurée avant tout correctif** — 4 destinations livrées absentes de la sidebar des maquettes (`identite`, `archer`, `pret-demarrer`, `audit`), 1 fantôme (`doublons`, retirée par `E16US010`), 4 libellés périmés : **cinq US d'écart accumulé**, dont deux libellés renommés par `E16US002` *parce qu'ils portaient chacun le nom de l'autre*. ⚠️ **Le point de conception est le sens de lecture** : le test **importe** `AXE_PAR_DESTINATION` au lieu de regexer `axes.ts`, donc **un seul des deux côtés peut mentir sur sa forme** — un garde-fou Python, sur le patron de `test_domain_isolation.py`, aurait eu deux parseurs fragiles au lieu d'un. ⚠️ **Asymétrie assumée** : une planche *en avance* sur le produit se déclare (`// PLANCHE-A-VENIR: <id>`) et passe ; une destination *livrée* qu'aucune maquette ne montre reste rouge sans échappatoire. ⚠️ **Périmètre tenu, extension refusée** : les **libellés** et l'**ordre** vivent dans un tableau local à `CoquilleAdmin`, hors de portée d'un import. Les remonter serait un **4ᵉ** `Record` exhaustif d'`axes.ts` — pattern **déjà établi**, donc autorisé par la règle 16 ; le motif du report est le **coût** (33 entrées dans un composant de 759 lignes), pas la conception. Inscrit en `DETTE-110`. ⚠️ **[ADR-0112](../docs/adr/0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)** — « aucun ADR » était une **erreur, corrigée en revue** : une copie documentaire inévitable ne s'admet que sous garde mécanique, exception bornée à ADR-0102 §1. **Aucune dépendance**, aucune migration. ➡️ **Suivie de `E17US008`** (9 planches de saisie `S**`, livrée le 24/09), puis `E17US009`. |
+> | ~~🎯 1~~ ✅ | ~~`E17US008`~~ | **Livrée le 24/09/2026** — les 9 planches de saisie `S**` sont confrontées au produit (relevé dans `EPIC-17`) et **5 écrans résorbés**. ⚠️ **Deux choses sont sorties du relevé et n'ont aucun porteur** : `S07 · file du scoreur` n'a **aucun écran ni endpoint** (US non livrée, rangée à tort « rien à faire » au tri d'`E16US011`), et la critique de `S05` (« trop tassé », « deux hauteurs plutôt que deux colonnes ») n'est portée par aucune US, ni E16 ni E17. L'écart 🔴 restant part en `E17US011`. |
+> | 🎯 **1** | `E17US009` | **Confronter les 7 planches publiques `P**` au code livré**, dernier axe du fil `EPIC-17` après l'admin et la saisie. ⚠️ **Y attendre le même obstacle qu'en saisie** : les questionnaires du 04/08 portent sur les **vignettes**, les planches ont été redessinées le 05/08 — vérifier la correspondance **avant** de mesurer un écart, la lettre du questionnaire ne désigne plus rien. Puis `E17US011` (la ligne d'archer porte la volée en cours). |
 > | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
+> | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
+> | 🔒 **en attente de vous** | **`S07` et la critique de `S05`** | **Deux besoins réels, sans porteur ni épic évident** — sortis du relevé d'`E17US008`. **`S07 · file du scoreur`** : l'écran **n'existe pas** (ni front, ni endpoint ; toutes les routes de validation sont par archer), alors que son questionnaire dit « ✅ validé tel quel — **on peut coder ça** ». **Critique de `S05`** : *« trop tassé »*, *« les emplacements de saisie de volée sont trop étroits »*, *« au lieu de 2 colonnes je préférerais sur 2 hauteurs, adapté tablette et téléphone »*. ⚠️ **Ni l'un ni l'autre n'est un écart de fidélité** : `EPIC-17` amène le produit jusqu'aux planches, il ne livre pas de capacité neuve. Ils relèvent d'un épic à désigner — d'où leur place ici plutôt qu'une US inventée sous un épic qui ne les porte pas. *(Inscrits en revue d'`E17US008`, axe adversarial : le journal les disait « maintenant écrites » alors qu'aucune ligne n'existait — l'US rejouait le défaut qu'elle diagnostique.)* |
 >
 > ---
 >
@@ -1311,7 +1316,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > (égalité 5–5 en duel) et le **conflit de saisie** (deux postes sur la même volée) : ils sont
 > maquettés, pas décidés.
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (5/10)**
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),
@@ -1327,8 +1332,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US005 | Embarquer la **police du club** pour le jour J (`DV-07`) | J3 | 🔒 *(**spécifiée, pas prenable** — arbitrage d'ajout d'actif en attente, règle 11 ; 3 options soumises dans la story)* |
 | E17US006 | Donner une couleur à l'**action destructrice** | J3 | 🔒 *(**spécifiée, pas prenable** — trou de la charte, ADR attendu ; `DV-03` exclut le rouge et rien ne couvre le cas)* |
 | E17US007 | **Résorber** les écarts relevés sur les écrans d'administration | J3 | ⬜ *(le relevé est fait depuis le 06/08 ; c'est l'US qui le solde qui manquait — A06, A09, A12, A08, A04, A17)* |
-| E17US008 | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ⬜ |
+| ~~E17US008~~ | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ✅ *(livrée le 24/09/2026 — **relevé des 9 planches** dans `EPIC-17`, **5 écrans résorbés** (`S01`, `S02`, `S03`, `S04`, `S09`), sous le plafond de six. La tablette prend sa largeur (ligne d'archer 575 → 694 px), le pavé ne s'ouvre plus hors de l'écran (y=742 → y=275), le hors-ligne devient un **aplat pleine largeur** et le cumul cesse d'afficher 0 toute la série. ⚠️ **Le CA « questionnaire → variante retenue » a cédé sur cet axe** : questionnaires du 04/08 sur vignettes, planches redessinées le 05/08 — **4 planches sur 9** ne proposent plus la variante retenue (`S05` n'en avait aucune), lettres **inversées** sur `S01`. `S05` et `S08` sont **hors résorption** ; `S04` l'est pour son seul **parti pris**, sa phrase explicative étant livrée comme **proposition** à reposer au tour 2 (ADR-0113 §3). ⚠️ **`S07` n'a aucun écran ni endpoint** — US non livrée, pas écart de fidélité. L'écart 🔴 restant part en `E17US011`)* |
 | E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
+| E17US011 | La **ligne d'archer porte la volée en cours** (S02) | J3 | ⬜ *(sortie du relevé d'`E17US008` — seul écart 🔴 laissé ouvert. ⚠️ **L'invariant à tenir est l'archer actif** : le `onClick` de la ligne est `setArcherChoisi`, donc des cases tapables doivent arrêter la propagation. ⚠️ **Ne pas reprendre le motif « tampon de frappe »**, mort depuis que les brouillons vivent dans `Saisie`. Débloque aussi les deux 🟠 restants — largeur de la grille et touches à 90 px), et **résorbe `DETTE-111`** — la conversion « zone → points » écrite en Python et en TypeScript : le barème servira un `points_par_zone`, ⚠️ la **règle**, pas le **résultat**, le hors-ligne interdisant de servir un total)* |
 | ~~E17US010~~ | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ✅ *(livrée le 23/09/2026 — `appareils.js` resynchronisé (4 destinations manquantes, 1 fantôme, 4 libellés périmés) et la dérive **rendue rouge** par un test front qui **importe** `axes.ts` ; `DETTE-110` pour les libellés et l'ordre)* |
 
 ## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**

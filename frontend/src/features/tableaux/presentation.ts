@@ -199,13 +199,12 @@ export function parcoursToutesPhases(tableaux: TableauPublic[], archerId: number
     .filter((parcours) => parcours.etapes.length > 0)
 }
 
-/** L'arbre complet, groupé **par branche** — variante B de la maquette.
+/** L'arbre complet, « *groupé par branche* » — la disposition retenue sur la planche `P05`.
  *
- * ⚠️ **Par libellé, pas par numéro de tour** : grouper par tour brut range la petite finale sous «
- * Finale », et sous profondeur intégrale le bloc « Demi-finales » contenait aussi les places 5-8.
- * Le libellé du serveur distingue déjà ces branches. Deux filtres : les **exempts** (une place de
- * l'arbre qui ne se tire pas) et les matchs **sans aucun occupant** (à 9 h, l'écran projeté
- * affichait des suites de « — vs — »).
+ * ⚠️ **Par libellé, pas par numéro de tour** : grouper par tour brut range la petite finale sous
+ * « Finale », et sous profondeur intégrale « Demi-finales » contenait aussi les places 5-8. Deux
+ * filtres : les **exempts** (place qui ne se tire pas) et les matchs **sans aucun occupant** (à
+ * 9 h, l'écran projeté affichait des suites de « — vs — »).
  */
 export function parTour(tableau: TableauPublic): GroupeDeBranche[] {
   const groupes = new Map<string, GroupeDeBranche>()

@@ -12,7 +12,9 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ErreurApi } from '../../shared/api/client'
+import type { Serie, Volee } from './api'
 import { Saisie } from './Saisie'
+import { serieOptimiste } from './volees'
 
 const LIGNE = {
   position: 'A',
@@ -23,13 +25,36 @@ const LIGNE = {
   forfait: false,
 }
 
-const SERIE = { archer_id: 12, cumul: 0, volees: [], grain: null }
+function volee(numero: number, valeurs: string[], extra: Partial<Volee> = {}): Volee {
+  return {
+    numero,
+    valeurs,
+    saisie_par: 'DURAND',
+    validee_par: null,
+    verrouillee: false,
+    en_correction: false,
+    correction_ouverte_par: null,
+    lot_validation: null,
+    saisie_le: null,
+    ...extra,
+  }
+}
+
+// ⚠️ **Mutables, et remises à zéro à chaque cas.** Le défaut que cette US corrige vivait dans le
+// **consommateur** (`LigneArcher` lisait `serie.cumul`), pas dans une fonction pure : le prouver
+// demande de faire diverger `cumul` et `volees`, donc de poser la série cas par cas. ⚠️ **Typées** :
+// sans le type, un champ renommé côté API laisserait ces tests verts sur une forme qui n'existe plus.
+const SERIE_VIDE: Serie = { tournoi_id: 1, archer_id: 12, cumul: 0, volees: [] }
+let SERIE: Serie = SERIE_VIDE
+type EtatRequete = { data: unknown; isError: boolean; isSuccess: boolean; error: Error | null }
+const GRILLE_SERVIE: EtatRequete = { data: [LIGNE], isError: false, isSuccess: true, error: null }
+let GRILLE: EtatRequete = GRILLE_SERVIE
 
 let erreurSaisie: Error | null = null
 
 vi.mock('./hooks', () => ({
   useRejeuFileHorsLigne: () => undefined,
-  useGrille: () => ({ data: [LIGNE], isError: false, isSuccess: true, error: null }),
+  useGrille: () => GRILLE,
   useBareme: () => ({ data: { nb_volees: 2, nb_fleches_par_volee: 3 } }),
   useGrain: () => ({ data: null }),
   useDeparts: () => ({ data: [], isSuccess: true }),
@@ -57,6 +82,13 @@ function monter() {
   return render(<Saisie tournoiId={1} cibleIndex={1} />, { wrapper: Enveloppe })
 }
 
+// Le cumul de la première ligne d'archer, visé par sa classe : « 27 » et « 54 » apparaissent aussi
+// dans la bande de relecture (totaux de volée), donc un `getByText` y serait ambigu.
+async function cumulAffiche() {
+  const grille = await screen.findByRole('list')
+  return grille.querySelector('.saisie__cumul')?.textContent
+}
+
 async function ouvrirLePave() {
   monter()
   // ⚠️ Par la liste : « DURAND » figure AUSSI dans le sélecteur de marqueur, qui dérive de la
@@ -71,6 +103,8 @@ describe('Saisie — un refus de préséance est expliqué', () => {
   // serait verte par ordre d'exécution, pas par construction.
   beforeEach(() => {
     erreurSaisie = null
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
   })
 
   it('dit QUI a écrit et QUEL est le recours', async () => {
@@ -114,5 +148,124 @@ describe('Saisie — un refus de préséance est expliqué', () => {
     const alerte = await screen.findByRole('alert')
     expect(alerte).toHaveTextContent('Archer hors de votre cible.')
     expect(alerte).not.toHaveTextContent(/signalez/)
+  })
+})
+
+describe('Saisie — le panneau du marqueur dit ce qu’on engage', () => {
+  // CA d'E17US008, planche S04 : la liste nue de quatre noms ne disait pas à quoi sert ce choix, et
+  // le verdict de la planche tranche — « sans elle, le geste paraît administratif ». Le test monte
+  // l'écran et **ouvre** le panneau : la phrase vit dans une branche conditionnelle, un test du seul
+  // libellé replié resterait vert si elle disparaissait.
+  it('la phrase de justification est rendue avec la liste des archers', async () => {
+    monter()
+
+    const declencheur = await screen.findByRole('button', { name: /Marqueur/ })
+    await userEvent.click(declencheur)
+
+    expect(screen.getByText(/l’archer qui tient la tablette/)).toBeInTheDocument()
+    expect(screen.getByText(/le scoreur vient contresigner/)).toBeInTheDocument()
+    // La moitié qui vient de la variante « changer en cours de série » : ce qui est déjà saisi ne
+    // change pas d'auteur. C'est elle qui lève la crainte de réécrire le passé.
+    expect(screen.getByText(/gardent le nom de qui les a entrées/)).toBeInTheDocument()
+
+    // La liste reste une liste, et elle porte bien l'archer de la grille.
+    const choix = screen.getByRole('listbox', { name: 'Choisir le marqueur' })
+    expect(within(choix).getByRole('button', { name: /DURAND/ })).toBeInTheDocument()
+  })
+})
+
+describe('Saisie — le cumul affiché est celui qui est SAISI', () => {
+  beforeEach(() => {
+    erreurSaisie = null
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
+  })
+
+  // ⚠️ **Le test doit vivre ICI, pas seulement dans `volees.test.ts`.** Le défaut n'était pas dans
+  // `cumulSaisi` — qui n'existait pas — mais dans `LigneArcher`, qui lisait `serie.cumul`. Les
+  // tests de la fonction pure resteraient **tous verts** si quelqu'un remettait `serie.cumul` au
+  // rendu. C'est le motif de `DETTE-085`, que l'en-tête de ce fichier cite déjà.
+  //
+  // Oracle : questionnaire `s02-poste-de-cible.md`, question 3 — « en permanence, c'est un bon
+  // rappel sur la cible ». Avec le grain « fin de série », le serveur rend 0 tout au long.
+  it('affiche 54 là où le serveur rend un cumul de 0', async () => {
+    SERIE = { ...SERIE_VIDE, volees: [volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])] }
+    monter()
+
+    // ⚠️ Viser le **cumul**, pas un `getByText` : « 27 » figure aussi dans la bande de relecture,
+    // comme total de volée. Un `getByText` ambigu ferait échouer le test pour la mauvaise raison.
+    expect(await cumulAffiche()).toBe('54')
+  })
+
+  it('compte une volée partie hors ligne, que le serveur ignore encore', async () => {
+    // La garantie d'E04US009, et la justification écrite de `DETTE-111` : le poste doit valoriser
+    // ce que le serveur n'a **jamais reçu**. `serieOptimiste` ajoute la volée à `volees` sans
+    // toucher `cumul` — si le rendu lisait `cumul`, le marqueur verrait 0 pendant la coupure.
+    // ⚠️ Fixture construite par **`serieOptimiste` lui-même** — le code qui décide qu'une volée
+    // partie dans la file entre dans `volees` sans toucher `cumul`. Écrite à la main, elle
+    // n'aurait traversé aucun des deux.
+    SERIE = serieOptimiste(SERIE_VIDE, {
+      tournoi_id: 1,
+      archer_id: 12,
+      numero: 1,
+      valeurs: ['10', '9', '8'],
+      saisie_par: 'DURAND',
+      identifiant_saisie: 'x1',
+    })
+    monter()
+
+    expect(await cumulAffiche()).toBe('27')
+  })
+
+  it('compte une volée rendue en correction, alignement sur ADR-0109', async () => {
+    // Côté serveur, une volée en correction **compte toujours** : son score tient. Le front doit
+    // dire la même chose, sans quoi le total chuterait à l'instant du renvoi par le scoreur.
+    SERIE = {
+      ...SERIE_VIDE,
+      volees: [volee(1, ['10', '9', '8'], { en_correction: true, validee_par: 'MOREAU' })],
+    }
+    monter()
+
+    expect(await cumulAffiche()).toBe('27')
+  })
+})
+
+describe('Saisie — le numéro de cible ne passe en géant que dans l’état « Rattaché »', () => {
+  beforeEach(() => {
+    erreurSaisie = null
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
+  })
+
+  // Oracle : planche S01, état « Rattaché » — le numéro y est en 48 px, et la planche dit pourquoi :
+  // « le seul moyen de repérer une tablette posée devant la mauvaise cible AVANT que quiconque
+  // tire ». C'est une consigne de sécurité, donc la condition qui la déclenche mérite un test.
+  const enGeant = () => document.querySelector('.saisie__entete--confirmation') !== null
+
+  it('départ non fixé : le numéro est en géant', () => {
+    GRILLE = {
+      data: undefined,
+      isError: true,
+      isSuccess: false,
+      error: new ErreurApi(409, 'depart_courant_non_defini', 'Départ courant non défini.'),
+    }
+    monter()
+
+    expect(enGeant()).toBe(true)
+  })
+
+  it('grille en cours de chargement : PAS de géant', () => {
+    // ⚠️ Le défaut que la condition resserrée ferme : `lignes.length === 0` seul était vrai pendant
+    // le chargement, donc le numéro s'affichait en 48 px puis retombait à 22 px à chaque montage.
+    GRILLE = { data: undefined, isError: false, isSuccess: false, error: null }
+    monter()
+
+    expect(enGeant()).toBe(false)
+  })
+
+  it('grille servie avec ses archers : PAS de géant', () => {
+    monter()
+
+    expect(enGeant()).toBe(false)
   })
 })
