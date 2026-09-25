@@ -353,6 +353,32 @@
   raison qu'`E17US008` : le « résorber » n'est pas borné avant que le « relever » ait rendu.
   ⚠️ **`P03` a été redessinée le 05/08 et n'a pas été validée** (pas de tour 2) ; elle est
   écartée pour la même raison qu'A14. Ne pas rouvrir l'arbitrage d'`E16US004`.
+- **Notes (livraison, 25/09/2026)** — le relevé des 7 planches est dans
+  [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md). **Pas de redécoupage** : le relevé a
+  rendu un « résorber » **borné et petit**, l'axe public ayant été rapproché d'avance par `E16US004`
+  et `E16US009`. Arbitrages tranchés en cours d'US, reversés ici :
+  - **Périmètre retenu au cadrage** (commanditaire, 25/09) : relevé **et** résorption dans la même
+    branche, les réserves 🟡 du tour 1 comptant dans la cible.
+  - **Correspondance par l'intention** (ADR-0113) : **P05** a ses lettres glissées (le retenu
+    « “mon chemin” en liste » est la planche **B**) ; **P06** dessinait l'ancienne variante
+    **écartée** (tri par cible) ; **P04** avait **inversé** l'ordre retenu (« ma cible d'abord »).
+  - **P04 · « ma cible d'abord »** : la carte des places suivies précède la grille **quel que soit
+    l'affichage** (« tout » ou « mes archers ») — elle est lue sur le plan complet. Ordre de la
+    **salle** (cible, puis couloir), pas l'ordre d'ajout des suivis. Sans archer suivi posé sur le
+    départ affiché, **pas de carte** : le plan reste seul.
+  - **P04 · pas de regroupement par pas de tir** : le gabarit est une liste de cibles (ADR-0073),
+    l'écran ne peut pas le dire — **la planche est corrigée**, pas le produit.
+  - **P01/P02 · identité secondaire** : « club · catégorie » sous le nom, dans la recherche **et**
+    sur la carte suivie. Une partie inconnue est **tue**, jamais remplacée par un identifiant ni par
+    un club inventé (ADR-0014).
+  - **Planches corrigées** là où elles étaient en retard sur un arbitrage (réserve 2 d'ADR-0074) :
+    P04, P05 (horaires par tour — réponse du 04/08 : « seulement pour les départs des différentes
+    phases »), P06, P07.
+  - **P02 · rang provisoire et « volée 8 sur 12 »** : **non faits**, proposition du redessin du 05/08
+    jamais validée — **à reposer au tour 2**, comme `S04`.
+  - ⚠️ **Le CA « l'écran de salle se juge à sa distance d'usage » n'est pas tenu** par le relevé :
+    Chrome reste à 1366 px sur le poste. P06/P07 sont confrontés au code et au CSS ; le contrôle en
+    salle (1920 × 1080, à plusieurs mètres) **reste à faire par le commanditaire**.
 - **Dépend de** : E17US002 · **Jalon** : J3
 
 ### E17US010 — Empêcher le dossier de maquettes de dériver du produit

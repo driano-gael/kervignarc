@@ -80,7 +80,7 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
       *(Le relevé est **fait** ; ce qui manquait était l'US qui le solde. Un relevé sans US de
       résorption se périme sur place.)*
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur) et résorber — `E17US008`.
-- [ ] Confronter les 7 planches `P**` (public & écran de salle) et résorber — `E17US009`.
+- [x] Confronter les 7 planches `P**` (public & écran de salle) et résorber — `E17US009`.
 - [ ] Resynchroniser `maquettes/assets/appareils.js` sur `axes.ts`, **et rendre la dérive détectable
       mécaniquement** — `E17US010`. *(À prendre **avant** `E17US008`/`E17US009` : elles relisent
       16 planches, autant qu'elles décrivent l'application d'aujourd'hui.)*
@@ -417,6 +417,68 @@ dans le JSX **sans aucune règle CSS** — le sélecteur de luminosité de `S01`
   le tableau de résorption — relevé par trois axes.)*
 - **S05 et S08 n'ont pas été parcourus en salle** : leur étalon étant perdu, une visite n'aurait
   produit que des impressions.
+
+## Relevé d'écarts — les 7 planches publiques (25/09/2026)
+
+Même méthode — **questionnaire → variante retenue → écran livré** —, lue **par l'intention**
+([ADR-0113](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md)). Sources
+vérifiées : les sept questionnaires du 04/08, le balisage des planches, le code des features, **et
+l'application réelle** peuplée du jeu d'essai « petit » (16 archers, 8 cibles, deux paires
+d'homonymes), parcourue au navigateur.
+
+### Le constat d'ensemble : l'axe public a été rapproché **avant** d'être relevé
+
+Contrairement à l'axe saisie, le gros du travail était **déjà fait**, par les US E16 qui portaient
+les réserves du questionnaire : `E16US004` (suivre plusieurs archers, interrupteur « mes archers /
+tout », filtre par club, récapitulatif repliable), `E16US009` (pages, râteau et compteur projetés,
+tête figée des trois premiers), `E16US006` (logos du tournoi). **Trois planches sur sept étaient donc
+en retard sur le code**, pas l'inverse — c'est la planche qui a été corrigée (CA d'`E17US009`).
+
+| Planche | Variante retenue (questionnaire du 04/08) | La planche actuelle | Effet |
+|---|---|---|---|
+| **P01** | **A « recherche puis case c'est moi »** 🟡 | A « Se désigner » / B « Recherche en cours » | 🟢 **concorde par l'intention** ; le suivi de plusieurs archers y est déjà intégré |
+| **P02** | **A « maintenant / ensuite empilés »** 🟡 | A « suivi d'un archer » / B « plusieurs » / C « déroulé » | 🟡 aucune lettre ne correspond ; l'intention (empiler, défiler) est en A, les réserves en B et C |
+| **P03** | **aucune** 🔴 « à refaire » | A / B | ⛔ **hors résorption** (réserve 2 d'ADR-0074, arbitrage d'`E16US004`) |
+| **P04** | **A « ma cible d'abord, plan ensuite »** ✅ | A « Trouver sa cible » | 🔴 **ordre inversé au redessin** : plan d'abord, carte de l'archer en bas |
+| **P05** | **A « “mon chemin” en liste »** 🟡 | A « L'arbre » / **B « Le duel de mon archer »** | 🔴 **lettres glissées** : le retenu est la planche **B** |
+| **P06** | **A « défilement par pages, tri par nom »** 🟡 | A « Affectations du tour » | 🔴 **la planche rangeait par duel** — l'ancienne B « tri par cible », **écartée** |
+| **P07** | **A « classement rotatif par catégorie »** 🟡 | A « Classement en direct » | 🟢 concorde ; la réserve (« 3 premiers toujours visibles ») manquait à la planche |
+
+### Écarts relevés, et ce qui en a été fait
+
+| Planche | Écart | Sens | Traitement |
+|---|---|---|---|
+| **P04** | le produit n'avait **pas de « ma cible »** : un spectateur qui suit un archer devait le chercher dans la grille | 🔴 produit en retard | **résorbé** : carte des places suivies **avant** la grille, cible marquée « vos archers » en toutes lettres (`DV-03`) — `mesPlaces`, `PlanCiblesPublic` |
+| **P04** | la planche regroupait la salle en « pas de tir A / B » | 🟢 planche en retard | **planche corrigée** : le gabarit est une **liste** de cibles (ADR-0073), l'écran ne peut pas savoir quelles cibles forment une rangée |
+| **P01** | une ligne de résultat ne portait **que le nom** — deux homonymes (fréquents dans une famille) indistinguables | 🟠 produit en retard | **résorbé** : « club · catégorie » sous le nom (planche B, « le club en second ») — `identiteSecondaire` |
+| **P02** | la carte suivie ne portait pas non plus le club et la catégorie (planche A) | 🟠 produit en retard | **résorbé**, même règle, même fonction |
+| **P01** | « Aucun résultat » ne donnait qu'une cause | 🟡 forme | **résorbé** : l'inscription « peut-être pas encore enregistrée » est dite |
+| **P05** | chaque tour portait une heure (« demi-finale — 15 h 10 ») | 🟢 planche en retard | **planche corrigée** : réponse du 04/08, un horaire « seulement pour les départs des différentes phases » |
+| **P06** | planche : dix affectations par duel, 12 s | 🟢 planche en retard | **planche redessinée** sur l'écran livré : tri par nom, râteau et compteur en grand, 40 noms et 20 s réglables |
+| **P07** | planche : huit lignes fixes | 🟢 planche en retard | **planche redessinée** : tête figée des trois premiers, le reste pagine |
+| P01, P02, P06, P07 | pastilles « à concevoir » sur des écrans livrés | 🟢 | passées à « écran existant » |
+
+### Laissé, et pourquoi
+
+- **P02 · le rang provisoire et « volée 8 sur 12 »** de la planche A ne sont pas dans la carte de
+  suivi. Ils viennent du **redessin du 05/08**, jamais validé (pas de tour 2), et le parti pris
+  retenu — « maintenant / ensuite » — ne les nommait pas : c'est une **proposition** de la planche,
+  pas un manquement mesuré (même statut que `S04`, ADR-0113 §3). ⚠️ Le rang demanderait en plus une
+  lecture du classement par archer suivi (`DETTE-031`). **À reposer au tour 2.**
+- **P02 · l'état « Vous ne suivez personne »** centré, avec un bouton : le produit garde sa phrase
+  d'introduction et la recherche visible d'emblée. Écart de forme, sans perte d'information.
+- **P02 · « les six onglets sur 342 px »** : la planche pose une question (menu, barre du bas,
+  défilement) **à laquelle personne n'a répondu**. Pas d'étalon.
+- **P05 · l'arbre « un tour à la fois »** (planche A) n'est **pas** la variante retenue.
+
+### Ce que ce relevé ne dit pas
+
+- **L'écran de salle n'a pas été jugé à sa distance d'usage** — le CA le demande (1920 × 1080, lu à
+  plusieurs mètres). Chrome reste bloqué à **1366 px** sur le poste du relevé ; P06 et P07 ont été
+  confrontés **au code et au CSS**, pas vus projetés. **Ce contrôle reste à faire en salle.**
+- Il compare des **structures**, pas des pixels, comme les deux relevés précédents.
+- L'appli publique a été parcourue à **1366 px** de large, pas sur un téléphone de 360 px : la
+  planche se juge sur téléphone.
 
 ## Critères d'acceptation (epic)
 

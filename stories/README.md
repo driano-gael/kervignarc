@@ -322,7 +322,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | **E17US006** | Donner une couleur à l'action destructrice | J3 | `DV-03` · 🔒 **trou de charte, ADR attendu** |
 | **E17US007** | Résorber les écarts relevés sur les écrans d'administration | J3 | le relevé est **fait** ; l'US qui le solde manquait |
 | **E17US008** | Confronter les 9 planches de saisie `S**` et résorber | J3 | recoupe `E16US019` (S08) et `E16US018` — ⚠️ **le compte à rebours de `E16US018` est un ajout postérieur au questionnaire** (variante C non retenue) : à écrire dans la planche S06, sinon cette US le relèvera comme écart de structure et le retirera |
-| **E17US009** | Confronter les 7 planches publiques `P**` et résorber | J3 | A14 et P03 **hors résorption** (réserve 2 d'ADR-0074) |
+| **E17US009** | Confronter les 7 planches publiques `P**` et résorber | J3 | ✅ **livrée le 25/09/2026** — P03 hors résorption ; « ma cible d'abord » (P04) et le club sous le nom (P01/P02) résorbés, quatre planches corrigées |
 | **E17US010** | Empêcher le dossier de maquettes de dériver du produit | J3 | ✅ **livrée le 23/09/2026** — la dérive des destinations est rouge en CI ; `E17US008`/`E17US009` peuvent suivre |
 
 > 🔒 = **spécifiée, pas prenable** : l'US attend un arbitrage de l'utilisateur. Ne pas la commencer.
