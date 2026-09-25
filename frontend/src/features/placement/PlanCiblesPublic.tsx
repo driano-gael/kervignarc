@@ -13,7 +13,7 @@ import { useDeparts } from '../departs/hooks'
 import { centrerCibles, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { usePlanDeCibles } from './hooks'
-import { construirePlanConsultation } from './planConsultation'
+import { type CibleConsultation, construirePlanConsultation, mesPlaces } from './planConsultation'
 
 // Prénom puis nom, comme sur l'écran de placement (E03US004) : c'est la même surface « qui est posé
 // où », on garde la même lecture de l'identité.
@@ -144,6 +144,13 @@ function GrilleCibles({
     const retenues = centrerCibles(plan.data.cibles, mode, suivis)
     return construirePlanConsultation({ ...plan.data, cibles: retenues }, nomParArcher)
   }, [plan.data, nomParArcher, mode, suivis])
+  // P04 « ma cible d'abord, plan ensuite » (E17US009) : lu sur le plan **complet**, pas sur les
+  // cibles retenues — la carte répond à « où tire mon archer » quel que soit l'affichage choisi.
+  const places = useMemo(
+    () => (plan.data ? mesPlaces(plan.data, suivis, nomParArcher) : []),
+    [plan.data, suivis, nomParArcher],
+  )
+  const ciblesSuivies = new Set(places.map((place) => place.cible))
 
   if (plan.isPending) {
     return <p className="carte__etat">Chargement…</p>
@@ -175,10 +182,49 @@ function GrilleCibles({
   }
 
   return (
+    <>
+      {places.length > 0 && (
+        <ul className="plan-public__mes-places" aria-label="Vos archers sur ce départ">
+          {places.map((place) => (
+            <li key={place.archerId} className="plan-public__ma-place">
+              <strong>{place.nom}</strong>
+              <span>
+                Cible {place.cible} · couloir {place.position}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <PlanDesCibles cibles={cibles} ciblesSuivies={ciblesSuivies} />
+    </>
+  )
+}
+
+function PlanDesCibles({
+  cibles,
+  ciblesSuivies,
+}: {
+  cibles: CibleConsultation[]
+  ciblesSuivies: ReadonlySet<number>
+}) {
+  return (
     <ul className="plan-public">
       {cibles.map((cible) => (
-        <li key={cible.index} className="plan-public__cible">
-          <span className="plan-public__titre">Cible {cible.index}</span>
+        <li
+          key={cible.index}
+          className={
+            ciblesSuivies.has(cible.index)
+              ? 'plan-public__cible plan-public__cible--suivie'
+              : 'plan-public__cible'
+          }
+        >
+          <span className="plan-public__titre">
+            Cible {cible.index}
+            {/* `DV-03` : la marque se lit en toutes lettres, pas seulement à la couleur du cadre. */}
+            {ciblesSuivies.has(cible.index) && (
+              <span className="plan-public__marque">vos archers</span>
+            )}
+          </span>
           {cible.places.length === 0 ? (
             <span className="plan-public__vide">Libre</span>
           ) : (

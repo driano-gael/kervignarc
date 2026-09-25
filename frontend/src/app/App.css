@@ -3395,6 +3395,46 @@ button:disabled {
   color: var(--text);
 }
 
+/* P04 « ma cible d'abord, plan ensuite » (E17US009) : la place des archers suivis, avant la grille,
+   au contour de marque de la planche (`.carte.marquee`) ; la cible marquée le reprend dans la grille. */
+.plan-public__mes-places {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.plan-public__ma-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.plan-public__ma-place strong {
+  color: var(--text);
+}
+
+.plan-public__ma-place + .plan-public__ma-place {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.plan-public__cible--suivie {
+  border-color: var(--brand-border);
+}
+
+.plan-public__marque {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--brand-text);
+}
+
 /* Cible sans archer posé : état neutre, discret (pas une anomalie). */
 .plan-public__vide {
   font-size: 13px;
@@ -3457,6 +3497,15 @@ button:disabled {
 .recherche-resultat__nom {
   flex: 1 1 auto;
   color: var(--text);
+}
+
+/* P01 B « le club en second » et P02 A (E17US009) : sous le nom, en retrait, comme `.faible`. */
+.recherche-resultat__identite,
+.carte-suivi__identite {
+  display: block;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 /* Le résultat est **cliquable** depuis E16US010 : il ouvre la fiche trouvée (ADR-0100). Un bouton

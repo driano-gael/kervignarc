@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { PlanDeCibles } from './api'
-import { construirePlanConsultation } from './planConsultation'
+import { construirePlanConsultation, mesPlaces } from './planConsultation'
 
 // Fabrique minimale d'un plan : seuls `index`, `capacite` et les placements (position + archer)
 // comptent ici ; `blason_id`/`inscription_id` sont du remplissage sans effet sur la mise en forme.
@@ -92,5 +92,48 @@ describe('construirePlanConsultation', () => {
       new Map(),
     )
     expect(resultat).toEqual([{ index: 5, places: [] }])
+  })
+})
+
+// P04, variante retenue au questionnaire du 04/08 : « Ma cible d'abord, plan ensuite » (✅ validé
+// tel quel). Le spectateur qui suit des archers lit **leurs** places avant la grille. E17US009.
+describe('mesPlaces', () => {
+  const noms = new Map([
+    [7, 'Paul MARTIN'],
+    [8, 'Jean DURAND'],
+    [9, 'Luc MARTINEAU'],
+  ])
+  const salle = plan([
+    { index: 3, capacite: 4, places: [{ position: 'A', archer_id: 8 }] },
+    {
+      index: 12,
+      capacite: 4,
+      places: [
+        { position: 'B', archer_id: 7 },
+        { position: 'A', archer_id: 9 },
+      ],
+    },
+  ])
+
+  it('rend la cible et le couloir de chaque archer suivi posé sur ce départ', () => {
+    expect(mesPlaces(salle, [7], noms)).toEqual([
+      { archerId: 7, nom: 'Paul MARTIN', cible: 12, position: 'B' },
+    ])
+  })
+
+  it('suit l’ordre de la salle (cible, puis couloir), pas l’ordre des suivis', () => {
+    expect(mesPlaces(salle, [7, 8, 9], noms).map((p) => p.archerId)).toEqual([8, 9, 7])
+  })
+
+  it('ignore un archer suivi qui ne tire pas sur ce départ', () => {
+    expect(mesPlaces(salle, [7, 404], noms).map((p) => p.archerId)).toEqual([7])
+  })
+
+  it('ne rend rien quand on ne suit personne — le plan reste seul à l’écran', () => {
+    expect(mesPlaces(salle, [], noms)).toEqual([])
+  })
+
+  it('archer absent de l’annuaire → même repli que la grille', () => {
+    expect(mesPlaces(salle, [7], new Map())[0]?.nom).toBe('Archer #7')
   })
 })
