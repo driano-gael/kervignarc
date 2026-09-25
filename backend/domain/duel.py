@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Protocol
 
-from domain.blason import ZoneScore
+from domain.blason import ZoneScore, points_zone
 from domain.erreurs import (
     BaremeDuelInvalide,
     BarrageIndecis,
@@ -47,11 +47,6 @@ class ModeDuel(str, Enum):
 
     SETS = "sets"
     CUMUL = "cumul"
-
-
-def _points_zone(zone: ZoneScore) -> int:
-    """Points d'une zone : sa valeur numérique, le manqué (`M`) valant 0 (jumeau de `serie`)."""
-    return 0 if zone is ZoneScore.MANQUE else int(zone.value)
 
 
 def _valider_volee(
@@ -222,8 +217,8 @@ class Duel:
         """Le vainqueur du barrage : plus haute flèche, sinon la désignation (§8.2)."""
         if self.barrage is None:
             return None
-        haut = _points_zone(self.barrage.fleche_haut)
-        bas = _points_zone(self.barrage.fleche_bas)
+        haut = points_zone(self.barrage.fleche_haut)
+        bas = points_zone(self.barrage.fleche_bas)
         if haut > bas:
             return Cote.HAUT
         if bas > haut:
@@ -332,7 +327,7 @@ class Duel:
         for fleche in (fleche_haut, fleche_bas):
             if fleche not in zones_admises:
                 raise ValeurHorsBlason("Une flèche de barrage n'est pas une zone admise du blason.")
-        if _points_zone(fleche_haut) == _points_zone(fleche_bas) and gagnant_designe is None:
+        if points_zone(fleche_haut) == points_zone(fleche_bas) and gagnant_designe is None:
             raise BarrageIndecis(
                 "Flèches de barrage à égalité : désignez le plus près du centre (§8.2)."
             )

@@ -11,22 +11,13 @@ from __future__ import annotations
 import random
 from typing import Protocol
 
-from domain.blason import ZoneScore
+from domain.blason import ZoneScore, points_zone
 
 # Amplitude de l'effet du niveau sur la préférence pour le centre : un exposant de poids qui va de
 # `_EXPOSANT_BASE` (débutant, tir dispersé) à `_EXPOSANT_BASE + _EXPOSANT_NIVEAU` (expert, tir
 # groupé au centre). Valeurs choisies pour un étalement net des totaux sans écraser la variété.
 _EXPOSANT_BASE = 1.0
 _EXPOSANT_NIVEAU = 3.0
-
-
-def valeur_zone(zone: ZoneScore) -> int:
-    """Points d'une zone : sa valeur numérique, le manqué (`M`) valant 0.
-
-    Duplique délibérément `domain.serie._points_zone` (privé) plutôt que d'exposer ce dernier : deux
-    lignes triviales, 2ᵉ occurrence — la règle 16 tranche « dupliquer et attendre le 3ᵉ cas ».
-    """
-    return 0 if zone is ZoneScore.MANQUE else int(zone.value)
 
 
 class GenerateurScores(Protocol):
@@ -71,4 +62,4 @@ class GenerateurScoresPlausibles:
         hautes valeurs tout en laissant les débutants disperser.
         """
         exposant = _EXPOSANT_BASE + _EXPOSANT_NIVEAU * max(0.0, min(1.0, niveau))
-        return float((valeur_zone(zone) + 1) ** exposant)
+        return float((points_zone(zone) + 1) ** exposant)

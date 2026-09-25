@@ -73,6 +73,7 @@ def test_definir_puis_relire(app_bareme: FastAPI, connecter_admin: ConnecterAdmi
             "nb_fleches_par_volee": 3,
             "nb_fleches_total": 60,
             "score_max": 600,
+            "points_par_zone": {str(n): n for n in range(1, 11)} | {"M": 0},
         }
         assert (
             client.get(f"/api/v1/tournois/{tournoi_id}/bareme-qualification").json()
@@ -100,6 +101,10 @@ def test_redefinir_remplace_les_valeurs(
         assert corps["nb_volees"] == 10
         assert corps["nb_fleches_total"] == 60
         assert corps["score_max"] == 600
+        # E17US011 : la table traverse la sérialisation JSON (clés en chaînes, « M » compris).
+        assert corps["points_par_zone"]["10"] == 10
+        assert corps["points_par_zone"]["M"] == 0
+        assert len(corps["points_par_zone"]) == 11
 
 
 def test_lire_est_public(app_bareme: FastAPI, connecter_admin: ConnecterAdmin) -> None:

@@ -35,6 +35,9 @@ class BaremeReponse(BaseModel):
     nb_fleches_par_volee: int
     nb_fleches_total: int
     score_max: int
+    # E17US011 — la **règle** zone → points, pas un total : le poste valorise hors ligne
+    # (`DETTE-111`).
+    points_par_zone: dict[str, int]
 
     @staticmethod
     def de_agregat(bareme: BaremeQualification) -> BaremeReponse:
@@ -44,6 +47,7 @@ class BaremeReponse(BaseModel):
             nb_fleches_par_volee=bareme.nb_fleches_par_volee,
             nb_fleches_total=bareme.nb_fleches_total,
             score_max=bareme.score_max,
+            points_par_zone=bareme.points_par_zone,
         )
 
 

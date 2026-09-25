@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from domain.blason import ZONES_CANONIQUES, points_zone
 from domain.erreurs import NombreFlechesParVoleeInvalide, NombreVoleesInvalide
 
 # Preset FFTA 18 m (art. A.7.3 / référentiel §6.1) : 60 flèches en 20 volées de 3.
@@ -52,6 +53,16 @@ class BaremeQualification:
     def nb_fleches_total(self) -> int:
         """Nombre total de flèches tirées sur la qualification."""
         return self.nb_volees * self.nb_fleches_par_volee
+
+    @property
+    def points_par_zone(self) -> dict[str, int]:
+        """Ce que vaut chaque zone saisissable, clé = valeur saisie (« 10 », « M »…).
+
+        Servi au poste de saisie (E17US011) : il valorise des volées **hors ligne** que le serveur
+        n'a jamais reçues, donc il lui faut la **règle**, pas un total. Une table neuve à chaque
+        appel — l'agrégat est gelé, un `dict` partagé ne le serait pas.
+        """
+        return {zone.value: points_zone(zone) for zone in ZONES_CANONIQUES}
 
     @property
     def score_max(self) -> int:

@@ -6,17 +6,13 @@
 
 import type { Grain, SaisirVolee, Serie, Volee } from './api'
 
-// Points d'une valeur de zone. `M` (manqué) = 0 ; les autres sont numériques (« 10 » → 10). Pas de
-// « X » dans le vocabulaire FFTA retenu (cf. `domain/blason.ZoneScore`). Une valeur inattendue → 0
-// (défensif : le pavé ne propose que des zones légales, mais on ne fait pas confiance à l'affichage).
-//
-// ⚠️ `DETTE-111` — **jumeau de `_points_zone`** (`backend/domain/serie.py`). Il ne peut pas être
-// remplacé par une valeur servie : le hors-ligne exige de valoriser ce que le serveur ignore encore.
-// Remède prévu en `E17US011` : consulter un `points_par_zone` servi par le barème.
-export function pointsZone(valeur: string): number {
-  if (valeur === 'M') return 0
-  const points = Number.parseInt(valeur, 10)
-  return Number.isNaN(points) ? 0 : points
+// Ce que vaut une zone, **lu** dans la table que sert le barème (`points_par_zone`, domicile unique
+// `domain/blason.points_zone` — E17US011). On sert la **règle**, pas un total : le poste valorise
+// hors ligne des volées que le serveur n'a jamais reçues. Une valeur absente de la table → 0.
+export type PointsParZone = Readonly<Record<string, number>>
+
+export function pointsZone(valeur: string, table: PointsParZone): number {
+  return table[valeur] ?? 0
 }
 
 // Total provisoire d'une volée en cours de frappe (avant enregistrement). Le cumul **officiel** de
@@ -24,8 +20,28 @@ export function pointsZone(valeur: string): number {
 // ⚠️ Depuis E17US008, **aucun écran de saisie n'affiche plus `Serie.cumul`** : la grille et le pavé
 // montrent `cumulSaisi`. Le champ reste rendu par l'API et lu par la surface **scoreur**, qui le
 // libelle « Total validé ». Ne pas conclure de sa présence que la cible voit le score officiel.
-export function totalVolee(valeurs: readonly string[]): number {
-  return valeurs.reduce((somme, valeur) => somme + pointsZone(valeur), 0)
+export function totalVolee(valeurs: readonly string[], table: PointsParZone): number {
+  return valeurs.reduce((somme, valeur) => somme + pointsZone(valeur, table), 0)
+}
+
+// La flèche que désigne un tap sur une case de la ligne d'archer (E17US011, S02). Une case vide ne
+// se vise pas : la volée se remplit dans l'ordre, un trou ne serait ni enregistrable ni lisible.
+export function flecheVisee(caseTouchee: number, buffer: readonly string[]): number | null {
+  return caseTouchee < buffer.length ? caseTouchee : null
+}
+
+// Une frappe du pavé : **remplace** la flèche visée, sinon s'ajoute à la suite. `null` = refusée
+// (volée complète et rien de visé) — c'est ce qui laisse corriger une volée pleine avant envoi.
+export function frapper(
+  buffer: readonly string[],
+  valeur: string,
+  visee: number | null,
+  nbFleches: number,
+): string[] | null {
+  if (visee !== null && visee < buffer.length) {
+    return buffer.map((actuelle, i) => (i === visee ? valeur : actuelle))
+  }
+  return buffer.length < nbFleches ? [...buffer, valeur] : null
 }
 
 // Cumul **saisi** de la série : toutes les volées entrées, validées ou non.
@@ -35,8 +51,8 @@ export function totalVolee(valeurs: readonly string[]): number {
 // (`domain/serie.py`). Mais avec le grain « validation à la fin de la série », ce total vaut **0
 // pendant toute la série** : le rappel demandé en S02 (« en permanence, c'est un bon rappel sur la
 // cible ») affichait zéro exactement quand il servait. Relevé de l'axe saisie, `epics/EPIC-17`.
-export function cumulSaisi(volees: readonly Volee[]): number {
-  return volees.reduce((somme, volee) => somme + totalVolee(volee.valeurs), 0)
+export function cumulSaisi(volees: readonly Volee[], table: PointsParZone): number {
+  return volees.reduce((somme, volee) => somme + totalVolee(volee.valeurs, table), 0)
 }
 
 // La prochaine volée à saisir : la **plus petite** (1..nbVolees) pas encore **saisie**. Une volée

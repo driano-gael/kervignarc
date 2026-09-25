@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from domain.bareme import BaremeQualification
+from domain.blason import ZONES_CANONIQUES, points_zone
 from domain.erreurs import NombreFlechesParVoleeInvalide, NombreVoleesInvalide
 
 
@@ -44,3 +45,25 @@ def test_valeurs_derivees_sur_un_format_club() -> None:
     bareme = BaremeQualification.creer(5, 3)
     assert bareme.nb_fleches_total == 15
     assert bareme.score_max == 150
+
+
+# E17US011 — CA « DETTE-111 résorbée pour la conversion zone → points » : le barème porte un
+# `points_par_zone`, que le poste lit au lieu de réécrire la règle en TypeScript.
+def test_points_par_zone_couvre_chaque_zone_du_vocabulaire() -> None:
+    """Toute zone saisissable a une valeur : absente, elle se lirait 0 sur le poste, en silence."""
+    table = BaremeQualification.preset_ffta_18m().points_par_zone
+    assert set(table) == {zone.value for zone in ZONES_CANONIQUES}
+
+
+def test_points_par_zone_vaut_le_chiffre_et_le_manque_zero() -> None:
+    """« Une zone vaut son chiffre, `M` vaut 0 » — la règle que la table transporte."""
+    table = BaremeQualification.preset_ffta_18m().points_par_zone
+    assert table["10"] == 10
+    assert table["1"] == 1
+    assert table["M"] == 0
+
+
+def test_points_par_zone_est_la_regle_du_domaine_et_non_une_copie() -> None:
+    """La table dérive de `points_zone`, domicile unique : les deux ne peuvent pas diverger."""
+    table = BaremeQualification.preset_ffta_18m().points_par_zone
+    assert all(table[zone.value] == points_zone(zone) for zone in ZONES_CANONIQUES)

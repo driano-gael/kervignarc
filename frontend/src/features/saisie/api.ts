@@ -68,6 +68,8 @@ export interface Bareme {
   nb_fleches_par_volee: number
   nb_fleches_total: number
   score_max: number
+  // E17US011 : la règle zone → points, servie pour valoriser hors ligne (`volees.pointsZone`).
+  points_par_zone: Record<string, number>
 }
 
 export type TypeGrain = 'fin_de_serie' | 'fin_de_duel' | 'toutes_les_n_volees'

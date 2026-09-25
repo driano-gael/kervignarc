@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from domain.archer import ArcherId
-from domain.blason import ZoneScore
+from domain.blason import ZoneScore, points_zone
 from domain.erreurs import (
     CorrectionOuverte,
     IncoherenceVolee,
@@ -33,16 +33,6 @@ from domain.tournoi import TournoiId
 
 SerieId = int
 """Identifiant technique d'une série, attribué par la persistance."""
-
-
-def _points_zone(zone: ZoneScore) -> int:
-    """Points d'une zone : sa valeur numérique, le manqué (`M`) valant 0.
-
-    ⚠️ `DETTE-111` — cette règle est **réécrite en TypeScript** (`features/saisie/volees.ts`,
-    `pointsZone`), parce que le poste doit valoriser des volées hors ligne que le serveur n'a jamais
-    reçues. Une zone ajoutée à `ZoneScore` doit l'être **des deux côtés** ; rien ne le vérifie.
-    """
-    return 0 if zone is ZoneScore.MANQUE else int(zone.value)
 
 
 @dataclass(frozen=True)
@@ -101,7 +91,7 @@ class Volee:
     @property
     def points(self) -> int:
         """Total des points de la volée (somme des zones ; `M` = 0)."""
-        return sum(_points_zone(z) for z in self.valeurs)
+        return sum(points_zone(z) for z in self.valeurs)
 
 
 def valider_valeurs_volee(

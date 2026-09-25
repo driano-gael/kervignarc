@@ -52,10 +52,14 @@ let GRILLE: EtatRequete = GRILLE_SERVIE
 
 let erreurSaisie: Error | null = null
 
+// La table que sert le barème (E17US011) : le poste la lit, il ne recalcule plus. Lue par la
+// fabrique de `vi.mock` au rendu, donc après l'évaluation du module — `const` y est sûr.
+const TABLE: Record<string, number> = { '10': 10, '9': 9, '8': 8, '7': 7, M: 0 }
+
 vi.mock('./hooks', () => ({
   useRejeuFileHorsLigne: () => undefined,
   useGrille: () => GRILLE,
-  useBareme: () => ({ data: { nb_volees: 2, nb_fleches_par_volee: 3 } }),
+  useBareme: () => ({ data: { nb_volees: 2, nb_fleches_par_volee: 3, points_par_zone: TABLE } }),
   useGrain: () => ({ data: null }),
   useDeparts: () => ({ data: [], isSuccess: true }),
   useFixerDepart: () => ({ mutate: vi.fn(), isPending: false, error: null }),
@@ -94,7 +98,7 @@ async function ouvrirLePave() {
   // ⚠️ Par la liste : « DURAND » figure AUSSI dans le sélecteur de marqueur, qui dérive de la
   // grille — un `findByText` y trouverait deux nœuds.
   const grille = await screen.findByRole('list')
-  await userEvent.click(within(grille).getByRole('button'))
+  await userEvent.click(within(grille).getByRole('button', { name: /volées/ }))
 }
 
 describe('Saisie — un refus de préséance est expliqué', () => {
@@ -126,7 +130,7 @@ describe('Saisie — un refus de préséance est expliqué', () => {
 
     const { container } = monter()
     const grille = await screen.findByRole('list')
-    await userEvent.click(within(grille).getByRole('button'))
+    await userEvent.click(within(grille).getByRole('button', { name: /volées/ }))
     for (let i = 0; i < 3; i += 1) {
       await userEvent.click(screen.getByRole('button', { name: '10' }))
     }
@@ -267,5 +271,48 @@ describe('Saisie — le numéro de cible ne passe en géant que dans l’état �
     monter()
 
     expect(enGeant()).toBe(false)
+  })
+})
+
+// E17US011 — oracle : planche S02, la ligne est `pos | nom | fl fl fl | somme`, et la réserve écrite
+// deux fois au questionnaire S02 : « l'appel du pavé doit se faire à la sélection de la zone de
+// saisie ». Monté en entier : le geste traverse la ligne, `Saisie` (qui détient la visée) et le pavé.
+describe('Saisie — la ligne d’archer porte la volée en cours', () => {
+  beforeEach(() => {
+    erreurSaisie = null
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
+  })
+
+  async function caseDeLaLigne(numero: number) {
+    const grille = await screen.findByRole('list')
+    return within(grille).getByRole('button', { name: new RegExp(`^Flèche ${numero} de DURAND`) })
+  }
+
+  it('toucher une case ouvre le pavé, et la volée se remplit dans la ligne avec sa somme', async () => {
+    monter()
+    await userEvent.click(await caseDeLaLigne(1))
+    for (const zone of ['10', '9', '8']) {
+      await userEvent.click(screen.getByRole('button', { name: zone }))
+    }
+
+    expect((await caseDeLaLigne(2)).textContent).toBe('9')
+    const grille = await screen.findByRole('list')
+    expect(grille.querySelector('.saisie__somme')?.textContent).toBe('27')
+  })
+
+  it('toucher une case remplie la corrige à la frappe suivante, sans perdre les autres', async () => {
+    monter()
+    await userEvent.click(await caseDeLaLigne(1))
+    for (const zone of ['10', '9', '8']) {
+      await userEvent.click(screen.getByRole('button', { name: zone }))
+    }
+
+    await userEvent.click(await caseDeLaLigne(2))
+    await userEvent.click(screen.getByRole('button', { name: 'M' }))
+
+    expect((await caseDeLaLigne(1)).textContent).toBe('10')
+    expect((await caseDeLaLigne(2)).textContent).toBe('M')
+    expect((await caseDeLaLigne(3)).textContent).toBe('8')
   })
 })

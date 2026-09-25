@@ -2624,37 +2624,24 @@ button:disabled {
   gap: 12px;
 }
 
-/* Grille + pavé. Empilés par défaut — c'est le cas du **téléphone**, que S02 couvre aussi. */
+/* Grille puis pavé, **empilés à toutes les largeurs** (E17US011). La ligne d'archer porte la volée
+   en cours : le pavé ne la porte plus seul, il rend donc la colonne qu'`E17US008` lui avait donnée
+   à côté de la grille — la grille reprend la largeur de la tablette (S02, « les lignes d'archer
+   font toute la largeur »), et le pavé, en pleine largeur, a la place des touches de S03. */
 .saisie__travail {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* Dès qu'il y a la largeur d'une tablette, les deux colonnes : le pavé cesse d'être poussé sous la
-   ligne de flottaison par une grille de quatre couloirs. `sticky` parce qu'une grille longue
-   l'emporterait hors de l'écran au défilement. */
-@media (min-width: 60rem) {
-  .saisie__travail {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .saisie__travail > .saisie__grille {
-    flex: 1 1 32rem;
-  }
-
-  /* Le pavé, mais aussi l'invite et le message qui prennent sa place : sans quoi la colonne de
-     droite s'effondre et la grille saute en largeur quand le pavé s'ouvre. ⚠️ **Énumérés, pas
-     `:not(.saisie__grille)`** : `E17US011` rouvre cette zone, et un élément ajouté héritait
-     silencieusement du `sticky` et du `flex-basis`. */
-  .saisie__travail > .saisie__pave,
-  .saisie__travail > .saisie__invite,
-  .saisie__travail > .saisie__vide {
-    position: sticky;
-    top: 12px;
-    flex: 1 1 24rem;
-  }
+/* ⚠️ **Ancré en bas, comme un clavier** : empilé sans ancrage, le pavé retombait sous la ligne de
+   flottaison (touches à 826 px sur une fenêtre de 641, mesuré) — le défaut qu'`E17US008` avait
+   corrigé par le côte-à-côte. L'ancrage garde les deux : pleine largeur ET toujours visible. */
+.saisie__travail > .saisie__pave {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  box-shadow: 0 -8px 16px color-mix(in srgb, var(--surface-0) 80%, transparent);
 }
 
 /* Le numéro de cible, taille de la grille (S02) : 22 px. Il sortait en 16 px, celle du texte
@@ -2780,8 +2767,9 @@ button:disabled {
    deux, le bouton n'en garde que la zone tapable. */
 .saisie__grille > li {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
   padding: 6px 10px;
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
@@ -2797,7 +2785,7 @@ button:disabled {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  flex: 1 1 16rem;
   min-height: 48px;
   padding: 0;
   color: var(--text);
@@ -2816,6 +2804,7 @@ button:disabled {
 .saisie__relecture {
   display: flex;
   flex-wrap: wrap;
+  flex-basis: 100%;
   gap: 3px;
 }
 
@@ -3064,6 +3053,79 @@ button:disabled {
   min-height: 48px;
   font-size: 18px;
   font-weight: 600;
+}
+
+/* Le pavé ancré doit rester **bas** : un rang de navigation qui défile au lieu de deux, les onze
+   touches sur un seul rang. Elles se partagent la largeur (~87 px sur une carte de 1061 px) : S03
+   demande « plus de 90 px », tenu à partir d'une carte d'environ 1 100 px. */
+@media (min-width: 60rem) {
+  .saisie__nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .saisie__zones {
+    flex-wrap: nowrap;
+  }
+
+  .saisie__zone {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 64px;
+    font-size: 24px;
+  }
+}
+
+.saisie__pave-frappe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.saisie__pave-frappe > .saisie__buffer,
+.saisie__pave-frappe > .saisie__actions {
+  margin: 0;
+}
+
+/* La volée en cours sur la ligne d'archer (S02, `fl fl fl | somme`) — E17US011. */
+.saisie__volee-en-cours {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saisie__case {
+  font: inherit;
+  min-width: 52px;
+  min-height: 48px;
+  padding: 0 6px;
+  font-family: var(--mono);
+  font-size: 20px;
+  color: var(--text);
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* La case que la prochaine frappe remplit : la planche la marque, le pavé écrit là. */
+.saisie__case--en-cours {
+  border: 2px solid var(--brand-border);
+}
+
+.saisie__somme {
+  min-width: 2.5em;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: right;
+  color: var(--text);
+}
+
+/* Dans le pavé, la flèche qui sera remplacée — même marque que sur la ligne. */
+.saisie__fleche--visee {
+  border: 2px solid var(--brand-border);
 }
 
 .saisie__actions {

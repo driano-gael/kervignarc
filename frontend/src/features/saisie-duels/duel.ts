@@ -8,8 +8,9 @@
 
 import type { Duel, ModeDuel, SaisirBarrage, SaisirManche } from './api'
 
-// Points d'une valeur de zone (jumeau de `features/saisie/volees.pointsZone`, 2ᵉ occurrence — règle
-// 12 : duplication assumée, pas d'extraction avant un 3ᵉ cas). `M` (manqué) = 0, sinon la valeur.
+// Points d'une valeur de zone : `M` (manqué) = 0, sinon la valeur. ⚠️ `DETTE-111` — **réécrit** la
+// règle de `domain/blason.points_zone`, que la saisie de qualification, elle, lit servie par le
+// barème (E17US011). Le duel n'a pas encore de table servie : c'est le site qui reste.
 export function pointsZone(valeur: string): number {
   if (valeur === 'M') return 0
   const points = Number.parseInt(valeur, 10)

@@ -31,7 +31,7 @@ from application.erreurs import (
     SimulationTournoiDemarre,
     UniteSimulationInvalide,
 )
-from application.generateur_scores import GenerateurScoresPlausibles, valeur_zone
+from application.generateur_scores import GenerateurScoresPlausibles
 from application.pilotage_simulation import (
     DiffusionSimulation,
     EtapeSimulation,
@@ -571,12 +571,6 @@ def test_designer_vainqueur_match_inexistant_refuse() -> None:
     service.pause(depart.session_id)
     with pytest.raises(UniteSimulationInvalide):
         service.designer_vainqueur(depart.session_id, unite.phase_id, 9999, Cote.HAUT)
-
-
-def test_valeur_zone_manque_vaut_zero() -> None:
-    """Cohérence du barème du générateur : `M` vaut 0, les zones marquantes leur valeur."""
-    assert valeur_zone(ZoneScore.MANQUE) == 0
-    assert valeur_zone(ZoneScore.DIX) == 10
 
 
 def test_chaque_creneau_de_la_session_porte_son_classement_et_ses_arbres() -> None:

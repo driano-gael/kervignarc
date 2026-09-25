@@ -22,7 +22,8 @@ window.ATLAS.avancement = {
   {
    "identifiant": "111",
    "introduite_par": [
-    "E17US008"
+    "E17US008",
+    "E17US011"
    ],
    "ouverte": true,
    "resorption_us": [
@@ -4859,7 +4860,9 @@ window.ATLAS.avancement = {
    "adr": [
     "0113"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "111"
+   ],
    "dettes_resorbees": [
     "111"
    ],
