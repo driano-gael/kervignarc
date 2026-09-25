@@ -53,17 +53,27 @@ beforeEach(() => {
 
 describe('ouverture pilotée par l’adresse', () => {
   it('l’archer désigné par l’adresse est déplié — et LUI SEUL', async () => {
-    monter(<Archers tournoiId={1} ouvrir={57} onOuvrir={vi.fn()} />)
+    monter(
+      <Archers tournoiId={1} ouvrir={57} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
+    )
 
     // Le formulaire d'édition porte les champs ; les autres lignes gardent leur bouton « Modifier ».
     expect(await screen.findByDisplayValue('Jean')).toBeVisible()
+    // A09 « recherche d'abord » (E17US007) : la fiche ouverte est listée seule ; on affiche tout
+    // pour vérifier que les AUTRES lignes restent fermées.
+    await userEvent.click(screen.getByRole('button', { name: /^Voir les \d+ inscrits$/ }))
+    expect(screen.getByDisplayValue('Jean')).toBeVisible()
     expect(screen.queryByDisplayValue('Luc')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Modifier' })).toHaveLength(1)
   })
 
   it('sans élément dans l’adresse, aucune fiche n’est ouverte', async () => {
     // Négatif apparié : sans lui, un composant qui ouvrirait tout resterait vert au test ci-dessus.
-    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
+    monter(
+      <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
+    )
+    // A09 « recherche d'abord » (E17US007) : la liste s'affiche par son compteur.
+    await userEvent.click(await screen.findByRole('button', { name: /^Voir les \d+ inscrits$/ }))
 
     await screen.findByText(/Dupont Jean/)
     expect(screen.queryByDisplayValue('Jean')).not.toBeInTheDocument()
@@ -73,7 +83,9 @@ describe('ouverture pilotée par l’adresse', () => {
     // C'est ce qui fait qu'il n'y a qu'une source : un état local se serait refermé tout seul, en
     // laissant l'adresse désigner une fiche close — et le même lien aurait cessé de la rouvrir.
     const onOuvrir = vi.fn()
-    monter(<Archers tournoiId={1} ouvrir={57} onOuvrir={onOuvrir} />)
+    monter(
+      <Archers tournoiId={1} ouvrir={57} onOuvrir={onOuvrir} nonPlaces={null} nonRegles={null} />,
+    )
 
     await userEvent.click(await screen.findByRole('button', { name: 'Annuler' }))
 

@@ -6,7 +6,8 @@
 // **inscription** : le plan porte directement l'`inscription_id` de chaque archer (posé ou en
 // réserve), aucune correspondance à reconstituer côté client.
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDeparts } from '../departs/hooks'
 import { clePlansDuelsDuTournoi } from '../duels/hooks'
 import {
   type Cloisonnement,
@@ -122,4 +123,20 @@ export function useReglerCloisonnement(tournoiId: number) {
       queryClient.invalidateQueries({ queryKey: clePlansDuelsDuTournoi(tournoiId) })
     },
   })
+}
+
+// Les archers en **réserve** d'au moins un départ — le compteur « Non placés » d'A09 (E17US007).
+// Le plan persisté range en réserve tout inscrit sans affectation, avant comme après génération.
+// `null` tant qu'un plan manque ou échoue (gabarit absent, réseau) : un compte partiel serait lu
+// comme exact. Mêmes clés que l'écran de placement (`clePlan`) : rien n'est relu en double.
+export function useArchersEnReserve(tournoiId: number): ReadonlySet<number> | null {
+  const departs = useDeparts(tournoiId)
+  const plans = useQueries({
+    queries: (departs.data ?? []).map((depart) => ({
+      queryKey: clePlan(tournoiId, depart.id),
+      queryFn: () => getPlanDeCibles(tournoiId, depart.id),
+    })),
+  })
+  if (departs.data === undefined || plans.some((plan) => plan.data === undefined)) return null
+  return new Set(plans.flatMap((plan) => (plan.data?.conflits ?? []).map((c) => c.archer_id)))
 }

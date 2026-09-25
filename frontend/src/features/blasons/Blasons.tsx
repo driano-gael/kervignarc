@@ -1,6 +1,6 @@
 // Gestion des blasons d'un tournoi (E01US005 ; zones : E01US014) — admin (sous `estAdmin`).
 //
-// Liste + création + édition (nom, taille, capacité, zones) + suppression à confirmation. Un blason
+// Liste + panneau latéral d'édition (nom, taille, capacité, zones) + suppression à confirmation. Un blason
 // modélise l'occupation d'une cible : la **taille** est une fraction de place et la **capacité** le
 // nombre d'archers admis. Les **zones** sont les valeurs de score admises, qui pilotent le pavé de
 // saisie (EPIC-04) : un triple 40 n'a pas les zones 5 → 1. Les bornes sont validées côté serveur.
@@ -10,91 +10,150 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Blason, NouveauBlason, Zone } from './api'
 import { ZONE_MANQUE, ZONES_CANONIQUES } from './api'
 import { useBlasons, useCreerBlason, useModifierBlason, useSupprimerBlason } from './hooks'
+import { groupesParOrigine, selectionCourante, type Selection } from './panneau'
 import { ZONES_DEFAUT, aUneZoneMarquante, basculerZone, estVerrouillee } from './zones'
 
+// A06, variante B retenue le 04/08 — « la liste reste, l'édition s'ouvre à droite » (E17US007).
+// Avant, « Éditer » remplaçait la ligne par le formulaire : la variante A, **écartée**.
 export function Blasons({ tournoiId }: { tournoiId: number }) {
   const blasons = useBlasons(tournoiId)
+  const [selection, setSelection] = useState<Selection | null>(null)
+  const liste = blasons.data ?? []
+  const panneau = selectionCourante(selection, liste)
+  const fermer = () => setSelection(null)
 
   return (
     <section>
-      <h3 className="carte__soustitre">Blasons</h3>
-      <FormulaireBlason tournoiId={tournoiId} />
+      <div className="blasons__entete">
+        <h3 className="carte__soustitre">Blasons</h3>
+        <span className="blasons__compte">
+          {liste.length} blason{liste.length > 1 ? 's' : ''}
+        </span>
+        <button type="button" onClick={() => setSelection({ mode: 'creation' })}>
+          Ajouter un blason
+        </button>
+      </div>
       {blasons.isError && <MessageErreur erreur={blasons.error} />}
-      {blasons.data && blasons.data.length > 0 && (
-        <ul className="liste-blasons">
-          {blasons.data.map((blason) => (
-            <LigneBlason key={blason.id} tournoiId={tournoiId} blason={blason} />
-          ))}
-        </ul>
-      )}
+      <div className={panneau === null ? 'avec-panneau' : 'avec-panneau avec-panneau--ouvert'}>
+        {liste.length > 0 && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Blason</th>
+                <th scope="col">Taille</th>
+                <th scope="col">Capacité</th>
+                <th scope="col">Zones</th>
+              </tr>
+            </thead>
+            {groupesParOrigine(liste).map((groupe) => (
+              <tbody key={groupe.origine}>
+                <tr>
+                  <th scope="rowgroup" colSpan={4} className="blasons__groupe">
+                    {groupe.libelle}
+                  </th>
+                </tr>
+                {groupe.blasons.map((blason) => (
+                  <LigneBlason
+                    key={blason.id}
+                    blason={blason}
+                    choisi={panneau?.mode === 'edition' && panneau.blason.id === blason.id}
+                    onChoisir={() => setSelection({ mode: 'edition', id: blason.id })}
+                  />
+                ))}
+              </tbody>
+            ))}
+          </table>
+        )}
+        {panneau !== null && (
+          <aside className="panneau-edition" aria-label="Édition du blason">
+            {/* `key` : changer de ligne **remonte** le formulaire — ses champs sont des `useState`
+                initialisés au montage, ils garderaient sinon le blason précédent. */}
+            <FormulaireBlason
+              key={panneau.mode === 'edition' ? panneau.blason.id : 'creation'}
+              tournoiId={tournoiId}
+              blason={panneau.mode === 'edition' ? panneau.blason : undefined}
+              onTermine={fermer}
+            />
+            {panneau.mode === 'edition' && (
+              <SuppressionBlason
+                tournoiId={tournoiId}
+                blason={panneau.blason}
+                onSupprime={fermer}
+              />
+            )}
+          </aside>
+        )}
+      </div>
     </section>
   )
 }
 
-function LigneBlason({ tournoiId, blason }: { tournoiId: number; blason: Blason }) {
-  const [edition, setEdition] = useState(false)
-  const [confirmationSuppression, setConfirmationSuppression] = useState(false)
-  const supprimer = useSupprimerBlason(tournoiId)
-
-  if (edition) {
-    return (
-      <li>
-        <FormulaireBlason
-          tournoiId={tournoiId}
-          blason={blason}
-          onTermine={() => setEdition(false)}
-        />
-      </li>
-    )
-  }
-
+// Une ligne : choisir le blason ouvre le panneau. Le nom est un bouton — une ligne de tableau
+// cliquable n'est ni atteignable au clavier ni annoncée par un lecteur d'écran.
+function LigneBlason({
+  blason,
+  choisi,
+  onChoisir,
+}: {
+  blason: Blason
+  choisi: boolean
+  onChoisir: () => void
+}) {
+  const capacite = blason.capacite > 1 ? `${blason.capacite} archers` : '1 archer'
   return (
-    <li className="blason">
-      <div className="blason__ligne">
-        <span className="blason__nom">{blason.nom}</span>
-        <span className="blason__attributs">{decrire(blason)}</span>
-        <span className="blason__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-            Éditer
-          </button>
-          {confirmationSuppression ? (
-            <>
-              <button
-                type="button"
-                className="bouton--danger"
-                disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate(blason.id)}
-              >
-                Confirmer la suppression
-              </button>
-              <button
-                type="button"
-                className="bouton--discret"
-                onClick={() => setConfirmationSuppression(false)}
-              >
-                Annuler
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="bouton--danger"
-              onClick={() => setConfirmationSuppression(true)}
-            >
-              Supprimer
-            </button>
-          )}
-        </span>
-      </div>
-      <MessageErreur erreur={supprimer.error} />
-    </li>
+    <tr className={choisi ? 'blasons__ligne blasons__ligne--choisie' : 'blasons__ligne'}>
+      <td>
+        <button
+          type="button"
+          className="lien blasons__nom"
+          aria-current={choisi ? 'true' : undefined}
+          onClick={onChoisir}
+        >
+          {blason.nom}
+        </button>
+      </td>
+      <td>{blason.taille.toLocaleString('fr-FR')}</td>
+      <td>{capacite}</td>
+      <td>{blason.zones.join(' ')}</td>
+    </tr>
   )
 }
 
-// Décrit les attributs d'un blason pour l'affichage (taille de place · capacité · zones).
-function decrire(blason: Blason): string {
-  const capacite = blason.capacite > 1 ? `${blason.capacite} archers` : '1 archer'
-  return `taille ${blason.taille.toLocaleString('fr-FR')} · ${capacite} · zones ${blason.zones.join(' ')}`
+function SuppressionBlason({
+  tournoiId,
+  blason,
+  onSupprime,
+}: {
+  tournoiId: number
+  blason: Blason
+  onSupprime: () => void
+}) {
+  const [confirmation, setConfirmation] = useState(false)
+  const supprimer = useSupprimerBlason(tournoiId)
+  return (
+    <div className="panneau-edition__danger">
+      {confirmation ? (
+        <>
+          <button
+            type="button"
+            className="bouton--danger"
+            disabled={supprimer.isPending}
+            onClick={() => supprimer.mutate(blason.id, { onSuccess: onSupprime })}
+          >
+            Confirmer la suppression
+          </button>
+          <button type="button" className="bouton--discret" onClick={() => setConfirmation(false)}>
+            Annuler
+          </button>
+        </>
+      ) : (
+        <button type="button" className="bouton--danger" onClick={() => setConfirmation(true)}>
+          Supprimer ce blason
+        </button>
+      )}
+      <MessageErreur erreur={supprimer.error} />
+    </div>
+  )
 }
 
 // Formulaire partagé création / édition : sans `blason` il crée, avec il édite.
@@ -147,21 +206,14 @@ function FormulaireBlason({
     if (enEdition) {
       modifier.mutate({ id: blason.id, entree }, { onSuccess: onTermine })
     } else {
-      // Création : on réinitialise le formulaire pour enchaîner une autre saisie.
-      creer.mutate(entree, {
-        onSuccess: () => {
-          setNom('')
-          setTaille('1')
-          setCapacite('1')
-          setZones([...ZONES_DEFAUT])
-        },
-      })
+      // Création : le panneau se referme, le blason apparaît dans la liste.
+      creer.mutate(entree, { onSuccess: onTermine })
     }
   }
 
   return (
     <div>
-      {enEdition && <h4 className="carte__soustitre">Modifier le blason</h4>}
+      <h4 className="carte__soustitre">{enEdition ? blason.nom : 'Nouveau blason'}</h4>
       <form className="formulaire formulaire--colonne" onSubmit={soumettre}>
         <input
           className="formulaire__champ"
@@ -220,11 +272,9 @@ function FormulaireBlason({
           <button type="submit" disabled={mutation.isPending || !entreeValide}>
             {enEdition ? 'Enregistrer' : 'Ajouter le blason'}
           </button>
-          {enEdition && (
-            <button type="button" className="bouton--discret" onClick={onTermine}>
-              Annuler
-            </button>
-          )}
+          <button type="button" className="bouton--discret" onClick={onTermine}>
+            {enEdition ? 'Fermer' : 'Annuler'}
+          </button>
         </div>
       </form>
       <MessageErreur erreur={mutation.error} />

@@ -10,10 +10,9 @@
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
 import type { RenvoiJalon } from '../accueil/FriseCycleDeVie'
-import { Archers } from '../archers/Archers'
+import { InscriptionsAdmin } from './InscriptionsAdmin'
 import { FicheArcherPilotage } from '../archers/FicheArcherPilotage'
 import { Archive } from '../archive/Archive'
-import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
@@ -349,14 +348,11 @@ function Coquille() {
       // a disparu, le rapprochement se signale et se traite sur la ligne de l'archer concerné.
       rendu: () =>
         courant && (
-          <>
-            <NouvelArcher tournoiId={courant.id} />
-            <Archers
-              tournoiId={courant.id}
-              ouvrir={elementOuvrable}
-              onOuvrir={ouvreurDe('inscriptions')}
-            />
-          </>
+          <InscriptionsAdmin
+            tournoiId={courant.id}
+            ouvrir={elementOuvrable}
+            onOuvrir={ouvreurDe('inscriptions')}
+          />
         ),
     },
     {

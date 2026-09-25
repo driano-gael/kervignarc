@@ -1272,43 +1272,70 @@ button:disabled {
   cursor: pointer;
 }
 
-/* Liste des blasons d'un tournoi (E01US005). */
-.liste-blasons {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.blason__ligne {
+/* Blasons en « liste + panneau latéral » (A06, variante B — E17US007) : la liste reste, l'édition
+   s'ouvre à droite. Empilés sur un écran étroit, le panneau sous la liste. */
+.blasons__entete {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin-bottom: 8px;
 }
 
-.blason__nom {
-  font-weight: 600;
-  color: var(--text);
+.blasons__entete > .carte__soustitre {
+  margin: 0;
 }
 
-.blason__attributs {
+.blasons__compte {
   flex: 1 1 auto;
   font-size: 13px;
+  color: var(--text-muted);
+}
+
+.avec-panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 60rem) {
+  .avec-panneau--ouvert {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    align-items: start;
+  }
+}
+
+.panneau-edition {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.panneau-edition__danger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* L'intitulé d'un groupe (« Référentiel FFTA », « Créés par l'organisation ») : la réserve d'A06,
+   séparer ce qui vient du référentiel de ce que l'organisation a créé. */
+.table .blasons__groupe {
+  padding-top: 14px;
   color: var(--text-secondary);
 }
 
-.blason__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.blasons__nom {
+  font-weight: 600;
+  text-align: left;
 }
 
-.blason__actions button {
-  padding: 2px 8px;
-  font-size: 13px;
+.blasons__ligne--choisie {
+  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
 /* Valeurs de score admises d'un blason (E01US014). */
@@ -1438,6 +1465,27 @@ button:disabled {
 }
 
 /* Écran d'administration des archers (E02US003) — liste, édition, désinscription. */
+/* A09 « recherche d'abord, liste ensuite » (E17US007) : le champ en tête, les quatre compteurs
+   d'entrée dessous — ils filtrent la liste qu'ils comptent. */
+.inscrits__entree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+
+.inscrits__recherche {
+  width: 100%;
+  max-width: 32rem;
+  font-size: 16px;
+}
+
+.inscrits__compteurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .liste-archers {
   margin: 8px 0 0;
   padding: 0;

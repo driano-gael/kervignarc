@@ -91,3 +91,12 @@ export function useTraiterRemboursement(tournoiId: number) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleRemboursements(tournoiId) }),
   })
 }
+
+// Les archers qui doivent encore quelque chose — le compteur « Non réglés » d'A09 (E17US007). Le
+// reste dû est **servi** (`reste_centimes`, la règle appartient au serveur). `null` tant que la
+// lecture n'a pas abouti : l'écran l'affiche « ? », jamais 0.
+export function useArchersNonRegles(tournoiId: number): ReadonlySet<number> | null {
+  const paiements = usePaiementsArchers(tournoiId)
+  if (paiements.data === undefined) return null
+  return new Set(paiements.data.filter((l) => l.recap.reste_centimes > 0).map((l) => l.archer_id))
+}
