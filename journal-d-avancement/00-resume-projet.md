@@ -611,8 +611,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **148 US livrées** (mergées, revues, CI verte) à la date du 25/09/2026 — la dernière, `E17US009`,
-  étant aussi la dernière à **surface visible** : les **sept écrans publics** ont été comparés à leurs
+- **149 US livrées** (mergées, revues, CI verte) à la date du 25/09/2026 — la dernière, `E17US011`,
+  étant aussi la dernière à **surface visible** : sur la tablette de cible, la **ligne de chaque
+  archer porte la volée en cours**, et toucher une flèche la corrige ; le pavé de saisie, ancré en
+  bas de l'écran comme un clavier, ne se cache plus sous la grille. Juste avant, `E17US009` : les
+  **sept écrans publics** ont été comparés à leurs
   planches. Le public retrouve désormais **sa cible d'abord** sur le plan de cibles, et deux
   homonymes se distinguent par leur club ; quatre planches, en retard sur les décisions du
   commanditaire, ont été corrigées. ⚠️ L'écran de salle reste à juger **projeté**. — dont **deux

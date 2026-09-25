@@ -332,6 +332,31 @@
   différé cette US **au nom de cet invariant mort** ; l'axe adversarial l'a relevé. Le test ne se
   dérive **pas** de là : il se dérive de la planche `S02` (la ligne est `pos | nom | fl fl fl |
   somme`) et de la réserve écrite deux fois au questionnaire.
+- **Notes (livraison, 25/09/2026)** — livrée dans la même PR qu'`E17US009` (demande du
+  commanditaire). Arbitrages tranchés en cours d'US, reversés ici :
+  - **La ligne montre la volée « prochaine à saisir »**, brouillon compris — la même que le pavé
+    ouvrirait. Toucher une case **désigne l'archer et vise la flèche** : une case remplie est
+    **remplacée** à la frappe suivante (c'est ce qui rend une volée pleine corrigeable avant
+    envoi) ; une case vide ne crée pas de trou, la frappe reprend à la suite (`frapper`,
+    `flecheVisee`). Les cases sont des boutons **voisins** du bouton de ligne, pas imbriqués : la
+    propagation ne peut pas atteindre `setArcherChoisi` par construction.
+  - ⚠️ **« Le pavé rend sa colonne » réintroduisait le défaut qu'`E17US008` avait corrigé** :
+    empilé, ses touches tombaient à **826 px sur une fenêtre de 641** (mesuré). Le pavé est donc
+    **ancré en bas de l'écran** (`position: sticky`), comme un clavier : pleine largeur **et**
+    toujours visible. Pour ne pas masquer la grille, il a été compacté (420 → **253 px**) :
+    navigation des volées sur un rang défilant, volée tapée et actions sur un rang, les onze
+    touches sur un seul.
+  - ⚠️ **« 90 px par touche » n'est tenu qu'à partir d'une carte d'environ 1 100 px** : sur la
+    carte de 1 061 px du poste de mesure, les onze touches font **87 × 64 px**. Les tenir à 90 px
+    imposerait un second rang, donc de repousser la grille.
+  - **Le domicile unique** est `domain/blason.points_zone` (à côté de `ZoneScore`), et non
+    `serie.py` : **cinq** sites portaient la règle, pas deux — `serie.py`, `duel.py`,
+    `application/generateur_scores.py` (`valeur_zone`, dupliquée « délibérément » parce que le
+    symbole était privé), `saisie/volees.ts`, `saisie-duels/duel.ts`. Les quatre premiers sont
+    résorbés ; **`duel.ts` reste** (le DTO des duels ne sert pas de table) — inscrit à `DETTE-111`,
+    qui reste ouverte aussi pour sa moitié « agrégation ».
+  - Le cumul de série de la ligne est libellé **« cumul »** : sans le mot, `0 [ ][ ][ ] 0` ne disait
+    pas lequel des deux nombres était la somme de la volée.
 - **Dépend de** : E17US008 · **Jalon** : J3
 
 ### E17US009 — Confronter les écrans publics et l'écran de salle à leurs planches

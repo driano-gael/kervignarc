@@ -379,6 +379,9 @@ dans le JSX **sans aucune règle CSS** — le sélecteur de luminosité de `S01`
 
 **Laissé, et pourquoi** :
 
+- ✅ ~~🔴~~ **Résorbé par `E17US011` (25/09/2026)** — la ligne porte la volée en cours, le pavé est
+  ancré en bas de l'écran, les deux 🟠 ci-dessous se ferment avec lui (touches à 87 px, cf. la
+  fiche). Ce qui suit décrit l'écart **avant** l'US.
 - 🔴 **La ligne d'archer ne porte toujours pas la volée en cours.** Le motif est le **périmètre** :
   mettre les trois flèches dans la ligne et y déplacer le déclencheur du pavé, c'est **redessiner
   l'écran le plus utilisé du produit**, pas le rapprocher de sa planche. Une US de fidélité ne fait
