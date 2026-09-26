@@ -3,9 +3,8 @@
 Les invariants « même tournoi » et « unicité du couple » supposent de relire d'autres agrégats :
 ils vivent au service.
 
-⚠️ **Le montant dû ne vit PAS ici** : il se dérive du tarif du départ à la lecture — rien à
-stocker, rien à resynchroniser. Seuls `paye` et `cree_le`, non dérivables, sont des attributs
-propres. ADR-0017
+⚠️ **Le montant dû ne vit PAS ici** : il se dérive du tarif du départ à la lecture. Seuls `paye`
+et `cree_le`, non dérivables, sont des attributs propres. ADR-0017
 """
 
 from __future__ import annotations
