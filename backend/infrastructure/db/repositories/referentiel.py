@@ -261,6 +261,7 @@ def _vers_archer(ligne: ArcherORM) -> Archer:
         club_id=ligne.club_id,
         handicap_officiel=ligne.handicap_officiel,
         handicap_surcharge=ligne.handicap_surcharge,
+        licence=ligne.licence,
         id=ligne.id,
     )
 
@@ -534,6 +535,7 @@ class ArcherRepositorySQL:
                     club_id=archer.club_id,
                     handicap_officiel=archer.handicap_officiel,
                     handicap_surcharge=archer.handicap_surcharge,
+                    licence=archer.licence,
                 )
                 session.add(ligne)
                 session.commit()
@@ -608,6 +610,7 @@ class ArcherRepositorySQL:
                 # appelant enregistre pour une autre raison (un placement effacerait le handicap).
                 ligne.handicap_officiel = archer.handicap_officiel
                 ligne.handicap_surcharge = archer.handicap_surcharge
+                ligne.licence = archer.licence
                 session.commit()
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:

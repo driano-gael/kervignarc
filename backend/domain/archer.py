@@ -8,6 +8,7 @@ et le placement les croirait du même club, une affirmation fausse là où `None
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, replace
 
 from domain.categorie import CategorieId
@@ -15,6 +16,7 @@ from domain.club import ClubId, cle_nom
 from domain.erreurs import (
     CibleInvalide,
     HandicapInvalide,
+    LicenceInvalide,
     NomArcherInvalide,
     PrenomArcherInvalide,
 )
@@ -31,6 +33,38 @@ HANDICAP_MAXIMUM = 600
 (20 volées de 3 flèches à 10).
 
 Au-delà, le handicap ne corrige plus une différence de niveau — il **remplace** le tir."""
+
+
+LICENCE_LONGUEUR_MAXIMUM = 12
+"""Une licence FFTA compte 8 caractères (`1025022Q`) ; la marge couvre une licence étrangère."""
+
+_LICENCE_VALIDE = re.compile(r"[A-Z0-9]+")
+
+
+def normaliser_licence(valeur: str | None) -> str | None:
+    """Licence comparable : espaces retirés, majuscules ; blanche → `None` (E02US007).
+
+    Lève `LicenceInvalide` hors de `[A-Z0-9]`, ou au-delà de `LICENCE_LONGUEUR_MAXIMUM`.
+    """
+    if valeur is None:
+        return None
+    licence = "".join(valeur.split()).upper()
+    if not licence:
+        return None
+    if len(licence) > LICENCE_LONGUEUR_MAXIMUM or not _LICENCE_VALIDE.fullmatch(licence):
+        raise LicenceInvalide(
+            f"« {valeur.strip()} » n'est pas un n° de licence : lettres et chiffres seulement, "
+            f"{LICENCE_LONGUEUR_MAXIMUM} caractères au plus."
+        )
+    return licence
+
+
+def licences_distinctes(a: str | None, b: str | None) -> bool:
+    """Deux licences **connues et différentes** désignent deux personnes (ADR-0015 amendé).
+
+    Une seule licence inconnue ne décide rien : l'homonymie reste alors une question.
+    """
+    return a is not None and b is not None and a != b
 
 
 def cle_identite(nom: str, prenom: str, club_id: ClubId | None) -> CleIdentite:
@@ -77,6 +111,12 @@ class Archer:
     Sert au cas réel : un archer dont le handicap officiel est manifestement périmé (reprise après
     une longue absence, progression rapide d'un jeune) sans qu'on veuille pour autant réécrire la
     référence du club. La surcharge est **locale au tournoi**, l'officiel voyage."""
+
+    licence: str | None = None
+    """N° de licence FFTA, **facultatif** (ADR-0014 : la licence peut être restée dans la voiture).
+
+    ⚠️ Unique **dans le tournoi** — tenu par `ServiceArchers` et le plan d'import, doublé d'un index
+    `UNIQUE` partiel en base (ADR-0115). Toujours stocké normalisé (`normaliser_licence`)."""
 
     id: ArcherId | None = None
 
@@ -135,6 +175,7 @@ class Archer:
         tournoi_id: TournoiId,
         categorie_id: CategorieId,
         club_id: ClubId | None = None,
+        licence: str | None = None,
     ) -> Archer:
         """Crée un archer valide.
 
@@ -148,6 +189,7 @@ class Archer:
             tournoi_id=tournoi_id,
             categorie_id=categorie_id,
             club_id=club_id,
+            licence=normaliser_licence(licence),
         )
 
     def modifier(
@@ -156,14 +198,15 @@ class Archer:
         prenom: str,
         categorie_id: CategorieId,
         club_id: ClubId | None,
+        licence: str | None,
     ) -> Archer:
         """Renvoie une copie éditée (E02US003) ; mêmes contrôles de saisie que `creer`.
 
-        **Remplacement total, pas mise à jour partielle** : les quatre champs éditables sont
-        exigés, `club_id` compris et ⚠️ **sans valeur par défaut** — un défaut à `None` confondrait
-        « je détache le club » et « je n'y touche pas », et c'est le premier qui est demandé
-        (ADR-0014). `tournoi_id`, `cible` et `id` traversent la copie intacts : éditer ne déplace
-        pas.
+        **Remplacement total, pas mise à jour partielle** : les cinq champs éditables sont
+        exigés, `club_id` et `licence` compris et ⚠️ **sans valeur par défaut** — un défaut à
+        `None` confondrait « je détache le club » et « je n'y touche pas », et c'est le premier
+        qui est demandé (ADR-0014). `tournoi_id`, `cible` et `id` traversent la copie intacts :
+        éditer ne déplace pas.
         """
         return replace(
             self,
@@ -171,6 +214,7 @@ class Archer:
             prenom=_texte_obligatoire(prenom, PrenomArcherInvalide, "Le prénom de l'archer"),
             categorie_id=categorie_id,
             club_id=club_id,
+            licence=normaliser_licence(licence),
         )
 
     def placer(self, cible: int) -> Archer:

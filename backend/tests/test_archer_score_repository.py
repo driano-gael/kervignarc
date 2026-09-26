@@ -240,7 +240,9 @@ def test_enregistrer_persiste_l_edition_complete(tmp_path: Path) -> None:
         cree = archers.ajouter(Archer.creer("Robain", "Jean", tournoi_id, categorie_id))
         assert cree.id is not None and autre_categorie.id is not None
 
-        edite = archers.enregistrer(cree.modifier("Robin", "Jeanne", autre_categorie.id, club.id))
+        edite = archers.enregistrer(
+            cree.modifier("Robin", "Jeanne", autre_categorie.id, club.id, None)
+        )
         assert (edite.nom, edite.prenom) == ("Robin", "Jeanne")
         assert (edite.categorie_id, edite.club_id) == (autre_categorie.id, club.id)
         assert archers.par_id(cree.id) == edite
@@ -258,7 +260,7 @@ def test_enregistrer_detache_le_club_en_base(tmp_path: Path) -> None:
         cree = archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id, categorie_id, club.id))
         assert cree.id is not None
 
-        archers.enregistrer(cree.modifier("Robin", "Jean", categorie_id, None))
+        archers.enregistrer(cree.modifier("Robin", "Jean", categorie_id, None, None))
         relu = archers.par_id(cree.id)
         assert relu is not None and relu.club_id is None
     finally:

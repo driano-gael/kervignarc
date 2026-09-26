@@ -79,18 +79,16 @@ class ServiceInscriptions:
                 f"« {archer.prenom} {archer.nom} » est déjà inscrit sur le départ n° "
                 f"{depart.numero}."
             )
-        # `is not None` et non la vérité de `quota` : un quota de `0` ne peut pas exister (le
-        # domaine le refuse), mais l'idiome garde « défini » distinct de « absent » sans ambiguïté.
         # On compte **toutes** les inscriptions du créneau (payées ou non — une place réservée dès
         # l'inscription) ; l'archer courant n'y est pas (l'unicité vient d'être vérifiée), donc
-        # `len >= quota` bloque bien la place *quota + 1*, pas une de trop.
-        if depart.quota is not None:
-            inscrits = len(self._inscriptions.par_depart(depart_id))
-            if inscrits >= depart.quota:
-                raise DepartComplet(
-                    f"Le départ n° {depart.numero} est complet "
-                    f"({depart.quota} inscrit{'s' if depart.quota > 1 else ''} maximum)."
-                )
+        # `est_complet` bloque bien la place *quota + 1*, pas une de trop.
+        if depart.quota is not None and depart.est_complet(
+            len(self._inscriptions.par_depart(depart_id))
+        ):
+            raise DepartComplet(
+                f"Le départ n° {depart.numero} est complet "
+                f"({depart.quota} inscrit{'s' if depart.quota > 1 else ''} maximum)."
+            )
         inscription = self._inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
         return InscriptionDetaillee(inscription, depart)
 

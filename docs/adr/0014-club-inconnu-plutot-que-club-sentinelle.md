@@ -1,6 +1,6 @@
 # ADR-0014 — Le club d'un archer est facultatif : `NULL` = *inconnu*, jamais un club
 
-- **Statut** : Accepté
+- **Statut** : Accepté — **amendé** le 2026-09-26 par [ADR-0115](0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md) (E02US007)
 - **Date** : 2026-07-15
 - **Décideurs** : Organisateur / Architecte
 - **Amende** : [`stories/E02-inscriptions.md`](../../stories/E02-inscriptions.md) (E02US002 : le CA
@@ -62,6 +62,14 @@ jamais « aucun club », jamais un club.**
   *suggérer*, `NULL ≠ NULL` pour *décider*. Ce que `cle_identite` garantit en revanche, et qui vaut
   ici : elle ne rapproche **jamais** un archer sans club d'un archer rattaché.
 
+### Amendement du 26/09/2026 — la licence arrive (E02US007, [ADR-0115](0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md))
+
+L'archer porte désormais un n° de licence **facultatif**, et c'est le même raisonnement que pour le
+club qui le rend facultatif : au guichet, la licence peut être restée dans la voiture. `NULL` y dit
+« pas encore su », comme `club_id`. Ce qui change : **deux licences connues et différentes
+départagent** deux archers que le club seul laissait indécidables — un père et son fils du même
+club ne sont plus une question dès que leurs deux licences sont saisies.
+
 ## Conséquences
 
 - **+** L'inscription au guichet n'est jamais bloquée par une information administrative absente.
@@ -87,7 +95,7 @@ jamais « aucun club », jamais un club.**
   (« afficher la complétude ») qui fermera ce trou. **Ne pas confondre les deux** — un marqueur sur
   une ligne n'est pas un garde-fou, c'est un rappel.
 
-## Alternative écartée — un numéro de licence FFTA
+## Alternative écartée — un numéro de licence FFTA *(levée par ADR-0115)*
 
 Ajouter `archer.licence` (identifiant national, unique par archer) distinguerait deux homonymes du
 même club et permettrait un dédoublonnage **entre tournois**. Écartée **pour l'instant**, pour trois
@@ -96,6 +104,14 @@ retombe sur le cas du club ; (b) obligatoire, elle impose la saisie d'un numéro
 guichet, exactement le blocage qu'on refuse ici ; (c) elle n'existe dans aucun CA ni dans le modèle
 de données. Elle arrivera naturellement avec **E02US007** (import inscript'arc), où le fichier
 fédéral la porte déjà — c'est là qu'elle aura un usage réel plutôt qu'une saisie manuelle.
+
+## Porté dans le code par
+
+- `backend/domain/archer.py` — `club_id` facultatif et `cle_identite` (club brut) ; depuis
+  ADR-0115, `licence` facultative, `normaliser_licence`, `licences_distinctes`.
+- `backend/application/archers.py` — `ClubIntrouvable` : un club fourni doit exister.
+- `backend/application/clubs.py` — `ClubReference` : un club référencé ne se supprime pas.
+- `backend/infrastructure/db/models.py` — `ArcherORM.club_id` et `ArcherORM.licence` nullables.
 
 ## Liens
 

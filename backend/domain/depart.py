@@ -59,8 +59,8 @@ class Depart:
     `numero` est attribué par le service (unique dans le tournoi) ; `horaire` (`HH:MM`, 24 h) est
     **obligatoire** depuis E02US010 ; `tarif_centimes` est le prix **de ce créneau**, obligatoire ;
     `quota` (E02US006) est **facultatif** — `None` = pas de plafond. ⚠️ L'agrégat ne connaît que la
-    **valeur** du quota ; le contrôle « inscrits < quota » vit dans le service, seul à voir les
-    inscriptions.
+    **valeur** du quota ; le **comptage** des inscrits vit dans le service, seul à les voir —
+    la règle, elle, est `est_complet`, partagée par l'inscription et l'import (E02US007).
     """
 
     tournoi_id: TournoiId
@@ -103,6 +103,10 @@ class Depart:
         **celle-ci** qui fait foi puisqu'elle est persistée — `DETTE-106`.
         """
         return f"Départ n°{self.numero} — {self.horaire}"
+
+    def est_complet(self, inscrits: int) -> bool:
+        """Vrai si `inscrits` occupent déjà toutes les places ; jamais sans quota."""
+        return self.quota is not None and inscrits >= self.quota
 
     def modifier(self, tarif_centimes: int, horaire: str, quota: int | None = None) -> Depart:
         """Renvoie une copie au tarif, à l'horaire et au quota mis à jour (règles de `creer`).

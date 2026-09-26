@@ -3,6 +3,7 @@
 - **Version** : 0.13
 - ⚠️ **Retard connu (`DETTE-096`)** : les migrations **0048 → 0051** ne sont pas encore reflétées ici — tables `franchissement_arret`, `arret_de_circonstance`, `identite_tournoi`, et colonnes `poste.noms_par_page` / `cadence_page_s`. La date ci-dessous est celle de la **dernière entrée**, pas d'un audit du schéma.
 - **Date** : 2026-08-31 *(v0.13 : `TOURNOI` gagne **`podium_portees`** et **`podium_profondeur`** — ce que le tournoi récompense et sur combien de places, réglage **du tournoi** comme `cloisonnement` — E16US014, [ADR-0103](adr/0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md), migration 0052)*
+- *v0.14 : 2026-09-26 — `ARCHER` gagne `licence`, facultative et unique dans le tournoi (index partiel) — E02US007, [ADR-0115](adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md), migration 0058*
 - *v0.12 : 2026-08-07 — **la définition quitte `PHASE`** — table **`DEROULE_ETAPE`** neuve (le déroulé, défini **une fois** au tournoi : `ordre`, `type`, `config`), `PHASE` réduite à l'**avancement** d'une étape dans un créneau (`depart_id`, `ordre`, `statut`) et perd `type`/`config` — E01US025, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), migration 0043)*
 - *v0.11 : 2026-08-06 — **`PHASE` change de parent** — `depart_id` remplace `tournoi_id`, le **départ** devenant la portée sportive (séquence, classements, tableaux, duels). Rattrapage d'une divergence de treize mois avec [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), qui l'avait décidé sans que le moteur le porte — E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042)*
 - *v0.10 : 2026-08-04 — `TOURNOI` gagne `cloisonnement` — ce qu'une cible n'a pas le droit de mêler (`aucun` | `categorie` | `blason` | `blason_et_categorie`), réglage **activable** du tournoi et non du gabarit, qui est partagé entre tournois — E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041)*
@@ -166,6 +167,7 @@ erDiagram
 | cible | INTEGER | **nullable** — placement **provisoire** du walking skeleton (E00US011) : un simple numéro, sans capacité ni contrainte de blason. Remplacé par `PLACEMENT` en EPIC-03. `NOT NULL` ⇒ archer *placé*, ce qui suspend sa suppression ([ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)) |
 | handicap_officiel | INTEGER | **nullable** — handicap de référence, entretenu par le club (E05US015, migration `0037`) |
 | handicap_surcharge | INTEGER | **nullable** — handicap qui **prime** l'officiel pour cette édition |
+| licence | TEXT | **nullable** — n° de licence FFTA normalisé (`[A-Z0-9]`, majuscules). **Unique dans le tournoi** : index partiel `uq_archer_tournoi_licence` `(tournoi_id, licence) WHERE licence IS NOT NULL` (E02US007, [ADR-0115](adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md), migration `0058`) |
 
 > **Handicap (E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md) §6).** Deux colonnes et
 > non une, à la demande du commanditaire : une valeur **officielle** que le club entretient d'une

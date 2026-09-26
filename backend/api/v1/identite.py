@@ -15,8 +15,9 @@ from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from api.corps import lire_le_corps_borne
 from api.dependances import exiger_admin
-from application.erreurs import CorpsHorsDeProportion, LogoIntrouvable
+from application.erreurs import LogoIntrouvable
 from application.identite import AccentDecline, IdentiteDeclinee, ServiceIdentite, decliner
 from domain.identite import (
     POIDS_LOGO_MAX_OCTETS,
@@ -37,7 +38,7 @@ router = APIRouter(prefix="/api/v1", tags=["identite"])
 # marge sur `POIDS_LOGO_MAX_OCTETS` est volontaire — c'est le domaine qui rend le message utile («
 # ce logo pèse 900 Ko, la limite est 512 Ko »), pas cette coupure de sécurité, qui doit rester
 # muette et large. Elle est appliquée **pendant** la lecture, pas après : cf.
-# `_lire_le_corps_borne`.
+# `api.corps.lire_le_corps_borne`.
 _PLAFOND_DE_LECTURE_OCTETS = 4 * 1024 * 1024
 
 
@@ -228,14 +229,14 @@ async def deposer_un_logo(
     reconnu, un contenu qui dément le format annoncé, un SVG porteur de script, ou un fichier trop
     lourd — tous ces refus viennent du **domaine**, aucun n'est réécrit ici. `413` si le corps
     dépasse la coupure de la frontière, autre affaire que la limite métier
-    (`_lire_le_corps_borne`).
+    (`api.corps.lire_le_corps_borne`).
     """
 
     # ⚠️ Le **type d'abord**, le corps ensuite : l'ordre inverse accumulait jusqu'à 4 Mo en mémoire
     # pour refuser sur un en-tête lisible gratuitement. Effet voulu — un gros corps de format non
     # reconnu rend 422 (le format *est* invalide, on l'a su sans rien lire) au lieu de 413.
     type_logo = TypeLogo.depuis_entete(request.headers.get("content-type"))
-    contenu = await _lire_le_corps_borne(request)
+    contenu = await lire_le_corps_borne(request, _PLAFOND_DE_LECTURE_OCTETS)
     service: ServiceIdentite = request.app.state.service_identite
     write_queue: WriteQueue = request.app.state.write_queue
     identite = await asyncio.wrap_future(
@@ -326,23 +327,3 @@ def _etag_deja_connu(entete: str | None, etag: str) -> bool:
         return False
     proposees = {valeur.strip().removeprefix("W/") for valeur in entete.split(",")}
     return etag in proposees or "*" in proposees
-
-
-async def _lire_le_corps_borne(request: Request) -> bytes:
-    """Lit le corps de la requête **en s'arrêtant** au plafond, au lieu de le borner après coup.
-
-    ⚠️ `Request.body()` accumule **tout** le flux avant de rendre la main : borner après coup
-    mettait bel et bien 20 Mo en mémoire avant de refuser, pendant que le commentaire promettait
-    l'inverse. Deux contrôles et non un : `Content-Length` refuse sans lire quand il est annoncé,
-    le cumul en flux couvre le transfert **chunké**. C'est le serveur **unique** du gymnase qui
-    paierait.
-    """
-    annonce = request.headers.get("content-length")
-    if annonce is not None and annonce.isdigit() and int(annonce) > _PLAFOND_DE_LECTURE_OCTETS:
-        raise CorpsHorsDeProportion("Corps de requête hors de proportion.")
-    morceaux = bytearray()
-    async for morceau in request.stream():
-        morceaux.extend(morceau)
-        if len(morceaux) > _PLAFOND_DE_LECTURE_OCTETS:
-            raise CorpsHorsDeProportion("Corps de requête hors de proportion.")
-    return bytes(morceaux)

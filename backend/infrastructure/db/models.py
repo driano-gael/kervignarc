@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import ForeignKey, LargeBinary, UniqueConstraint, text
+from sqlalchemy import ForeignKey, Index, LargeBinary, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
@@ -199,6 +199,16 @@ class ArcherORM(Base):
     """Table `archer` — persistance de l'agrégat `Archer` (E00US011, inscription en E02US002)."""
 
     __tablename__ = "archer"
+    # Index **partiel** : deux archers sans licence ne se gênent pas (migration 0058, ADR-0115).
+    __table_args__ = (
+        Index(
+            "uq_archer_tournoi_licence",
+            "tournoi_id",
+            "licence",
+            unique=True,
+            sqlite_where=text("licence IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
@@ -218,6 +228,7 @@ class ArcherORM(Base):
     # évalué. La nuance ne change rien au calcul et tout à ce que l'écran doit afficher.
     handicap_officiel: Mapped[int | None] = mapped_column(nullable=True)
     handicap_surcharge: Mapped[int | None] = mapped_column(nullable=True)
+    licence: Mapped[str | None] = mapped_column(nullable=True)
 
 
 class ScoreORM(Base):

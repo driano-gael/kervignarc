@@ -44,6 +44,7 @@ from api.v1.formats import router as formats_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.identite import router as identite_router
+from api.v1.import_inscrits import router as import_inscrits_router
 from api.v1.inscriptions import router as inscriptions_router
 from api.v1.jalons import apercus_router as jalons_apercus_router
 from api.v1.jalons import router as jalons_router
@@ -103,6 +104,7 @@ from application.gel_de_pause import EvaluateurArrets
 from application.generateur_scores import GenerateurScoresPlausibles
 from application.grain_validation import ServiceGrainValidation
 from application.identite import ServiceIdentite
+from application.import_inscrits import ServiceImportInscrits
 from application.inscriptions import ServiceInscriptions
 from application.jalons import ServiceJalons
 from application.jeu_essai import ServiceJeuEssai
@@ -177,6 +179,7 @@ from infrastructure.db import (
     FranchissementArretRepositorySQL,
     GabaritSalleRepositorySQL,
     IdentiteVisuelleRepositorySQL,
+    ImportInscritsRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
     PlacementParBlocRepositorySQL,
@@ -193,6 +196,7 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from infrastructure.idempotence import RegistreIdempotence
+from infrastructure.import_inscrits import LecteurFichierInscritsAuto
 from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
@@ -635,6 +639,18 @@ def create_app(
     # en une transaction (`supprimer_avec_remboursement`).
     app.state.service_inscriptions = ServiceInscriptions(
         inscription_repository, archer_repository, depart_repository, HorlogeSysteme()
+    )
+    # Import d'un fichier d'inscrits (E02US007, ADR-0115) : un lecteur qui aiguille par signature
+    # (Ianseo / Résult'Arc), et un écrivain qui applique le plan en **une** transaction.
+    app.state.service_import_inscrits = ServiceImportInscrits(
+        tournois=tournoi_repository,
+        categories=categorie_repository,
+        departs=depart_repository,
+        archers=archer_repository,
+        clubs=club_repository,
+        inscriptions=inscription_repository,
+        lecteur=LecteurFichierInscritsAuto(),
+        ecrivain=ImportInscritsRepositorySQL(database.session_factory),
     )
     # Traitement des remboursements (E08US005, ADR-0057) : lister les postes à traiter et les
     # marquer
@@ -1410,6 +1426,7 @@ def create_app(
     app.include_router(tournois_router)
     app.include_router(departs_router)
     app.include_router(inscriptions_router)
+    app.include_router(import_inscrits_router)
     app.include_router(jeu_essai_router)
     app.include_router(simulation_router)
     app.include_router(paiements_router)

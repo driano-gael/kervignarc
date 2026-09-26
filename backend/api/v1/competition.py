@@ -41,6 +41,7 @@ class AjouterArcherRequete(BaseModel):
     categorie_id: int
     club_id: int | None = None
     autoriser_homonyme: bool = False
+    licence: str | None = None
 
 
 class ModifierArcherRequete(BaseModel):
@@ -58,6 +59,7 @@ class ModifierArcherRequete(BaseModel):
     categorie_id: int
     club_id: int | None = None
     autoriser_homonyme: bool = False
+    licence: str | None = None
     autoriser_changement_categorie: bool = False
 
 
@@ -98,6 +100,7 @@ class ArcherReponse(BaseModel):
     club_id: int | None
     handicap_officiel: int | None
     handicap_surcharge: int | None
+    licence: str | None
     handicap: int
     """Le handicap **effectif** — la surcharge si elle existe, sinon l'officiel, sinon 0.
 
@@ -120,6 +123,7 @@ class ArcherReponse(BaseModel):
             club_id=archer.club_id,
             handicap_officiel=archer.handicap_officiel,
             handicap_surcharge=archer.handicap_surcharge,
+            licence=archer.licence,
             handicap=archer.handicap,
         )
 
@@ -279,6 +283,7 @@ async def ajouter_archer(
                 requete.categorie_id,
                 requete.club_id,
                 requete.autoriser_homonyme,
+                requete.licence,
             )
         )
     )
@@ -308,7 +313,8 @@ async def modifier_archer(
     """Corrige un archer inscrit (**écriture**, session requise — E10US001 ; E02US003).
 
     Renvoie `409 homonyme_archer` ou `409 changement_categorie_archer_engage` — des
-    **signalements**, que le client lève en rejouant l'appel avec le drapeau correspondant.
+    **signalements**, que le client lève en rejouant l'appel avec le drapeau correspondant — et
+    `409 licence_deja_prise`, un **refus** qu'aucun drapeau ne lève (E02US007).
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
@@ -322,6 +328,7 @@ async def modifier_archer(
                 requete.club_id,
                 requete.autoriser_homonyme,
                 requete.autoriser_changement_categorie,
+                requete.licence,
             )
         )
     )

@@ -28,6 +28,7 @@ from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.identite import EmplacementLogo, IdentiteVisuelle, Logo
+from domain.import_inscrits import FichierInscrits, PlanImport
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
 from domain.palmares import SectionPalmares
@@ -250,6 +251,26 @@ class DepartRepository(Protocol):
         de remboursement en double. Liste vide tolérée (équivalente à `supprimer`).
         """
         ...
+
+
+class LecteurFichierInscrits(Protocol):
+    """Lit un fichier d'inscrits déposé (E02US007) ; la source se reconnaît au contenu.
+
+    Lève `FichierInscritsIllisible` si le fichier n'est d'aucune source connue ; une ligne
+    illisible, elle, revient porteuse de son `anomalie` sans faire échouer le fichier.
+    """
+
+    def lire(self, contenu: bytes) -> FichierInscrits: ...
+
+
+class ImportInscritsRepository(Protocol):
+    """Écrit les lignes importables d'un plan (clubs, fiches, inscriptions) en **une** transaction.
+
+    ⚠️ N'écrit que `plan.importables` et ne revérifie rien : le plan a été calculé dans la même
+    commande de la file d'écriture (règle 7), sur un instantané que rien n'a pu changer.
+    """
+
+    def appliquer(self, tournoi_id: TournoiId, plan: PlanImport) -> None: ...
 
 
 class InscriptionRepository(Protocol):

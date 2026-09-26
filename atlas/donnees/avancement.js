@@ -2131,7 +2131,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0057",
     "0075",
-    "0077"
+    "0077",
+    "0115"
    ],
    "dettes_introduites": [
     "104"
@@ -2242,7 +2243,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0014",
     "0015",
-    "0057"
+    "0057",
+    "0115"
    ],
    "dettes_introduites": [
     "006"
@@ -2261,7 +2263,8 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0017"
+    "0017",
+    "0115"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -2279,7 +2282,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0014",
-    "0015"
+    "0015",
+    "0115"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -2322,7 +2326,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0077",
-    "0096"
+    "0096",
+    "0115"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [

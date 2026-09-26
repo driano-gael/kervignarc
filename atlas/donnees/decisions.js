@@ -396,7 +396,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0115"
+   ],
    "date": "2026-07-15",
    "date_brute": "2026-07-15",
    "extrait": "Retenir l'option 3. archer.club_id est nullable, et NULL signifie « club encore inconnu » — jamais « aucun club », jamais un club. - Un NULL est une anomalie, pas un état légitime. Le classement marque « Club inconnu » sur la ligne de l'archer concerné, et E12US005 le comptera parmi ce qui manque avant de lancer le tournoi. On ne s'en accommode pas : on le rend visible pour qu'il soit résorbé. La liste déroulante de saisie n'est pas ce signalement — elle est l'entrée du formulaire ; le signal porte sur les archers déjà inscrits, ceux qu'on ne regarde plus. - Aucun club sentinelle, jamais. C'est l'interdit central de cet ADR : il détruirait l'information au lieu de la porter (voir […]",
@@ -440,10 +442,52 @@ window.ATLAS.decisions = {
      "type": "us"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/application/archers.py",
+     "existe": true,
+     "symboles": [
+      "ClubIntrouvable"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/clubs.py",
+     "existe": true,
+     "symboles": [
+      "ClubReference"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/archer.py",
+     "existe": true,
+     "symboles": [
+      "club_id",
+      "cle_identite",
+      "licence",
+      "normaliser_licence",
+      "licences_distinctes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "ArcherORM.club_id",
+      "ArcherORM.licence"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté",
+   "statut_brut": "Accepté — **amendé** le 2026-09-26 par [ADR-0115](0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md) (E02US007)",
    "titre": "Le club d'un archer est facultatif : `NULL` = *inconnu*, jamais un club",
    "us": [
     "E02US001",
@@ -458,7 +502,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0115"
+   ],
    "date": "2026-07-15",
    "date_brute": "2026-07-15",
    "extrait": "Retenir l'option 3, sans index UNIQUE. - Le contrôle vit dans le service applicatif, au sens de domain.archer.cle_identite (nom, prénom, club ; casse et accents repliés par domain.club.cle_nom). - Aucune contrainte de base ne le double, contrairement au patron Club (où nom_club_deja_pris est doublé d'un UNIQUE). C'est une rupture assumée : ici, la contrainte rejetterait le fils. - La confirmation est un drapeau du corps de requête : autoriser_homonyme: bool = false sur POST /api/v1/tournois/{id}/archers. Le client qui reçoit le 409 réémet le même corps avec le drapeau à true. - Le 409 est une question, pas un verdict. C'est ce qui le distingue de tous les autres 409 du projet […]",
@@ -484,10 +530,53 @@ window.ATLAS.decisions = {
      "type": "us"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/competition.py",
+     "existe": true,
+     "symboles": [
+      "autoriser_homonyme",
+      "AjouterArcherRequete",
+      "ModifierArcherRequete"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/archers.py",
+     "existe": true,
+     "symboles": [
+      "_signaler_homonyme",
+      "autoriser_homonyme",
+      "_refuser_licence_prise"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/archer.py",
+     "existe": true,
+     "symboles": [
+      "cle_identite",
+      "licences_distinctes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/import_inscrits.py",
+     "existe": true,
+     "symboles": [
+      "HOMONYME",
+      "homonymes_acceptes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté",
+   "statut_brut": "Accepté — **amendé** le 2026-09-26 par [ADR-0115](0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md) (E02US007)",
    "titre": "Signaler un doublon d'archer plutôt que l'interdire : 409 + confirmation",
    "us": [
     "E02US002",
@@ -11126,6 +11215,128 @@ window.ATLAS.decisions = {
     "E17US008",
     "E17US009",
     "E17US011"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-26",
+   "date_brute": "2026-09-26",
+   "extrait": "### 1. Un plan pur, calculé deux fois Le domaine (domain/import_inscrits.py) décide de chaque ligne sur un instantané du tournoi : CREER (fiche + inscription), INSCRIRE (fiche déjà désignée par la licence), HOMONYME, REJETEE + motif. L'ordre du fichier compte : une ligne voit les fiches créées et les places prises par les précédentes — c'est ce qui re-contrôle le quota (contrainte 2), via Depart.est_complet, règle désormais partagée avec ServiceInscriptions.inscrire plutôt que dupliquée. L'aperçu calcule le plan et le rend. La confirmation redépose le fichier et recalcule le plan dans la même commande de la file d'écriture (règle 7) : rien n'est gardé côté serveur entre les deux appels, et […]",
+   "fichier": "docs/adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md",
+   "identifiant": "0115",
+   "liens": [
+    {
+     "cible": "E02US007",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0014",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0015",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/import_inscrits.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/archers.py",
+     "existe": true,
+     "symboles": [
+      "LicenceDejaPrise"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/import_inscrits.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/archer.py",
+     "existe": true,
+     "symboles": [
+      "Archer.licence",
+      "normaliser_licence",
+      "licences_distinctes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/depart.py",
+     "existe": true,
+     "symboles": [
+      "Depart.est_complet"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/doublons.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/import_inscrits.py",
+     "existe": true,
+     "symboles": [
+      "planifier_import",
+      "tranche_age"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/import_inscrits.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/import_inscrits/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0058_archer_licence.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "L'import des inscrits est un plan pur, écrit en une transaction ; la licence identifie la fiche",
+   "us": [
+    "E01US026",
+    "E02US005",
+    "E02US006",
+    "E02US007",
+    "E02US010"
    ]
   }
  ]

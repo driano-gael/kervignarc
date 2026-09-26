@@ -27,6 +27,7 @@ from application.erreurs import (
     FusionArchersEngages,
     FusionImpossible,
     HomonymeArcher,
+    LicenceDejaPrise,
     SaisieHorsCible,
     TournoiIntrouvable,
 )
@@ -1481,3 +1482,104 @@ def test_le_remboursement_fige_le_creneau_detruit() -> None:
     (rembourse,) = m.inscrits.remboursements_ouverts
     assert "1" in rembourse.creneau and "09:00" in rembourse.creneau
     assert rembourse.cree_le == _INSTANT
+
+
+# --- Licence (E02US007, arbitrage 3 : une fiche par licence dans le tournoi) ---------------------
+
+
+def test_ajouter_archer_enregistre_sa_licence_normalisee() -> None:
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567a")
+
+    assert m.inscrits.par_id(archer.id or 0) == archer
+    assert archer.licence == "1234567A"
+
+
+def test_ajouter_archer_refuse_une_licence_deja_prise_dans_le_tournoi() -> None:
+    """Refus **ferme** : même licence = même personne, aucun drapeau ne le lève."""
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+    with pytest.raises(LicenceDejaPrise):
+        m.archers.ajouter(
+            m.tournoi_id,
+            "Martin",
+            "Paul",
+            m.categorie_id,
+            licence=" 1234567a",
+            autoriser_homonyme=True,
+        )
+
+
+def test_ajouter_archer_meme_licence_dans_un_autre_tournoi_passe() -> None:
+    m = _monter()
+    autre_tournoi, autre_categorie = m.autre_tournoi()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+
+    archer = m.archers.ajouter(autre_tournoi, "Dupont", "Jean", autre_categorie, licence="1234567A")
+
+    assert archer.licence == "1234567A"
+
+
+def test_ajouter_archer_deux_licences_differentes_ne_sont_pas_homonymes() -> None:
+    """ADR-0015 rouvert : la licence rend le doublon décidable — plus de question à poser."""
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+
+    fils = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="7654321B")
+
+    assert fils.id is not None
+
+
+def test_ajouter_archer_une_seule_licence_connue_signale_encore_l_homonyme() -> None:
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    with pytest.raises(HomonymeArcher):
+        m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+
+
+def test_modifier_archer_pose_la_licence() -> None:
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+
+    edite = m.archers.modifier(archer.id or 0, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+
+    assert edite.licence == "1234567A"
+
+
+def test_modifier_archer_refuse_la_licence_d_un_autre_inscrit() -> None:
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+    autre = m.archers.ajouter(m.tournoi_id, "Martin", "Paul", m.categorie_id)
+    with pytest.raises(LicenceDejaPrise):
+        m.archers.modifier(autre.id or 0, "Martin", "Paul", m.categorie_id, licence="1234567A")
+
+
+def test_modifier_archer_garde_sa_propre_licence() -> None:
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+
+    edite = m.archers.modifier(archer.id or 0, "Dupond", "Jean", m.categorie_id, licence="1234567A")
+
+    assert edite.nom == "Dupond"
+
+
+def test_fusionner_deux_licences_differentes_est_impossible() -> None:
+    """Deux licences distinctes = deux personnes : ce n'est pas un doublon."""
+    m = _monter()
+    a = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+    b = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="7654321B")
+    with pytest.raises(FusionImpossible):
+        m.archers.fusionner(a.id or 0, b.id or 0)
+
+
+def test_fusionner_le_gagnant_sans_licence_herite_celle_du_perdant() -> None:
+    """Sans quoi la fusion perdrait en silence la seule donnée qui rend le doublon décidable."""
+    m = _monter()
+    gagnant = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    perdant = m.archers.ajouter(
+        m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A", autoriser_homonyme=True
+    )
+
+    fusionne = m.archers.fusionner(gagnant.id or 0, perdant.id or 0)
+
+    assert fusionne.licence == "1234567A"
