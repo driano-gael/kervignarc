@@ -85,7 +85,7 @@ window.ATLAS.controles = {
    "code": "derniere-us-orpheline",
    "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0113, ADR-0074, ADR-0104, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
    "severite": "signal",
-   "sujet": "E17US007"
+   "sujet": "E17US012"
   },
   {
    "code": "features-enchevetrees",

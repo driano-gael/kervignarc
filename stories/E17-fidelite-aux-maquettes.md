@@ -292,9 +292,11 @@
     simplement**, retirées si elles supposent un **concept neuf** ou une jointure fragile —
     - **A04** : **INSCRITS** (archers distincts inscrits au tournoi) et **CIBLES** alimentées ;
       liste classée **par statut, puis par date** ;
-    - **A08** : **PÉRIMÈTRE** (un scoreur n'a aucun périmètre au modèle), **ÉTAT** et **DERNIÈRE
+    - **A08** : **retirées de la planche** — **PÉRIMÈTRE** (un scoreur n'a aucun périmètre au
+      modèle), **ÉTAT** (la session scoreur n'expire pas et n'émet aucun signe de vie : on sait
+      qu'elle a été *ouverte*, jamais qu'elle est *en ligne* — l'afficher mentirait) et **DERNIÈRE
       VALIDATION** (le journal d'audit ne connaît le scoreur que par son **nom**, homonymes
-      compris) **retirées de la planche** ; chaque ligne ouvre son QR et son code ;
+      compris) ; chaque ligne ouvre son QR et son code ;
     - **A12** : le tableau est l'écran **Postes** (préparation des codes), une ligne par poste,
       QR à la ligne ; rattachement, appareil et signe de vie restent à la **supervision** (A13,
       tuiles retenues), qui porte déjà le bandeau par type d'écran. **Régénérer un jeton,
@@ -308,6 +310,23 @@
   `E16US015`) : **re-mesurer**, ne pas se fier au relevé. Les évolutions écrites au questionnaire
   font partie de la cible — A08 et A12 : « chaque ligne doit ouvrir le QR et le code de
   raccrochement » ; A04 : classer par statut puis date ; A12 : bandeau repliable par type d'écran.
+- **Notes (livraison, 26/09/2026)** — re-mesuré avant de coder : A04 était une liste `<ul>`,
+  A08 et A12 aussi, A17 avait déjà son `<table>` mais pas les colonnes de la planche. Deux des
+  évolutions du questionnaire étaient **déjà livrées** : le tri « statut puis date » d'A04
+  (`tournois/tri.ts`) et le bandeau repliable par type d'écran d'A12 (à la **supervision**). Tranché
+  en cours d'US, en plus de l'arbitrage de cadrage ci-dessus :
+  - **A12 · TYPE retiré** : l'écran Postes ne liste que les écrans de **cible** (`PosteAdmin` porte
+    `cible_index`) — la colonne vaudrait toujours la même chose. Le **jeton** de la planche est le
+    **code** imprimé sous le QR : l'en-tête garde le mot du produit, « Code ».
+  - **A17 · TARIF / DÛ** : TARIF = ce que l'archer devait en tout (`du_centimes`), DÛ = ce qu'il doit
+    encore, avec son statut. PAYÉ s'en déduit, la planche ne le montre pas. « Sans dette » s'écrit
+    « — » dans DEPUIS ; un archer sans club, « sans club ».
+  - **A17 · un montant nul n'est pas « Gratuit »** : `decrireTarif(0)` rendait « Gratuit » sur un
+    reste réglé — y compris dans la vue par club, **avant** cette US. `decrireMontant` porte les
+    montants, `decrireTarif` reste aux tarifs.
+  - Les **planches** A04, A08 et A12 sont corrigées (colonnes retirées, verdict « colonnes retirées
+    par E17US012 ») ; A17 n'en perd aucune. Ses encarts « par moyen de paiement » ne sont pas au CA et
+    ne sont **pas** faits — l'application ne connaît pas le moyen de paiement.
 - **Dépend de** : E17US007 · **Jalon** : J3
 
 ### E17US008 — Confronter les écrans de saisie à leurs planches
