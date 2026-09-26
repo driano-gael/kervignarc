@@ -8,6 +8,7 @@ racine `/`, pour ne jamais masquer `/api/v1/…`, `/ws`, `/health` ni `/docs`.
 
 from __future__ import annotations
 
+import mimetypes
 import os
 from pathlib import Path
 
@@ -94,4 +95,7 @@ def monter_spa(app: FastAPI, dist_dir: Path) -> None:
     assuré par `_StatiquesSpa` — la SPA a désormais des routes (`/admin/…`, `/cible`, `/scoreur`,
     `/public`), donc un rechargement sur une URL profonde doit rendre l'application, pas un 404.
     """
+    # ⚠️ `mimetypes` lit le registre sous Windows, qui ne connaît pas `.woff2` (Python 3.13) :
+    # Starlette servirait la police embarquée (E17US005) en `text/plain`. Idempotent.
+    mimetypes.add_type("font/woff2", ".woff2")
     app.mount("/", _StatiquesSpa(directory=str(dist_dir), html=True), name="spa")

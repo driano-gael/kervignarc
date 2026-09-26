@@ -140,6 +140,25 @@ def test_le_repli_ne_sert_du_html_qu_a_une_navigation(tmp_path: Path) -> None:
         app.state.database.engine.dispose()
 
 
+def test_la_police_embarquee_est_servie_comme_une_police(tmp_path: Path) -> None:
+    """E17US005 : la police du build part en `font/woff2`, pas en `text/plain`.
+
+    Sous Windows, `mimetypes` lit le registre, qui ignore `.woff2` : c'est le poste du jour J
+    qui le révèle, pas la CI Linux.
+    """
+    dist = _faux_build(tmp_path / "dist")
+    (dist / "assets" / "InterVariable-abc123.woff2").write_bytes(b"wOF2")
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    app = create_app(url, frontend_dist=dist)
+    try:
+        with TestClient(app) as client:
+            police = client.get("/assets/InterVariable-abc123.woff2", headers={"accept": "*/*"})
+            assert police.status_code == 200
+            assert police.headers["content-type"] == "font/woff2"
+    finally:
+        app.state.database.engine.dispose()
+
+
 def test_repertoire_dist_par_defaut_pointe_vers_le_front(monkeypatch: pytest.MonkeyPatch) -> None:
     """Le répertoire par défaut (sans surcharge d'env) est `frontend/dist` à la racine."""
     monkeypatch.delenv("KERVIGNARC_FRONTEND_DIST", raising=False)
