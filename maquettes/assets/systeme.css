@@ -24,6 +24,16 @@
 
 /* ─────────────────────────── 1. DOCUMENT ─────────────────────────── */
 
+/* Inter : le fichier même que sert l'application (E17US005), lu en place — pas de copie qui dériverait.
+   Hors du dépôt (canvas, pièce jointe), le chemin ne résout pas et la pile retombe comme avant. */
+@font-face {
+  font-family: Inter;
+  src: url("../../frontend/src/assets/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --doc-fond:   #F1F2F0;
   --doc-carte:  #FFFFFF;

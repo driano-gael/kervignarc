@@ -148,8 +148,9 @@
 > Elles ne sont pas neuves : ce sont les **capacités que l'épic annonçait déjà** sans qu'aucune US ne
 > les porte. Un épic qui promet six capacités et n'en référence aucune se lit comme **terminé** dès
 > que ses US cochées le sont — c'est ce qu'`EPIC-14` faisait au même moment.
-> ⚠️ **Deux d'entre elles sont bloquées sur un arbitrage du commanditaire** (`E17US005`, `E17US006`) :
-> elles sont **spécifiées, pas prenables**. Ne pas les commencer avant la réponse.
+> ⚠️ **`E17US006` est bloquée sur un arbitrage du commanditaire** : elle est **spécifiée, pas
+> prenable**. Ne pas la commencer avant la réponse. *(`E17US005` l'était aussi ; arbitrage rendu le
+> 26/09/2026, cf. sa fiche.)*
 
 ### E17US005 — Embarquer la police du club pour le jour J
 *En tant qu'*organisateur, *je veux* que les tablettes affichent **la police des maquettes** sans réseau, *afin de* ne pas découvrir le jour J un outil qui ne ressemble plus à celui qui a été validé.
@@ -159,24 +160,24 @@
   les tablettes sont **BYOD** : aucune ne chargera Inter depuis un CDN, et rien ne garantit qu'elle
   soit installée. L'application se dégrade donc silencieusement vers `system-ui` — un repli différent
   sur chaque tablette, et différent de la planche.
-- ⛔ **Bloquée sur un arbitrage — ajout d'actif, règle 11.** Embarquer une police, c'est ajouter un
-  **actif versionné** au dépôt (licence, poids, provenance, mise à jour). C'est un arbitrage de
-  l'utilisateur, pas une décision technique : la règle 11 le range avec les ajouts de dépendance.
-  **Trois options à lui soumettre**, dans l'ordre de préférence de l'assistant :
-  1. **Embarquer Inter en local** (SIL Open Font License 1.1, permissive) — sous-ensemble latin,
-     2 graisses (400/800, les seules utilisées par la charte), format `woff2`, `font-display: swap`.
-     Coût : ~2 fichiers, quelques dizaines de Ko. Fidélité maximale.
-  2. **Assumer le repli système** et **corriger les planches** pour qu'elles utilisent la même pile —
-     coût zéro côté produit, mais la charte perd sa typographie et `DV-07` devient sans objet.
-  3. **Choisir une police déjà présente** sur les appareils cibles — suppose de connaître le parc,
-     ce qui n'est pas le cas en BYOD.
-- **Contraintes valables quelle que soit l'option retenue** *(le CA complet s'écrit après l'arbitrage ; celles-ci, elles, tiennent dans les trois branches — ce ne sont pas des provisoires à ignorer)* :
-  - l'application affiche la **même police** sur un poste **sans accès réseau et sans la police
-    installée** — c'est le seul critère qui distingue vraiment les trois options ;
+- ✅ **Arbitrage rendu le 26/09/2026 — embarquer Inter, fichier officiel.** Parmi les trois options
+  soumises (embarquer Inter · assumer le repli système et corriger les planches · une police déjà
+  présente sur le parc), le commanditaire a retenu la **première**, avec le fichier **officiel**
+  tel quel (`InterVariable.woff2` de la release `rsms/inter`, ~350 Ko) plutôt qu'un sous-ensemble
+  latin reconditionné (~50 Ko) ou un paquet npm. ⚠️ **L'option telle que rédigée ici était fausse** :
+  elle prévoyait « 2 graisses (400/800, les seules utilisées par la charte) » ; le code en emploie
+  **cinq** (400, 500, 600, 700, 800), et une graisse absente est rendue par la plus proche
+  au-dessus — les 94 usages en 600/700 seraient sortis en 800. D'où une police **variable**.
+- **CA** :
+  - l'application affiche **Inter** sur un poste **sans accès réseau et sans la police installée** :
+    le fichier est livré avec le build et servi par le serveur de l'application ;
+  - **toutes les graisses employées** par le front sont couvertes par le fichier embarqué ;
+  - le texte s'affiche **sans attendre** la police (`font-display: swap`) ;
   - **aucun chargement depuis un domaine externe** : un `@import` vers un CDN est un échec silencieux
     en LAN, exactement le mode de panne que l'US vient fermer ;
-  - la licence de tout actif embarqué est **versionnée à côté du fichier** et déclarée dans
-    [`docs/dependances.md`](../docs/dependances.md) (règle 11).
+  - la police est servie avec son **type** (`font/woff2`), y compris par un serveur sous Windows ;
+  - la licence de l'actif est **versionnée à côté du fichier** et déclarée dans
+    [`docs/dependances.md`](../docs/dependances.md) (règle 11), avec version, provenance et empreinte.
 - **Notes** : `DV-07` · **résorbe [DETTE-043](../docs/dette.md)** (la charte impose Inter, l'application ne l'embarque pas) · relève l'unique « non fait » assumé d'`E17US001`. **Piège** : vérifier le
   rendu **avec la police désinstallée du poste de dev**, sinon le test réussit toujours en local —
   c'est la même classe de piège que `crypto.randomUUID`, qui marche en `localhost` et casse en LAN.

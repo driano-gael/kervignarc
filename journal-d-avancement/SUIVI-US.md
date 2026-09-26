@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 25/09/2026, 23 h 28** · **150 US livrées** · dernière : `E17US007`
+**Dernière mise à jour : 26/09/2026, 12 h 59** · **151 US livrées** · dernière : `E17US005`
 *(**les neuf écrans de l'appli de saisie ont été confrontés à leurs planches**, comme l'admin
 l'avait été — relevé dans [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md), **5 écrans
 résorbés** (`S01`, `S02`, `S03`, `S04`, `S09`), sous le plafond de six que l'US se fixe.
@@ -367,8 +367,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯 1~~ ✅ | ~~`E17US009`~~ | **Livrée le 25/09/2026** — les 7 planches publiques `P**` sont confrontées (relevé dans `EPIC-17`). L'axe avait été **rapproché d'avance** par `E16US004`/`E16US009` : deux manques résorbés dans l'appli (« **ma cible d'abord** » sur le plan, P04 ; le **club sous le nom** pour distinguer les homonymes, P01/P02) et **quatre planches corrigées** là où elles étaient en retard sur vos arbitrages (P04, P05, P06, P07). ⚠️ **L'écran de salle reste à regarder projeté**, à plusieurs mètres : le poste de relevé ne dépasse pas 1366 px. |
 > | ~~🎯 1~~ ✅ | ~~`E17US011`~~ | **Livrée le 25/09/2026** (même PR qu'`E17US009`) — la ligne d'archer porte la volée en cours ; toucher une case ouvre le pavé **sur cette flèche**, qui se corrige avant envoi. Le pavé, ancré en bas de l'écran, rend sa colonne à la grille. `DETTE-111` résorbée pour la qualification (cinq sites de la règle, pas deux ; `saisie-duels/duel.ts` reste). |
 > | ~~🎯 1~~ ✅ | ~~`E17US007`~~ | **Livrée le 25/09/2026** (même PR qu'`E17US009`/`E17US011`), **rétrécie sur votre arbitrage** : les deux écrans qui livraient une variante **écartée** — A06 passe en liste + panneau latéral, A09 en « recherche d'abord » avec ses quatre compteurs. ⚠️ **Non vérifiée au navigateur** (l'outil affichait une page d'erreur sur l'admin) : à regarder. Les quatre 🟠 partent en `E17US012`. |
+> | ~~🔒~~ ✅ | ~~`E17US005`~~ | **Livrée le 26/09/2026 — débloquée par votre arbitrage du jour** : Inter est **embarquée** (fichier officiel `rsms/inter` 4.1, tel quel), donc la même sur chaque tablette, sans réseau et sans police installée — vérifié au navigateur sur un poste qui ne l'a pas. ⚠️ **La fiche se trompait** : « 2 graisses, 400/800 » ; le front en emploie **cinq**, d'où une police **variable** (94 usages en 600/700 seraient sortis en 800). Piège trouvé en route : le serveur sous Windows servait `.woff2` en `text/plain`. `DETTE-043` refermée ; les planches lisent le même fichier. |
 > | 🎯 **1** | `E17US012` | **Les écrans d'administration en carte-tableau** (A04, A08, A12, A17) — fille d'`E17US007`, étalons déjà vérifiés. ⚠️ Re-mesurer A04, A08, A17 : ils ont bougé depuis le relevé du 06/08. |
-> | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
+> | 🔒 **en attente de vous** | `E17US006` | **Une décision vous est demandée**, et cette US n'est **pas prenable** avant : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. *(`E17US005` était ici avec elle : débloquée et livrée le 26/09/2026.)* |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
 > | 🔒 **en attente de vous** | **`S07` et la critique de `S05`** | **Deux besoins réels, sans porteur ni épic évident** — sortis du relevé d'`E17US008`. **`S07 · file du scoreur`** : l'écran **n'existe pas** (ni front, ni endpoint ; toutes les routes de validation sont par archer), alors que son questionnaire dit « ✅ validé tel quel — **on peut coder ça** ». **Critique de `S05`** : *« trop tassé »*, *« les emplacements de saisie de volée sont trop étroits »*, *« au lieu de 2 colonnes je préférerais sur 2 hauteurs, adapté tablette et téléphone »*. ⚠️ **Ni l'un ni l'autre n'est un écart de fidélité** : `EPIC-17` amène le produit jusqu'aux planches, il ne livre pas de capacité neuve. Ils relèvent d'un épic à désigner — d'où leur place ici plutôt qu'une US inventée sous un épic qui ne les porte pas. *(Inscrits en revue d'`E17US008`, axe adversarial : le journal les disait « maintenant écrites » alors qu'aucune ligne n'existait — l'US rejouait le défaut qu'elle diagnostique.)* |
 >
@@ -1319,7 +1320,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > (égalité 5–5 en duel) et le **conflit de saisie** (deux postes sur la même volée) : ils sont
 > maquettés, pas décidés.
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (10/12)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),
@@ -1332,7 +1333,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | — | **Relevé d'écarts des 19 planches admin** | — | ✅ *(dans [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) ; 6 planches hors périmètre, 3 variantes écartées, 5 écrans sans tableau)* |
 | E17US003 | A01 **connexion** + A02 **accueil des axes** conformes à leur planche | J1 | ✅ |
 | E17US004 | A13 **supervision en grille de tuiles** (variante B retenue) | J2 | ✅ *(écran du jour J ; IP + révocation conservées)* |
-| E17US005 | Embarquer la **police du club** pour le jour J (`DV-07`) | J3 | 🔒 *(**spécifiée, pas prenable** — arbitrage d'ajout d'actif en attente, règle 11 ; 3 options soumises dans la story)* |
+| ~~E17US005~~ | Embarquer la **police du club** pour le jour J (`DV-07`) | J3 | ✅ *(livrée le 26/09/2026 — arbitrage : embarquer le fichier **officiel** ; police **variable** (cinq graisses employées, pas deux) ; `.woff2` servi en `font/woff2` sous Windows ; `DETTE-043` refermée ; vérifié au navigateur sur un poste sans Inter)* |
 | E17US006 | Donner une couleur à l'**action destructrice** | J3 | 🔒 *(**spécifiée, pas prenable** — trou de la charte, ADR attendu ; `DV-03` exclut le rouge et rien ne couvre le cas)* |
 | ~~E17US007~~ | **Résorber** les écarts relevés sur les écrans d'administration | J3 | ✅ *(livrée le 25/09/2026 — **rétrécie** aux deux 🔴 : A06 liste + panneau latéral, A09 recherche d'abord + compteurs ; **non vue au navigateur**. `DETTE-103` aggravée)* |
 | E17US012 | Les écrans d'administration en **carte-tableau** (A04, A08, A12, A17) | J3 | ⬜ *(fille d'`E17US007`, découpée le 25/09/2026)* |
@@ -1434,7 +1435,7 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
 - **🔒 US bloquée sur un arbitrage** : elle est **spécifiée** dans `stories/` mais **pas prenable**
   tant que l'utilisateur n'a pas tranché (ajout d'actif — règle 11, choix métier, trou de charte).
   Elle compte au dénominateur d'un jalon comme une ⬜ : le travail existe, il est seulement en
-  attente. Deux à ce jour : `E17US005` (police), `E17US006` (couleur destructrice).
+  attente. Une à ce jour : `E17US006` (couleur destructrice) — `E17US005` (police) l'a été jusqu'au 26/09/2026.
 - **⛔ US absorbée** : la capacité a été livrée par **une autre US**, celle-ci n'existe donc plus
   comme unité de travail. À distinguer de **caduque** (`E10US004`), où la capacité elle-même n'a
   plus d'objet. Une US absorbée n'est **ni ✅ ni ⬜** : elle est **hors décompte** (voir la règle de

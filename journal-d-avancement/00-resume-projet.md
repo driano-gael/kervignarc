@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 24 septembre 2026
+# Résumé du projet — où on en est au 26 septembre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -611,8 +611,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **150 US livrées** (mergées, revues, CI verte) à la date du 25/09/2026 — la dernière, `E17US007`,
-  étant aussi la dernière à **surface visible** : les **blasons** s'éditent dans un panneau à côté
+- **151 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E17US005`,
+  à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
+  sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
+  sienne. Juste avant, `E17US007`, elle aussi à **surface visible** : les **blasons** s'éditent dans un panneau à côté
   de la liste, et les **inscriptions** s'ouvrent sur une recherche et quatre compteurs (inscrits,
   non placés, non réglés, doublons) au lieu de la liste entière. Juste avant, `E17US011` : sur la
   tablette de cible, la **ligne de chaque

@@ -71,8 +71,8 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 - [x] Relever les écarts des 19 planches admin (`A01`→`A19`, ci-dessous).
 - [x] A01 connexion + A02 accueil des axes (`E17US003`).
 - [x] A13 supervision — la grille de tuiles (`E17US004`).
-- [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — `E17US005`.
-      ⛔ **Arbitrage d'actif en attente (règle 11)** : l'US est spécifiée, **pas prenable**.
+- [x] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — `E17US005` : fichier officiel,
+      police **variable** (le front emploie cinq graisses, pas deux).
 - [ ] Trancher la **couleur d'une action destructrice** — trou de la charte (`DV-03` exclut le rouge,
       rien n'est prévu pour ce cas) : aujourd'hui contour ambre — `E17US006`.
       ⛔ **Arbitrage en attente** : ADR attendu, l'US est spécifiée, **pas prenable**.
