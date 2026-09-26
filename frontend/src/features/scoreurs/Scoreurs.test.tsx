@@ -7,7 +7,7 @@
 // pas la promesse faite au commanditaire.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -161,5 +161,41 @@ describe('Scoreurs — le QR ne se montre que sur geste', () => {
 
     expect(screen.getByRole('button', { name: 'Supprimer Charlie' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Confirmer la suppression/ })).toBeNull()
+  })
+})
+
+// Planche A08 (E17US012) — CA : `stories/E17-fidelite-aux-maquettes.md`, puce « A08 » de
+// l'arbitrage du 26/09/2026 : un `<table>` aux colonnes de la planche, ÉTAT, PÉRIMÈTRE et DERNIÈRE
+// VALIDATION retirées, chaque ligne ouvrant son QR.
+describe('Scoreurs — carte-tableau de la planche A08', () => {
+  beforeEach(() => {
+    getQrScoreur.mockReset()
+    getQrScoreur.mockResolvedValue(QR_PAR_DEFAUT)
+    scoreursRendus = [alice, bob]
+  })
+
+  it('un vrai <table> aux colonnes retenues', async () => {
+    monter()
+
+    const table = await screen.findByRole('table')
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['Nom', 'Code d’accès', 'Actions'])
+    const ligne = screen.getByText('Alice').closest('tr')
+    expect(ligne).not.toBeNull()
+    expect(within(ligne as HTMLElement).getByText('AAA222')).toBeInTheDocument()
+  })
+
+  it('le QR s’ouvre sous SA ligne, dans le tableau', async () => {
+    monter()
+    await userEvent.click(await screen.findByRole('button', { name: 'Afficher le QR de Bob' }))
+
+    const qr = await screen.findByText(/À scanner par Bob/)
+    // Le détail vit dans le même `<tbody>` que la ligne de Bob — pas sous celle d'Alice.
+    const groupe = qr.closest('tbody')
+    expect(groupe).not.toBeNull()
+    expect(within(groupe as HTMLElement).getByText('BBB333')).toBeInTheDocument()
   })
 })

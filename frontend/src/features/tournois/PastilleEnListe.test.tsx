@@ -9,7 +9,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Tournoi } from '../competition/api'
+import type { TournoiEnListe } from '../competition/api'
 import type { ApercuJalon } from '../jalons/api'
 import { getApercusJalon } from '../jalons/api'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -26,16 +26,18 @@ vi.mock('../jalons/api', async (importOriginal) => ({
   getApercusJalon: vi.fn(),
 }))
 
-const BROUILLON: Tournoi = {
+const BROUILLON: TournoiEnListe = {
   id: 12,
   nom: 'Salle 18m',
   date: '2026-03-14',
   lieu: 'Kervignarc',
   type_tournoi: 'non_officiel',
   statut: 'brouillon',
+  nb_inscrits: 0,
+  nb_cibles: null,
 }
 
-const AUTRE: Tournoi = { ...BROUILLON, id: 13, nom: 'Extérieur 50m' }
+const AUTRE: TournoiEnListe = { ...BROUILLON, id: 13, nom: 'Extérieur 50m' }
 
 function monter(enfants: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -100,7 +102,10 @@ describe('pastille de préparation en liste', () => {
     )
 
     await screen.findByText('À compléter')
-    const ligne = screen.getByText(/Salle 18m/).closest('li')
+    // Ligne de tableau depuis E17US012 (A04). Garde explicite : une ligne introuvable rendrait
+    // les deux `not.toContain` vrais sur rien.
+    const ligne = screen.getByRole('button', { name: 'Salle 18m' }).closest('tr')
+    expect(ligne).not.toBeNull()
     expect(ligne?.textContent).not.toContain('Ne peut pas démarrer')
     expect(ligne?.textContent).not.toContain('À compléter')
   })

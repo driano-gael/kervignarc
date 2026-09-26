@@ -47,16 +47,33 @@ export function Postes({ tournoiId }: { tournoiId: number }) {
       <MessageErreur erreur={erreur} />
 
       {liste.length > 0 ? (
-        <ul className="liste-postes">
-          {liste.map((poste) => (
-            <li key={poste.id} className="poste-item">
-              <span className="poste-item__ligne">
-                Cible {poste.cible_index} — <code>{poste.code}</code>
-              </span>
-              <QrCible tournoiId={tournoiId} cibleIndex={poste.cible_index} />
-            </li>
-          ))}
-        </ul>
+        // Planche A12, variante « liste des postes avec dernier signe de vie » (E17US012) : une
+        // ligne par poste de cible, son QR à la ligne. RATTACHEMENT, APPAREIL et SIGNE DE VIE
+        // restent à la supervision (A13), TYPE est retiré — cet écran ne liste que des cibles.
+        <div className="table-defilement">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Poste</th>
+                <th scope="col">Code</th>
+                <th scope="col">QR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liste.map((poste) => (
+                <tr key={poste.id}>
+                  <td>Cible {poste.cible_index}</td>
+                  <td>
+                    <code>{poste.code}</code>
+                  </td>
+                  <td>
+                    <QrCible tournoiId={tournoiId} cibleIndex={poste.cible_index} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         postes.isSuccess && (
           <p className="carte__etat">

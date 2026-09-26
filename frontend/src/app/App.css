@@ -610,10 +610,10 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-/* Tournoi mis en évidence dans la liste (celui qui est courant dans la coquille). */
-.tournoi--selectionne {
-  border-left: 3px solid var(--brand-border);
-  padding-left: 8px;
+/* Tournoi mis en évidence dans la liste (celui qui est courant dans la coquille). Filet porté par
+   la **première cellule** : sous `border-collapse`, une bordure de `<tr>` ne se dessine pas. */
+.tournoi--selectionne > td:first-child {
+  box-shadow: inset 3px 0 0 var(--brand-border);
 }
 
 /* ————————————————————————————————————————————————————————————————————————————————————————————————
@@ -994,31 +994,6 @@ button.badge-preparation:focus-visible {
   color: var(--danger-strong);
 }
 
-/* Postes de cible : code + QR de rattachement à l'écran (E11US008). La vignette du QR elle-même
-   est stylée par `shared/ui/qr.css`, partagée avec le QR de session d'un scoreur (E16US015). */
-.liste-postes {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.poste-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-}
-
-.poste-item__ligne {
-  min-width: 0;
-}
-
 /* Formulaires (nom de tournoi / d'archer). */
 .formulaire {
   display: flex;
@@ -1052,16 +1027,6 @@ button.badge-preparation:focus-visible {
 .formulaire__tranche {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-
-/* Liste des tournois existants (boutons-liens). */
-.liste-tournois {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 
@@ -1150,20 +1115,11 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-/* Gestion des tournois (E01US002) : ligne = ouverture + statut + actions admin. */
-.tournoi {
-  padding: 4px 0;
-}
-
-.tournoi__ligne {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.tournoi__ligne .lien {
-  flex: 1 1 auto;
+/* Liste des tournois (A04, E17US012) : un `<table>` ; le lieu et le type passent sous le nom. */
+.tournoi__second {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .tournoi__actions {
@@ -1409,25 +1365,8 @@ button:disabled {
   font-size: 13px;
 }
 
-/* Définition des scoreurs (E10US003) — nom + code à distribuer. */
-.liste-scoreurs {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.scoreur__ligne {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
+/* Définition des scoreurs (E10US003) — nom + code à distribuer ; un `<table>` depuis E17US012. */
 .scoreur__nom {
-  flex: 1 1 auto;
   font-weight: 600;
   color: var(--text);
 }
@@ -3812,6 +3751,20 @@ button:disabled {
    ———————————————————————————————————————————————————————————————————————————————————————————— */
 .paiements__table {
   font-variant-numeric: tabular-nums;
+}
+
+/* Bandeau de totaux de la planche A17 (E17US012) : les `.chiffre` de l'accueil, libellé **au-dessus**
+   comme sur la planche — d'où `dt` avant `dd`, et l'ordre de la colonne suit le DOM. */
+.paiements__totaux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 12px 0 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.paiements__totaux dd {
+  margin: 0;
 }
 
 .paiements__total {

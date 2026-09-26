@@ -94,6 +94,9 @@ function registrePaiements(regles = 113, total = 120): LignePaiementArcher[] {
       paye_centimes: i < regles ? 1000 : 0,
       reste_centimes: i < regles ? 0 : 1000,
     },
+    club: null,
+    categorie: 'Senior 1 Homme',
+    dette: i < regles ? null : { depuis: null },
   }))
 }
 

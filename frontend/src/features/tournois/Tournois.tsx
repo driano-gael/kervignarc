@@ -17,7 +17,7 @@ import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { FriseCycleDeVie } from '../accueil/FriseCycleDeVie'
 import { BadgeStatut } from '../competition/BadgeStatut'
-import type { StatutTournoi, Tournoi, TypeTournoi } from '../competition/api'
+import type { StatutTournoi, Tournoi, TournoiEnListe, TypeTournoi } from '../competition/api'
 import {
   useCreerTournoi,
   useModifierTournoi,
@@ -173,21 +173,38 @@ export function GestionTournois({
             </div>
           )}
 
-          <ul className="liste-tournois">
-            {visibles.map((t) => (
-              <LigneTournoi
-                key={t.id}
-                tournoi={t}
-                estAdmin={estAdmin}
-                selectionne={t.id === selectionneId}
-                aujourdhui={aujourdhui}
-                onChoisi={onChoisi}
-                ouvrir={ouvrir}
-                onOuvrir={onOuvrir}
-                apercu={apercuParTournoi.get(t.id)}
-              />
-            ))}
-          </ul>
+          {/* Planche A04, variante « liste dense avec statut » (E17US012) : un `<table>` à colonnes
+              nommées. AVANCEMENT et CE QUI RESTE sont **retirés de la planche** (arbitrage du
+              26/09/2026, `stories/E17`) : l'accueil du tournoi situe déjà son cycle. */}
+          <div className="table-defilement">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">État</th>
+                  <th scope="col">Nom</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Inscrits</th>
+                  <th scope="col">Cibles</th>
+                  {estAdmin && <th scope="col">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {visibles.map((t) => (
+                  <LigneTournoi
+                    key={t.id}
+                    tournoi={t}
+                    estAdmin={estAdmin}
+                    selectionne={t.id === selectionneId}
+                    aujourdhui={aujourdhui}
+                    onChoisi={onChoisi}
+                    ouvrir={ouvrir}
+                    onOuvrir={onOuvrir}
+                    apercu={apercuParTournoi.get(t.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Un filtre qui ne rend rien doit **le dire** : sans ce mot, l'écran est indiscernable
               d'une base vide, et on cherche un tournoi qui est là. */}
@@ -202,6 +219,9 @@ export function GestionTournois({
   )
 }
 
+// Toutes les colonnes de la liste, « Actions » comprise : l'édition ne s'ouvre qu'en admin.
+const COLONNES_ADMIN = 6
+
 // Une ligne de la liste : ouvrir le tournoi, plus (admin) l'éditer ou le supprimer. La suppression
 // demande une **confirmation explicite** (deux temps) et reste indisponible tant que le tournoi est
 // **en cours** (il faut d'abord le terminer, garanti aussi côté serveur, E01US002).
@@ -215,7 +235,7 @@ function LigneTournoi({
   onOuvrir,
   apercu,
 }: {
-  tournoi: Tournoi
+  tournoi: TournoiEnListe
   estAdmin: boolean
   selectionne: boolean
   aujourdhui: string
@@ -240,9 +260,11 @@ function LigneTournoi({
 
   if (edition) {
     return (
-      <li>
-        <FormulaireEditionTournoi tournoi={tournoi} onTermine={() => setEdition(false)} />
-      </li>
+      <tr>
+        <td colSpan={COLONNES_ADMIN}>
+          <FormulaireEditionTournoi tournoi={tournoi} onTermine={() => setEdition(false)} />
+        </td>
+      </tr>
     )
   }
 
@@ -252,13 +274,18 @@ function LigneTournoi({
   const nonSupprimable = tournoi.statut === 'en_cours' || tournoi.statut === 'en_pause'
 
   return (
-    <li className={selectionne ? 'tournoi tournoi--selectionne' : 'tournoi'}>
-      <div className="tournoi__ligne">
-        <button type="button" className="lien" onClick={() => onChoisi(tournoi)}>
-          {tournoi.nom} — {tournoi.date}
-          {tournoi.lieu ? ` · ${tournoi.lieu}` : ''} · {tournoi.type_tournoi.replace('_', ' ')}
-        </button>
+    <tr className={selectionne ? 'tournoi tournoi--selectionne' : 'tournoi'}>
+      <td>
         <BadgeStatut statut={tournoi.statut} />
+      </td>
+      <td>
+        <button type="button" className="lien" onClick={() => onChoisi(tournoi)}>
+          {tournoi.nom}
+        </button>
+        <span className="tournoi__second">
+          {tournoi.lieu ? `${tournoi.lieu} · ` : ''}
+          {tournoi.type_tournoi.replace('_', ' ')}
+        </span>
         {/* « une pastille d'alerte si tout n'est pas complet ; alerte forte si impossible de
             lancer en l'état » (A02). Elle vit **après** le statut : le statut dit où en est le
             tournoi, la pastille ce qui l'empêche d'avancer — l'ordre est celui de la lecture. */}
@@ -268,7 +295,12 @@ function LigneTournoi({
         {estAujourdhui(tournoi, aujourdhui) && (
           <span className="tournoi__aujourdhui">Aujourd’hui</span>
         )}
-        {estAdmin && (
+      </td>
+      <td>{tournoi.date}</td>
+      <td>{tournoi.nb_inscrits}</td>
+      <td>{tournoi.nb_cibles ?? 'aucun plan'}</td>
+      {estAdmin && (
+        <td>
           <span className="tournoi__actions">
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
               Éditer
@@ -291,33 +323,35 @@ function LigneTournoi({
               </button>
             )}
           </span>
-        )}
-      </div>
-      {/* Le signalement chiffré n'est **pas** une erreur : il passe par le dialogue, pas par le
-          bandeau rouge — sinon l'admin lirait deux fois la même chose, dont une comme une panne. */}
-      <MessageErreur erreur={signalement ? null : supprimer.error} />
-      {/* ⚠️ Monté **seulement** quand il s'ouvre, à rebours de `BoutonConfirme` qui le garde en
+          {/* Le signalement chiffré n'est **pas** une erreur : il passe par le dialogue, pas par le
+              bandeau rouge — sinon l'admin lirait deux fois la même chose, dont une comme une
+              panne. Erreur et dialogue vivent **dans** la cellule : hors d'un `<td>`, un `<tr>`
+              n'a pas le droit de les porter. */}
+          <MessageErreur erreur={signalement ? null : supprimer.error} />
+          {/* ⚠️ Monté **seulement** quand il s'ouvre, à rebours de `BoutonConfirme` qui le garde en
           permanence : son titre cite le nom du tournoi, qui figure déjà sur la ligne. Monté à vide,
           il mettait ce nom deux fois dans le DOM et rendait ambigu tout `getByText(/<nom>/)`. */}
-      {signalement !== null && (
-        <DialogueConfirmation
-          ouvert
-          titre={`Supprimer « ${tournoi.nom} » ?`}
-          message={signalement}
-          detail="Cette suppression est définitive : rien ne pourra être récupéré."
-          libelleConfirmer="Supprimer définitivement"
-          ton="danger"
-          enCours={supprimer.isPending}
-          onAnnuler={() => {
-            setSignalement(null)
-            supprimer.reset()
-          }}
-          onConfirmer={() =>
-            supprimer.mutate({ id: tournoi.id, autoriserSuppressionPeuplee: true })
-          }
-        />
+          {signalement !== null && (
+            <DialogueConfirmation
+              ouvert
+              titre={`Supprimer « ${tournoi.nom} » ?`}
+              message={signalement}
+              detail="Cette suppression est définitive : rien ne pourra être récupéré."
+              libelleConfirmer="Supprimer définitivement"
+              ton="danger"
+              enCours={supprimer.isPending}
+              onAnnuler={() => {
+                setSignalement(null)
+                supprimer.reset()
+              }}
+              onConfirmer={() =>
+                supprimer.mutate({ id: tournoi.id, autoriserSuppressionPeuplee: true })
+              }
+            />
+          )}
+        </td>
       )}
-    </li>
+    </tr>
   )
 }
 
