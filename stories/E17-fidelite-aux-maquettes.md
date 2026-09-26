@@ -216,20 +216,15 @@
   [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md)) ; `E17US003` et `E17US004` en ont traité
   trois écrans (A01, A02, A13). **Le reste du relevé n'a aucune US.** Un relevé sans US de résorption
   se périme sur place : les planches vieillissent pendant qu'on les relit (risque déjà réalisé sur A15).
-- **CA** :
+- **CA** *(rétréci le 25/09/2026 sur arbitrage du commanditaire : les deux écrans 🔴 ici, les
+  quatre 🟠 en [`E17US012`](#e17us012--les-écrans-dadministration-en-carte-tableau))* :
   - **A06 · référentiels** passe au **panneau latéral d'édition** (variante « **panneau latéral d'édition** » retenue) —
     aujourd'hui `Blasons.tsx` bascule **tout l'écran** en formulaire ;
   - **A09 · inscriptions** passe à **recherche d'abord, liste ensuite** (variante « **recherche d'abord, liste ensuite** » retenue), avec
     les compteurs d'entrée de la planche (inscrits, non placés, non réglés, doublons) ;
-  - **A12 · postes**, **A08 · scoreurs** et **A04 · tournois** présentent leurs données en
-    **carte-tableau à colonnes nommées**, celles de la planche, sans cesser d'être des `<table>`
-    (CA d'`E17US002` : l'apparence, pas le balisage) ;
-  - **A17 · paiements** gagne son **bandeau de totaux** (attendu / encaissé / restant dû / archers
-    concernés) et l'**ancienneté** de la dette ; l'export trésorier **relève d'`E16US007`** et n'est
-    pas traité ici ;
-  - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** (A04 :
-    avancement, ce qui reste) est soit **alimentée**, soit **retirée de la planche** — jamais affichée
-    vide. Le choix se fait par colonne et s'écrit.
+  - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** est soit
+    **alimentée**, soit **retirée de la planche** — jamais affichée vide. Le choix se fait par
+    colonne et s'écrit.
 - **Notes** : ⚠️ **Vérifier la correspondance questionnaire ↔ planche AVANT de mesurer** — les
   lettres `A**` sont aussi peu fiables que les `S**` (le redessin du 05/08 a porté sur les 36
   planches), et un CA est la **source d'un test** : dériver d'une lettre, c'est dériver de rien
@@ -240,7 +235,61 @@
   ressemblance, et le faire deux fois produit deux variantes. **A05 · identité** est hors périmètre
   tant qu'`E01US016` est ⬜ — l'écran n'existe pas. **A07 · phases** est hors périmètre
   définitivement (« à refaire », aucune variante retenue) : c'est `E16US002`.
+- **Notes (livraison, 25/09/2026)** — livrée dans la PR d'`E17US009`/`E17US011` (demande du
+  commanditaire). Correspondance vérifiée d'abord (ADR-0113) : **les six écrans ont un étalon** —
+  le libellé coché se retrouve dans une variante de la planche actuelle, aucune lettre n'a glissé.
+  Arbitrages tranchés en cours d'US, reversés ici :
+  - **A06** — la liste est un `<table>` groupé par **origine** (`<tbody>` + `th scope="rowgroup"`),
+    « **Référentiel FFTA** » puis « **Créés par l'organisation** » : c'est la réserve du 04/08
+    (« séparer les unités officielles FFTA de celles créées par l'admin »). ⚠️ Jamais
+    « officiels » : l'origine dit la **provenance**, pas la conformité (ADR-0060 §4). La
+    suppression passe **dans le panneau**, avec sa confirmation. Les colonnes **diamètre,
+    distances, emploi** de la planche n'existent pas au modèle : **retirées de la planche**.
+  - **A09** — sans recherche ni compteur choisi, **rien n'est listé** (sinon c'est la variante A,
+    écartée). Les compteurs sont des **filtres** (bascule, `aria-pressed`) ; « **Non placés** » =
+    sans cible — en **réserve** sur au moins un départ, **ou posé sur aucune cible d'aucun plan**,
+    ce qui couvre l'archer inscrit au tournoi mais à **aucun départ** (celui qu'on a oublié) ; sans
+    gabarit de salle, **tous** les inscrits. *(Corrigé en revue, axes B, C1, D : la 1ʳᵉ rédaction
+    ne comptait que la réserve et affirmait à tort que « le plan persisté y range tout inscrit » —
+    vrai des seuls inscrits à un départ.)* « Non réglés » = reste dû > 0. Une population illisible
+    s'affiche « ? », **jamais 0** — les **doublons** compris. Le premier compteur garde le libellé
+    de la planche, **accordé** : « Voir les N inscrits », « Voir l'inscrit » pour un seul. Une fiche
+    ouverte par l'adresse (recherche transverse, E16US010) **reste listée** — sans quoi le
+    résultat cliqué ne mènerait nulle part. La phrase « N rapprochements de fiches » est
+    **remplacée** par le compteur « Doublons », qui la chiffre et filtre en plus.
+  - ⚠️ **Les deux populations sont lues par un conteneur de l'admin (`InscriptionsAdmin`)**, pas
+    par l'écran : les lire dans `archers` le faisait dépendre de `placement` et `paiements`, qui
+    dépendent déjà de lui — l'atlas a mesuré le plus gros nœud d'enchevêtrement passant de **24 à
+    29** features. Remis à 24 par ce détour.
+  - **Non fait** : le bloc « Derniers gestes sur ce poste » de la planche B — absent du CA, il
+    suppose un historique local qui n'existe pas. **Non vérifié au navigateur** : le navigateur
+    piloté affichait une page d'erreur sur l'admin alors que le serveur répondait 200 — le contrôle
+    visuel d'A06 et d'A09 reste à faire.
+  - `DETTE-103` **aggravée** (4ᵉ copie du repli casse + accents). *(Ouverte d'abord sous un
+    numéro neuf, `DETTE-114`, qui la doublait avec un constat faux — fusionnée en revue.)*
 - **Dépend de** : E17US002 · **Jalon** : J3
+
+### E17US012 — Les écrans d'administration en carte-tableau
+*En tant qu'*organisateur, *je veux* que les listes de l'administration aient les colonnes nommées des planches, *afin de* lire tournois, scoreurs, postes et paiements comme je les ai validés.
+
+- **Contexte** : fille d'`E17US007`, découpée le 25/09/2026 (arbitrage du commanditaire) — les
+  quatre écarts 🟠 du relevé admin. Les étalons ont été **vérifiés** à ce moment (ADR-0113) :
+  A04 « A — liste dense avec statut », A08 « A — liste simple avec état de connexion », A12
+  « A — liste des postes avec dernier signe de vie », A17 « A — liste des dus » (✅).
+- **CA** *(repris d'`E17US007`, inchangés)* :
+  - **A12 · postes**, **A08 · scoreurs** et **A04 · tournois** présentent leurs données en
+    **carte-tableau à colonnes nommées**, celles de la planche, sans cesser d'être des `<table>`
+    (CA d'`E17US002` : l'apparence, pas le balisage) ;
+  - **A17 · paiements** gagne son **bandeau de totaux** (attendu / encaissé / restant dû / archers
+    concernés) et l'**ancienneté** de la dette ; l'export trésorier **relève d'`E16US007`** ;
+  - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** (A04 :
+    avancement, ce qui reste — **absents** de `TournoiReponse`) est soit **alimentée**, soit
+    **retirée de la planche** — jamais affichée vide. Le choix se fait par colonne et s'écrit.
+- **Notes** : ⚠️ **A04, A08 et A17 ont bougé depuis le relevé du 06/08** (`E01US026`,
+  `E16US015`) : **re-mesurer**, ne pas se fier au relevé. Les évolutions écrites au questionnaire
+  font partie de la cible — A08 et A12 : « chaque ligne doit ouvrir le QR et le code de
+  raccrochement » ; A04 : classer par statut puis date ; A12 : bandeau repliable par type d'écran.
+- **Dépend de** : E17US007 · **Jalon** : J3
 
 ### E17US008 — Confronter les écrans de saisie à leurs planches
 *En tant que* scoreur, *je veux* que le pavé de saisie et l'écran de duel ressemblent à ce qui a été validé, *afin de* retrouver à 3 m d'une cible les repères vus sur la maquette.
@@ -332,6 +381,41 @@
   différé cette US **au nom de cet invariant mort** ; l'axe adversarial l'a relevé. Le test ne se
   dérive **pas** de là : il se dérive de la planche `S02` (la ligne est `pos | nom | fl fl fl |
   somme`) et de la réserve écrite deux fois au questionnaire.
+- **Notes (livraison, 25/09/2026)** — livrée dans la même PR qu'`E17US009` (demande du
+  commanditaire). Arbitrages tranchés en cours d'US, reversés ici :
+  - **La ligne montre la volée « prochaine à saisir »**, brouillon compris — la même que le pavé
+    ouvrirait. Toucher une case **désigne l'archer et vise la flèche** : une case remplie est
+    **remplacée** à la frappe suivante (c'est ce qui rend une volée pleine corrigeable avant
+    envoi) ; une case vide ne crée pas de trou, la frappe reprend à la suite (`frapper`,
+    `flecheVisee`). Les cases sont des boutons **voisins** du bouton de ligne, pas imbriqués : la
+    propagation ne peut pas atteindre `setArcherChoisi` par construction.
+  - ⚠️ **« Le pavé rend sa colonne » réintroduisait le défaut qu'`E17US008` avait corrigé** :
+    empilé, ses touches tombaient à **826 px sur une fenêtre de 641** (mesuré). Le pavé est donc
+    **ancré en bas de l'écran** (`position: sticky`), comme un clavier : pleine largeur **et**
+    toujours visible. Pour ne pas masquer la grille, il a été compacté (420 → **253 px**) :
+    navigation des volées sur un rang défilant, volée tapée et actions sur un rang, les onze
+    touches sur un seul. ⚠️ **Dès 45 rem, et borné à la fenêtre** : ancrage et compactage
+    partagent ce seuil, qui inclut la **tablette en portrait** (768 px), l'appareil visé. Sur un
+    **téléphone**, non compacté, un pavé collé plus haut que l'écran aurait son haut
+    inatteignable : il reste empilé sous la grille. *(1ᵉʳ correctif de revue à 60 rem : il avait
+    rouvert la tablette en portrait pour régler le téléphone — relevé en 2ᵉ passe, axe D.)*
+  - ⚠️ **La ligne et le pavé lisent la même volée ouverte** (`voleeOuverte`, état `ouverture`
+    unique dans `Saisie`). La 1ʳᵉ version recalculait dans la ligne : la ligne montrait une autre
+    volée que le pavé dès qu'on naviguait ou qu'une volée rendue était ressaisie (revue, axes B,
+    C1, D). Toucher le **nom** d'un autre archer remet l'ouverture à zéro ; les cases restent
+    inactives tant que la série n'est pas lue ; sans barème lisible, cumul et totaux affichent
+    « ? ».
+  - ⚠️ **« 90 px par touche » n'est tenu qu'à partir d'une carte d'environ 1 100 px** : sur la
+    carte de 1 061 px du poste de mesure, les onze touches font **87 × 64 px**. Les tenir à 90 px
+    imposerait un second rang, donc de repousser la grille.
+  - **Le domicile unique** est `domain/blason.points_zone` (à côté de `ZoneScore`), et non
+    `serie.py` : **cinq** sites portaient la règle, pas deux — `serie.py`, `duel.py`,
+    `application/generateur_scores.py` (`valeur_zone`, dupliquée « délibérément » parce que le
+    symbole était privé), `saisie/volees.ts`, `saisie-duels/duel.ts`. Les quatre premiers sont
+    résorbés ; **`duel.ts` reste** (le DTO des duels ne sert pas de table) — inscrit à `DETTE-111`,
+    qui reste ouverte aussi pour sa moitié « agrégation ».
+  - Le cumul de série de la ligne est libellé **« cumul »** : sans le mot, `0 [ ][ ][ ] 0` ne disait
+    pas lequel des deux nombres était la somme de la volée.
 - **Dépend de** : E17US008 · **Jalon** : J3
 
 ### E17US009 — Confronter les écrans publics et l'écran de salle à leurs planches
@@ -353,6 +437,32 @@
   raison qu'`E17US008` : le « résorber » n'est pas borné avant que le « relever » ait rendu.
   ⚠️ **`P03` a été redessinée le 05/08 et n'a pas été validée** (pas de tour 2) ; elle est
   écartée pour la même raison qu'A14. Ne pas rouvrir l'arbitrage d'`E16US004`.
+- **Notes (livraison, 25/09/2026)** — le relevé des 7 planches est dans
+  [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md). **Pas de redécoupage** : le relevé a
+  rendu un « résorber » **borné et petit**, l'axe public ayant été rapproché d'avance par `E16US004`
+  et `E16US009`. Arbitrages tranchés en cours d'US, reversés ici :
+  - **Périmètre retenu au cadrage** (commanditaire, 25/09) : relevé **et** résorption dans la même
+    branche, les réserves 🟡 du tour 1 comptant dans la cible.
+  - **Correspondance par l'intention** (ADR-0113) : **P05** a ses lettres glissées (le retenu
+    « “mon chemin” en liste » est la planche **B**) ; **P06** dessinait l'ancienne variante
+    **écartée** (tri par cible) ; **P04** avait **inversé** l'ordre retenu (« ma cible d'abord »).
+  - **P04 · « ma cible d'abord »** : la carte des places suivies précède la grille **quel que soit
+    l'affichage** (« tout » ou « mes archers ») — elle est lue sur le plan complet. Ordre de la
+    **salle** (cible, puis couloir), pas l'ordre d'ajout des suivis. Sans archer suivi posé sur le
+    départ affiché, **pas de carte** : le plan reste seul.
+  - **P04 · pas de regroupement par pas de tir** : le gabarit est une liste de cibles (ADR-0073),
+    l'écran ne peut pas le dire — **la planche est corrigée**, pas le produit.
+  - **P01/P02 · identité secondaire** : « club · catégorie » sous le nom, dans la recherche **et**
+    sur la carte suivie. Une partie inconnue est **tue**, jamais remplacée par un identifiant ni par
+    un club inventé (ADR-0014).
+  - **Planches corrigées** là où elles étaient en retard sur un arbitrage (réserve 2 d'ADR-0074) :
+    P04, P05 (horaires par tour — réponse du 04/08 : « seulement pour les départs des différentes
+    phases »), P06, P07.
+  - **P02 · rang provisoire et « volée 8 sur 12 »** : **non faits**, proposition du redessin du 05/08
+    jamais validée — **à reposer au tour 2**, comme `S04`.
+  - ⚠️ **Le CA « l'écran de salle se juge à sa distance d'usage » n'est pas tenu** par le relevé :
+    Chrome reste à 1366 px sur le poste. P06/P07 sont confrontés au code et au CSS ; le contrôle en
+    salle (1920 × 1080, à plusieurs mètres) **reste à faire par le commanditaire**.
 - **Dépend de** : E17US002 · **Jalon** : J3
 
 ### E17US010 — Empêcher le dossier de maquettes de dériver du produit

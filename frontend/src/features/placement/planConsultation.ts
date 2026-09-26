@@ -31,15 +31,54 @@ export function construirePlanConsultation(
   plan: PlanDeCibles,
   nomParArcher: Map<number, string>,
 ): CibleConsultation[] {
+  return planTrie(plan).map((cible) => ({
+    index: cible.index,
+    places: cible.places.map((placement) => ({
+      position: placement.position,
+      nom: nomOuRepli(nomParArcher, placement.archer_id),
+    })),
+  }))
+}
+
+// La place d'un archer suivi, telle que la carte « ma cible » la montre au-dessus de la grille.
+export interface MaPlace {
+  archerId: number
+  nom: string
+  cible: number
+  position: string
+}
+
+// P04 · « Ma cible d'abord, plan ensuite » (retenu au questionnaire du 04/08) — E17US009.
+// Ordre de la **salle**, comme la grille qu'elle précède : la carte se lit en marchant vers les cibles.
+export function mesPlaces(
+  plan: PlanDeCibles,
+  suivis: readonly number[],
+  nomParArcher: Map<number, string>,
+): MaPlace[] {
+  const suivi = new Set(suivis)
+  return planTrie(plan).flatMap((cible) =>
+    cible.places
+      .filter((place) => suivi.has(place.archer_id))
+      .map((place) => ({
+        archerId: place.archer_id,
+        nom: nomOuRepli(nomParArcher, place.archer_id),
+        cible: cible.index,
+        position: place.position,
+      })),
+  )
+}
+
+// Le double tri (cibles par index, places par couloir), partagé par la grille et la carte « ma
+// cible » : leurs deux ordres ne peuvent pas diverger, puisqu'ils sortent du même tri.
+function planTrie(plan: PlanDeCibles) {
   return [...plan.cibles]
     .sort((a, b) => a.index - b.index)
     .map((cible) => ({
       index: cible.index,
-      places: [...cible.placements]
-        .sort((a, b) => a.position.localeCompare(b.position))
-        .map((placement) => ({
-          position: placement.position,
-          nom: nomParArcher.get(placement.archer_id) ?? `Archer #${placement.archer_id}`,
-        })),
+      places: [...cible.placements].sort((a, b) => a.position.localeCompare(b.position)),
     }))
+}
+
+function nomOuRepli(nomParArcher: Map<number, string>, archerId: number): string {
+  return nomParArcher.get(archerId) ?? `Archer #${archerId}`
 }

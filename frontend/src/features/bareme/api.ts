@@ -11,6 +11,8 @@ export interface Bareme {
   // Dérivés côté serveur : nb total de flèches et score maximum (toutes les flèches au max).
   nb_fleches_total: number
   score_max: number
+  // E17US011 : ce que vaut chaque zone (« 10 » → 10, « M » → 0) — lu par la saisie hors ligne.
+  points_par_zone: Record<string, number>
 }
 
 export interface DefinitionBareme {

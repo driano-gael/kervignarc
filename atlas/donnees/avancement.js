@@ -22,7 +22,8 @@ window.ATLAS.avancement = {
   {
    "identifiant": "111",
    "introduite_par": [
-    "E17US008"
+    "E17US008",
+    "E17US011"
    ],
    "ouverte": true,
    "resorption_us": [
@@ -108,10 +109,13 @@ window.ATLAS.avancement = {
   {
    "identifiant": "103",
    "introduite_par": [
-    "E16US016"
+    "E16US016",
+    "E17US007"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E17US007"
+   ],
    "severite": "mineur"
   },
   {
@@ -930,7 +934,7 @@ window.ATLAS.avancement = {
    "0074",
    "0104"
   ],
-  "derniere": "E17US008"
+  "derniere": "E17US007"
  },
  "epics": [
   {
@@ -4696,7 +4700,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E17US001",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Poser la charte du club dans l'application",
@@ -4713,7 +4717,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E17US002",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Le catalogue de composants adopte les formes des planches",
@@ -4728,7 +4732,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E17US003",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "A01 connexion + A02 accueil des axes conformes à leur planche",
@@ -4743,7 +4747,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E17US004",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "A13 supervision en grille de tuiles (variante B retenue)",
@@ -4760,7 +4764,7 @@ window.ATLAS.avancement = {
    "etat": "🔒",
    "identifiant": "E17US005",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Embarquer la police du club pour le jour J (DV-07)",
@@ -4775,7 +4779,7 @@ window.ATLAS.avancement = {
    "etat": "🔒",
    "identifiant": "E17US006",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Donner une couleur à l'action destructrice",
@@ -4783,14 +4787,18 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [],
-   "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_introduites": [
+    "103"
+   ],
+   "dettes_resorbees": [
+    "103"
+   ],
    "epic": "17",
    "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E17US007",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Résorber les écarts relevés sur les écrans d'administration",
@@ -4811,7 +4819,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E17US008",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Confronter les 9 planches de saisie S et résorber",
@@ -4825,10 +4833,10 @@ window.ATLAS.avancement = {
    "dettes_resorbees": [],
    "epic": "17",
    "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E17US009",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Confronter les 7 planches publiques P et résorber",
@@ -4849,7 +4857,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E17US010",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "Empêcher le dossier de maquettes de dériver du produit",
@@ -4859,25 +4867,42 @@ window.ATLAS.avancement = {
    "adr": [
     "0113"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "111"
+   ],
    "dettes_resorbees": [
     "111"
    ],
    "epic": "17",
    "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E17US011",
    "sections": [
-    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
    ],
    "story": "stories/E17-fidelite-aux-maquettes.md",
    "titre": "La ligne d'archer porte la volée en cours (S02)",
    "titre_story": "La ligne d'archer porte la volée en cours"
+  },
+  {
+   "adr": [],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "17",
+   "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
+   "etat": "⬜",
+   "identifiant": "E17US012",
+   "sections": [
+    "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
+   ],
+   "story": "stories/E17-fidelite-aux-maquettes.md",
+   "titre": "Les écrans d'administration en carte-tableau (A04, A08, A12, A17)",
+   "titre_story": "Les écrans d'administration en carte-tableau"
   }
  ],
  "resume": {
-  "livrees": 147,
-  "vivantes": 179
+  "livrees": 150,
+  "vivantes": 180
  },
  "sections": [
   {
@@ -5963,12 +5988,12 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    6,
-    11
+    9,
+    12
    ],
    "compteur_ecrit": [
-    6,
-    11
+    9,
+    12
    ],
    "lignes": [
     {
@@ -6015,9 +6040,15 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E17US007",
      "titre": "Résorber les écarts relevés sur les écrans d'administration"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E17US012",
+     "titre": "Les écrans d'administration en carte-tableau (A04, A08, A12, A17)"
     },
     {
      "comptee": true,
@@ -6027,13 +6058,13 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E17US009",
      "titre": "Confronter les 7 planches publiques P et résorber"
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E17US011",
      "titre": "La ligne d'archer porte la volée en cours (S02)"
     },
@@ -6044,7 +6075,7 @@ window.ATLAS.avancement = {
      "titre": "Empêcher le dossier de maquettes de dériver du produit"
     }
    ],
-   "titre": "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (6/11)**"
+   "titre": "Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (9/12)**"
   },
   {
    "calcule": [

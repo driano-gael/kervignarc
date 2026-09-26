@@ -18,6 +18,7 @@ import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
 import type { Archer, ModifierArcher } from './api'
 import { FusionDoublon } from './FusionDoublon'
 import { signalementPour, type SignalementDoublon } from './presentation'
+import { archersAffiches, compteurs, type Ensembles, type Filtre } from './accueil'
 import {
   useArchers,
   useDefinirHandicap,
@@ -30,6 +31,8 @@ export function Archers({
   tournoiId,
   ouvrir,
   onOuvrir,
+  nonPlaces,
+  nonRegles,
 }: {
   tournoiId: number
   // L'archer dont la fiche doit s'ouvrir — vient de l'adresse (E16US010, ADR-0100), donc d'un
@@ -39,6 +42,11 @@ export function Archers({
   // est l'ancrage le moins cher, et il rend le repli local du hook inutile.
   ouvrir: number | null
   onOuvrir: (id: number | null) => void
+  // Les populations « Non placés » / « Non réglés » (A09, E17US007), lues par le conteneur de
+  // l'admin : les lire ici ferait dépendre `archers` de `placement` et `paiements`, qui dépendent
+  // déjà d'elle (nœud d'enchevêtrement mesuré de 24 à 29 features). Requises. `null` = inconnue.
+  nonPlaces: ReadonlySet<number> | null
+  nonRegles: ReadonlySet<number> | null
 }) {
   const archers = useArchers(tournoiId)
   // Les rapprochements de fiches (E02US005) se lisent désormais **sur la ligne** (CA E16US010) et
@@ -47,26 +55,63 @@ export function Archers({
   const doublons = useDoublons(tournoiId)
   const paires = doublons.data ?? []
 
+  // A09, variante B retenue le 04/08 : « recherche d'abord, liste ensuite » (E17US007). Les quatre
+  // compteurs d'entrée de la planche sont aussi des **filtres** : les toucher liste leur population.
+  const [requete, setRequete] = useState('')
+  const [filtre, setFiltre] = useState<Filtre | null>(null)
+  const ensembles: Ensembles = {
+    nonPlaces,
+    nonRegles,
+    // `data` et non `paires` : `paires` retombe sur `[]` pendant le chargement, soit « Doublons — 0 ».
+    doublons:
+      doublons.data === undefined
+        ? null
+        : new Set(doublons.data.flatMap((paire) => [paire.a.id, paire.b.id])),
+  }
+  const inscrits = archers.data ?? []
+  const nb = compteurs(inscrits, ensembles)
+  const liste = archersAffiches(inscrits, { requete, filtre, ouvert: ouvrir }, ensembles)
+  const choisir = (f: Filtre) => setFiltre((actuel) => (actuel === f ? null : f))
+
   return (
     <section>
       <h3 className="carte__soustitre">Archers inscrits</h3>
       {archers.isError && <MessageErreur erreur={archers.error} />}
-      {/* La vue d'ensemble que l'écran dédié portait tient en une phrase : sans elle, on ne
-          saurait qu'il y a des doublons qu'en tombant dessus ligne par ligne. */}
-      {paires.length > 0 && (
-        <p className="carte__etat carte__etat--alerte">
-          {paires.length} rapprochement{paires.length > 1 ? 's' : ''} de fiches — repéré
-          {paires.length > 1 ? 's' : ''} sur les lignes concernées.
-        </p>
-      )}
       {/* `isSuccess` et non `data ?? []` : tant que la requête court, `data` est `undefined` et
           le message s'afficherait à tort sur un tournoi qui a bel et bien des inscrits. */}
       {archers.isSuccess && archers.data.length === 0 && (
         <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
       )}
-      {archers.data && archers.data.length > 0 && (
+      {inscrits.length > 0 && (
+        <div className="inscrits__entree">
+          <input
+            className="formulaire__champ inscrits__recherche"
+            type="search"
+            value={requete}
+            onChange={(e) => setRequete(e.target.value)}
+            placeholder="Nom ou prénom…"
+            aria-label="Rechercher un inscrit"
+            autoComplete="off"
+          />
+          <div className="inscrits__compteurs" role="group" aria-label="Listes d’inscrits">
+            <BoutonCompteur actif={filtre === 'tous'} onClick={() => choisir('tous')}>
+              {nb.inscrits > 1 ? `Voir les ${nb.inscrits} inscrits` : 'Voir l’inscrit'}
+            </BoutonCompteur>
+            <BoutonCompteur actif={filtre === 'non_places'} onClick={() => choisir('non_places')}>
+              Non placés — {nb.nonPlaces ?? '?'}
+            </BoutonCompteur>
+            <BoutonCompteur actif={filtre === 'non_regles'} onClick={() => choisir('non_regles')}>
+              Non réglés — {nb.nonRegles ?? '?'}
+            </BoutonCompteur>
+            <BoutonCompteur actif={filtre === 'doublons'} onClick={() => choisir('doublons')}>
+              Doublons — {nb.doublons ?? '?'}
+            </BoutonCompteur>
+          </div>
+        </div>
+      )}
+      {liste.length > 0 ? (
         <ul className="liste-archers">
-          {archers.data.map((archer) => (
+          {liste.map((archer) => (
             <LigneArcher
               key={archer.id}
               archer={archer}
@@ -77,8 +122,43 @@ export function Archers({
             />
           ))}
         </ul>
+      ) : (
+        inscrits.length > 0 && (
+          <p className="carte__etat">
+            {requete.trim() === '' && filtre === null
+              ? 'Tapez un nom, ou choisissez une liste ci-dessus.'
+              : (filtre === 'non_places' && nb.nonPlaces === null) ||
+                  (filtre === 'non_regles' && nb.nonRegles === null) ||
+                  (filtre === 'doublons' && nb.doublons === null)
+                ? 'Liste indisponible pour l’instant — les données n’ont pas pu être lues.'
+                : 'Aucun inscrit ne correspond.'}
+          </p>
+        )
       )}
     </section>
+  )
+}
+
+// Un compteur d'entrée (A09) : **bascule**, d'où `aria-pressed` — le retoucher revient à l'écran
+// de recherche. Même grammaire que les onglets.
+function BoutonCompteur({
+  actif,
+  onClick,
+  children,
+}: {
+  actif: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      className={actif ? 'onglet onglet--actif' : 'onglet'}
+      aria-pressed={actif}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   )
 }
 

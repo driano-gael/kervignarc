@@ -9,6 +9,9 @@ import {
   quelSaisiePar,
   serieOptimiste,
   cumulSaisi,
+  flecheVisee,
+  voleeOuverte,
+  frapper,
   totalVolee,
   voleeApresEnregistrement,
   voleeExistante,
@@ -28,15 +31,35 @@ function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
   }
 }
 
-describe('pointsZone — le miroir du domaine', () => {
-  // ⚠️ **Moitié front d'un cliquet en deux moitiés** ; l'autre fige la même liste côté domaine
-  // (`test_domain_blason.py`) et renvoie ici. Une zone ajoutée casse alors **un** test au lieu de
-  // zéro, et qui le répare lit le pointeur vers l'autre langage. Ça ne **relie** pas les deux
-  // langages pour autant : seul `points_par_zone` le fera (`DETTE-111`).
-  // Les onze valeurs sont celles de `ZoneScore` (art. B.2.1.2) — pas de « X », centre du 10.
-  it('donne à chaque zone du vocabulaire FFTA sa valeur, M valant 0', () => {
+// La table telle que le barème la sert (`BaremeQualification.points_par_zone`, E17US011).
+const TABLE: Record<string, number> = {
+  '10': 10,
+  '9': 9,
+  '8': 8,
+  '7': 7,
+  '6': 6,
+  '5': 5,
+  '4': 4,
+  '3': 3,
+  '2': 2,
+  '1': 1,
+  M: 0,
+}
+
+// E17US011, CA « `pointsZone` devient une lecture de table » (`DETTE-111`, moitié zone → points).
+describe('pointsZone', () => {
+  it('lit la valeur servie par le barème, M valant 0', () => {
     const zones = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
-    expect(zones.map(pointsZone)).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+    expect(zones.map((zone) => pointsZone(zone, TABLE))).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+  })
+
+  it('lit la table, ne recalcule pas : une table différente donne un résultat différent', () => {
+    // Le test qui distingue une lecture d'un recalcul local — ce qu'était `pointsZone` avant l'US.
+    expect(pointsZone('10', { ...TABLE, '10': 11 })).toBe(11)
+  })
+
+  it('une valeur absente de la table vaut 0 (défensif)', () => {
+    expect(pointsZone('X', TABLE)).toBe(0)
   })
 })
 
@@ -45,41 +68,28 @@ describe('cumulSaisi', () => {
     // Le cas qui motive la fonction : avec le grain « à la fin de la série », **aucune** volée n'est
     // validée avant le passage du scoreur. `Serie.cumul` vaut alors 0 tout au long de la série, et
     // le rappel demandé en S02 (« en permanence, c'est un bon rappel sur la cible ») affichait zéro.
-    expect(cumulSaisi([volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])])).toBe(54)
+    expect(cumulSaisi([volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])], TABLE)).toBe(54)
   })
 
   it('compte de la même façon une volée verrouillée par le scoreur', () => {
-    expect(cumulSaisi([volee(1, ['10', '9', '8'], true), volee(2, ['9', '9', '9'])])).toBe(54)
+    expect(cumulSaisi([volee(1, ['10', '9', '8'], true), volee(2, ['9', '9', '9'])], TABLE)).toBe(
+      54,
+    )
   })
 
   it('vaut 0 sans volée, et compte le M pour 0', () => {
-    expect(cumulSaisi([])).toBe(0)
-    expect(cumulSaisi([volee(1, ['M', 'M', '10'])])).toBe(10)
-  })
-})
-
-describe('pointsZone', () => {
-  it('« M » (manqué) vaut 0 point', () => {
-    expect(pointsZone('M')).toBe(0)
-  })
-
-  it('une zone numérique vaut sa valeur', () => {
-    expect(pointsZone('10')).toBe(10)
-    expect(pointsZone('7')).toBe(7)
-  })
-
-  it('une valeur inattendue vaut 0 (défensif)', () => {
-    expect(pointsZone('X')).toBe(0)
+    expect(cumulSaisi([], TABLE)).toBe(0)
+    expect(cumulSaisi([volee(1, ['M', 'M', '10'])], TABLE)).toBe(10)
   })
 })
 
 describe('totalVolee', () => {
   it('somme les points des flèches', () => {
-    expect(totalVolee(['10', '9', 'M'])).toBe(19)
+    expect(totalVolee(['10', '9', 'M'], TABLE)).toBe(19)
   })
 
   it('une volée vide vaut 0', () => {
-    expect(totalVolee([])).toBe(0)
+    expect(totalVolee([], TABLE)).toBe(0)
   })
 })
 
@@ -425,5 +435,49 @@ describe('voleeApresEnregistrement', () => {
     // Le cas par défaut des bases migrées (reprise 0054 : un lot par volée). Rendre la main au
     // mode automatique épinglerait la dernière du barème — verrouillée, pavé inécrivable.
     expect(voleeApresEnregistrement([rendue(1), verrouillee(2), verrouillee(3)], 1)).toBe(1)
+  })
+})
+
+// E17US011, CA « toucher une case de flèche ouvre le pavé sur cette flèche » (réserve S02, écrite
+// deux fois : « l'appel du pavé doit se faire à la sélection de la zone de saisie »).
+describe('flecheVisee', () => {
+  it('une case déjà remplie devient la flèche visée', () => {
+    expect(flecheVisee(1, ['10', '9'])).toBe(1)
+  })
+
+  it('une case vide ne crée pas de trou : on reprend à la suite', () => {
+    expect(flecheVisee(2, ['10'])).toBeNull()
+  })
+})
+
+describe('frapper', () => {
+  it('remplace la flèche visée sans toucher aux autres', () => {
+    expect(frapper(['10', '9', '8'], '7', 1, 3)).toEqual(['10', '7', '8'])
+  })
+
+  it('sans flèche visée, ajoute à la suite', () => {
+    expect(frapper(['10'], '9', null, 3)).toEqual(['10', '9'])
+  })
+
+  it('volée complète et rien de visé : la frappe est refusée', () => {
+    expect(frapper(['10', '9', '8'], '7', null, 3)).toBeNull()
+  })
+
+  it('une volée complète reste corrigeable par la case visée', () => {
+    expect(frapper(['10', '9', '8'], 'M', 2, 3)).toEqual(['10', '9', 'M'])
+  })
+})
+
+// Revue d'E17US011 (axes B, C1, D) : la ligne recalculait la volée en cours de son côté, et
+// montrait une autre volée que le pavé dès qu'on naviguait. Un seul calcul, lu par les deux.
+describe('voleeOuverte', () => {
+  const deux = [volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])]
+
+  it('la volée choisie (navigateur, case touchée) prime', () => {
+    expect(voleeOuverte(1, deux, 20)).toBe(1)
+  })
+
+  it('sans choix, la prochaine à saisir', () => {
+    expect(voleeOuverte(null, deux, 20)).toBe(3)
   })
 })

@@ -18,8 +18,8 @@ que le contexte est petit et local.
 fonctionnent, le placement des archers sur les cibles existe, la saisie des scores de qualification
 tourne en temps réel — y compris quand le wifi saute — et un tournoi de qualification se suit
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
-public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
-remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
+public le consulte en direct sans compte — jusqu'à suivre un archer, voir sa feuille de marque se
+remplir volée par volée, et trouver sa cible en tête du plan sans la chercher. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
 dû, par archer et par club) est en place — et une somme déjà encaissée ne disparaît plus en silence :
 annuler une inscription **payée** ouvre un **remboursement à traiter** que l'organisateur marque
 remboursé ou reporté. Un tournoi porte enfin **son identité visuelle** : deux logos — celui de l'édition, celui du club
@@ -611,11 +611,20 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **147 US livrées** (mergées, revues, CI verte) à la date du 24/09/2026 — la dernière, `E17US008`,
-  étant aussi la dernière à **surface visible** — dont **deux
+- **150 US livrées** (mergées, revues, CI verte) à la date du 25/09/2026 — la dernière, `E17US007`,
+  étant aussi la dernière à **surface visible** : les **blasons** s'éditent dans un panneau à côté
+  de la liste, et les **inscriptions** s'ouvrent sur une recherche et quatre compteurs (inscrits,
+  non placés, non réglés, doublons) au lieu de la liste entière. Juste avant, `E17US011` : sur la
+  tablette de cible, la **ligne de chaque
+  archer porte la volée en cours**, et toucher une flèche la corrige ; le pavé de saisie, ancré en
+  bas de l'écran comme un clavier, ne se cache plus sous la grille. Juste avant, `E17US009` : les
+  **sept écrans publics** ont été comparés à leurs
+  planches. Le public retrouve désormais **sa cible d'abord** sur le plan de cibles, et deux
+  homonymes se distinguent par leur club ; quatre planches, en retard sur les décisions du
+  commanditaire, ont été corrigées. ⚠️ L'écran de salle reste à juger **projeté**. — dont **deux
   fiches closes sans livraison propre** (`E16US006` absorbe `E01US016` ; `E16US011` est **close par
   découpage**, remplacée par quatre US filles), cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte —, `E17US008` ayant **confronté les neuf planches de saisie au produit** et
+  autorité sur le compte. Avant elle, `E17US008` avait **confronté les neuf planches de saisie au produit** et
   corrigé cinq écrans : la tablette prend sa largeur, le pavé de saisie cesse de s'ouvrir hors de
   l'écran, le cumul de l'archer ne reste plus à zéro toute la série, et le hors-ligne se voit du coin
   de l'œil. ⚠️ **Trois planches restent sans base de comparaison** (`S04`, `S05`, `S08`) : les

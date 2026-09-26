@@ -37,6 +37,21 @@ export function rechercherArchers(archers: Archer[], critere: CritereRecherche):
   })
 }
 
+// P01, planche B « le club en second » — E17US009 : deux homonymes d'une même famille ne se
+// distinguent que par là. Une partie inconnue est **tue**, jamais remplacée par un identifiant brut
+// ni par un club inventé (ADR-0014 : `club_id` nul = club encore inconnu).
+export function identiteSecondaire(
+  archer: Archer,
+  clubParId: ReadonlyMap<number, string>,
+  categorieParId: ReadonlyMap<number, string>,
+): string | null {
+  const club = archer.club_id === null ? undefined : clubParId.get(archer.club_id)
+  const parties = [club, categorieParId.get(archer.categorie_id)].filter(
+    (partie): partie is string => partie !== undefined,
+  )
+  return parties.length === 0 ? null : parties.join(' · ')
+}
+
 // La place d'un archer sur un départ : sa cible (rang de salle) et sa position (« A »…« D »).
 export interface PlaceArcher {
   cible: number

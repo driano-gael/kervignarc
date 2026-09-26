@@ -6,8 +6,11 @@
 // **inscription** : le plan porte directement l'`inscription_id` de chaque archer (posé ou en
 // réserve), aucune correspondance à reconstituer côté client.
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ErreurApi } from '../../shared/api/client'
+import { useDeparts } from '../departs/hooks'
 import { clePlansDuelsDuTournoi } from '../duels/hooks'
+import type { PlansDuTournoi } from './nonPlaces'
 import {
   type Cloisonnement,
   type Destination,
@@ -122,4 +125,28 @@ export function useReglerCloisonnement(tournoiId: number) {
       queryClient.invalidateQueries({ queryKey: clePlansDuelsDuTournoi(tournoiId) })
     },
   })
+}
+
+// Les plans de tous les départs — la matière du compteur « Non placés » d'A09 (E17US007), réduite
+// par `archersNonPlaces`. `'sans_gabarit'` quand la salle n'est pas définie (le serveur répond
+// `gabarit_du_tournoi_absent` : personne ne peut être placé) ; `null` tant qu'un plan manque ou sur
+// une autre erreur. Ce 404 prévisible n'est pas relancé ; une panne réseau, si. Mêmes clés que
+// l'écran de placement (`clePlan`) : rien n'est relu en double.
+export function usePlansDuTournoi(tournoiId: number): PlansDuTournoi {
+  const departs = useDeparts(tournoiId)
+  const plans = useQueries({
+    queries: (departs.data ?? []).map((depart) => ({
+      queryKey: clePlan(tournoiId, depart.id),
+      queryFn: () => getPlanDeCibles(tournoiId, depart.id),
+      retry: (echecs: number, erreur: Error) => !sansGabarit(erreur) && echecs < 3,
+    })),
+  })
+  if (departs.data === undefined) return null
+  if (plans.some((p) => sansGabarit(p.error))) return 'sans_gabarit'
+  const lus = plans.map((p) => p.data).filter((plan): plan is PlanDeCibles => plan !== undefined)
+  return lus.length === plans.length ? lus : null
+}
+
+function sansGabarit(erreur: Error | null): boolean {
+  return erreur instanceof ErreurApi && erreur.code === 'gabarit_du_tournoi_absent'
 }

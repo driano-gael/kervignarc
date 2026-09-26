@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { useArchers } from '../archers/hooks'
+import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import type { Archer } from '../competition/api'
 import type { Depart } from '../departs/api'
@@ -29,7 +30,12 @@ import { LIBELLE_STATUT, parcoursToutesPhases, type ParcoursPhase } from '../tab
 import { nommerType } from '../../shared/phases/catalogue'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeroule, type VoleeDeroule } from './deroule'
-import { construireJournee, departsDesArchersSuivis, rechercherArchers } from './suivi'
+import {
+  construireJournee,
+  departsDesArchersSuivis,
+  identiteSecondaire,
+  rechercherArchers,
+} from './suivi'
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
 // tout l'annuaire (et de risquer de cacher l'archer cherché en silence).
@@ -55,6 +61,12 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   const archersQuery = useArchers(tournoiId)
   const archers = archersQuery.data ?? []
   const archersParId = new Map(archers.map((a) => [a.id, a]))
+  // Club et catégorie à côté du nom (P01 B, P02 A) — lus une fois pour la recherche et les cartes.
+  const clubs = useClubs().data ?? []
+  const categories = useCategories(tournoiId).data ?? []
+  const clubParId = new Map(clubs.map((c) => [c.id, c.nom]))
+  const categorieParId = new Map(categories.map((c) => [c.id, c.libelle]))
+  const identite = (archer: Archer) => identiteSecondaire(archer, clubParId, categorieParId)
 
   // Départs + plans : la source de « où tire l'archer ». Fetchés une seule fois pour toutes les cartes
   // (React Query partage par clé — même clé que le plan public, cf. `clePlan`). On ne charge les plans
@@ -143,6 +155,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
         enErreur={archersQuery.isError}
         tournoiId={tournoiId}
         suivis={suivisIci}
+        identite={identite}
       />
 
       {suivisIci.length > 0 && (
@@ -153,6 +166,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               tournoiId={tournoiId}
               archerId={s.archerId}
               archer={archersParId.get(s.archerId) ?? null}
+              identite={identite}
               // « a réussi à charger », pas « ne charge plus » : sur erreur, `isLoading` est aussi
               // faux — confondre les deux ferait passer une coupure réseau pour un archer disparu
               // (correctif de revue C1/adversarial).
@@ -187,12 +201,14 @@ function RechercheArcher({
   enErreur,
   tournoiId,
   suivis,
+  identite,
 }: {
   archers: Archer[]
   enChargement: boolean
   enErreur: boolean
   tournoiId: number
   suivis: ArcherSuivi[]
+  identite: (archer: Archer) => string | null
 }) {
   const [requete, setRequete] = useState('')
   const [clubId, setClubId] = useState<number | null>(null)
@@ -271,6 +287,9 @@ function RechercheArcher({
                 <li key={a.id} className="recherche-resultat">
                   <span className="recherche-resultat__nom">
                     {a.prenom} {a.nom}
+                    {identite(a) !== null && (
+                      <span className="recherche-resultat__identite">{identite(a)}</span>
+                    )}
                   </span>
                   {dejaSuivis.has(a.id) ? (
                     <>
@@ -300,7 +319,12 @@ function RechercheArcher({
         ) : enChargement ? (
           <p className="carte__etat">Chargement…</p>
         ) : (
-          <p className="carte__etat">Aucun archer ne correspond.</p>
+          // P01 « Aucun résultat » : deux causes, dont une qui n'est pas la faute du spectateur —
+          // sans elle, il retape le nom dix fois à l'entrée du gymnase.
+          <p className="carte__etat">
+            Aucun archer ne correspond. Vérifiez l’orthographe, ou essayez seulement les premières
+            lettres — son inscription n’est peut-être pas encore enregistrée.
+          </p>
         ))}
     </div>
   )
@@ -314,6 +338,7 @@ function CarteArcherSuivi({
   tournoiId,
   archerId,
   archer,
+  identite,
   archersReussi,
   archersEnErreur,
   departs,
@@ -328,6 +353,7 @@ function CarteArcherSuivi({
   tournoiId: number
   archerId: number
   archer: Archer | null
+  identite: (archer: Archer) => string | null
   archersReussi: boolean
   archersEnErreur: boolean
   departs: Depart[]
@@ -357,7 +383,12 @@ function CarteArcherSuivi({
   return (
     <li className="carte carte-suivi">
       <div className="carte-suivi__entete">
-        <strong className="carte-suivi__nom">{nom}</strong>
+        <strong className="carte-suivi__nom">
+          {nom}
+          {archer !== null && identite(archer) !== null && (
+            <span className="carte-suivi__identite">{identite(archer)}</span>
+          )}
+        </strong>
         <button type="button" className="lien" onClick={() => nePlusSuivre(archerId)}>
           Ne plus suivre
         </button>

@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from domain.blason import ZONES_CANONIQUES, ZONES_DEFAUT, Blason, ZoneScore, valider_zones
+from domain.blason import (
+    ZONES_CANONIQUES,
+    ZONES_DEFAUT,
+    Blason,
+    ZoneScore,
+    points_zone,
+    valider_zones,
+)
 from domain.erreurs import (
     CapaciteBlasonInvalide,
     NomBlasonInvalide,
@@ -253,11 +260,10 @@ def test_le_message_ne_leve_pas_sur_une_valeur_irrepresentable() -> None:
 def test_le_vocabulaire_de_zones_est_fige_et_le_front_en_tient_une_copie() -> None:
     """Les onze valeurs de `ZoneScore`, dans l'ordre canonique (art. B.2.1.2).
 
-    ⚠️ `DETTE-111` — **ce test est la moitié serveur d'un cliquet.** `pointsZone`
-    (`frontend/src/features/saisie/volees.ts`) réécrit en TypeScript la règle « une zone vaut son
-    chiffre, `M` vaut 0 », parce que le poste doit valoriser des volées hors ligne que le serveur
-    n'a jamais reçues. Ajouter ou retirer une zone ici **doit** être répercuté là-bas ; rien ne le
-    vérifie, mais ce test force au moins à lire ce pointeur.
+    ⚠️ `DETTE-111` — **moitié serveur d'un cliquet, pour les duels seulement.** La saisie de
+    qualification lit la règle servie (`points_par_zone`, E17US011) ; `pointsZone` de
+    `frontend/src/features/saisie-duels/duel.ts` la **réécrit** encore. Une zone ajoutée ici doit
+    l'être là-bas ; rien ne le vérifie, mais ce test force au moins à lire ce pointeur.
     """
     assert [zone.value for zone in ZoneScore] == [
         "10",
@@ -272,3 +278,13 @@ def test_le_vocabulaire_de_zones_est_fige_et_le_front_en_tient_une_copie() -> No
         "1",
         "M",
     ]
+
+
+# E17US011 — `points_zone` devient public et **domicile unique** de la règle (serie, duel, barème).
+@pytest.mark.parametrize(
+    ("zone", "points"),
+    [(ZoneScore.DIX, 10), (ZoneScore("9"), 9), (ZoneScore("1"), 1), (ZoneScore.MANQUE, 0)],
+)
+def test_points_zone(zone: ZoneScore, points: int) -> None:
+    """Une zone vaut son chiffre ; le manqué vaut 0."""
+    assert points_zone(zone) == points

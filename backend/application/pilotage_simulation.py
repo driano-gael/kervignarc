@@ -25,7 +25,7 @@ from application.erreurs import (
     TournoiSansDepart,
     UniteSimulationInvalide,
 )
-from application.generateur_scores import GenerateurScores, valeur_zone
+from application.generateur_scores import GenerateurScores
 from application.portee import qualification_courante
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
@@ -37,7 +37,7 @@ from application.simulation import (
 )
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
-from domain.blason import ZONES_DEFAUT, ZoneScore
+from domain.blason import ZONES_DEFAUT, ZoneScore, points_zone
 from domain.duel import Cote
 from domain.erreurs import EffectifTableauInvalide
 from domain.phase import Phase, PhaseId, TypePhase
@@ -690,11 +690,11 @@ class ServicePilotageSimulation:
         """Une volée gagnante (maximum) et une volée perdante (plausible, strictement
         inférieure)."""
         markantes = tuple(z for z in zones if z is not ZoneScore.MANQUE)
-        z_max = max(markantes, key=valeur_zone) if markantes else ZoneScore.MANQUE
+        z_max = max(markantes, key=points_zone) if markantes else ZoneScore.MANQUE
         v_gagnante = (z_max,) * nb_fleches
-        total_max = valeur_zone(z_max) * nb_fleches
+        total_max = points_zone(z_max) * nb_fleches
         v_perdante = self._generateur.volee(zones, nb_fleches, 0.4, session.alea)
-        if sum(valeur_zone(z) for z in v_perdante) >= total_max:
+        if sum(points_zone(z) for z in v_perdante) >= total_max:
             # Cas extrême (perdante tirée aussi au maximum) : on dégrade une flèche pour garantir la
             # stricte infériorité — donc un duel toujours tranché, jamais de barrage.
             v_perdante = (ZoneScore.MANQUE, *v_perdante[1:])

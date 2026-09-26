@@ -1272,43 +1272,70 @@ button:disabled {
   cursor: pointer;
 }
 
-/* Liste des blasons d'un tournoi (E01US005). */
-.liste-blasons {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.blason__ligne {
+/* Blasons en « liste + panneau latéral » (A06, variante B — E17US007) : la liste reste, l'édition
+   s'ouvre à droite. Empilés sur un écran étroit, le panneau sous la liste. */
+.blasons__entete {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin-bottom: 8px;
 }
 
-.blason__nom {
-  font-weight: 600;
-  color: var(--text);
+.blasons__entete > .carte__soustitre {
+  margin: 0;
 }
 
-.blason__attributs {
+.blasons__compte {
   flex: 1 1 auto;
   font-size: 13px;
+  color: var(--text-muted);
+}
+
+.avec-panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 60rem) {
+  .avec-panneau--ouvert {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    align-items: start;
+  }
+}
+
+.panneau-edition {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.panneau-edition__danger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* L'intitulé d'un groupe (« Référentiel FFTA », « Créés par l'organisation ») : la réserve d'A06,
+   séparer ce qui vient du référentiel de ce que l'organisation a créé. */
+.table .blasons__groupe {
+  padding-top: 14px;
   color: var(--text-secondary);
 }
 
-.blason__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.blasons__nom {
+  font-weight: 600;
+  text-align: left;
 }
 
-.blason__actions button {
-  padding: 2px 8px;
-  font-size: 13px;
+.blasons__ligne--choisie {
+  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
 /* Valeurs de score admises d'un blason (E01US014). */
@@ -1438,6 +1465,27 @@ button:disabled {
 }
 
 /* Écran d'administration des archers (E02US003) — liste, édition, désinscription. */
+/* A09 « recherche d'abord, liste ensuite » (E17US007) : le champ en tête, les quatre compteurs
+   d'entrée dessous — ils filtrent la liste qu'ils comptent. */
+.inscrits__entree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+
+.inscrits__recherche {
+  width: 100%;
+  max-width: 32rem;
+  font-size: 16px;
+}
+
+.inscrits__compteurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .liste-archers {
   margin: 8px 0 0;
   padding: 0;
@@ -2624,36 +2672,29 @@ button:disabled {
   gap: 12px;
 }
 
-/* Grille + pavé. Empilés par défaut — c'est le cas du **téléphone**, que S02 couvre aussi. */
+/* Grille puis pavé, **empilés à toutes les largeurs** (E17US011). La ligne d'archer porte la volée
+   en cours : le pavé ne la porte plus seul, il rend donc la colonne qu'`E17US008` lui avait donnée
+   à côté de la grille — la grille reprend la largeur de la tablette (S02, « les lignes d'archer
+   font toute la largeur »), et le pavé, en pleine largeur, a la place des touches de S03. */
 .saisie__travail {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* Dès qu'il y a la largeur d'une tablette, les deux colonnes : le pavé cesse d'être poussé sous la
-   ligne de flottaison par une grille de quatre couloirs. `sticky` parce qu'une grille longue
-   l'emporterait hors de l'écran au défilement. */
-@media (min-width: 60rem) {
-  .saisie__travail {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .saisie__travail > .saisie__grille {
-    flex: 1 1 32rem;
-  }
-
-  /* Le pavé, mais aussi l'invite et le message qui prennent sa place : sans quoi la colonne de
-     droite s'effondre et la grille saute en largeur quand le pavé s'ouvre. ⚠️ **Énumérés, pas
-     `:not(.saisie__grille)`** : `E17US011` rouvre cette zone, et un élément ajouté héritait
-     silencieusement du `sticky` et du `flex-basis`. */
-  .saisie__travail > .saisie__pave,
-  .saisie__travail > .saisie__invite,
-  .saisie__travail > .saisie__vide {
+/* ⚠️ **Ancré en bas, comme un clavier** : empilé sans ancrage, le pavé retombait sous la ligne de
+   flottaison (touches à 826 px sur une fenêtre de 641, mesuré). **Dès 45 rem** — tablette en
+   portrait comprise, l'appareil visé — là où il est compacté ; le téléphone garde l'empilement.
+   Borné à la fenêtre : collé en bas et plus haut qu'elle, son haut deviendrait inatteignable. */
+@media (min-width: 45rem) {
+  .saisie__travail > .saisie__pave {
     position: sticky;
-    top: 12px;
-    flex: 1 1 24rem;
+    bottom: 0;
+    z-index: 1;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    box-shadow: 0 -8px 16px color-mix(in srgb, var(--surface-0) 80%, transparent);
   }
 }
 
@@ -2780,8 +2821,9 @@ button:disabled {
    deux, le bouton n'en garde que la zone tapable. */
 .saisie__grille > li {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
   padding: 6px 10px;
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
@@ -2797,7 +2839,7 @@ button:disabled {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  flex: 1 1 16rem;
   min-height: 48px;
   padding: 0;
   color: var(--text);
@@ -2816,6 +2858,7 @@ button:disabled {
 .saisie__relecture {
   display: flex;
   flex-wrap: wrap;
+  flex-basis: 100%;
   gap: 3px;
 }
 
@@ -3064,6 +3107,80 @@ button:disabled {
   min-height: 48px;
   font-size: 18px;
   font-weight: 600;
+}
+
+/* Le pavé ancré doit rester **bas** : un rang de navigation qui défile au lieu de deux, les onze
+   touches sur un seul rang. Elles se partagent la largeur (~87 px sur une carte de 1061 px, ~60 px
+   en portrait) : S03 demande « plus de 90 px », tenu à partir d'une carte d'environ 1 100 px.
+   ⚠️ Même seuil que l'ancrage ci-dessus : ancré sans être compacté, le pavé masquerait la grille. */
+@media (min-width: 45rem) {
+  .saisie__nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .saisie__zones {
+    flex-wrap: nowrap;
+  }
+
+  .saisie__zone {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 64px;
+    font-size: 24px;
+  }
+}
+
+.saisie__pave-frappe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.saisie__pave-frappe > .saisie__buffer,
+.saisie__pave-frappe > .saisie__actions {
+  margin: 0;
+}
+
+/* La volée en cours sur la ligne d'archer (S02, `fl fl fl | somme`) — E17US011. */
+.saisie__volee-en-cours {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saisie__case {
+  font: inherit;
+  min-width: 52px;
+  min-height: 48px;
+  padding: 0 6px;
+  font-family: var(--mono);
+  font-size: 20px;
+  color: var(--text);
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* La case que la prochaine frappe remplit : la planche la marque, le pavé écrit là. */
+.saisie__case--en-cours {
+  border: 2px solid var(--brand-border);
+}
+
+.saisie__somme {
+  min-width: 2.5em;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: right;
+  color: var(--text);
+}
+
+/* Dans le pavé, la flèche qui sera remplacée — même marque que sur la ligne. */
+.saisie__fleche--visee {
+  border: 2px solid var(--brand-border);
 }
 
 .saisie__actions {
@@ -3395,6 +3512,46 @@ button:disabled {
   color: var(--text);
 }
 
+/* P04 « ma cible d'abord, plan ensuite » (E17US009) : la place des archers suivis, avant la grille,
+   au contour de marque de la planche (`.carte.marquee`) ; la cible marquée le reprend dans la grille. */
+.plan-public__mes-places {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.plan-public__ma-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.plan-public__ma-place strong {
+  color: var(--text);
+}
+
+.plan-public__ma-place + .plan-public__ma-place {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.plan-public__cible--suivie {
+  border-color: var(--brand-border);
+}
+
+.plan-public__marque {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--brand-text);
+}
+
 /* Cible sans archer posé : état neutre, discret (pas une anomalie). */
 .plan-public__vide {
   font-size: 13px;
@@ -3457,6 +3614,15 @@ button:disabled {
 .recherche-resultat__nom {
   flex: 1 1 auto;
   color: var(--text);
+}
+
+/* P01 B « le club en second » et P02 A (E17US009) : sous le nom, en retrait, comme `.faible`. */
+.recherche-resultat__identite,
+.carte-suivi__identite {
+  display: block;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 /* Le résultat est **cliquable** depuis E16US010 : il ouvre la fiche trouvée (ADR-0100). Un bouton

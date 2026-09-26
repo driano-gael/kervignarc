@@ -44,6 +44,17 @@ const JEAN = archer(1, 'Jean')
 const JHEAN = archer(2, 'Jhean')
 const LUC = archer(3, 'Luc')
 
+// A09 « recherche d'abord » (E17US007) : la liste n'apparaît qu'une fois une liste choisie. On
+// passe par le compteur « Voir les N inscrits », comme l'organisateur.
+async function monterLaListe() {
+  monter(
+    <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
+  )
+  await userEvent.click(
+    await screen.findByRole('button', { name: /^Voir (les \d+ inscrits|l’inscrit)$/ }),
+  )
+}
+
 function monter(enfants: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(<QueryClientProvider client={client}>{enfants}</QueryClientProvider>)
@@ -63,7 +74,7 @@ describe('signalement de doublon sur la ligne', () => {
     // signal qui n'existe qu'en image ne se lit pas au lecteur d'écran.
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
+    await monterLaListe()
 
     expect(await screen.findAllByRole('button', { name: 'Doublon probable' })).toHaveLength(2)
   })
@@ -72,7 +83,7 @@ describe('signalement de doublon sur la ligne', () => {
     // Négatif apparié au positif ci-dessus : un signalement sur toutes les lignes ne dirait rien.
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
+    await monterLaListe()
 
     await screen.findAllByRole('button', { name: 'Doublon probable' })
     const ligneDeLuc = screen.getByText(/Luc/).closest('li')
@@ -83,7 +94,7 @@ describe('signalement de doublon sur la ligne', () => {
   it('CA — cliquer déplie l’ACTION sur place : c’est ce qui remplace l’écran dédié', async () => {
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
+    await monterLaListe()
 
     const marques = await screen.findAllByRole('button', { name: 'Doublon probable' })
     expect(screen.queryByRole('button', { name: 'Garder cette fiche' })).not.toBeInTheDocument()
@@ -92,21 +103,55 @@ describe('signalement de doublon sur la ligne', () => {
     expect(await screen.findAllByRole('button', { name: 'Garder cette fiche' })).toHaveLength(2)
   })
 
-  it('la vue d’ensemble que l’écran portait tient en une phrase chiffrée', async () => {
+  it('la vue d’ensemble que l’écran portait reste chiffrée — le compteur d’A09', async () => {
     // Sans elle, on ne saurait qu'il y a des doublons qu'en tombant dessus ligne par ligne — la
-    // perte réelle du retrait de l'écran dédié.
+    // perte réelle du retrait de l'écran dédié. Depuis E17US007, elle est portée par le compteur
+    // « Doublons » de la planche A09, qui remplace la phrase et **filtre** en plus.
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
+    await monterLaListe()
 
-    expect(await screen.findByText(/1 rapprochement de fiches/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Doublons — 2' })).toBeInTheDocument()
   })
 
-  it('aucun doublon : aucune phrase, aucun signalement', async () => {
-    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
+  it('aucun doublon : compteur à zéro, aucun signalement', async () => {
+    await monterLaListe()
 
     await screen.findByText(/Luc/)
-    expect(screen.queryByText(/rapprochement/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Doublon/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Doublons — 0' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Doublon probable' })).not.toBeInTheDocument()
+  })
+})
+
+// Revue, axe B : « population illisible → message dédié » n'était testé qu'en logique pure. C'est le
+// rendu qui distingue « la donnée manque » de « aucun inscrit ne correspond ».
+describe('compteurs d’A09 — population inconnue', () => {
+  it('un compteur illisible affiche « ? » et sa liste dit qu’elle est indisponible', async () => {
+    monter(
+      <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Non placés — ?' }))
+
+    expect(screen.getByText(/Liste indisponible/)).toBeInTheDocument()
+    expect(screen.queryByText(/Aucun inscrit ne correspond/)).not.toBeInTheDocument()
+  })
+
+  // 2ᵉ passe, axe B : la branche « doublons illisibles » n'était testée qu'en logique pure.
+  it('doublons illisibles : « Doublons — ? » et liste indisponible', async () => {
+    vi.mocked(getDoublons).mockReturnValue(new Promise(() => {}))
+    monter(
+      <Archers
+        tournoiId={1}
+        ouvrir={null}
+        onOuvrir={vi.fn()}
+        nonPlaces={new Set()}
+        nonRegles={new Set()}
+      />,
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Doublons — ?' }))
+
+    expect(screen.getByText(/Liste indisponible/)).toBeInTheDocument()
   })
 })

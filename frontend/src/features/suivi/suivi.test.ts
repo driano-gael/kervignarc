@@ -9,6 +9,7 @@ import {
   construireJournee,
   departsDesArchersSuivis,
   placeDansPlan,
+  identiteSecondaire,
   rechercherArchers,
 } from './suivi'
 
@@ -235,5 +236,36 @@ describe('departsDesArchersSuivis — quels créneaux le récapitulatif doit lir
     const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
 
     expect(departsDesArchersSuivis([404], departs, plans)).toEqual([])
+  })
+})
+
+// P01, planche B « le club en second » : deux MARTIN dans la liste — sans le club et la catégorie,
+// le spectateur suit le mauvais archer et s'en aperçoit au classement. E17US009.
+describe('identiteSecondaire', () => {
+  const clubs = new Map([[3, 'Kervignac']])
+  const categories = new Map([[1, 'Senior Homme']])
+  const avec = (club_id: number | null, categorie_id: number): Archer => ({
+    ...archer(7, 'MARTIN', 'Paul'),
+    club_id,
+    categorie_id,
+  })
+
+  it('le club puis la catégorie, séparés comme sur la planche', () => {
+    expect(identiteSecondaire(avec(3, 1), clubs, categories)).toBe('Kervignac · Senior Homme')
+  })
+
+  it('distingue deux homonymes de clubs différents', () => {
+    const autreClub = new Map([...clubs, [4, 'Lorient']])
+    expect(identiteSecondaire(avec(3, 1), autreClub, categories)).not.toBe(
+      identiteSecondaire(avec(4, 1), autreClub, categories),
+    )
+  })
+
+  it('club encore inconnu (ADR-0014) : la catégorie seule, jamais un club inventé', () => {
+    expect(identiteSecondaire(avec(null, 1), clubs, categories)).toBe('Senior Homme')
+  })
+
+  it('référentiels pas encore chargés : rien plutôt qu’un identifiant brut', () => {
+    expect(identiteSecondaire(avec(3, 1), new Map(), new Map())).toBeNull()
   })
 })

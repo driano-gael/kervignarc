@@ -7,7 +7,7 @@
 // sujet est l'**assemblage**, pas le contenu servi par le réseau.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
@@ -20,7 +20,12 @@ import { useDeroule } from './deroule'
 import { VueSuivi } from './VueSuivi'
 
 vi.mock('../archers/hooks', () => ({ useArchers: vi.fn() }))
-vi.mock('../clubs/hooks', () => ({ useClubs: () => ({ data: [], isError: false }) }))
+vi.mock('../clubs/hooks', () => ({
+  useClubs: () => ({ data: [{ id: 2, nom: 'Kervignac' }], isError: false }),
+}))
+vi.mock('../categories/hooks', () => ({
+  useCategories: () => ({ data: [{ id: 1, libelle: 'Senior Homme' }] }),
+}))
 vi.mock('../departs/hooks', () => ({ useDeparts: vi.fn() }))
 vi.mock('../placement/api', () => ({ getPlanDeCibles: vi.fn() }))
 vi.mock('../routage/hooks', () => ({ useAffectations: vi.fn() }))
@@ -40,7 +45,7 @@ const DEPART = {
   etat: 'ouvert',
 }
 
-const ARCHER = { id: 7, prenom: 'Luc', nom: 'MARTIN', club_id: 2 }
+const ARCHER = { id: 7, prenom: 'Luc', nom: 'MARTIN', club_id: 2, categorie_id: 1 }
 
 const PLAN = {
   depart_id: 10,
@@ -93,6 +98,35 @@ describe('VueSuivi — montage', () => {
     render(<Cadre enfants={<VueSuivi tournoiId={1} />} />)
 
     await waitFor(() => expect(screen.getByText(/MARTIN/)).toBeInTheDocument())
+  })
+
+  // E17US009 — P01 planche B « le club en second » : deux homonymes ne se distinguent que par là.
+  it('un résultat de recherche porte le club et la catégorie', () => {
+    render(<Cadre enfants={<VueSuivi tournoiId={1} />} />)
+
+    fireEvent.change(screen.getByLabelText(/Rechercher un archer/), { target: { value: 'mart' } })
+
+    expect(screen.getByText('Kervignac · Senior Homme')).toBeInTheDocument()
+  })
+
+  // E17US009 — P02 planche A : le nom, puis « club · catégorie », en tête de la carte suivie.
+  it('la carte d’un archer suivi porte le club et la catégorie', async () => {
+    useSessionSuivisStore.setState({ suivis: [{ archerId: 7, tournoiId: 1 }] })
+
+    render(<Cadre enfants={<VueSuivi tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByText('Kervignac · Senior Homme')).toBeInTheDocument())
+  })
+
+  // E17US009 — P01 « Aucun résultat » : la cause qui n'est pas la faute du spectateur est dite.
+  it('sans résultat, évoque une inscription pas encore enregistrée', () => {
+    render(<Cadre enfants={<VueSuivi tournoiId={1} />} />)
+
+    fireEvent.change(screen.getByLabelText(/Rechercher un archer/), { target: { value: 'zzz' } })
+
+    expect(
+      screen.getByText(/inscription n’est peut-être pas encore enregistrée/),
+    ).toBeInTheDocument()
   })
 
   it('dit que les duels sont indisponibles plutôt que de les taire', async () => {
