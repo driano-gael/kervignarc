@@ -3964,7 +3964,8 @@ window.ATLAS.decisions = {
    "amende_par": [
     "0074",
     "0075",
-    "0113"
+    "0113",
+    "0114"
    ],
    "date": "2026-08-05",
    "date_brute": "05/08/2026",
@@ -3997,6 +3998,12 @@ window.ATLAS.decisions = {
      "type": "amende"
     },
     {
+     "cible": "0114",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
+    },
+    {
      "cible": "0058",
      "libelle": "Amende",
      "sens": "sortant",
@@ -4012,6 +4019,7 @@ window.ATLAS.decisions = {
     "E01US016",
     "E17US001",
     "E17US002",
+    "E17US006",
     "E17US008"
    ]
   },
@@ -11126,6 +11134,74 @@ window.ATLAS.decisions = {
     "E17US008",
     "E17US009",
     "E17US011"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-26",
+   "date_brute": "2026-09-26",
+   "extrait": "L'action destructrice ne porte aucune couleur propre, ni aucune couleur d'état. Elle se signale par la forme et par le dialogue de confirmation d'ADR-0072 : 1. Bouton destructeur : contour épais (2 px) et texte en encre neutre (--text), sans aplat. C'est la troisième forme du produit, lisible sans la couleur : l'action principale est un aplat de marque, le bouton discret un contour fin (--border) en texte secondaire. 2. Dialogue destructeur : filet haut de 4 px en encre neutre (il était ambre). 3. Panneau d'impact (ConfirmationChiffree, ADR-0040) : rangé côté destructeur, contour épais neutre. Il annonce le coût d'une action irréversible : il fait partie de sa confirmation, pas de l'alerte. […]",
+   "fichier": "docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md",
+   "identifiant": "0114",
+   "liens": [
+    {
+     "cible": "E17US006",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0074",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "frontend/src/app/App.css",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/index.css",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/charte.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/confirmation/ConfirmationChiffree.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/DialogueConfirmation.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "L'action destructrice se signale par la forme, pas par la couleur",
+   "us": [
+    "E17US001",
+    "E17US002",
+    "E17US006"
    ]
   }
  ]

@@ -73,9 +73,10 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 - [x] A13 supervision — la grille de tuiles (`E17US004`).
 - [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — `E17US005`.
       ⛔ **Arbitrage d'actif en attente (règle 11)** : l'US est spécifiée, **pas prenable**.
-- [ ] Trancher la **couleur d'une action destructrice** — trou de la charte (`DV-03` exclut le rouge,
-      rien n'est prévu pour ce cas) : aujourd'hui contour ambre — `E17US006`.
-      ⛔ **Arbitrage en attente** : ADR attendu, l'US est spécifiée, **pas prenable**.
+- [x] Trancher la **couleur d'une action destructrice** — trou de la charte (`DV-03` exclut le rouge,
+      rien n'était prévu pour ce cas) — `E17US006`. Tranché le 26/09/2026 : **aucune couleur propre**,
+      le destructeur se signale par la forme (contour épais neutre) et le dialogue ; l'ambre reste
+      réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)).
 - [x] **Résorber** les écarts 🔴 des planches `A**` (admin) — `E17US007` : A06 et A09.
 - [x] Les quatre écarts 🟠 — tableaux à colonnes A04, A08, A12, bandeau de totaux A17 — `E17US012`.
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur) et résorber — `E17US008`.
@@ -266,8 +267,8 @@ dans l'en-tête, en haut à droite (`.indicateur--deconnecte`). ✅ La règle tr
 couleur seule » **est** tenue (`role="status"` + libellé).
 
 ⚠️ **Ne pas confondre avec `E17US006`.** `App.css` documente un aplat « essayé et rejeté sur pièce »
-— mais c'était l'aplat de l'**action destructrice**, un autre sujet, et celui-là est bloqué sur
-arbitrage. Rien n'a jamais été tranché sur le **bandeau hors ligne**.
+— mais c'était l'aplat de l'**action destructrice**, un autre sujet (tranché depuis par ADR-0114 :
+plus aucune couleur d'état sur le destructeur). Rien n'a jamais été tranché sur le **bandeau hors ligne**.
 
 ### 🔴 La ligne d'archer ne porte pas la volée en cours
 

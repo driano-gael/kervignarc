@@ -319,7 +319,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | **E17US003** | Les deux premiers écrans de l'admin se conforment à leur planche | J1 | A01 + A02 |
 | **E17US004** | La supervision passe en grille de tuiles | J2 | A13, variante B |
 | **E17US005** | Embarquer la police du club pour le jour J | J3 | `DV-07` · 🔒 **arbitrage d'ajout d'actif en attente (règle 11)** |
-| **E17US006** | Donner une couleur à l'action destructrice | J3 | `DV-03` · 🔒 **trou de charte, ADR attendu** |
+| **E17US006** | Distinguer l'action destructrice de l'alerte | J3 | `DV-03` · ADR-0114 |
 | **E17US007** | Résorber les écarts relevés sur les écrans d'administration | J3 | le relevé est **fait** ; l'US qui le solde manquait |
 | **E17US008** | Confronter les 9 planches de saisie `S**` et résorber | J3 | recoupe `E16US019` (S08) et `E16US018` — ⚠️ **le compte à rebours de `E16US018` est un ajout postérieur au questionnaire** (variante C non retenue) : à écrire dans la planche S06, sinon cette US le relèvera comme écart de structure et le retirera |
 | **E17US007** | Résorber les écarts des écrans d'administration | J3 | ✅ **livrée le 25/09/2026** — A06 (panneau latéral) et A09 (recherche d'abord + compteurs) ; les quatre 🟠 découpés en `E17US012` |

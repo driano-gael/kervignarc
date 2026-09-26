@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 24 septembre 2026
+# Résumé du projet — où on en est au 26 septembre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -134,8 +134,9 @@ déclencher. Enfin, le **05/08/2026 au soir**, l'application a **pris les couleu
 tournait encore sur le jeu de couleurs provisoire posé le premier jour — un violet qui n'appartient à
 personne, sur fond blanc — parce que les « US design » annoncées dans le code n'avaient jamais été
 écrites. Elle porte désormais la **charte mesurée** : anthracite de la banderole en fond, rouge du
-club en aplats (jamais en texte : sur le sombre, il ne se lit pas), **ambre** pour les alertes,
-chiffres alignés en colonnes. Une tablette neuve s'ouvre en **sombre** quel que soit le goût de son
+club en aplats (jamais en texte : sur le sombre, il ne se lit pas), **ambre** pour les alertes — et
+pour elles seules : depuis le 26/09/2026, un bouton qui **détruit** ne prend plus l'ambre, il se
+reconnaît à son **contour épais** et à sa confirmation —, chiffres alignés en colonnes. Une tablette neuve s'ouvre en **sombre** quel que soit le goût de son
 propriétaire, tout en gardant son réglage de luminosité par poste. Et les **maquettes font désormais
 foi** : un écart entre un écran livré et sa planche est devenu un défaut constatable, là où le dossier
 se déclarait jusqu'ici sans autorité. Dans la foulée, le **06/08/2026**, elle en a pris la **forme** :
@@ -619,8 +620,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **151 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E17US012`,
-  étant aussi la dernière à **surface visible** : les listes des **tournois, scoreurs, postes et
+- **152 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E17US006`,
+  étant aussi la dernière à **surface visible** : un bouton qui **supprime ou annule** ne partage
+  plus la couleur des **alertes** — il se reconnaît à sa forme (contour épais, couleur du texte), et
+  l'ambre ne veut plus dire que « attention ». Juste avant, `E17US012` : les listes des **tournois, scoreurs, postes et
   paiements** passent en tableaux à colonnes nommées, avec les inscrits et les cibles de chaque
   tournoi, et l'ancienneté de chaque dette. Juste avant, `E17US007` : les **blasons** s'éditent dans un panneau à côté
   de la liste, et les **inscriptions** s'ouvrent sur une recherche et quatre compteurs (inscrits,

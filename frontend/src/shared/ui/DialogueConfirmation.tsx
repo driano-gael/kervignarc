@@ -9,6 +9,7 @@
 
 import { useEffect, useId, useRef } from 'react'
 
+// DETTE-115 — `'danger'` nomme l'action destructrice, qui ne porte plus le jeton `--danger` (ADR-0114).
 export type TonConfirmation = 'normal' | 'danger'
 
 export function DialogueConfirmation({

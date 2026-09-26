@@ -148,8 +148,8 @@
 > Elles ne sont pas neuves : ce sont les **capacités que l'épic annonçait déjà** sans qu'aucune US ne
 > les porte. Un épic qui promet six capacités et n'en référence aucune se lit comme **terminé** dès
 > que ses US cochées le sont — c'est ce qu'`EPIC-14` faisait au même moment.
-> ⚠️ **Deux d'entre elles sont bloquées sur un arbitrage du commanditaire** (`E17US005`, `E17US006`) :
-> elles sont **spécifiées, pas prenables**. Ne pas les commencer avant la réponse.
+> ⚠️ **Deux d'entre elles étaient bloquées sur un arbitrage du commanditaire** (`E17US005`, `E17US006`) :
+> spécifiées, pas prenables avant la réponse. `E17US006` a été tranchée le 26/09/2026 (ADR-0114).
 
 ### E17US005 — Embarquer la police du club pour le jour J
 *En tant qu'*organisateur, *je veux* que les tablettes affichent **la police des maquettes** sans réseau, *afin de* ne pas découvrir le jour J un outil qui ne ressemble plus à celui qui a été validé.
@@ -182,7 +182,7 @@
   c'est la même classe de piège que `crypto.randomUUID`, qui marche en `localhost` et casse en LAN.
 - **Dépend de** : E17US001 · **Jalon** : J3
 
-### E17US006 — Donner une couleur à l'action destructrice
+### E17US006 — Distinguer l'action destructrice de l'alerte
 *En tant qu'*organisateur, *je veux* qu'une action **irréversible** se distingue d'une **alerte**, *afin de* ne pas confondre « ce poste est hors ligne » et « ce bouton supprime le tournoi ».
 
 - **Contexte** : **trou de la charte**, relevé par `E17US001` puis reconfirmé par `E17US002`. `DV-03`
@@ -191,22 +191,37 @@
   la **même teinte** que « poste hors ligne » et que l'avertissement. `E17US002` a atténué le
   symptôme (l'action destructrice ne prend plus l'aplat, la sécurité passe par le dialogue
   d'[ADR-0072](../docs/adr/0072-confirmation-destructrice-dialog-natif.md)) sans traiter la cause.
-- ⛔ **Bloquée sur un arbitrage — trou de charte.** Ce n'est **pas** une US d'écran : la palette ne se
-  discute pas en US (`EPIC-17` § Exclus), elle se décide **en ADR** contre la charte mesurée, avec les
-  ratios de contraste. Options à soumettre : (a) une **troisième teinte** entrant à la charte, avec
-  son ratio mesuré en thème clair **et** sombre ; (b) **deux niveaux d'ambre** — c'est ce que
-  `E17US002` a déjà posé (`--danger` avertit, `--danger-strong` escalade) : l'acter suffirait, et
-  l'US se réduirait à documenter ; (c) **aucune couleur propre** — le destructeur se signale par la
-  **forme** et le dialogue seuls, la couleur n'y jouant aucun rôle.
-- **Contraintes valables quelle que soit l'option retenue** *(le CA complet s'écrit après l'arbitrage ; celles-ci tiennent dans tous les cas)* :
-  - une action **irréversible** et un **avertissement** ne partagent pas leur signalement ;
-  - le signalement ne repose **jamais sur la couleur seule** (`DV-03`) ;
-  - tout jeton ajouté porte son **ratio de contraste mesuré** en commentaire, dans **les deux
-    thèmes** — un jeton défini dans un seul thème est une faute de contraste silencieuse (CA
-    d'`E17US001`).
-- **Notes** : `DV-03` · [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md) ·
-  ADR attendu. **Ne pas la traiter en passant** dans une US d'écran : c'est ainsi que le trou s'est
-  creusé (deux US l'ont signalé sans pouvoir le fermer).
+- **Arbitrage tranché le 26/09/2026 — option (c), aucune couleur propre** ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)).
+  Trois options avaient été soumises : (a) une **troisième teinte** entrant à la charte ; (b) **deux
+  niveaux d'ambre** (`--danger` avertit, `--danger-strong` escalade, déjà posé par `E17US002`) ;
+  (c) **aucune couleur propre** — le destructeur se signale par la **forme** et le dialogue seuls.
+  Le commanditaire a retenu (c) : l'ambre reste **réservé à l'alerte**. (b) a été écartée parce que
+  deux ambres restent une même famille de teinte — l'irréversible et l'avertissement auraient
+  continué de partager leur signal.
+- **CA — l'action destructrice ne porte aucune couleur d'état** : le bouton destructeur
+  (`.bouton--danger`), le dialogue de confirmation destructeur (`.dialogue--danger`) et le panneau
+  d'impact d'une action massive (`.confirmation`, `ConfirmationChiffree`) ne référencent **aucun** jeton
+  d'état (`--danger`, `--danger-strong`, `--success`, `--info`) ni la marque. ⚠️ Le panneau d'impact
+  est rangé **côté destructeur**, pas côté alerte : il annonce le coût d'une action irréversible, il
+  fait partie de sa confirmation au même titre que le dialogue.
+- **CA — l'action destructrice se reconnaît à sa forme** : le bouton destructeur est le seul bouton à
+  **contour épais** (2 px) **en encre neutre** (`--text`), sans aplat — distinct de l'action principale
+  (aplat de marque) comme du bouton discret (contour fin `--border`, texte secondaire) ; le dialogue
+  destructeur garde son **filet haut** (4 px), en encre neutre. La sécurité reste portée par le
+  dialogue d'[ADR-0072](../docs/adr/0072-confirmation-destructrice-dialog-natif.md) (« Annuler » prend
+  le focus) — inchangé.
+- **CA — les jetons d'alerte portent leur ratio dans chaque déclinaison** : `--danger` et
+  `--danger-strong` portent leur ratio de contraste mesuré en commentaire dans le thème sombre, le
+  thème clair **et** la déclinaison claire de « Système » (`--danger-strong` clair n'en portait pas :
+  6,78:1).
+- **Contraintes de départ, tenues par (c)** : une action **irréversible** et un **avertissement** ne
+  partagent pas leur signalement ; le signalement ne repose **jamais sur la couleur seule** (`DV-03`) ;
+  aucun jeton n'est ajouté (donc aucun ratio neuf à mesurer).
+- **Notes** : `DV-03` · [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)
+  (amendé par ADR-0114). ⚠️ **Piège de nommage laissé en place — `DETTE-115`** : la classe
+  s'appelle toujours `bouton--danger` (et la prop `ton="danger"`) alors qu'elle ne porte plus le jeton
+  `--danger` ; le renommage attend qu'aucune branche en vol ne touche ses 22 fichiers. Le test de
+  charte empêche d'y remettre l'ambre.
 - **Dépend de** : E17US002 · **Jalon** : J3
 
 ### E17US007 — Résorber les écarts relevés sur les écrans d'administration
