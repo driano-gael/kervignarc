@@ -6,7 +6,19 @@ import { describe, expect, it } from 'vitest'
 import type { Archer } from './api'
 import { archersAffiches, compteurs, type Ensembles } from './accueil'
 
-const archer = (id: number, nom: string, prenom = 'Luc'): Archer => ({ id, nom, prenom }) as Archer
+// Typée en entier (revue, axe B) : un cast partiel laisserait ces tests verts sur un champ renommé.
+const archer = (id: number, nom: string, prenom = 'Luc'): Archer => ({
+  id,
+  tournoi_id: 1,
+  nom,
+  prenom,
+  categorie_id: 1,
+  cible: null,
+  club_id: null,
+  handicap_officiel: null,
+  handicap_surcharge: null,
+  handicap: 0,
+})
 
 const TOUS = [archer(1, 'MARTIN'), archer(2, 'Durand'), archer(3, 'Hélias', 'Élodie')]
 const ENSEMBLES: Ensembles = {
@@ -83,5 +95,7 @@ describe('compteurs', () => {
 
   it('une population inconnue reste inconnue — `null`, jamais 0', () => {
     expect(compteurs(TOUS, { ...ENSEMBLES, nonPlaces: null }).nonPlaces).toBeNull()
+    // Doublons compris (revue, axe C1) : pendant le chargement, le compteur disait « 0 ».
+    expect(compteurs(TOUS, { ...ENSEMBLES, doublons: null }).doublons).toBeNull()
   })
 })

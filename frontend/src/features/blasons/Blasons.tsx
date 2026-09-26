@@ -26,8 +26,9 @@ export function Blasons({ tournoiId }: { tournoiId: number }) {
     <section>
       <div className="blasons__entete">
         <h3 className="carte__soustitre">Blasons</h3>
+        {/* Seulement une fois la liste lue : avant, « 0 blason » serait un faux. */}
         <span className="blasons__compte">
-          {liste.length} blason{liste.length > 1 ? 's' : ''}
+          {blasons.isSuccess && `${liste.length} blason${liste.length > 1 ? 's' : ''}`}
         </span>
         <button type="button" onClick={() => setSelection({ mode: 'creation' })}>
           Ajouter un blason

@@ -62,7 +62,11 @@ export function Archers({
   const ensembles: Ensembles = {
     nonPlaces,
     nonRegles,
-    doublons: new Set(paires.flatMap((paire) => [paire.a.id, paire.b.id])),
+    // `data` et non `paires` : `paires` retombe sur `[]` pendant le chargement, soit « Doublons — 0 ».
+    doublons:
+      doublons.data === undefined
+        ? null
+        : new Set(doublons.data.flatMap((paire) => [paire.a.id, paire.b.id])),
   }
   const inscrits = archers.data ?? []
   const nb = compteurs(inscrits, ensembles)
@@ -91,7 +95,7 @@ export function Archers({
           />
           <div className="inscrits__compteurs" role="group" aria-label="Listes d’inscrits">
             <BoutonCompteur actif={filtre === 'tous'} onClick={() => choisir('tous')}>
-              Voir les {nb.inscrits} inscrits
+              Tous les inscrits — {nb.inscrits}
             </BoutonCompteur>
             <BoutonCompteur actif={filtre === 'non_places'} onClick={() => choisir('non_places')}>
               Non placés — {nb.nonPlaces ?? '?'}
@@ -100,7 +104,7 @@ export function Archers({
               Non réglés — {nb.nonRegles ?? '?'}
             </BoutonCompteur>
             <BoutonCompteur actif={filtre === 'doublons'} onClick={() => choisir('doublons')}>
-              Doublons — {nb.doublons}
+              Doublons — {nb.doublons ?? '?'}
             </BoutonCompteur>
           </div>
         </div>
@@ -124,7 +128,8 @@ export function Archers({
             {requete.trim() === '' && filtre === null
               ? 'Tapez un nom, ou choisissez une liste ci-dessus.'
               : (filtre === 'non_places' && nb.nonPlaces === null) ||
-                  (filtre === 'non_regles' && nb.nonRegles === null)
+                  (filtre === 'non_regles' && nb.nonRegles === null) ||
+                  (filtre === 'doublons' && nb.doublons === null)
                 ? 'Liste indisponible pour l’instant — les données n’ont pas pu être lues.'
                 : 'Aucun inscrit ne correspond.'}
           </p>

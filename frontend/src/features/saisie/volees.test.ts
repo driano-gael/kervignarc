@@ -10,6 +10,7 @@ import {
   serieOptimiste,
   cumulSaisi,
   flecheVisee,
+  voleeOuverte,
   frapper,
   totalVolee,
   voleeApresEnregistrement,
@@ -464,5 +465,19 @@ describe('frapper', () => {
 
   it('une volée complète reste corrigeable par la case visée', () => {
     expect(frapper(['10', '9', '8'], 'M', 2, 3)).toEqual(['10', '9', 'M'])
+  })
+})
+
+// Revue d'E17US011 (axes B, C1, D) : la ligne recalculait la volée en cours de son côté, et
+// montrait une autre volée que le pavé dès qu'on naviguait. Un seul calcul, lu par les deux.
+describe('voleeOuverte', () => {
+  const deux = [volee(1, ['10', '9', '8']), volee(2, ['9', '9', '9'])]
+
+  it('la volée choisie (navigateur, case touchée) prime', () => {
+    expect(voleeOuverte(1, deux, 20)).toBe(1)
+  })
+
+  it('sans choix, la prochaine à saisir', () => {
+    expect(voleeOuverte(null, deux, 20)).toBe(3)
   })
 })

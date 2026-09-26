@@ -3,9 +3,11 @@
 // ne peut pas lire lui-même sans dépendre de `placement` et `paiements` — cf. ses props.
 
 import { Archers } from '../archers/Archers'
+import { useArchers } from '../archers/hooks'
 import { NouvelArcher } from '../archers/NouvelArcher'
 import { useArchersNonRegles } from '../paiements/hooks'
-import { useArchersEnReserve } from '../placement/hooks'
+import { usePlansDuTournoi } from '../placement/hooks'
+import { archersNonPlaces } from '../placement/nonPlaces'
 
 export function InscriptionsAdmin({
   tournoiId,
@@ -16,7 +18,15 @@ export function InscriptionsAdmin({
   ouvrir: number | null
   onOuvrir: (id: number | null) => void
 }) {
-  const nonPlaces = useArchersEnReserve(tournoiId)
+  const archers = useArchers(tournoiId)
+  const plans = usePlansDuTournoi(tournoiId)
+  const nonPlaces =
+    archers.data === undefined
+      ? null
+      : archersNonPlaces(
+          archers.data.map((a) => a.id),
+          plans,
+        )
   const nonRegles = useArchersNonRegles(tournoiId)
   return (
     <>

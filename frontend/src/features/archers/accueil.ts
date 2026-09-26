@@ -10,14 +10,14 @@ export type Filtre = 'tous' | 'non_places' | 'non_regles' | 'doublons'
 export interface Ensembles {
   nonPlaces: ReadonlySet<number> | null
   nonRegles: ReadonlySet<number> | null
-  doublons: ReadonlySet<number>
+  doublons: ReadonlySet<number> | null
 }
 
 export interface Compteurs {
   inscrits: number
   nonPlaces: number | null
   nonRegles: number | null
-  doublons: number
+  doublons: number | null
 }
 
 export interface Critere {
@@ -27,7 +27,7 @@ export interface Critere {
   ouvert: number | null
 }
 
-// `DETTE-114` — 4ᵉ copie de la même normalisation (audit, barrage, suivi) : à extraire en `shared/`.
+// `DETTE-103` — 4ᵉ copie du repli casse + accents (variante de `suivi.ts`) : à extraire en `shared/`.
 function normaliser(texte: string): string {
   return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
@@ -63,6 +63,6 @@ export function compteurs(archers: readonly Archer[], ensembles: Ensembles): Com
     inscrits: archers.length,
     nonPlaces: ensembles.nonPlaces === null ? null : parmi(ensembles.nonPlaces),
     nonRegles: ensembles.nonRegles === null ? null : parmi(ensembles.nonRegles),
-    doublons: parmi(ensembles.doublons),
+    doublons: ensembles.doublons === null ? null : parmi(ensembles.doublons),
   }
 }

@@ -55,15 +55,23 @@ let erreurSaisie: Error | null = null
 // La table que sert le barème (E17US011) : le poste la lit, il ne recalcule plus. Lue par la
 // fabrique de `vi.mock` au rendu, donc après l'évaluation du module — `const` y est sûr.
 const TABLE: Record<string, number> = { '10': 10, '9': 9, '8': 8, '7': 7, M: 0 }
+const BAREME_SERVI = { data: { nb_volees: 2, nb_fleches_par_volee: 3, points_par_zone: TABLE } }
+// Mutables, remis aux valeurs servies par `reinitialiserEtats` (revue d'E17US011 : barème illisible,
+// série en cours de chargement — les deux cas où la ligne affichait un faux).
+let BAREME: unknown = BAREME_SERVI
+let SERIE_CHARGEE = true
 
 vi.mock('./hooks', () => ({
   useRejeuFileHorsLigne: () => undefined,
   useGrille: () => GRILLE,
-  useBareme: () => ({ data: { nb_volees: 2, nb_fleches_par_volee: 3, points_par_zone: TABLE } }),
+  useBareme: () => BAREME,
   useGrain: () => ({ data: null }),
   useDeparts: () => ({ data: [], isSuccess: true }),
   useFixerDepart: () => ({ mutate: vi.fn(), isPending: false, error: null }),
-  useSerie: () => ({ data: SERIE, isError: false, isSuccess: true, error: null }),
+  useSerie: () =>
+    SERIE_CHARGEE
+      ? { data: SERIE, isError: false, isSuccess: true, error: null }
+      : { data: undefined, isError: false, isSuccess: false, error: null },
   useSeries: () => [{ data: SERIE, isSuccess: true }],
   useSaisirVolee: () => ({
     // ⚠️ `mutate` **joue** le rappel d'échec : un `vi.fn()` nu prouvait que la chaîne est rendue,
@@ -314,5 +322,103 @@ describe('Saisie — la ligne d’archer porte la volée en cours', () => {
     expect((await caseDeLaLigne(1)).textContent).toBe('10')
     expect((await caseDeLaLigne(2)).textContent).toBe('M')
     expect((await caseDeLaLigne(3)).textContent).toBe('8')
+  })
+})
+
+// Revue d'E17US011 — les scénarios qu'aucun test ne montait : la ligne et le pavé sur deux volées
+// différentes (axes B, C1, D), une cible à plusieurs archers (B), un barème illisible (B, C1, C2,
+// D), une série en chargement (D). Oracle : planche S02, la case marquée est celle que la
+// prochaine frappe remplit.
+describe('Saisie — la ligne montre la volée que le pavé ouvre', () => {
+  const MARTIN = { ...LIGNE, position: 'B', archer_id: 13, nom: 'MARTIN', prenom: 'Paul' }
+
+  beforeEach(() => {
+    erreurSaisie = null
+    SERIE = SERIE_VIDE
+    GRILLE = GRILLE_SERVIE
+    BAREME = BAREME_SERVI
+    SERIE_CHARGEE = true
+  })
+
+  async function caseDe(nom: string, numero: number) {
+    const grille = await screen.findByRole('list')
+    return within(grille).getByRole('button', { name: new RegExp(`^Flèche ${numero} de ${nom}`) })
+  }
+
+  async function taper(...zones: string[]) {
+    const pave = screen.getByRole('group', { name: 'Volées' }).parentElement as HTMLElement
+    for (const zone of zones) {
+      await userEvent.click(within(pave).getByRole('button', { name: zone }))
+    }
+  }
+
+  it('choisir une volée au navigateur : la ligne la montre, avec ses valeurs', async () => {
+    SERIE = { ...SERIE_VIDE, volees: [volee(1, ['10', '9', '8'])] }
+    monter()
+    await userEvent.click(await caseDe('DURAND', 1))
+
+    await userEvent.click(
+      within(screen.getByRole('group', { name: 'Volées' })).getByRole('button', { name: /^1/ }),
+    )
+
+    expect((await caseDe('DURAND', 1)).textContent).toBe('10')
+    expect((await caseDe('DURAND', 3)).textContent).toBe('8')
+  })
+
+  it('deux archers : la frappe va à celui dont on a touché la case', async () => {
+    GRILLE = { ...GRILLE_SERVIE, data: [LIGNE, MARTIN] }
+    monter()
+    await userEvent.click(await caseDe('DURAND', 1))
+    await taper('10')
+
+    await userEvent.click(await caseDe('MARTIN', 1))
+    await taper('9')
+
+    expect((await caseDe('MARTIN', 1)).textContent).toBe('9')
+    expect((await caseDe('DURAND', 1)).textContent).toBe('10')
+    expect((await caseDe('DURAND', 2)).textContent).toBe('')
+  })
+
+  it('une flèche visée ne survit pas à un changement d’archer par son nom', async () => {
+    GRILLE = { ...GRILLE_SERVIE, data: [LIGNE, MARTIN] }
+    monter()
+    await userEvent.click(await caseDe('DURAND', 1))
+    await taper('10', '9', '8')
+    await userEvent.click(await caseDe('DURAND', 2))
+
+    const grille = await screen.findByRole('list')
+    await userEvent.click(within(grille).getByRole('button', { name: /MARTIN.*volées/ }))
+    await userEvent.click(within(grille).getByRole('button', { name: /DURAND.*volées/ }))
+    await taper('M')
+
+    // Volée pleine, plus rien de visé : la frappe est refusée, la flèche 2 reste un 9.
+    expect((await caseDe('DURAND', 2)).textContent).toBe('9')
+  })
+
+  it('tant que la série n’est pas chargée, les cases ne s’actionnent pas', async () => {
+    SERIE_CHARGEE = false
+    monter()
+
+    expect(await caseDe('DURAND', 1)).toBeDisabled()
+  })
+
+  it('un barème illisible s’affiche « ? », jamais comme un zéro', async () => {
+    BAREME = { data: undefined, isError: true, isSuccess: false }
+    SERIE = { ...SERIE_VIDE, volees: [volee(1, ['10', '9', '8'])] }
+    monter()
+
+    expect(await cumulAffiche()).toBe('?')
+  })
+
+  it('la case marquée est celle que la prochaine frappe remplit', async () => {
+    monter()
+    await userEvent.click(await caseDe('DURAND', 1))
+    await taper('10', '9', '8')
+    await userEvent.click(await caseDe('DURAND', 2))
+
+    const marquees = [1, 2, 3].map(async (n) =>
+      (await caseDe('DURAND', n)).classList.contains('saisie__case--en-cours'),
+    )
+    expect(await Promise.all(marquees)).toEqual([false, true, false])
   })
 })

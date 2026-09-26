@@ -48,6 +48,7 @@ class ZoneScore(str, Enum):
 
 
 ZONES_CANONIQUES: tuple[ZoneScore, ...] = tuple(ZoneScore)
+"""Vocabulaire des zones, dans l'ordre canonique (centre → extérieur). Sert de clé de tri."""
 
 
 def points_zone(zone: ZoneScore) -> int:
@@ -59,8 +60,6 @@ def points_zone(zone: ZoneScore) -> int:
     """
     return 0 if zone is ZoneScore.MANQUE else int(zone.value)
 
-
-"""Vocabulaire des zones, dans l'ordre canonique (centre → extérieur). Sert de clé de tri."""
 
 ZONES_DEFAUT: tuple[ZoneScore, ...] = (
     ZoneScore.DIX,

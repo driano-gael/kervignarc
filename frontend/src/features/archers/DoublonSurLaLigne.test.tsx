@@ -45,12 +45,12 @@ const JHEAN = archer(2, 'Jhean')
 const LUC = archer(3, 'Luc')
 
 // A09 « recherche d'abord » (E17US007) : la liste n'apparaît qu'une fois une liste choisie. On
-// passe par le compteur « Voir les N inscrits », comme l'organisateur.
+// passe par le compteur « Tous les inscrits — N », comme l'organisateur.
 async function monterLaListe() {
   monter(
     <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
   )
-  await userEvent.click(await screen.findByRole('button', { name: /^Voir les \d+ inscrits$/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /^Tous les inscrits — \d+$/ }))
 }
 
 function monter(enfants: ReactNode) {
@@ -118,5 +118,20 @@ describe('signalement de doublon sur la ligne', () => {
     await screen.findByText(/Luc/)
     expect(screen.getByRole('button', { name: 'Doublons — 0' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Doublon probable' })).not.toBeInTheDocument()
+  })
+})
+
+// Revue, axe B : « population illisible → message dédié » n'était testé qu'en logique pure. C'est le
+// rendu qui distingue « la donnée manque » de « aucun inscrit ne correspond ».
+describe('compteurs d’A09 — population inconnue', () => {
+  it('un compteur illisible affiche « ? » et sa liste dit qu’elle est indisponible', async () => {
+    monter(
+      <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Non placés — ?' }))
+
+    expect(screen.getByText(/Liste indisponible/)).toBeInTheDocument()
+    expect(screen.queryByText(/Aucun inscrit ne correspond/)).not.toBeInTheDocument()
   })
 })

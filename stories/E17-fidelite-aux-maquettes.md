@@ -246,9 +246,14 @@
     suppression passe **dans le panneau**, avec sa confirmation. Les colonnes **diamètre,
     distances, emploi** de la planche n'existent pas au modèle : **retirées de la planche**.
   - **A09** — sans recherche ni compteur choisi, **rien n'est listé** (sinon c'est la variante A,
-    écartée). Les compteurs sont des **filtres** (bascule, `aria-pressed`) ; « Non placés » = en
-    **réserve** d'au moins un plan (le plan persisté y range tout inscrit sans affectation), « Non
-    réglés » = reste dû > 0. Une population illisible s'affiche « ? », **jamais 0**. Une fiche
+    écartée). Les compteurs sont des **filtres** (bascule, `aria-pressed`) ; « **Non placés** » =
+    sans cible — en **réserve** sur au moins un départ, **ou posé sur aucune cible d'aucun plan**,
+    ce qui couvre l'archer inscrit au tournoi mais à **aucun départ** (celui qu'on a oublié) ; sans
+    gabarit de salle, **tous** les inscrits. *(Corrigé en revue, axes B, C1, D : la 1ʳᵉ rédaction
+    ne comptait que la réserve et affirmait à tort que « le plan persisté y range tout inscrit » —
+    vrai des seuls inscrits à un départ.)* « Non réglés » = reste dû > 0. Une population illisible
+    s'affiche « ? », **jamais 0** — les **doublons** compris. Le premier compteur s'intitule « Tous
+    les inscrits — N » (« Voir les 1 inscrits » ne s'accordait pas). Une fiche
     ouverte par l'adresse (recherche transverse, E16US010) **reste listée** — sans quoi le
     résultat cliqué ne mènerait nulle part. La phrase « N rapprochements de fiches » est
     **remplacée** par le compteur « Doublons », qui la chiffre et filtre en plus.
@@ -260,7 +265,8 @@
     suppose un historique local qui n'existe pas. **Non vérifié au navigateur** : le navigateur
     piloté affichait une page d'erreur sur l'admin alors que le serveur répondait 200 — le contrôle
     visuel d'A06 et d'A09 reste à faire.
-  - `DETTE-114` ouverte : la normalisation de recherche en est à sa 4ᵉ copie.
+  - `DETTE-103` **aggravée** (4ᵉ copie du repli casse + accents). *(Ouverte d'abord sous un
+    numéro neuf, `DETTE-114`, qui la doublait avec un constat faux — fusionnée en revue.)*
 - **Dépend de** : E17US002 · **Jalon** : J3
 
 ### E17US012 — Les écrans d'administration en carte-tableau
@@ -388,7 +394,15 @@
     **ancré en bas de l'écran** (`position: sticky`), comme un clavier : pleine largeur **et**
     toujours visible. Pour ne pas masquer la grille, il a été compacté (420 → **253 px**) :
     navigation des volées sur un rang défilant, volée tapée et actions sur un rang, les onze
-    touches sur un seul.
+    touches sur un seul. ⚠️ **Dès 60 rem seulement, et borné à la fenêtre** (revue, axe D) : sur
+    un téléphone, non compacté, collé en bas et plus haut que l'écran, son haut devenait
+    inatteignable. Sous 60 rem, le pavé reste empilé sous la grille — l'écart 🟠 d'`E17US008`.
+  - ⚠️ **La ligne et le pavé lisent la même volée ouverte** (`voleeOuverte`, état `ouverture`
+    unique dans `Saisie`). La 1ʳᵉ version recalculait dans la ligne : la ligne montrait une autre
+    volée que le pavé dès qu'on naviguait ou qu'une volée rendue était ressaisie (revue, axes B,
+    C1, D). Toucher le **nom** d'un autre archer remet l'ouverture à zéro ; les cases restent
+    inactives tant que la série n'est pas lue ; sans barème lisible, cumul et totaux affichent
+    « ? ».
   - ⚠️ **« 90 px par touche » n'est tenu qu'à partir d'une carte d'environ 1 100 px** : sur la
     carte de 1 061 px du poste de mesure, les onze touches font **87 × 64 px**. Les tenir à 90 px
     imposerait un second rang, donc de repousser la grille.

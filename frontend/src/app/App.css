@@ -2683,13 +2683,18 @@ button:disabled {
 }
 
 /* ⚠️ **Ancré en bas, comme un clavier** : empilé sans ancrage, le pavé retombait sous la ligne de
-   flottaison (touches à 826 px sur une fenêtre de 641, mesuré) — le défaut qu'`E17US008` avait
-   corrigé par le côte-à-côte. L'ancrage garde les deux : pleine largeur ET toujours visible. */
-.saisie__travail > .saisie__pave {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  box-shadow: 0 -8px 16px color-mix(in srgb, var(--surface-0) 80%, transparent);
+   flottaison (touches à 826 px sur une fenêtre de 641, mesuré). ⚠️ **Seulement dès 60 rem**, où il
+   est compacté ; et borné à la fenêtre — collé en bas et plus haut qu'elle, son haut (navigation,
+   « Fermer ») deviendrait inatteignable, comme `.reserve` l'a déjà appris (revue, axe D). */
+@media (min-width: 60rem) {
+  .saisie__travail > .saisie__pave {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    box-shadow: 0 -8px 16px color-mix(in srgb, var(--surface-0) 80%, transparent);
+  }
 }
 
 /* Le numéro de cible, taille de la grille (S02) : 22 px. Il sortait en 16 px, celle du texte

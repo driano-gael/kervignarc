@@ -28,12 +28,12 @@ import {
   heureSaisie,
   libelleGrain,
   nouvelIdentifiant,
-  prochaineASaisir,
   voleeApresEnregistrement,
   quelSaisiePar,
   cumulSaisi,
   flecheVisee,
   frapper,
+  voleeOuverte,
   totalVolee,
   voleeExistante,
   type PointsParZone,
@@ -61,9 +61,10 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
   const [brouillons, setBrouillons] = useState<Brouillons>({})
   const changerBrouillon = (archerId: number, numero: number, valeurs: string[] | null) =>
     setBrouillons((actuels) => noterBrouillon(actuels, archerId, numero, valeurs))
-  // La case touchée sur une ligne d'archer (E17US011) : détenue ici pour la même raison que les
-  // brouillons — le pavé est remonté à chaque changement d'archer (`key`), la visée doit survivre.
-  const [visee, setVisee] = useState<Visee | null>(null)
+  // Quelle volée est ouverte, et quelle flèche la prochaine frappe remplace (E17US011). Détenu ici
+  // pour la même raison que les brouillons — le pavé est remonté à chaque changement d'archer — et
+  // **un seul** : la ligne de l'archer actif et le pavé le lisent tous deux (`voleeOuverte`).
+  const [ouverture, setOuverture] = useState<Ouverture | null>(null)
 
   // Départ courant non fixé : le serveur refuse la grille (409, ADR-0034 §1). C'est un état attendu,
   // pas un incident — on invite à choisir un départ plutôt que d'afficher une erreur.
@@ -89,7 +90,8 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
     marqueur !== null && lignes.some((l) => l.nom === marqueur) ? marqueur : (premier?.nom ?? null)
 
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
-  const viseeActive = visee !== null && visee.archerId === archerActif ? visee : null
+  const ouvertureActive =
+    ouverture !== null && ouverture.archerId === archerActif ? ouverture : null
 
   // L'état « Rattaché » de S01 : la tablette sait quelle cible elle sert, le tir n'a rien à montrer
   // encore. Exclut le chargement et l'erreur dure, où un numéro géant n'aurait aucun sens.
@@ -198,10 +200,10 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 bareme={bareme.data ?? null}
                 brouillons={brouillons}
                 actif={ligne.archer_id === archerActif}
-                caseVisee={viseeActive?.archerId === ligne.archer_id ? viseeActive.fleche : null}
+                ouverture={ouvertureActive?.archerId === ligne.archer_id ? ouvertureActive : null}
                 onViser={(numero, fleche) => {
                   setArcherChoisi(ligne.archer_id)
-                  setVisee({ archerId: ligne.archer_id, numero, fleche })
+                  setOuverture({ archerId: ligne.archer_id, numero, fleche })
                 }}
                 // ⚠️ **Pas une bascule** : re-taper la ligne ouverte ne referme pas le pavé. Sur une
                 // cible ce tap arrive tout seul (on re-touche le nom pour lire le cumul), et une
@@ -210,7 +212,12 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 // ⚠️ Le motif historique — « le refermer jette le tampon de frappe » — **ne vaut
                 // plus** : les brouillons vivent dans `Saisie` depuis, donc refermer ne perd rien
                 // (cf. `brouillons` plus haut). Le geste reste, sa raison a changé.
-                onSelectionner={() => setArcherChoisi(ligne.archer_id)}
+                onSelectionner={() => {
+                  // Changer d'archer par son nom repart de sa prochaine volée : une visée laissée
+                  // sur un autre archer ressusciterait au retour (revue, axes C1 et D).
+                  if (ligne.archer_id !== archerActif) setOuverture(null)
+                  setArcherChoisi(ligne.archer_id)
+                }}
               />
             ))}
           </ul>
@@ -224,13 +231,11 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
               marqueur={marqueurActif}
               brouillons={brouillons}
               onBrouillon={changerBrouillon}
-              visee={viseeActive}
-              onViser={(v) =>
-                setVisee(v === null ? null : { archerId: ligneActive.archer_id, ...v })
-              }
+              ouverture={ouvertureActive}
+              onOuvrir={(o) => setOuverture({ archerId: ligneActive.archer_id, ...o })}
               onFermer={() => {
                 setArcherChoisi(null)
-                setVisee(null)
+                setOuverture(null)
               }}
             />
           ) : bareme.isSuccess && bareme.data === null ? (
@@ -381,7 +386,7 @@ function LigneArcher({
   bareme,
   brouillons,
   actif,
-  caseVisee,
+  ouverture,
   onSelectionner,
   onViser,
 }: {
@@ -390,19 +395,24 @@ function LigneArcher({
   bareme: Bareme | null
   brouillons: Brouillons
   actif: boolean
-  caseVisee: number | null
+  // L'ouverture de `Saisie`, pour l'archer actif seulement.
+  ouverture: { numero: number | null; fleche: number | null } | null
   onSelectionner: () => void
   onViser: (numero: number, fleche: number | null) => void
 }) {
   const serie = useSerie(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
   const nbVolees = bareme?.nb_volees ?? null
-  const table: PointsParZone = bareme?.points_par_zone ?? {}
+  // `null` tant que le barème n'est pas lu : un score sans sa règle s'affiche « ? », jamais 0
+  // (revue, quatre axes) — `pointsZone` n'a pas de défaut, un `{}` ici le contournait.
+  const table: PointsParZone | null = bareme?.points_par_zone ?? null
   const nbSaisies = volees.length
-  const cumul = cumulSaisi(volees, table)
-  // La volée en cours : celle que le pavé ouvrirait, brouillon compris — la ligne et le pavé
-  // lisent la même source, ils ne peuvent pas montrer deux volées différentes.
-  const numero = nbVolees === null ? null : prochaineASaisir(volees, nbVolees)
+  const cumul = table === null ? '?' : cumulSaisi(volees, table)
+  const total = (valeurs: readonly string[]) => (table === null ? '?' : totalVolee(valeurs, table))
+  // La volée ouverte, par le **même** calcul que le pavé (`voleeOuverte`) : pour l'archer actif,
+  // celle que le pavé saisit ; pour les autres, leur prochaine à saisir.
+  const numero =
+    nbVolees === null ? null : voleeOuverte(ouverture?.numero ?? null, volees, nbVolees)
   const enCours =
     numero === null
       ? []
@@ -411,7 +421,7 @@ function LigneArcher({
         [])
   const verrouillee = numero !== null && (voleeExistante(volees, numero)?.verrouillee ?? false)
   // La case marquée : la flèche visée, sinon la prochaine à remplir — seulement sur l'archer actif.
-  const caseEnCours = actif ? (caseVisee ?? enCours.length) : null
+  const caseEnCours = actif ? (ouverture?.fleche ?? enCours.length) : null
 
   return (
     <li>
@@ -451,13 +461,15 @@ function LigneArcher({
               type="button"
               className={i === caseEnCours ? 'saisie__case saisie__case--en-cours' : 'saisie__case'}
               aria-label={libelleCase(i, ligne.nom, enCours[i])}
-              disabled={verrouillee}
+              // ⚠️ Série pas encore lue : `numero` vaudrait 1 et le toucher figerait le pavé sur la
+              // volée 1 — le garde-fou `chargee` du pavé, repris ici (revue, axe D).
+              disabled={!serie.isSuccess || verrouillee}
               onClick={() => onViser(numero, flecheVisee(i, enCours))}
             >
               {enCours[i] ?? ''}
             </button>
           ))}
-          <span className="saisie__somme">{totalVolee(enCours, table)}</span>
+          <span className="saisie__somme">{total(enCours)}</span>
         </span>
       )}
 
@@ -490,7 +502,7 @@ function LigneArcher({
             // sur les valeurs, pas sur un cumul (revue, axe B).
             return (
               <span key={i} className={classes}>
-                <span className="saisie__relecture-total">{totalVolee(volee.valeurs, table)}</span>
+                <span className="saisie__relecture-total">{total(volee.valeurs)}</span>
                 <span className="saisie__relecture-detail">{volee.valeurs.join(' ')}</span>
               </span>
             )
@@ -513,8 +525,8 @@ function PaveArcher({
   marqueur,
   brouillons,
   onBrouillon,
-  visee,
-  onViser,
+  ouverture,
+  onOuvrir,
   onFermer,
 }: {
   tournoiId: number
@@ -525,10 +537,10 @@ function PaveArcher({
   // écrit, il ne les possède pas — c'est ce qui les fait survivre à son démontage.
   brouillons: Brouillons
   onBrouillon: (archerId: number, numero: number, valeurs: string[] | null) => void
-  // La case touchée sur la ligne d'archer (E17US011) : quelle volée ouvrir, et quelle flèche la
-  // prochaine frappe remplace. `null` = le pavé suit son propre fil.
-  visee: { numero: number; fleche: number | null } | null
-  onViser: (visee: { numero: number; fleche: number | null } | null) => void
+  // L'ouverture détenue par `Saisie` : la volée choisie (`null` = la prochaine à saisir) et la
+  // flèche que la prochaine frappe remplace (`null` = à la suite).
+  ouverture: { numero: number | null; fleche: number | null } | null
+  onOuvrir: (ouverture: { numero: number | null; fleche: number | null }) => void
   // Depuis que le pavé est **appelé** (S02), il doit aussi pouvoir se refermer sans passer par la
   // ligne : sur un téléphone, la grille est parfois hors de l'écran quand le pavé est ouvert.
   onFermer: () => void
@@ -537,10 +549,9 @@ function PaveArcher({
   const saisir = useSaisirVolee(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
 
-  // Volée visée : le choix explicite (navigateur), sinon la prochaine non saisie.
-  const [numeroChoisi, setNumeroChoisi] = useState<number | null>(null)
-  const numeroActif = visee?.numero ?? numeroChoisi ?? prochaineASaisir(volees, bareme.nb_volees)
-  const fleche = visee?.fleche ?? null
+  // Volée visée : le choix explicite (navigateur, case de ligne), sinon la prochaine non saisie.
+  const numeroActif = voleeOuverte(ouverture?.numero ?? null, volees, bareme.nb_volees)
+  const fleche = ouverture?.fleche ?? null
   const existante = voleeExistante(volees, numeroActif)
   const verrouillee = existante?.verrouillee ?? false
   const valeursExistantes = existante?.valeurs
@@ -572,7 +583,7 @@ function PaveArcher({
     if (suivant === null) return
     onBrouillon(ligne.archer_id, numeroActif, suivant)
     // La correction faite, retour au fil de la volée — sur la **même** volée.
-    if (fleche !== null) onViser({ numero: numeroActif, fleche: null })
+    if (fleche !== null) onOuvrir({ numero: numeroActif, fleche: null })
   }
   const effacer = () => onBrouillon(ligne.archer_id, numeroActif, buffer.slice(0, -1))
   const enregistrer = () => {
@@ -592,8 +603,7 @@ function PaveArcher({
       {
         onSuccess: () => {
           onBrouillon(ligne.archer_id, numeroActif, null)
-          onViser(null)
-          setNumeroChoisi(voleeApresEnregistrement(volees, numeroActif))
+          onOuvrir({ numero: voleeApresEnregistrement(volees, numeroActif), fleche: null })
         },
         // ⚠️ Le brouillon s'efface AUSSI sur un refus de préséance, sans quoi le pavé continuait
         // d'afficher les flèches refusées sous le message « le score affiché fait foi » — qui
@@ -613,10 +623,7 @@ function PaveArcher({
         nbVolees={bareme.nb_volees}
         volees={volees}
         numeroActif={numeroActif}
-        onChoisir={(numero) => {
-          onViser(null)
-          setNumeroChoisi(numero)
-        }}
+        onChoisir={(numero) => onOuvrir({ numero, fleche: null })}
       />
 
       <div className="saisie__pave-entete">
@@ -784,11 +791,12 @@ function NavigateurVolees({
   )
 }
 
-// La flèche visée depuis une ligne d'archer : quel archer, quelle volée, quelle case (`null` = à la
-// suite). Portée par `Saisie`, lue par la ligne (case marquée) et par le pavé (frappe).
-interface Visee {
+// Ce qui est ouvert pour un archer : la volée choisie (`null` = sa prochaine à saisir) et la flèche
+// que la prochaine frappe remplace (`null` = à la suite). Portée par `Saisie`, lue par la ligne de
+// l'archer actif et par le pavé — une seule source, pour qu'ils ne divergent pas.
+interface Ouverture {
   archerId: number
-  numero: number
+  numero: number | null
   fleche: number | null
 }
 

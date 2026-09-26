@@ -10,6 +10,7 @@ import {
   libelleMode,
   libelleTour,
   mancheExistante,
+  pointsZone,
   prochaineMancheASaisir,
   statutDuel,
   totalVolee,
@@ -208,5 +209,16 @@ describe('totalVolee', () => {
   it('somme les zones, M = 0', () => {
     expect(totalVolee(['10', '9', 'M'])).toBe(19)
     expect(totalVolee([])).toBe(0)
+  })
+})
+
+// ⚠️ `DETTE-111` — **moitié front du cliquet** : `duel.ts` réécrit encore la règle zone → points du
+// domaine, que la saisie de qualification lit désormais servie. L'autre moitié fige la même liste
+// côté serveur (`test_domain_blason.py`). Recréée ici en revue d'E17US011 (axes B, D) : elle avait
+// disparu avec l'ancien `pointsZone` de `volees.ts`, laissant le jumeau sans garde.
+describe('pointsZone (duel) — le miroir du domaine', () => {
+  it('donne à chaque zone du vocabulaire FFTA sa valeur, M valant 0', () => {
+    const zones = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
+    expect(zones.map(pointsZone)).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
   })
 })

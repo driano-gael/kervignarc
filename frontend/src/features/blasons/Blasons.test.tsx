@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { Blasons } from './Blasons'
 
 const mutation = () => ({ mutate: vi.fn(), isPending: false, error: null })
+// `vi.hoisted` : la fabrique de `vi.mock` est remontée en tête de fichier, avant toute déclaration.
+const { supprimer } = vi.hoisted(() => ({ supprimer: vi.fn() }))
 
 vi.mock('./hooks', () => ({
   useBlasons: () => ({
@@ -34,7 +36,7 @@ vi.mock('./hooks', () => ({
   }),
   useCreerBlason: () => mutation(),
   useModifierBlason: () => mutation(),
-  useSupprimerBlason: () => mutation(),
+  useSupprimerBlason: () => ({ mutate: supprimer, isPending: false, error: null }),
 }))
 
 describe('Blasons — liste et panneau latéral', () => {
@@ -56,5 +58,18 @@ describe('Blasons — liste et panneau latéral', () => {
 
     const groupes = screen.getAllByRole('rowheader').map((th) => th.textContent)
     expect(groupes).toEqual(['Référentiel FFTA', 'Créés par l’organisation'])
+  })
+
+  // Revue, axe B : l'arbitrage « la suppression passe dans le panneau, avec sa confirmation » (Notes
+  // d'E17US007) n'avait pas de test.
+  it('supprimer passe par le panneau, et n’agit qu’à la confirmation', async () => {
+    render(<Blasons tournoiId={1} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Mono maison' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer ce blason' }))
+    expect(supprimer).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmer la suppression' }))
+    expect(supprimer).toHaveBeenCalledWith(2, expect.anything())
   })
 })

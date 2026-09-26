@@ -7,8 +7,10 @@
 // réserve), aucune correspondance à reconstituer côté client.
 
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ErreurApi } from '../../shared/api/client'
 import { useDeparts } from '../departs/hooks'
 import { clePlansDuelsDuTournoi } from '../duels/hooks'
+import type { PlansDuTournoi } from './nonPlaces'
 import {
   type Cloisonnement,
   type Destination,
@@ -125,18 +127,25 @@ export function useReglerCloisonnement(tournoiId: number) {
   })
 }
 
-// Les archers en **réserve** d'au moins un départ — le compteur « Non placés » d'A09 (E17US007).
-// Le plan persisté range en réserve tout inscrit sans affectation, avant comme après génération.
-// `null` tant qu'un plan manque ou échoue (gabarit absent, réseau) : un compte partiel serait lu
-// comme exact. Mêmes clés que l'écran de placement (`clePlan`) : rien n'est relu en double.
-export function useArchersEnReserve(tournoiId: number): ReadonlySet<number> | null {
+// Les plans de tous les départs — la matière du compteur « Non placés » d'A09 (E17US007), réduite
+// par `archersNonPlaces`. `'sans_gabarit'` quand la salle n'est pas définie (le serveur répond
+// `gabarit_du_tournoi_absent` : personne ne peut être placé) ; `null` tant qu'un plan manque ou sur
+// une autre erreur. `retry: false` : ce 404 est prévisible pendant les inscriptions. Mêmes clés que
+// l'écran de placement (`clePlan`) : rien n'est relu en double.
+export function usePlansDuTournoi(tournoiId: number): PlansDuTournoi {
   const departs = useDeparts(tournoiId)
   const plans = useQueries({
     queries: (departs.data ?? []).map((depart) => ({
       queryKey: clePlan(tournoiId, depart.id),
       queryFn: () => getPlanDeCibles(tournoiId, depart.id),
+      retry: false,
     })),
   })
-  if (departs.data === undefined || plans.some((plan) => plan.data === undefined)) return null
-  return new Set(plans.flatMap((plan) => (plan.data?.conflits ?? []).map((c) => c.archer_id)))
+  if (departs.data === undefined) return null
+  const sansGabarit = plans.some(
+    (p) => p.error instanceof ErreurApi && p.error.code === 'gabarit_du_tournoi_absent',
+  )
+  if (sansGabarit) return 'sans_gabarit'
+  const lus = plans.map((p) => p.data).filter((plan): plan is PlanDeCibles => plan !== undefined)
+  return lus.length === plans.length ? lus : null
 }
