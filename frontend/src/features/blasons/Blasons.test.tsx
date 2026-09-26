@@ -8,36 +8,38 @@ import { Blasons } from './Blasons'
 
 const mutation = () => ({ mutate: vi.fn(), isPending: false, error: null })
 // `vi.hoisted` : la fabrique de `vi.mock` est remontée en tête de fichier, avant toute déclaration.
-const { supprimer } = vi.hoisted(() => ({ supprimer: vi.fn() }))
+const { supprimer, etat } = vi.hoisted(() => ({ supprimer: vi.fn(), etat: { lue: true } }))
 
 vi.mock('./hooks', () => ({
-  useBlasons: () => ({
-    isError: false,
-    data: [
-      {
-        id: 1,
-        tournoi_id: 1,
-        nom: 'Trispot 40',
-        taille: 0.5,
-        capacite: 1,
-        zones: ['10', 'M'],
-        origine: 'ffta',
-      },
-      {
-        id: 2,
-        tournoi_id: 1,
-        nom: 'Mono maison',
-        taille: 1,
-        capacite: 2,
-        zones: ['10', '9', 'M'],
-        origine: 'utilisateur',
-      },
-    ],
-  }),
+  useBlasons: () =>
+    etat.lue
+      ? { isError: false, isSuccess: true, data: LISTE }
+      : { isError: false, isSuccess: false, data: undefined },
   useCreerBlason: () => mutation(),
   useModifierBlason: () => mutation(),
   useSupprimerBlason: () => ({ mutate: supprimer, isPending: false, error: null }),
 }))
+
+const LISTE = [
+  {
+    id: 1,
+    tournoi_id: 1,
+    nom: 'Trispot 40',
+    taille: 0.5,
+    capacite: 1,
+    zones: ['10', 'M'],
+    origine: 'ffta',
+  },
+  {
+    id: 2,
+    tournoi_id: 1,
+    nom: 'Mono maison',
+    taille: 1,
+    capacite: 2,
+    zones: ['10', '9', 'M'],
+    origine: 'utilisateur',
+  },
+]
 
 describe('Blasons — liste et panneau latéral', () => {
   it('choisir une ligne ouvre le panneau pré-rempli, et la liste reste à l’écran', async () => {
@@ -71,5 +73,17 @@ describe('Blasons — liste et panneau latéral', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Confirmer la suppression' }))
     expect(supprimer).toHaveBeenCalledWith(2, expect.anything())
+  })
+
+  // 2ᵉ passe, axe B : « 0 blason » annoncé avant que la liste soit lue.
+  it('le compte n’apparaît qu’une fois la liste lue', () => {
+    etat.lue = false
+    const { container, unmount } = render(<Blasons tournoiId={1} />)
+    expect(container.querySelector('.blasons__compte')?.textContent).toBe('')
+    unmount()
+
+    etat.lue = true
+    const lue = render(<Blasons tournoiId={1} />)
+    expect(lue.container.querySelector('.blasons__compte')?.textContent).toBe('2 blasons')
   })
 })

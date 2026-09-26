@@ -90,6 +90,10 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
     marqueur !== null && lignes.some((l) => l.nom === marqueur) ? marqueur : (premier?.nom ?? null)
 
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
+  // ⚠️ **L'ouverture n'appartient qu'à l'archer actif** : dès qu'il change — autre nom touché,
+  // archer sorti de la grille (autre départ) — elle retombe, sans quoi une visée ressusciterait au
+  // retour et la frappe suivante remplacerait une flèche. Ajustement au rendu, comme `panneauFerme`.
+  if (ouverture !== null && ouverture.archerId !== archerActif) setOuverture(null)
   const ouvertureActive =
     ouverture !== null && ouverture.archerId === archerActif ? ouverture : null
 
@@ -212,12 +216,7 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 // ⚠️ Le motif historique — « le refermer jette le tampon de frappe » — **ne vaut
                 // plus** : les brouillons vivent dans `Saisie` depuis, donc refermer ne perd rien
                 // (cf. `brouillons` plus haut). Le geste reste, sa raison a changé.
-                onSelectionner={() => {
-                  // Changer d'archer par son nom repart de sa prochaine volée : une visée laissée
-                  // sur un autre archer ressusciterait au retour (revue, axes C1 et D).
-                  if (ligne.archer_id !== archerActif) setOuverture(null)
-                  setArcherChoisi(ligne.archer_id)
-                }}
+                onSelectionner={() => setArcherChoisi(ligne.archer_id)}
               />
             ))}
           </ul>
@@ -403,11 +402,12 @@ function LigneArcher({
   const serie = useSerie(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
   const nbVolees = bareme?.nb_volees ?? null
-  // `null` tant que le barème n'est pas lu : un score sans sa règle s'affiche « ? », jamais 0
-  // (revue, quatre axes) — `pointsZone` n'a pas de défaut, un `{}` ici le contournait.
+  // Un score dont la règle (barème) ou la matière (série) n'est pas lue s'affiche « ? », jamais 0 :
+  // `pointsZone` n'a pas de défaut, un `{}` ici le contournerait.
   const table: PointsParZone | null = bareme?.points_par_zone ?? null
-  const nbSaisies = volees.length
-  const cumul = table === null ? '?' : cumulSaisi(volees, table)
+  const lue = serie.isSuccess
+  const nbSaisies = lue ? volees.length : '?'
+  const cumul = table === null || !lue ? '?' : cumulSaisi(volees, table)
   const total = (valeurs: readonly string[]) => (table === null ? '?' : totalVolee(valeurs, table))
   // La volée ouverte, par le **même** calcul que le pavé (`voleeOuverte`) : pour l'archer actif,
   // celle que le pavé saisit ; pour les autres, leur prochaine à saisir.
@@ -462,7 +462,7 @@ function LigneArcher({
               className={i === caseEnCours ? 'saisie__case saisie__case--en-cours' : 'saisie__case'}
               aria-label={libelleCase(i, ligne.nom, enCours[i])}
               // ⚠️ Série pas encore lue : `numero` vaudrait 1 et le toucher figerait le pavé sur la
-              // volée 1 — le garde-fou `chargee` du pavé, repris ici (revue, axe D).
+              // volée 1 — le garde-fou `chargee` du pavé, repris ici.
               disabled={!serie.isSuccess || verrouillee}
               onClick={() => onViser(numero, flecheVisee(i, enCours))}
             >

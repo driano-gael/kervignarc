@@ -45,12 +45,14 @@ const JHEAN = archer(2, 'Jhean')
 const LUC = archer(3, 'Luc')
 
 // A09 « recherche d'abord » (E17US007) : la liste n'apparaît qu'une fois une liste choisie. On
-// passe par le compteur « Tous les inscrits — N », comme l'organisateur.
+// passe par le compteur « Voir les N inscrits », comme l'organisateur.
 async function monterLaListe() {
   monter(
     <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
   )
-  await userEvent.click(await screen.findByRole('button', { name: /^Tous les inscrits — \d+$/ }))
+  await userEvent.click(
+    await screen.findByRole('button', { name: /^Voir (les \d+ inscrits|l’inscrit)$/ }),
+  )
 }
 
 function monter(enfants: ReactNode) {
@@ -133,5 +135,23 @@ describe('compteurs d’A09 — population inconnue', () => {
 
     expect(screen.getByText(/Liste indisponible/)).toBeInTheDocument()
     expect(screen.queryByText(/Aucun inscrit ne correspond/)).not.toBeInTheDocument()
+  })
+
+  // 2ᵉ passe, axe B : la branche « doublons illisibles » n'était testée qu'en logique pure.
+  it('doublons illisibles : « Doublons — ? » et liste indisponible', async () => {
+    vi.mocked(getDoublons).mockReturnValue(new Promise(() => {}))
+    monter(
+      <Archers
+        tournoiId={1}
+        ouvrir={null}
+        onOuvrir={vi.fn()}
+        nonPlaces={new Set()}
+        nonRegles={new Set()}
+      />,
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Doublons — ?' }))
+
+    expect(screen.getByText(/Liste indisponible/)).toBeInTheDocument()
   })
 })

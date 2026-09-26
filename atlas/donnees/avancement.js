@@ -113,7 +113,9 @@ window.ATLAS.avancement = {
     "E17US007"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E17US007"
+   ],
    "severite": "mineur"
   },
   {
@@ -4788,7 +4790,9 @@ window.ATLAS.avancement = {
    "dettes_introduites": [
     "103"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "103"
+   ],
    "epic": "17",
    "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
    "etat": "✅",

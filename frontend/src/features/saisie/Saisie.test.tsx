@@ -421,4 +421,31 @@ describe('Saisie — la ligne montre la volée que le pavé ouvre', () => {
     )
     expect(await Promise.all(marquees)).toEqual([false, true, false])
   })
+
+  // 2ᵉ passe, axe D : le même faux zéro, par l'autre entrée — une série pas encore lue.
+  it('une série pas encore lue : cumul « ? », pas « 0 »', async () => {
+    SERIE_CHARGEE = false
+    monter()
+
+    expect(await cumulAffiche()).toBe('?')
+  })
+
+  // 2ᵉ passe, axe D : l'ouverture n'appartient qu'à l'archer actif. Quand il quitte la grille (autre
+  // départ) puis y revient, sa visée ne doit pas ressusciter.
+  it('une visée ne survit pas au départ de l’archer de la grille', async () => {
+    const vue = monter()
+    await userEvent.click(await caseDe('DURAND', 1))
+    await taper('10', '9', '8')
+    await userEvent.click(await caseDe('DURAND', 2))
+
+    GRILLE = { ...GRILLE_SERVIE, data: [MARTIN] }
+    vue.rerender(<Saisie tournoiId={1} cibleIndex={1} />)
+    GRILLE = GRILLE_SERVIE
+    vue.rerender(<Saisie tournoiId={1} cibleIndex={1} />)
+    const grille = await screen.findByRole('list')
+    await userEvent.click(within(grille).getByRole('button', { name: /DURAND.*volées/ }))
+    await taper('M')
+
+    expect((await caseDe('DURAND', 2)).textContent).toBe('9')
+  })
 })

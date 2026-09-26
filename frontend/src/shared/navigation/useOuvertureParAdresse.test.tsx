@@ -61,7 +61,9 @@ describe('ouverture pilotée par l’adresse', () => {
     expect(await screen.findByDisplayValue('Jean')).toBeVisible()
     // A09 « recherche d'abord » (E17US007) : la fiche ouverte est listée seule ; on affiche tout
     // pour vérifier que les AUTRES lignes restent fermées.
-    await userEvent.click(screen.getByRole('button', { name: /^Tous les inscrits — \d+$/ }))
+    await userEvent.click(
+      screen.getByRole('button', { name: /^Voir (les \d+ inscrits|l’inscrit)$/ }),
+    )
     expect(screen.getByDisplayValue('Jean')).toBeVisible()
     expect(screen.queryByDisplayValue('Luc')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Modifier' })).toHaveLength(1)
@@ -73,7 +75,9 @@ describe('ouverture pilotée par l’adresse', () => {
       <Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} nonPlaces={null} nonRegles={null} />,
     )
     // A09 « recherche d'abord » (E17US007) : la liste s'affiche par son compteur.
-    await userEvent.click(await screen.findByRole('button', { name: /^Tous les inscrits — \d+$/ }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^Voir (les \d+ inscrits|l’inscrit)$/ }),
+    )
 
     await screen.findByText(/Dupont Jean/)
     expect(screen.queryByDisplayValue('Jean')).not.toBeInTheDocument()

@@ -130,7 +130,7 @@ export function useReglerCloisonnement(tournoiId: number) {
 // Les plans de tous les départs — la matière du compteur « Non placés » d'A09 (E17US007), réduite
 // par `archersNonPlaces`. `'sans_gabarit'` quand la salle n'est pas définie (le serveur répond
 // `gabarit_du_tournoi_absent` : personne ne peut être placé) ; `null` tant qu'un plan manque ou sur
-// une autre erreur. `retry: false` : ce 404 est prévisible pendant les inscriptions. Mêmes clés que
+// une autre erreur. Ce 404 prévisible n'est pas relancé ; une panne réseau, si. Mêmes clés que
 // l'écran de placement (`clePlan`) : rien n'est relu en double.
 export function usePlansDuTournoi(tournoiId: number): PlansDuTournoi {
   const departs = useDeparts(tournoiId)
@@ -138,14 +138,15 @@ export function usePlansDuTournoi(tournoiId: number): PlansDuTournoi {
     queries: (departs.data ?? []).map((depart) => ({
       queryKey: clePlan(tournoiId, depart.id),
       queryFn: () => getPlanDeCibles(tournoiId, depart.id),
-      retry: false,
+      retry: (echecs: number, erreur: Error) => !sansGabarit(erreur) && echecs < 3,
     })),
   })
   if (departs.data === undefined) return null
-  const sansGabarit = plans.some(
-    (p) => p.error instanceof ErreurApi && p.error.code === 'gabarit_du_tournoi_absent',
-  )
-  if (sansGabarit) return 'sans_gabarit'
+  if (plans.some((p) => sansGabarit(p.error))) return 'sans_gabarit'
   const lus = plans.map((p) => p.data).filter((plan): plan is PlanDeCibles => plan !== undefined)
   return lus.length === plans.length ? lus : null
+}
+
+function sansGabarit(erreur: Error | null): boolean {
+  return erreur instanceof ErreurApi && erreur.code === 'gabarit_du_tournoi_absent'
 }

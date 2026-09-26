@@ -2683,14 +2683,15 @@ button:disabled {
 }
 
 /* ⚠️ **Ancré en bas, comme un clavier** : empilé sans ancrage, le pavé retombait sous la ligne de
-   flottaison (touches à 826 px sur une fenêtre de 641, mesuré). ⚠️ **Seulement dès 60 rem**, où il
-   est compacté ; et borné à la fenêtre — collé en bas et plus haut qu'elle, son haut (navigation,
-   « Fermer ») deviendrait inatteignable, comme `.reserve` l'a déjà appris (revue, axe D). */
-@media (min-width: 60rem) {
+   flottaison (touches à 826 px sur une fenêtre de 641, mesuré). **Dès 45 rem** — tablette en
+   portrait comprise, l'appareil visé — là où il est compacté ; le téléphone garde l'empilement.
+   Borné à la fenêtre : collé en bas et plus haut qu'elle, son haut deviendrait inatteignable. */
+@media (min-width: 45rem) {
   .saisie__travail > .saisie__pave {
     position: sticky;
     bottom: 0;
     z-index: 1;
+    max-height: calc(100vh - 16px);
     max-height: calc(100dvh - 16px);
     overflow-y: auto;
     box-shadow: 0 -8px 16px color-mix(in srgb, var(--surface-0) 80%, transparent);
@@ -3109,9 +3110,10 @@ button:disabled {
 }
 
 /* Le pavé ancré doit rester **bas** : un rang de navigation qui défile au lieu de deux, les onze
-   touches sur un seul rang. Elles se partagent la largeur (~87 px sur une carte de 1061 px) : S03
-   demande « plus de 90 px », tenu à partir d'une carte d'environ 1 100 px. */
-@media (min-width: 60rem) {
+   touches sur un seul rang. Elles se partagent la largeur (~87 px sur une carte de 1061 px, ~60 px
+   en portrait) : S03 demande « plus de 90 px », tenu à partir d'une carte d'environ 1 100 px.
+   ⚠️ Même seuil que l'ancrage ci-dessus : ancré sans être compacté, le pavé masquerait la grille. */
+@media (min-width: 45rem) {
   .saisie__nav {
     flex-wrap: nowrap;
     overflow-x: auto;

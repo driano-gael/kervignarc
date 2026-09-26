@@ -95,7 +95,7 @@ export function Archers({
           />
           <div className="inscrits__compteurs" role="group" aria-label="Listes d’inscrits">
             <BoutonCompteur actif={filtre === 'tous'} onClick={() => choisir('tous')}>
-              Tous les inscrits — {nb.inscrits}
+              {nb.inscrits > 1 ? `Voir les ${nb.inscrits} inscrits` : 'Voir l’inscrit'}
             </BoutonCompteur>
             <BoutonCompteur actif={filtre === 'non_places'} onClick={() => choisir('non_places')}>
               Non placés — {nb.nonPlaces ?? '?'}

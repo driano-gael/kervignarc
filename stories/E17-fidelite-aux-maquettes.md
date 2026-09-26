@@ -252,8 +252,8 @@
     gabarit de salle, **tous** les inscrits. *(Corrigé en revue, axes B, C1, D : la 1ʳᵉ rédaction
     ne comptait que la réserve et affirmait à tort que « le plan persisté y range tout inscrit » —
     vrai des seuls inscrits à un départ.)* « Non réglés » = reste dû > 0. Une population illisible
-    s'affiche « ? », **jamais 0** — les **doublons** compris. Le premier compteur s'intitule « Tous
-    les inscrits — N » (« Voir les 1 inscrits » ne s'accordait pas). Une fiche
+    s'affiche « ? », **jamais 0** — les **doublons** compris. Le premier compteur garde le libellé
+    de la planche, **accordé** : « Voir les N inscrits », « Voir l'inscrit » pour un seul. Une fiche
     ouverte par l'adresse (recherche transverse, E16US010) **reste listée** — sans quoi le
     résultat cliqué ne mènerait nulle part. La phrase « N rapprochements de fiches » est
     **remplacée** par le compteur « Doublons », qui la chiffre et filtre en plus.
@@ -394,9 +394,11 @@
     **ancré en bas de l'écran** (`position: sticky`), comme un clavier : pleine largeur **et**
     toujours visible. Pour ne pas masquer la grille, il a été compacté (420 → **253 px**) :
     navigation des volées sur un rang défilant, volée tapée et actions sur un rang, les onze
-    touches sur un seul. ⚠️ **Dès 60 rem seulement, et borné à la fenêtre** (revue, axe D) : sur
-    un téléphone, non compacté, collé en bas et plus haut que l'écran, son haut devenait
-    inatteignable. Sous 60 rem, le pavé reste empilé sous la grille — l'écart 🟠 d'`E17US008`.
+    touches sur un seul. ⚠️ **Dès 45 rem, et borné à la fenêtre** : ancrage et compactage
+    partagent ce seuil, qui inclut la **tablette en portrait** (768 px), l'appareil visé. Sur un
+    **téléphone**, non compacté, un pavé collé plus haut que l'écran aurait son haut
+    inatteignable : il reste empilé sous la grille. *(1ᵉʳ correctif de revue à 60 rem : il avait
+    rouvert la tablette en portrait pour régler le téléphone — relevé en 2ᵉ passe, axe D.)*
   - ⚠️ **La ligne et le pavé lisent la même volée ouverte** (`voleeOuverte`, état `ouverture`
     unique dans `Saisie`). La 1ʳᵉ version recalculait dans la ligne : la ligne montrait une autre
     volée que le pavé dès qu'on naviguait ou qu'une volée rendue était ressaisie (revue, axes B,

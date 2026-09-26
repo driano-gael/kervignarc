@@ -6,9 +6,9 @@ import type { PlanDeCibles } from './api'
 // (aucun plan ne peut exister : personne n'est placé) ; `null` quand une lecture a échoué.
 export type PlansDuTournoi = readonly PlanDeCibles[] | 'sans_gabarit' | null
 
-// Non placé = en réserve sur au moins un départ, **ou** posé sur aucune cible d'aucun plan — ce
-// second cas couvre l'archer inscrit au tournoi mais à aucun départ, celui qu'on a oublié (revue,
-// axe D : la 1ʳᵉ version ne comptait que la réserve, et le disait « non placés — 0 »).
+// Non placé = en réserve sur au moins un départ, **ou** posé sur aucune cible d'aucun plan. ⚠️ Le
+// second cas n'est pas redondant : l'archer inscrit au tournoi mais à **aucun** départ n'est dans
+// aucune réserve — c'est l'archer oublié, celui que ce compteur existe pour montrer.
 export function archersNonPlaces(
   archerIds: readonly number[],
   plans: PlansDuTournoi,

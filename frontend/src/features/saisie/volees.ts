@@ -185,9 +185,8 @@ export function libelleGrain(grain: Grain | null): string {
 }
 
 // La volée ouverte pour un archer : celle qu'on a choisie (navigateur, case touchée), sinon la
-// prochaine à saisir. ⚠️ **Le pavé et la ligne de l'archer actif la lisent ICI, tous les deux** —
-// la ligne la recalculait de son côté et montrait une autre volée dès qu'on naviguait (revue
-// d'E17US011, axes B, C1, D).
+// prochaine à saisir. ⚠️ **Le pavé et la ligne de l'archer actif la lisent ICI, tous les deux** :
+// la recalculer d'un seul côté leur ferait montrer deux volées différentes dès qu'on navigue.
 export function voleeOuverte(
   numeroChoisi: number | null,
   volees: readonly Volee[],
