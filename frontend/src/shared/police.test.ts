@@ -94,9 +94,10 @@ describe('police embarquée', () => {
       [join(FRONT, 'index.html'), readFileSync(join(FRONT, 'index.html'), 'utf8')],
       ...fichiers(join(FRONT, 'public'), /\.(svg|html|css|json|webmanifest)$/),
     ]
-    // Dans les sources, un `<a href>` externe est un lien, pas un chargement : seuls `@import`,
-    // `url()` et `<link>` comptent (forme JSX `href={'…'}` comprise). Dans les pages, tout compte.
-    const dansSources = /((@import|url\()\s*['"]?|<link\b[^>]*\bhref=\s*\{?\s*['"`])(https?:)?\/\//
+    // Dans les sources, un `<a href>` externe est un lien, pas un chargement : `href` ne compte que
+    // sur `<link>`. Tout `src`/`srcSet` charge (`img`, `script`, `iframe`), forme JSX comprise.
+    const dansSources =
+      /((@import|url\()\s*['"]?|(<link\b[^>]*\bhref|\bsrc(Set)?)=\s*\{?\s*['"`])(https?:)?\/\//
     const dansPages = /((@import|url\()\s*['"]?|\b(href|src)=\s*['"])(https?:)?\/\//
     const fautifs = [
       ...sources().filter(([, texte]) => dansSources.test(texte)),

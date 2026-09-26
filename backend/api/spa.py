@@ -23,7 +23,7 @@ _ENV_VAR = "KERVIGNARC_FRONTEND_DIST"
 # ⚠️ Sous Windows, `mimetypes` lit le registre, qui **écrase** sa table : un `.html` ou un `.js`
 # déclaré `text/plain` par un logiciel tiers afficherait le source ou une page blanche, et
 # `.woff2` n'y figure pas. Tout ce que le build sert est épinglé ; `test_spa.py` confronte cette
-# table aux extensions réellement présentes (`public/` compris) — ADR-0116.
+# table aux extensions de `public/` et de `src/assets/` — ADR-0116.
 TYPES_DU_BUILD: dict[str, str] = {
     ".html": "text/html",
     ".js": "text/javascript",
@@ -31,6 +31,7 @@ TYPES_DU_BUILD: dict[str, str] = {
     ".css": "text/css",
     ".svg": "image/svg+xml",
     ".woff2": "font/woff2",
+    ".txt": "text/plain",
 }
 
 # Premiers segments qui **appartiennent au serveur** et ne se replient jamais vers `index.html`

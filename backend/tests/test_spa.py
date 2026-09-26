@@ -146,12 +146,12 @@ def test_le_repli_ne_sert_du_html_qu_a_une_navigation(tmp_path: Path) -> None:
 def registre_hostile() -> Iterator[None]:
     """Reproduit un registre Windows qui écrase la table de `mimetypes`, sur tout OS.
 
-    **Chaque** extension épinglée est empoisonnée en `text/plain` (`.woff2` retirée) : un
+    **Chaque** extension épinglée est empoisonnée (`.woff2` retirée) d'un type qu'aucune n'a : un
     paramètre que la table par défaut sert déjà juste ne prouverait rien. `init()` restaure.
     """
     mimetypes.init()
     for extension in TYPES_DU_BUILD:
-        mimetypes.add_type("text/plain", extension)
+        mimetypes.add_type("application/octet-stream", extension)
     mimetypes.types_map.pop(".woff2", None)
     yield
     mimetypes.init()
@@ -180,12 +180,17 @@ def test_le_build_est_servi_avec_ses_types(tmp_path: Path, extension: str, atten
 
 
 def test_chaque_extension_du_build_est_epinglee() -> None:
-    """La table épinglée dérive du dépôt, pas d'une copie : un fichier ajouté à `public/` d'une
-    extension inconnue (`robots.txt`, `manifest.webmanifest`) fait rougir ici."""
+    """Les actifs du dépôt (`public/`, et `src/assets/` où ADR-0116 range les prochains) sont
+    lus, pas recopiés : un `.png` ou un `robots.txt` ajouté fait rougir ici. Seuls `.html`,
+    `.js` et `.css` sont écrits en dur — Vite les émet par construction."""
     front = Path(__file__).resolve().parents[2] / "frontend"
-    publiques = {f.suffix for f in (front / "public").rglob("*") if f.is_file()}
-    emises = {".html", ".js", ".css", ".woff2"}
-    assert publiques | emises <= set(TYPES_DU_BUILD)
+    extensions = {".html", ".js", ".css"}
+    for dossier in (front / "public", front / "src" / "assets"):
+        assert dossier.is_dir(), f"{dossier} absent : le balayage serait vide, donc vert"
+        extensions |= {
+            f.suffix for f in dossier.rglob("*") if f.is_file() and not f.name.startswith(".")
+        }
+    assert extensions <= set(TYPES_DU_BUILD)
 
 
 def test_repertoire_dist_par_defaut_pointe_vers_le_front(monkeypatch: pytest.MonkeyPatch) -> None:
