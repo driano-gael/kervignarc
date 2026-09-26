@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from api.dependances import autoriser_saisie, exiger_admin
+from api.dependances import autoriser_saisie, est_admin, exiger_admin
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from domain.archer import Archer
@@ -57,9 +58,11 @@ class ModifierArcherRequete(BaseModel):
     nom: str
     prenom: str
     categorie_id: int
+    # **Requis** (`null` explicite pour effacer) : c'est un PUT total, un défaut à `None` effacerait
+    # la licence de tout client qui omet le champ — la confusion que `Archer.modifier` refuse.
+    licence: str | None
     club_id: int | None = None
     autoriser_homonyme: bool = False
-    licence: str | None = None
     autoriser_changement_categorie: bool = False
 
 
@@ -295,11 +298,16 @@ async def lister_archers(tournoi_id: int, request: Request) -> list[ArcherRepons
     """Renvoie les inscrits d'un tournoi, triés par nom puis prénom (lecture hors boucle).
 
     Alimente l'écran d'administration des archers (E02US003). Lecture **ouverte**, comme le
-    classement : la liste des inscrits est affichée publiquement le jour J.
+    classement : la liste des inscrits est affichée publiquement le jour J. ⚠️ La **licence** n'y est
+    servie qu'à une session admin (donnée personnelle, arbitrage du 26/09/2026, ADR-0115).
     """
     service: ServiceArchers = request.app.state.service_archers
     archers = await run_in_threadpool(service.lister, tournoi_id)
-    return [ArcherReponse.de_agregat(archer) for archer in archers]
+    admin = est_admin(request)
+    return [
+        ArcherReponse.de_agregat(archer if admin else replace(archer, licence=None))
+        for archer in archers
+    ]
 
 
 @router.put(

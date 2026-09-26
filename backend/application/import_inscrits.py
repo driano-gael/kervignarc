@@ -1,13 +1,19 @@
 """Service d'import des inscrits (E02US007) — aperçu, puis confirmation. ADR-0115.
 
 ⚠️ `importer` doit s'exécuter **dans une seule commande** de la file d'écriture (règle 7) : le plan
-y est recalculé sur l'état du moment, et c'est ce qui dispense l'écrivain de tout revérifier.
+y est recalculé sur l'état du moment, et c'est ce qui dispense l'écrivain de tout revérifier. La
+**lecture** du fichier, elle, se fait avant (`lire`), hors de la file : elle ne dépend d'aucun état.
 """
 
 from __future__ import annotations
 
 from application.erreurs import TournoiIntrouvable
-from domain.import_inscrits import InstantaneDuTournoi, PlanImport, planifier_import
+from domain.import_inscrits import (
+    FichierInscrits,
+    InstantaneDuTournoi,
+    PlanImport,
+    planifier_import,
+)
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
@@ -45,15 +51,18 @@ class ServiceImportInscrits:
         self._ecrivain = ecrivain
         self._horloge = horloge
 
+    def lire(self, contenu: bytes) -> FichierInscrits:
+        return self._lecteur.lire(contenu)
+
     def apercu(self, tournoi_id: TournoiId, contenu: bytes) -> PlanImport:
         """Le rapport de ce que ferait l'import, homonymes non cochés ; n'écrit rien."""
-        return self._planifier(tournoi_id, contenu, frozenset())
+        return self._planifier(tournoi_id, self.lire(contenu), frozenset())
 
     def importer(
-        self, tournoi_id: TournoiId, contenu: bytes, homonymes_acceptes: frozenset[int]
+        self, tournoi_id: TournoiId, fichier: FichierInscrits, homonymes_acceptes: frozenset[int]
     ) -> PlanImport:
         """Écrit toutes les lignes importables en une transaction ; rend le rapport final."""
-        plan = self._planifier(tournoi_id, contenu, homonymes_acceptes)
+        plan = self._planifier(tournoi_id, fichier, homonymes_acceptes)
         if plan.importables:
             # Daté comme au guichet (E17US012) : non daté, l'import passerait pour la plus
             # ancienne dette du tournoi.
@@ -61,12 +70,11 @@ class ServiceImportInscrits:
         return plan
 
     def _planifier(
-        self, tournoi_id: TournoiId, contenu: bytes, homonymes_acceptes: frozenset[int]
+        self, tournoi_id: TournoiId, fichier: FichierInscrits, homonymes_acceptes: frozenset[int]
     ) -> PlanImport:
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        fichier = self._lecteur.lire(contenu)
         departs = tuple(self._departs.par_tournoi(tournoi_id))
         instantane = InstantaneDuTournoi(
             date_tournoi=tournoi.date,

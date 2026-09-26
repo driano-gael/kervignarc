@@ -114,7 +114,7 @@ def test_l_apercu_rend_le_rapport_sans_rien_ecrire() -> None:
 def test_confirmer_ecrit_le_plan_des_lignes_importables() -> None:
     m = _Montage(_ligne(1, "1234567A"), _ligne(2, "2222222B", depart=9))
 
-    plan = m.service.importer(m.tournoi_id, _CONTENU, frozenset())
+    plan = m.service.importer(m.tournoi_id, m.service.lire(_CONTENU), frozenset())
 
     ((tournoi_id, applique, cree_le),) = m.ecrivain.appliques
     assert tournoi_id == m.tournoi_id
@@ -130,7 +130,7 @@ def test_confirmer_transmet_les_homonymes_coches() -> None:
     m.archers.ajouter(Archer.creer("Dupont", "Jeanne", m.tournoi_id, 1, club_id=1))
 
     sans = m.service.apercu(m.tournoi_id, _CONTENU)
-    avec = m.service.importer(m.tournoi_id, _CONTENU, frozenset({3}))
+    avec = m.service.importer(m.tournoi_id, m.service.lire(_CONTENU), frozenset({3}))
 
     assert sans.lignes[0].decision is Decision.HOMONYME
     assert avec.lignes[0].decision is Decision.CREER
@@ -139,7 +139,7 @@ def test_confirmer_transmet_les_homonymes_coches() -> None:
 def test_rien_d_importable_n_ecrit_rien() -> None:
     m = _Montage(_ligne(1, "1234567A", depart=9))
 
-    m.service.importer(m.tournoi_id, _CONTENU, frozenset())
+    m.service.importer(m.tournoi_id, m.service.lire(_CONTENU), frozenset())
 
     assert m.ecrivain.appliques == []
 

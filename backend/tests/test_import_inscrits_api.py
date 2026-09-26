@@ -166,3 +166,95 @@ def test_une_licence_invalide_rend_422(
 
         assert reponse.status_code == 422
         assert reponse.json()["code"] == "licence_invalide"
+
+
+# --- Revue d'E02US007 -------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("chemin", ["import-inscrits/apercu", "import-inscrits"])
+def test_les_deux_routes_d_import_exigent_l_admin(app_import: FastAPI, chemin: str) -> None:
+    with TestClient(app_import) as client:
+        reponse = client.post(f"/api/v1/tournois/1/{chemin}", content=b"x")
+
+        assert reponse.status_code == 401
+
+
+def test_un_fichier_hors_de_proportion_rend_413(
+    app_import: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_import) as client:
+        connecter_admin(client)
+        tid, _ = _tournoi(client)
+
+        reponse = client.post(
+            f"/api/v1/tournois/{tid}/import-inscrits/apercu", content=b"x" * (2 * 1024 * 1024 + 1)
+        )
+
+        assert reponse.status_code == 413
+
+
+def test_la_licence_n_est_servie_qu_a_l_admin(
+    app_import: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Arbitrage du 26/09/2026 : la liste des inscrits est publique, la licence non."""
+    with TestClient(app_import) as client:
+        connecter_admin(client)
+        tid, categorie_id = _tournoi(client)
+        client.post(
+            f"/api/v1/tournois/{tid}/archers",
+            json={"nom": "A", "prenom": "B", "categorie_id": categorie_id, "licence": "1234567A"},
+        )
+        admin = client.get(f"/api/v1/tournois/{tid}/archers").json()
+    with TestClient(app_import) as public:
+        anonyme = public.get(f"/api/v1/tournois/{tid}/archers").json()
+
+    assert admin[0]["licence"] == "1234567A"
+    assert anonyme[0]["licence"] is None
+
+
+def test_une_edition_sans_le_champ_licence_est_refusee_plutot_que_d_effacer(
+    app_import: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_import) as client:
+        connecter_admin(client)
+        tid, categorie_id = _tournoi(client)
+        corps = {"nom": "A", "prenom": "B", "categorie_id": categorie_id}
+        archer = client.post(
+            f"/api/v1/tournois/{tid}/archers", json={**corps, "licence": "1234567A"}
+        ).json()
+
+        reponse = client.put(f"/api/v1/archers/{archer['id']}", json=corps)
+
+        assert reponse.status_code == 400  # validation de corps : 400 dans ce projet
+        relu = client.get(f"/api/v1/tournois/{tid}/archers").json()
+        assert relu[0]["licence"] == "1234567A"
+
+
+def test_import_ianseo_dans_un_tournoi_aux_categories_du_catalogue(
+    app_import: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Revue (axes B, C1) : le code `CL` rejoint la catégorie « Arc Classique » du catalogue."""
+    with TestClient(app_import) as client:
+        connecter_admin(client)
+        tid = client.post("/api/v1/tournois", json={"nom": "Salle", "date": "2026-11-15"}).json()[
+            "id"
+        ]
+        for arme in ("Arc Classique", "Arc à Poulies"):
+            client.post(
+                f"/api/v1/tournois/{tid}/categories",
+                json={"libelle": f"{arme} S1 Femme", "arme": arme, "ages": ["S1"], "sexe": "F"},
+            )
+        client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 800, "horaire": "09:00"}
+        )
+        fichier = "1234567A;1;CL;F;;1;1;1;1;1;DUPONT;JEANNE;1;0356098;KERVIGNAC;1995-05-05;;;;;"
+
+        rapport = client.post(
+            f"/api/v1/tournois/{tid}/import-inscrits/apercu", content=fichier.encode()
+        ).json()
+
+        (ligne,) = rapport["lignes"]
+        assert ligne["decision"] == "creer", ligne
+        categories = client.get(f"/api/v1/tournois/{tid}/categories").json()
+        classique = next(c for c in categories if c["arme"] == "Arc Classique")
+        assert ligne["categorie_id"] == classique["id"]

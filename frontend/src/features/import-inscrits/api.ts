@@ -18,6 +18,8 @@ export interface LigneRapport {
   club: string | null
   club_a_creer: boolean
   homonyme_de: string | null
+  // INSCRIRE : la fiche que la licence désigne — Résult'Arc ne porte aucun nom.
+  fiche: string | null
 }
 
 export interface RapportImport {

@@ -1583,3 +1583,12 @@ def test_fusionner_le_gagnant_sans_licence_herite_celle_du_perdant() -> None:
     fusionne = m.archers.fusionner(gagnant.id or 0, perdant.id or 0)
 
     assert fusionne.licence == "1234567A"
+
+
+def test_modifier_archer_effacer_une_licence_qui_departageait_resignale_l_homonyme() -> None:
+    """Revue d'E02US007 (axe D) : sans licence, deux « Jean Dupont » redeviennent une question."""
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="1234567A")
+    fils = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="7654321B")
+    with pytest.raises(HomonymeArcher):
+        m.archers.modifier(fils.id or 0, "Dupont", "Jean", m.categorie_id, licence=None)

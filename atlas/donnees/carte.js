@@ -2534,6 +2534,10 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/import_inscrits.py",
+     "nom": "ServiceImportInscrits"
+    },
+    {
      "fichier": "backend/infrastructure/auth/identifiants.py",
      "nom": "AdminCredentialsStore"
     },

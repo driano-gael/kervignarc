@@ -11,7 +11,7 @@ import datetime
 from dataclasses import dataclass
 from enum import Enum
 
-from domain.archer import Archer, ArcherId, cle_identite, licences_distinctes, normaliser_licence
+from domain.archer import Archer, ArcherId, cle_identite, normaliser_licence, sont_homonymes
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
@@ -90,6 +90,9 @@ class LignePlan:
     fiche_de_la_ligne: int | None = None
     homonyme_de: str | None = None
     licence: str | None = None
+    fiche: str | None = None
+    """INSCRIRE : l'identité de la fiche que la licence désigne — le fichier peut dire autre chose,
+    et Résult'Arc ne dit rien (revue d'E02US007, axe D)."""
 
 
 @dataclass(frozen=True)
@@ -178,8 +181,8 @@ class _Planificateur:
         self._couples: set[tuple[ArcherId | str, DepartId]] = set()
         for inscription in etat.inscriptions:
             self._compter(inscription.archer_id, inscription.depart_id)
-        # Fiches créées par le fichier : licence → n° de la ligne créatrice.
-        self._fiches_du_fichier: dict[str, int] = {}
+        # Fiches créées par le fichier : licence → (n° de la ligne créatrice, identité).
+        self._fiches_du_fichier: dict[str, tuple[int, str]] = {}
         self._identites_du_fichier: list[tuple[_Identite, str | None]] = []
 
     def decider(self, ligne: LigneFichier) -> LignePlan:
@@ -224,10 +227,13 @@ class _Planificateur:
     ) -> LignePlan | None:
         """La licence désigne-t-elle déjà une fiche ? Alors on l'inscrit, on n'en crée pas."""
         archer = self._archers_par_licence.get(licence)
-        ligne_creatrice = self._fiches_du_fichier.get(licence)
-        if archer is None and ligne_creatrice is None:
+        creee = self._fiches_du_fichier.get(licence)
+        if archer is None and creee is None:
             return None
         cle: ArcherId | str = archer.id if archer is not None and archer.id is not None else licence
+        fiche = (
+            f"{archer.prenom} {archer.nom}" if archer is not None else creee[1] if creee else None
+        )
         assert depart.id is not None
         if (cle, depart.id) in self._couples:
             raise _Rejet(
@@ -240,8 +246,9 @@ class _Planificateur:
             decision=Decision.INSCRIRE,
             depart_id=depart.id,
             archer_id=archer.id if archer is not None else None,
-            fiche_de_la_ligne=ligne_creatrice if archer is None else None,
+            fiche_de_la_ligne=creee[0] if archer is None and creee is not None else None,
             licence=licence,
+            fiche=fiche,
         )
 
     def _creer(self, ligne: LigneFichier, licence: str | None, depart: Depart) -> LignePlan:
@@ -267,7 +274,7 @@ class _Planificateur:
         cle: ArcherId | str = licence if licence is not None else f"ligne-{ligne.numero}"
         self._compter(cle, depart.id)
         if licence is not None:
-            self._fiches_du_fichier[licence] = ligne.numero
+            self._fiches_du_fichier[licence] = (ligne.numero, f"{prenom} {nom}")
         self._identites_du_fichier.append((_identite(nom, prenom, club_id, club_a_creer), licence))
         return LignePlan(
             ligne=ligne,
@@ -281,6 +288,8 @@ class _Planificateur:
         )
 
     def _categorie(self, ligne: LigneFichier) -> Categorie:
+        if ligne.date_naissance is not None and ligne.date_naissance > self._etat.date_tournoi:
+            raise _Rejet(f"Date de naissance postérieure au tournoi ({ligne.date_naissance}).")
         tranche = (
             tranche_age(ligne.date_naissance, self._etat.date_tournoi)
             if ligne.date_naissance is not None
@@ -298,7 +307,7 @@ class _Planificateur:
                 "Aucune catégorie du tournoi ne correspond (sexe "
                 f"{_ou_inconnu(ligne.sexe.value if ligne.sexe else None)}, âge "
                 f"{_ou_inconnu(tranche.value if tranche else None)}, arme "
-                f"{_ou_inconnu(ligne.arme)})."
+                f"{ligne.arme or 'tous arcs'})."
             )
         noms = ", ".join(sorted(categorie.libelle for categorie in candidates))
         raise _Rejet(f"Plusieurs catégories possibles ({noms}) : impossible de choisir.")
@@ -322,13 +331,11 @@ class _Planificateur:
         if club_a_creer is None:
             cle = cle_identite(nom, prenom, club_id)
             for archer in self._etat.archers:
-                if archer.cle_identite() == cle and not licences_distinctes(
-                    archer.licence, licence
-                ):
+                if sont_homonymes(archer.cle_identite(), archer.licence, cle, licence):
                     return f"{archer.prenom} {archer.nom}"
         identite = _identite(nom, prenom, club_id, club_a_creer)
         for autre, autre_licence in self._identites_du_fichier:
-            if autre == identite and not licences_distinctes(autre_licence, licence):
+            if sont_homonymes(autre, autre_licence, identite, licence):
                 return f"{prenom} {nom} (plus haut dans le fichier)"
         return None
 
@@ -352,13 +359,14 @@ def _accepte(
     tranche: TrancheAge | None,
     arme: str | None,
 ) -> bool:
-    """Une contrainte absente de la catégorie accepte tout ; présente, elle exige la donnée."""
+    """Une contrainte absente de la catégorie accepte tout ; présente, elle exige la donnée — sauf
+    l'arme : `None` y vaut « tous arcs » (arbitrage du 26/09/2026), qui ne contraint rien."""
     sexe_exige = categorie.sexe is not None and categorie.sexe is not SexeCategorie.MIXTE
     if sexe_exige and sexe is not categorie.sexe:
         return False
     if categorie.ages and (tranche is None or tranche not in categorie.ages):
         return False
-    return categorie.arme is None or (arme is not None and cle_nom(arme) == cle_nom(categorie.arme))
+    return categorie.arme is None or arme is None or cle_nom(arme) == cle_nom(categorie.arme)
 
 
 def _identite(nom: str, prenom: str, club_id: ClubId | None, club_a_creer: str | None) -> _Identite:

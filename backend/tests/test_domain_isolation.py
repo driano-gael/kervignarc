@@ -29,12 +29,13 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
         "sqlalchemy",
         "alembic",
         "httpx",
-        # Rendu de documents (ADR-0031, ADR-0101) : le domaine décrit le contenu, l'infrastructure
-        # le rend. ⚠️ Ajoutées en E16US016 : aucune n'y figurait depuis son introduction.
+        # Lecture et rendu de documents (ADR-0031, ADR-0101, ADR-0115) : le domaine décrit le
+        # contenu, l'infrastructure le lit ou le rend. ⚠️ Toute lib de fichiers s'ajoute ici.
         "reportlab",
         "openpyxl",
         "et_xmlfile",
         "PIL",
+        "xlrd",
         # Réseau et concurrence. ⚠️ `anyio` et `websockets` portent le sens même de la règle 1 —
         # « pur et **synchrone** » : un `from anyio import to_thread` dans `domain/` passait
         # jusqu'ici hook, CI et revue (relevé en 2ᵉ passe, axes C1 et adversarial).

@@ -103,7 +103,9 @@ window.ATLAS.avancement = {
     "E16US016"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E02US007"
+   ],
    "severite": "mineur"
   },
   {
@@ -2286,7 +2288,9 @@ window.ATLAS.avancement = {
     "0115"
    ],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "102"
+   ],
    "epic": "02",
    "epic_titre": "Inscriptions & clubs",
    "etat": "✅",

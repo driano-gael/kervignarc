@@ -11246,6 +11246,16 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/api/v1/competition.py",
+     "existe": true,
+     "symboles": [
+      "lister_archers",
+      "est_admin"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/api/v1/import_inscrits.py",
      "existe": true,
      "symboles": [],

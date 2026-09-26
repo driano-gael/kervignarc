@@ -45,6 +45,13 @@ def extraire_jeton_poste(request: Request) -> str | None:
     return entete.strip() or None
 
 
+def est_admin(request: Request) -> bool:
+    """Une session admin valide accompagne-t-elle la requête ? Pour une lecture ouverte qui ne
+    sert certains champs qu'à l'admin (la licence, E02US007)."""
+    service: ServiceAuth = request.app.state.service_auth
+    return service.session_valide(extraire_jeton(request))
+
+
 async def exiger_admin(request: Request) -> None:
     """Exige une session admin valide ; lève `NonAuthentifie` (→ 401) sinon."""
     service: ServiceAuth = request.app.state.service_auth

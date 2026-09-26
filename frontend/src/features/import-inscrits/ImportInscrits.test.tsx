@@ -32,6 +32,7 @@ function ligne(numero: number, surcharge: Partial<LigneRapport>): LigneRapport {
     club: 'KERVIGNAC',
     club_a_creer: false,
     homonyme_de: null,
+    fiche: null,
     ...surcharge,
   }
 }
@@ -46,6 +47,7 @@ const APERCU: RapportImport = {
     ligne(1, {}),
     ligne(2, { decision: 'rejetee', motif: "Le départ n° 9 n'existe pas", categorie_id: null }),
     ligne(3, { decision: 'homonyme', licence: null, homonyme_de: 'Jeanne Martin' }),
+    ligne(4, { decision: 'inscrire', nom: null, prenom: null, fiche: 'Paul Durand' }),
   ],
 }
 
@@ -79,6 +81,8 @@ describe('Importer une liste', () => {
 
     expect(await screen.findByText(/Rejetée : Le départ n° 9 n'existe pas/)).toBeTruthy()
     expect(screen.getByText('Nouvelle fiche')).toBeTruthy()
+    // Résult'Arc ne porte pas de nom : la ligne montre la fiche que la licence désigne.
+    expect(screen.getByText('Paul Durand')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toContain('1 à importer, 1 rejetée, 1 homonyme')
     expect(apercuImport).toHaveBeenCalledWith(7, FICHIER)
     expect(confirmerImport).not.toHaveBeenCalled()

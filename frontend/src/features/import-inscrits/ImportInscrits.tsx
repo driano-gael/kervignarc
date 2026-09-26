@@ -50,7 +50,11 @@ export function ImportInscrits({ tournoiId }: { tournoiId: number }) {
         type="file"
         accept=".csv,.xls,text/csv,application/vnd.ms-excel"
         aria-label="Fichier d'inscrits"
-        onChange={(e) => deposer(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          deposer(e.target.files?.[0] ?? null)
+          // Vidé pour qu'un même fichier redéposé (après correction du tournoi) relance l'aperçu.
+          e.target.value = ''
+        }}
       />
       {apercu.isPending && <p className="carte__etat">Lecture du fichier…</p>}
       <MessageErreur erreur={apercu.error ?? confirmer.error} />
@@ -125,6 +129,7 @@ export function ImportInscrits({ tournoiId }: { tournoiId: number }) {
 }
 
 function identite(ligne: LigneRapport): string {
+  if (ligne.decision === 'inscrire' && ligne.fiche !== null) return ligne.fiche
   const nom = [ligne.prenom, ligne.nom].filter(Boolean).join(' ')
   return nom === '' ? '—' : nom
 }
@@ -157,7 +162,8 @@ function SuiteDonnee({
       return (
         <label>
           <input type="checkbox" checked={cochee} disabled={!modifiable} onChange={onBasculer} />{' '}
-          Homonyme de {ligne.homonyme_de} — cocher s&apos;il s&apos;agit d&apos;une autre personne
+          Homonyme de {ligne.homonyme_de} — cocher s&apos;il s&apos;agit d&apos;une autre personne ;
+          sinon la ligne est ignorée et la fiche existante reste telle quelle
         </label>
       )
   }

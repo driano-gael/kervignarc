@@ -39,6 +39,7 @@ DATE_TOURNOI = datetime.date(2026, 11, 15)  # saison 2026-2027 : âge atteint en
         (datetime.date(2016, 1, 1), TrancheAge.U13),  # 11 ans
         (datetime.date(2015, 6, 1), TrancheAge.U13),  # 12 ans
         (datetime.date(2014, 6, 1), TrancheAge.U15),  # 13 ans
+        (datetime.date(2013, 6, 1), TrancheAge.U15),  # 14 ans
         (datetime.date(2012, 6, 1), TrancheAge.U18),  # 15 ans
         (datetime.date(2010, 6, 1), TrancheAge.U18),  # 17 ans
         (datetime.date(2009, 6, 1), TrancheAge.U21),  # 18 ans
@@ -194,17 +195,76 @@ def test_nom_ou_prenom_vide_rejette_la_ligne() -> None:
 # --- Arbitrage 2 : catégorie déduite, sinon rejet -----------------------------------------------
 
 
+# Libellés **du catalogue FFTA** (`application/referentiel_ffta.py`), pas des valeurs de commodité :
+# une fixture choisie pour épouser la comparaison avait masqué que les codes Ianseo n'y arrivaient
+# jamais (revue d'E02US007, axes B et C1). La traduction des codes est prouvée à l'adapter.
+_CATALOGUE = (
+    _categorie(
+        20, "Arc Classique S1 Femme", SexeCategorie.FEMME, (TrancheAge.S1,), "Arc Classique"
+    ),
+    _categorie(
+        21, "Arc à Poulies S1 Femme", SexeCategorie.FEMME, (TrancheAge.S1,), "Arc à Poulies"
+    ),
+    _categorie(
+        22, "Arc Classique S2 Femme", SexeCategorie.FEMME, (TrancheAge.S2,), "Arc Classique"
+    ),
+)
+
+
 def test_categorie_deduite_du_sexe_de_l_age_et_de_l_arme() -> None:
-    categories = (
-        _categorie(20, "Femmes classique S1", SexeCategorie.FEMME, (TrancheAge.S1,), "Classique"),
-        _categorie(21, "Femmes poulies S1", SexeCategorie.FEMME, (TrancheAge.S1,), "Poulies"),
-        _categorie(22, "Femmes classique S2", SexeCategorie.FEMME, (TrancheAge.S2,), "Classique"),
-    )
-    ligne = _ianseo(1, naissance=SENIOR_FEMME, arme="CLASSIQUE")
+    categories = _CATALOGUE
+    ligne = _ianseo(1, naissance=SENIOR_FEMME, arme="Arc Classique")
 
     plan = planifier_import(_fichier(ligne), _etat(categories=categories))
 
     assert plan.lignes[0].categorie_id == 20
+
+
+def test_tous_arcs_ne_contraint_pas_l_arme() -> None:
+    """Arbitrage du 26/09/2026 : `TA` (tous arcs) = aucune arme exigée ; l'adapter rend `None`."""
+    ligne = _ianseo(1, naissance=datetime.date(1970, 1, 1), arme=None)
+
+    plan = planifier_import(_fichier(ligne), _etat(categories=_CATALOGUE))
+
+    assert plan.lignes[0].categorie_id == 22
+
+
+def test_tous_arcs_face_a_plusieurs_armes_rejette_en_nommant_les_candidates() -> None:
+    plan = planifier_import(_fichier(_ianseo(1, arme=None)), _etat(categories=_CATALOGUE))
+
+    (ligne,) = plan.lignes
+    assert ligne.decision is Decision.REJETEE
+    assert ligne.motif is not None
+    assert "Arc Classique S1 Femme" in ligne.motif and "Arc à Poulies S1 Femme" in ligne.motif
+
+
+def test_une_arme_inconnue_est_rejetee_en_la_nommant() -> None:
+    plan = planifier_import(_fichier(_ianseo(1, arme="XY")), _etat(categories=_CATALOGUE))
+
+    (ligne,) = plan.lignes
+    assert ligne.decision is Decision.REJETEE
+    assert ligne.motif is not None and "XY" in ligne.motif
+
+
+def test_une_naissance_posterieure_au_tournoi_est_rejetee() -> None:
+    """Déduite, sinon rejet : une date absurde ne se range pas en U11 par défaut."""
+    plan = planifier_import(
+        _fichier(_ianseo(1, naissance=datetime.date(2099, 1, 1))),
+        _etat(categories=(_categorie(60, "Poussins", ages=(TrancheAge.U11,)),)),
+    )
+
+    (ligne,) = plan.lignes
+    assert ligne.decision is Decision.REJETEE
+    assert ligne.motif is not None and "naissance" in ligne.motif
+
+
+def test_une_licence_illisible_rejette_la_ligne_sans_faire_echouer_le_fichier() -> None:
+    fichier = _fichier(_ianseo(1, licence="1234-567A"), _ianseo(2, licence="7654321B"))
+
+    plan = planifier_import(fichier, _etat())
+
+    assert [ligne.decision for ligne in plan.lignes] == [Decision.REJETEE, Decision.CREER]
+    assert plan.lignes[0].motif is not None and "licence" in plan.lignes[0].motif
 
 
 def test_une_categorie_sans_restriction_accepte_tout_le_monde() -> None:
@@ -287,11 +347,13 @@ def test_une_licence_connue_du_tournoi_inscrit_la_fiche_existante_sur_son_depart
     assert ligne.depart_id == 200
 
 
-def test_la_licence_fait_foi_meme_si_le_nom_differe() -> None:
+def test_la_licence_fait_foi_et_le_rapport_nomme_la_fiche_designee() -> None:
+    """Le rapport montre QUI la licence désigne : une licence fausse inscrirait un autre archer."""
     etat = _etat(archers=(_archer_existant(nom="Dupond"),))
     plan = planifier_import(_fichier(_ianseo(1, nom="Dupont")), etat)
 
     assert plan.lignes[0].decision is Decision.INSCRIRE
+    assert plan.lignes[0].fiche == "Jeanne Dupond"
 
 
 def test_une_licence_deja_inscrite_sur_ce_depart_est_rejetee() -> None:
@@ -404,6 +466,41 @@ def test_une_ligne_rejetee_ne_consomme_pas_de_place() -> None:
 
 def _resultarc(numero: int, licence: str | None, depart: int | None = 2) -> LigneFichier:
     return LigneFichier(numero=numero, licence=licence, depart_numero=depart)
+
+
+def test_resultarc_tient_le_quota_du_depart() -> None:
+    """Vigilance quota (E02US006) : un fichier Résult'Arc n'a QUE des lignes INSCRIRE."""
+    departs = (
+        Depart(tournoi_id=TOURNOI, numero=2, tarif_centimes=0, horaire="14:00", quota=1, id=200),
+    )
+    etat = _etat(
+        departs=departs,
+        archers=(_archer_existant(500, "1111111A"), _archer_existant(501, "2222222B", "Martin")),
+    )
+    fichier = _fichier(
+        _resultarc(2, "1111111A"), _resultarc(3, "2222222B"), source=SourceImport.RESULTARC
+    )
+
+    plan = planifier_import(fichier, etat)
+
+    assert [ligne.decision for ligne in plan.lignes] == [Decision.INSCRIRE, Decision.REJETEE]
+    assert plan.lignes[1].motif is not None and "complet" in plan.lignes[1].motif
+
+
+def test_resultarc_face_a_un_depart_deja_plein_rejette_la_premiere_ligne() -> None:
+    departs = (
+        Depart(tournoi_id=TOURNOI, numero=2, tarif_centimes=0, horaire="14:00", quota=1, id=200),
+    )
+    etat = _etat(
+        departs=departs,
+        archers=(_archer_existant(500, "1111111A"), _archer_existant(501, "2222222B", "Martin")),
+        inscriptions=(Inscription(archer_id=501, depart_id=200, id=9),),
+    )
+    fichier = _fichier(_resultarc(2, "1111111A"), source=SourceImport.RESULTARC)
+
+    plan = planifier_import(fichier, etat)
+
+    assert plan.lignes[0].decision is Decision.REJETEE
 
 
 def test_resultarc_inscrit_la_fiche_designee_par_la_licence() -> None:

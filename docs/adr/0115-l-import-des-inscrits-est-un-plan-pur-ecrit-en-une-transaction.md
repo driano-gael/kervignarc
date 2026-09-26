@@ -80,10 +80,13 @@ Paiement, cible et trispot sont lus mais **non repris** — le rapport les nomme
 ### 6. Catégorie déduite, sinon rejet
 
 Sexe + tranche d'âge + arme, contre les catégories **du tournoi** ; une contrainte absente de la
-catégorie accepte tout. Zéro ou plusieurs candidates : ligne rejetée, candidates nommées.
+catégorie accepte tout. **L'arme** arrive en **code** (Ianseo) et l'adapter la traduit vers les
+libellés du catalogue (`CL` → Arc Classique, `CO` → Arc à Poulies, `BB` → Arc Nu) ; **`TA` = tous
+arcs** ne contraint pas l'arme (arbitrage du commanditaire en revue, 26/09/2026) ; une naissance
+postérieure au tournoi est rejetée. Zéro ou plusieurs candidates : ligne rejetée, candidates nommées.
 ⚠️ **Interprétation** : « l'âge atteint dans l'année civile de la licence » (référentiel §2) est lu
 comme l'année de **fin** de saison (un tournoi du 15/11/2026 compte l'âge atteint en 2027), la
-licence FFTA portant ce millésime. Non vérifié sur un texte réglementaire : à confirmer.
+licence FFTA portant ce millésime. Non vérifié sur un texte réglementaire : suivi en `docs/referentiel-ffta.md` §11.
 
 ## Conséquences
 
@@ -93,9 +96,15 @@ licence FFTA portant ce millésime. Non vérifié sur un texte réglementaire : 
 - **−** `xlrd` entre au manifeste (règle 11, `docs/dependances.md`), et son fichier réel ne s'ouvre
   qu'avec `ignore_workbook_corruption=True` : la table OLE2 que Résult'Arc écrit est mal formée.
   Un Résult'Arc d'une autre version pourrait différer — seul un vrai fichier le dira.
-- **−** La licence est **servie publiquement** : `GET /tournois/{id}/archers` est une lecture ouverte
-  et son DTO la porte désormais. Assumé — le n° de licence figure sur les feuilles de résultats
-  FFTA —, mais c'est une donnée personnelle de plus sur le LAN.
+- **±** La licence est une **donnée personnelle** : `GET /tournois/{id}/archers` reste une lecture
+  ouverte, mais ne la sert qu'à une **session admin** (`api.dependances.est_admin`) — arbitrage du
+  commanditaire en revue, 26/09/2026. Tout autre appelant reçoit `null`.
+- **+** Le **décodage** du fichier se fait hors du writer unique (`ServiceImportInscrits.lire`) :
+  seul le plan et l'écriture occupent la file. Le classeur `.xls` est lu feuille par feuille, sans
+  combler les rangées, et plafonné à 5 000 rangées (un `.xls` de quelques octets peut sinon en
+  matérialiser 16 M).
+- **+** Une ligne INSCRIRE **nomme la fiche** que la licence désigne : une licence mal saisie ne
+  peut pas inscrire un autre archer en silence.
 - **−** Le plan est recalculé à la confirmation : si un inscrit a été ajouté entre l'aperçu et la
   confirmation, le rapport final peut différer de l'aperçu. C'est voulu (on écrit l'état réel), et
   c'est le rapport **final** que l'écran affiche.
@@ -114,3 +123,4 @@ licence FFTA portant ce millésime. Non vérifié sur un texte réglementaire : 
 - `backend/infrastructure/db/repositories/import_inscrits.py` — écriture en une transaction.
 - `backend/migrations/versions/0058_archer_licence.py` — colonne et index partiel.
 - `backend/api/v1/import_inscrits.py` — les deux routes ; `api/corps.py` — lecture bornée.
+- `backend/api/v1/competition.py` — `lister_archers` ne sert la licence qu'à `est_admin`.

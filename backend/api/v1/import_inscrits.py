@@ -39,6 +39,7 @@ class LigneRapportReponse(BaseModel):
     club: str | None
     club_a_creer: bool
     homonyme_de: str | None
+    fiche: str | None
 
     @staticmethod
     def de_ligne(ligne: LignePlan) -> LigneRapportReponse:
@@ -49,6 +50,7 @@ class LigneRapportReponse(BaseModel):
             nom=ligne.ligne.nom,
             prenom=ligne.ligne.prenom,
             licence=ligne.licence or ligne.ligne.licence,
+            fiche=ligne.fiche,
             depart_numero=ligne.ligne.depart_numero,
             categorie_id=ligne.categorie_id,
             club=ligne.ligne.club,
@@ -104,9 +106,10 @@ async def importer(
     contenu = await lire_le_corps_borne(request, _PLAFOND_OCTETS)
     service: ServiceImportInscrits = request.app.state.service_import_inscrits
     write_queue: WriteQueue = request.app.state.write_queue
+    # Décoder le fichier hors du writer unique : il ne dépend d'aucun état (règle 7).
+    fichier = await run_in_threadpool(service.lire, contenu)
+    cochees = frozenset(homonymes or ())
     plan = await asyncio.wrap_future(
-        write_queue.submit(
-            lambda: service.importer(tournoi_id, contenu, frozenset(homonymes or ()))
-        )
+        write_queue.submit(lambda: service.importer(tournoi_id, fichier, cochees))
     )
     return RapportImportReponse.de_plan(plan)

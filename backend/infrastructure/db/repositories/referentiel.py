@@ -692,10 +692,11 @@ class ArcherRepositorySQL:
         """
         try:
             with self._session_factory() as session:
-                if session.get(ArcherORM, gagnant_id) is None or (
-                    session.get(ArcherORM, perdant_id) is None
-                ):
+                gagnant_orm = session.get(ArcherORM, gagnant_id)
+                perdant_orm = session.get(ArcherORM, perdant_id)
+                if gagnant_orm is None or perdant_orm is None:
                     raise InfrastructureError("Archer(s) à fusionner introuvable(s) en base.")
+                licence_du_perdant = perdant_orm.licence
                 # Inscriptions : réassigner celles du perdant, sauf collision sur un départ où le
                 # gagnant est déjà inscrit (UNIQUE(archer_id, depart_id)) — on garde alors celle du
                 # gagnant, en y **reportant le paiement** (paye vrai si l'une des deux l'était) et
@@ -778,6 +779,14 @@ class ArcherRepositorySQL:
                 # doublon devient impossible dès qu'un des deux a barré.
                 _fusionner_barrages(session, gagnant_id, perdant_id)
                 session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
+                # E02US007 : la licence de l'absorbé passe au gagnant qui n'en a pas — **après** le
+                # DELETE, l'index UNIQUE partiel refusant deux fiches à la même (ADR-0115).
+                if licence_du_perdant is not None:
+                    session.execute(
+                        update(ArcherORM)
+                        .where(ArcherORM.id == gagnant_id, ArcherORM.licence.is_(None))
+                        .values(licence=licence_du_perdant)
+                    )
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de la fusion des archers.") from exc

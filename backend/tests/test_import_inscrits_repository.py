@@ -160,3 +160,18 @@ def test_la_licence_survit_a_l_edition(tmp_path: Path) -> None:
 
     assert b.archers.par_id(archer.id or 0) is not None
     assert (b.archers.par_id(archer.id or 0) or archer).licence == "1234567A"
+
+
+def test_la_fusion_transmet_la_licence_de_l_absorbe_dans_sa_transaction(tmp_path: Path) -> None:
+    """Revue d'E02US007 (axes A, C2) : le report ne vit plus dans un second `enregistrer`."""
+    b = _Base(tmp_path)
+    gagnant = b.archers.ajouter(Archer.creer("A", "Jo", b.tournoi_id, b.categorie_id))
+    perdant = b.archers.ajouter(
+        Archer.creer("A", "Jo", b.tournoi_id, b.categorie_id, licence="1234567A")
+    )
+    assert gagnant.id is not None and perdant.id is not None
+
+    b.archers.fusionner(gagnant.id, perdant.id)
+
+    relu = b.archers.par_id(gagnant.id)
+    assert relu is not None and relu.licence == "1234567A"

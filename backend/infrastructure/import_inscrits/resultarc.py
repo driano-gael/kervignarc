@@ -12,20 +12,35 @@ import xlrd
 from domain.club import cle_nom
 from domain.erreurs import FichierInscritsIllisible
 from domain.import_inscrits import FichierInscrits, LigneFichier, SourceImport
+from infrastructure.import_inscrits.ianseo import entier
 
 _LICENCE = "licence"
 _DEPART = "numero depart"
+_RANGEES_MAXIMUM = 5000
+"""Un gymnase entier tient cent fois dedans ; au-delà, c'est un classeur piégé ou le mauvais."""
 
 
 def lire(contenu: bytes) -> FichierInscrits:
     try:
         # ⚠️ `ignore_workbook_corruption` : Résult'Arc écrit une table d'allocation OLE2 que xlrd
         # juge corrompue (`seen[2] == 4`) — sans ce drapeau, aucun vrai fichier ne s'ouvre.
+        # `on_demand` + `ragged_rows` : ne charger que la 1ʳᵉ feuille, sans combler chaque rangée
+        # jusqu'à la dernière colonne — une cellule en (65535, 255) en matérialiserait 16 M.
         classeur = xlrd.open_workbook(
-            file_contents=contenu, ignore_workbook_corruption=True, logfile=io.StringIO()
+            file_contents=contenu,
+            ignore_workbook_corruption=True,
+            logfile=io.StringIO(),
+            on_demand=True,
+            ragged_rows=True,
         )
         feuille = classeur.sheet_by_index(0)
+        if feuille.nrows > _RANGEES_MAXIMUM:
+            raise FichierInscritsIllisible(
+                f"Classeur de {feuille.nrows} rangées : {_RANGEES_MAXIMUM} au plus."
+            )
         rangees = [feuille.row_values(i) for i in range(feuille.nrows)]
+    except FichierInscritsIllisible:
+        raise
     except Exception as exc:  # xlrd lève des types variés sur un binaire quelconque
         raise FichierInscritsIllisible("Classeur .xls illisible.") from exc
     if not rangees:
@@ -41,8 +56,8 @@ def lire(contenu: bytes) -> FichierInscrits:
         lignes=tuple(
             LigneFichier(
                 numero=numero,
-                licence=_texte(rangee[col_licence]),
-                depart_numero=_entier(rangee[col_depart]),
+                licence=_texte(_cellule(rangee, col_licence)),
+                depart_numero=_entier(_cellule(rangee, col_depart)),
             )
             for numero, rangee in enumerate(rangees[1:], start=2)
             if any(_texte(cellule) for cellule in rangee)
@@ -62,6 +77,11 @@ def _texte(cellule: object) -> str | None:
     return texte or None
 
 
+def _cellule(rangee: list[object], rang: int) -> object:
+    """`ragged_rows` : une rangée peut s'arrêter avant la colonne cherchée."""
+    return rangee[rang] if rang < len(rangee) else ""
+
+
 def _entier(cellule: object) -> int | None:
     texte = _texte(cellule)
-    return int(texte) if texte is not None and texte.isdigit() else None
+    return entier(texte) if texte is not None else None

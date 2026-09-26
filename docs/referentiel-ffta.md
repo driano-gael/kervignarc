@@ -402,7 +402,8 @@ qui relève de l'écran de salle et du plan de salle.
 - **Correspondance** catégories historiques (Poussin…Super Vétéran) ↔ U11…S3 : usage courant, non écrit dans le règlement 2023.
 - **Découpage exact des 60 flèches de qualification** en volées (20 × 3 retenu par usage + art. B.6.1.2) : à confirmer sur le mandat de l'organisateur.
 - **Règles de seeding/exempts** : non normées dans le chapitre 18 m → décision projet.
-- Un **fichier d'inscrits d'exemple** (format « inscript'arc ») reste à obtenir pour l'import.
+- ~~Un **fichier d'inscrits d'exemple**~~ — ✅ **versé le 18/07/2026** (`docs/sources/import inscription/`), consommé par `E02US007`.
+- **Année de référence de la tranche d'âge** : « l'âge atteint dans l'année civile de la licence » (§2) est lu comme l'année de **fin** de saison — un tournoi du 15/11/2026 compte l'âge atteint en 2027. Interprétation d'`E02US007` ([ADR-0115](adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md) §6), portée par `domain.import_inscrits.tranche_age`. ⚠️ Si elle est fausse, les jeunes aux frontières de tranche reçoivent la mauvaise catégorie **sans rejet**. À trancher sur le texte réglementaire ou auprès du club.
 
 > **Points levés le 2026-07-14** (ils ne sont plus des questions ouvertes) : le **départage** de qualification (nombre de 10 puis de 9) et le **barrage** (1 flèche au plus haut score, puis au plus près du centre) répondent à la Q2 du CDC fonctionnel et à une partie de la QT7 du CDC technique.
 

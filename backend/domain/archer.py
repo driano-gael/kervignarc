@@ -53,10 +53,15 @@ def normaliser_licence(valeur: str | None) -> str | None:
         return None
     if len(licence) > LICENCE_LONGUEUR_MAXIMUM or not _LICENCE_VALIDE.fullmatch(licence):
         raise LicenceInvalide(
-            f"« {valeur.strip()} » n'est pas un n° de licence : lettres et chiffres seulement, "
-            f"{LICENCE_LONGUEUR_MAXIMUM} caractères au plus."
+            f"« {_extrait(valeur.strip())} » n'est pas un n° de licence : lettres et chiffres "
+            f"seulement, {LICENCE_LONGUEUR_MAXIMUM} caractères au plus."
         )
     return licence
+
+
+def _extrait(texte: str) -> str:
+    """Borne une entrée recopiée dans un message renvoyé au client (champ CSV jusqu'à 128 Kio)."""
+    return texte if len(texte) <= 20 else f"{texte[:20]}…"
 
 
 def licences_distinctes(a: str | None, b: str | None) -> bool:
@@ -65,6 +70,17 @@ def licences_distinctes(a: str | None, b: str | None) -> bool:
     Une seule licence inconnue ne décide rien : l'homonymie reste alors une question.
     """
     return a is not None and b is not None and a != b
+
+
+def sont_homonymes(
+    cle_a: tuple[str, str, object],
+    licence_a: str | None,
+    cle_b: tuple[str, str, object],
+    licence_b: str | None,
+) -> bool:
+    """Même identité, et aucune licence pour les départager — la règle unique du guichet et de
+    l'import (ADR-0015 amendé par ADR-0115). La clé peut porter un club pas encore créé."""
+    return cle_a == cle_b and not licences_distinctes(licence_a, licence_b)
 
 
 def cle_identite(nom: str, prenom: str, club_id: ClubId | None) -> CleIdentite:

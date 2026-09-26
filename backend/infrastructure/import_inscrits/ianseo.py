@@ -16,12 +16,30 @@ from domain.erreurs import FichierInscritsIllisible
 from domain.import_inscrits import FichierInscrits, LigneFichier, SourceImport
 
 _COLONNES_MINIMUM = 16
+_CHIFFRES_MAXIMUM = 4
+
+# Codes de division Ianseo (FFTA, puis World Archery) → libellés du catalogue FFTA, que
+# `test_lecteur_import_inscrits` aligne sur `application/referentiel_ffta.py`. `TA` (« tous arcs »)
+# et l'absence ne contraignent pas l'arme (arbitrage du 26/09/2026) ; un code inconnu passe tel
+# quel, pour que le motif de rejet le nomme.
+_ARMES = {
+    "CL": "Arc Classique",
+    "R": "Arc Classique",
+    "CO": "Arc à Poulies",
+    "C": "Arc à Poulies",
+    "BB": "Arc Nu",
+    "B": "Arc Nu",
+}
+_TOUS_ARCS = {"TA", ""}
 _GENRES = {"0": SexeCategorie.HOMME, "1": SexeCategorie.FEMME}
 _CLASSES = {"H": SexeCategorie.HOMME, "M": SexeCategorie.HOMME, "F": SexeCategorie.FEMME}
 
 
 def lire(contenu: bytes) -> FichierInscrits:
-    lignes = list(csv.reader(io.StringIO(_decoder(contenu)), delimiter=";"))
+    try:
+        lignes = list(csv.reader(io.StringIO(_decoder(contenu)), delimiter=";"))
+    except csv.Error as exc:
+        raise FichierInscritsIllisible(f"Fichier CSV illisible : {exc}.") from exc
     if not any(len(cellules) >= _COLONNES_MINIMUM for cellules in lignes):
         raise FichierInscritsIllisible(
             "Fichier non reconnu : ni un export Ianseo (CSV « ; » d'au moins "
@@ -66,14 +84,25 @@ def _ligne(numero: int, cellules: list[str]) -> LigneFichier:
     return LigneFichier(
         numero=numero,
         licence=valeur[0] or None,
-        depart_numero=int(valeur[1]) if valeur[1].isdigit() else None,
+        depart_numero=entier(valeur[1]),
         nom=valeur[10],
         prenom=valeur[11],
         sexe=_GENRES.get(valeur[12]) or _CLASSES.get(valeur[3].upper()),
         date_naissance=naissance,
         club=valeur[14] or None,
-        arme=valeur[2] or None,
+        arme=_arme(valeur[2]),
     )
+
+
+def entier(texte: str) -> int | None:
+    """Un petit entier décimal ASCII, sinon `None` — `"²".isdigit()` est vrai, `int("²")` lève."""
+    valide = texte.isascii() and texte.isdecimal() and len(texte) <= _CHIFFRES_MAXIMUM
+    return int(texte) if valide else None
+
+
+def _arme(code: str) -> str | None:
+    cle = code.strip().upper()
+    return None if cle in _TOUS_ARCS else _ARMES.get(cle, code.strip())
 
 
 def _date(texte: str) -> datetime.date | None:
