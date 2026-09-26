@@ -24,6 +24,7 @@ from application.erreurs import (
 from application.suivi_deroule import CompteurEngages
 from domain.deroule import exigence_minimale
 from domain.deroule_etape import EtapeDeroule, vues_du_deroule
+from domain.gabarit_salle import GabaritSalle
 from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
     MESSAGE_SANS_DEPART,
@@ -38,6 +39,30 @@ from domain.tournoi import (
 from domain.tournoi import (
     transitions_possibles as topologie_transitions,
 )
+
+
+class CompteurArchersParTournoi(Protocol):
+    """Port **étroit** : l'effectif de chaque tournoi, en une lecture (A04, E17US012).
+
+    La liste est pollée à 5 s par la coquille admin : charger les archers pour les compter
+    relisait tout le référentiel à chaque tick. `ArcherRepositorySQL` le satisfait.
+    """
+
+    def compter_par_tournoi(self) -> dict[TournoiId, int]:
+        """Nombre d'archers par tournoi ; un tournoi sans archer est **absent** du dict."""
+        ...
+
+
+class LecteurPlanDeSalle(Protocol):
+    """Port **étroit** : le plan de salle d'un tournoi, pour compter ses cibles (A04, E17US012).
+
+    Même patron que `LecteurDerouleDuTournoi` : `GabaritSalleRepositorySQL` le satisfait
+    structurellement, sans rien déclarer.
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> GabaritSalle | None:
+        """Renvoie l'instance de gabarit du tournoi, ou `None` s'il n'y en a pas."""
+        ...
 
 
 class LecteurDerouleDuTournoi(Protocol):
@@ -136,6 +161,19 @@ class ExigenceEffectifTournoi:
         )
 
 
+@dataclass(frozen=True)
+class TournoiEnListe:
+    """Un tournoi et les effectifs de la liste d'administration (planche A04, E17US012).
+
+    `nb_inscrits` compte les **archers du tournoi** — le même compte que « Voir les N inscrits »
+    d'A09. `nb_cibles is None` : aucun plan de salle posé, à ne pas confondre avec une salle vide.
+    """
+
+    tournoi: Tournoi
+    nb_inscrits: int
+    nb_cibles: int | None
+
+
 class ServiceTournois:
     """Cas d'usage des tournois : créer, consulter, lister, éditer, cycle de vie, supprimer."""
 
@@ -145,6 +183,8 @@ class ServiceTournois:
         depart_repository: DepartRepository,
         deroule_repository: LecteurDerouleDuTournoi,
         engages: CompteurEngages,
+        archers: CompteurArchersParTournoi,
+        plan_de_salle: LecteurPlanDeSalle,
     ) -> None:
         self._repository = repository
         # E02US010 : le passage à `prêt` exige **au moins un départ**. `ServiceTournois` lit donc
@@ -157,6 +197,9 @@ class ServiceTournois:
         # port étroit `CompteurEngages` déjà réalisé pour le suivi), pas par d'autres services.
         self._deroules = deroule_repository
         self._engages = engages
+        # E17US012 : les effectifs de la liste (A04) — archers et plan de salle, par leurs ports.
+        self._archers = archers
+        self._gabarits = plan_de_salle
 
     def creer(
         self,
@@ -180,9 +223,23 @@ class ServiceTournois:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return tournoi
 
-    def lister(self) -> list[Tournoi]:
-        """Renvoie tous les tournois (liste éventuellement vide)."""
-        return self._repository.lister()
+    def lister_en_liste(self) -> list[TournoiEnListe]:
+        """Tous les tournois avec leurs inscrits et leurs cibles (liste d'administration, A04).
+
+        ⚠️ Pollée à 5 s par la coquille admin : les effectifs se comptent en une requête ; le plan
+        de salle reste lu par tournoi, pour la douzaine de tournois d'un club (règle 12).
+        """
+        effectifs = self._archers.compter_par_tournoi()
+        return [self._en_liste(tournoi, effectifs) for tournoi in self._repository.lister()]
+
+    def _en_liste(self, tournoi: Tournoi, effectifs: dict[TournoiId, int]) -> TournoiEnListe:
+        assert tournoi.id is not None, "Un tournoi relu est persisté."
+        gabarit = self._gabarits.par_tournoi(tournoi.id)
+        return TournoiEnListe(
+            tournoi=tournoi,
+            nb_inscrits=effectifs.get(tournoi.id, 0),
+            nb_cibles=None if gabarit is None else gabarit.nb_cibles,
+        )
 
     def modifier(
         self,

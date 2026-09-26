@@ -4,7 +4,12 @@
 // silencieusement le montant dû (8,10 € → 8,01 €) en passant `tsc`, ESLint et la revue (EF-8.1).
 import { describe, expect, it } from 'vitest'
 
-import { centimesVersSaisieEuros, decrireTarif, saisieEurosVersCentimes } from './format'
+import {
+  centimesVersSaisieEuros,
+  decrireMontant,
+  decrireTarif,
+  saisieEurosVersCentimes,
+} from './format'
 
 describe('saisieEurosVersCentimes', () => {
   it('convertit un entier d’euros en centimes', () => {
@@ -61,5 +66,15 @@ describe('decrireTarif', () => {
     expect(decrireTarif(0)).toBe('Gratuit')
     expect(decrireTarif(810)).toBe('8,10 €')
     expect(decrireTarif(5)).toBe('0,05 €')
+  })
+})
+
+describe('decrireMontant', () => {
+  it('un montant nul reste un montant — « tout réglé » n’est pas « gratuit »', () => {
+    expect(decrireMontant(0)).toBe('0,00 €')
+  })
+
+  it('met les centimes en euros comme un tarif', () => {
+    expect(decrireMontant(1400)).toBe(decrireTarif(1400))
   })
 })

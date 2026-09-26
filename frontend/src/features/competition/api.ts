@@ -25,6 +25,13 @@ export interface Tournoi {
   // (E02US004, ADR-0017).
 }
 
+// Un tournoi de la **liste** (`GET /tournois`, planche A04 — E17US012) : ses effectifs en plus.
+// `nb_cibles` est `null` sans plan de salle — « aucune salle posée », pas « zéro cible ».
+export interface TournoiEnListe extends Tournoi {
+  nb_inscrits: number
+  nb_cibles: number | null
+}
+
 export interface NouveauTournoi {
   nom: string
   date: string
@@ -214,8 +221,8 @@ export function creerTournoi(entree: NouveauTournoi): Promise<Tournoi> {
   })
 }
 
-export function getTournois(): Promise<Tournoi[]> {
-  return fetchJson<Tournoi[]>('/api/v1/tournois')
+export function getTournois(): Promise<TournoiEnListe[]> {
+  return fetchJson<TournoiEnListe[]>('/api/v1/tournois')
 }
 
 export function modifierTournoi(id: number, entree: ModifierTournoi): Promise<Tournoi> {

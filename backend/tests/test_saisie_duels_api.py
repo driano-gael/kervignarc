@@ -111,7 +111,7 @@ class Scenario:
             )
             # C'est l'**inscription** qui fait entrer l'archer au classement du créneau
             # (ADR-0075) — sans elle, le tableau s'ensemencerait sur zéro participant.
-            inscriptions.ajouter(Inscription.creer(archer.id, _depart_id))
+            inscriptions.ajouter(Inscription(archer.id, _depart_id))
             self.archers.append(archer.id)
         phase = poser_phase_sql(
             db.session_factory, Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE)

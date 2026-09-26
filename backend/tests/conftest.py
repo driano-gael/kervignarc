@@ -64,6 +64,7 @@ from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi
+from domain.gabarit_salle import GabaritSalle
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
@@ -191,6 +192,12 @@ class FauxArcherRepository:
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Archer]:
         return [a for a in self._archers.values() if a.tournoi_id == tournoi_id]
 
+    def compter_par_tournoi(self) -> dict[TournoiId, int]:
+        compte: dict[TournoiId, int] = {}
+        for archer in self._archers.values():
+            compte[archer.tournoi_id] = compte.get(archer.tournoi_id, 0) + 1
+        return compte
+
     def par_club(self, club_id: ClubId) -> list[Archer]:
         # Sans filtre sur le tournoi : le référentiel des clubs est global (E02US001).
         return [a for a in self._archers.values() if a.club_id == club_id]
@@ -259,6 +266,20 @@ class FauxCategorieRepository:
 
     def supprimer(self, categorie_id: CategorieId) -> None:
         del self._categories[categorie_id]
+
+
+class FauxInstancesDeGabarit:
+    """Le seul `par_tournoi` du port `GabaritSalleRepository` : le plan de salle de chaque tournoi.
+
+    Partagé par les décors de `ServiceTournois` (E17US012) ; les cinq `FauxGabaritRepository`
+    locaux, plus larges, servent des services qui écrivent aussi des gabarits.
+    """
+
+    def __init__(self) -> None:
+        self.instances: dict[TournoiId, GabaritSalle] = {}
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> GabaritSalle | None:
+        return self.instances.get(tournoi_id)
 
 
 class FauxDepartRepository:

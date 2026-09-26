@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/09/2026, 12 h 58** · **151 US livrées** · dernière : `E17US006`
+**Dernière mise à jour : 26/09/2026, 14 h 23** · **152 US livrées** · dernière : `E17US006`
 *(**un bouton qui détruit ne ressemble plus à une alerte** — arbitrage du commanditaire du
 26/09/2026, [ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md) :
 l'action destructrice ne porte **aucune couleur d'état**, elle se signale par la **forme** (contour
@@ -21,6 +21,48 @@ l'ambre est **réservé à l'alerte**. Trois règles CSS seulement portaient l'a
 ~90 usages d'alerte — dont le panneau d'impact de `ConfirmationChiffree`, rangé côté destructeur.
 ⚠️ La classe s'appelle toujours `bouton--danger` : `charte.test.ts` interdit désormais d'y remettre
 un jeton d'état.)*
+Précédente : `E17US012`
+*(**les listes tournois, scoreurs, postes et paiements passent en carte-tableau** — la fin des
+quatre 🟠 du relevé admin. ⚠️ **Les planches supposaient bien plus de données que l'application
+n'en servait** : sur A08, trois colonnes sur cinq n'avaient pas de donnée (aucun périmètre, une
+session qui n'expire pas donc aucun « en ligne » honnête), sur A12 trois **actions** n'existaient
+nulle part. Arbitrage du 26/09 : alimenter ce qui
+se lit simplement (inscrits et cibles d'A04, club, catégorie et **ancienneté** d'A17), retirer le
+reste **des planches**. ⚠️ **L'ancienneté a coûté une migration** (`0057`, `inscription.cree_le`) —
+**nullable et sans défaut**, sinon tout l'existant aurait été daté du jour de la migration. ⚠️ **Un
+défaut antérieur trouvé en chemin** : `decrireTarif(0)` affichait « Gratuit » sur un reste réglé,
+vue par club comprise. Précédente : `E17US007` *(A06 en liste + panneau latéral, A09 en « recherche
+d'abord » — détail dans sa ligne du tableau)*.)*
+*(Ancien en-tête, E17US008 — **les neuf écrans de l'appli de saisie ont été confrontés à leurs planches**, comme l'admin
+l'avait été — relevé dans [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md), **5 écrans
+résorbés** (`S01`, `S02`, `S03`, `S04`, `S09`), sous le plafond de six que l'US se fixe.
+⚠️ **Un seul défaut de mise en page en produisait quatre** : la surface tablette élargissait
+`--largeur-app` mais laissait ses jetons de carte au défaut prudent — grille plafonnée à 640 px dans
+une coquille de 1152. Ligne d'archer **575 → 694 px**, pavé de saisie **y=742 → y=275** (il s'ouvrait
+entièrement sous la ligne de flottaison, pour un geste répété ~4 300 fois par départ), hors-ligne
+passé d'une **pastille de 10 px** à un **aplat ambre pleine largeur** — provoqué pour de vrai, backend
+coupé —, et le cumul de l'archer cesse d'afficher **0 pendant toute la série** (il ne sommait que les
+volées **validées**, or le scoreur ne passe qu'à la fin ; `Serie.cumul` reste intact au domaine).
+⚠️ **Le CA « questionnaire → variante retenue » a cédé sur cet axe, et c'est le constat le plus
+lourd** : les questionnaires ont été remplis le 04/08 sur les **vignettes**, les planches redessinées
+le **05/08** en écrans pleins. **4 planches sur 9** ne proposent plus la variante retenue (`S05` n'en avait aucune), et sur
+`S01` les lettres sont **inversées** — le code en citait une (« variante B »), corrigée. La variante
+retenue se lit donc **par l'intention**, jamais par la lettre — [**ADR-0113**](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md), qui amende la réserve 2 d'ADR-0074. `S04`, `S05`, `S08` n'ont **plus
+d'étalon** : hors résorption, le tour 2 des questionnaires est demandé au commanditaire.
+⚠️ **`S07 · file du scoreur` n'a aucun écran ni endpoint** — US non livrée, pas écart de fidélité ; le
+tri d'`E16US011` l'avait rangée « rien à faire » en lisant son ✅ comme un constat alors que « on peut
+coder ça » est un feu vert. La critique de `S05` est dans le même cas : **sans porteur**.
+⚠️ **L'écart 🔴 restant part en `E17US011`, pour une raison de périmètre** : mettre les flèches dans
+la ligne d'archer redessine l'écran le plus utilisé du produit. ⚠️ **Le motif d'origine était FAUX** —
+un invariant de revue du 05/08 que le code a supprimé depuis (les brouillons ont été remontés dans
+`Saisie`) ; relevé par l'axe adversarial, avec trois commentaires périmés du code, corrigés. ⚠️ **Défaut trouvé en chemin, qu'aucun relevé ne
+cherchait** : `.bascule-theme` existait dans le JSX **sans aucune règle CSS** — rien ne vérifie qu'une
+classe posée dans un `className` existe. Vu à l'écran, pas au test.
+**Aucune dépendance**, aucune migration)*. Précédente : `E17US010` *(le dossier de maquettes sous garde mécanique — détail dans sa ligne du tableau)*.
+Avant elle, `E05US022` *(la séquence s'ancre sur l'**identité** de l'étape et non son rang ; `DETTE-026` soldée — remède structurel sans surface visible)*.
+Avant elle, `E06US009` *(un palmarès par départ, juxtaposés ; `DETTE-045` soldée, ADR-0104 amendé)*.
+Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
+Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée après treize mois)*.
 
 > ⚠️ **146 fiches closes, mais 144 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
@@ -345,7 +387,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯 1~~ ✅ | ~~`E17US009`~~ | **Livrée le 25/09/2026** — les 7 planches publiques `P**` sont confrontées (relevé dans `EPIC-17`). L'axe avait été **rapproché d'avance** par `E16US004`/`E16US009` : deux manques résorbés dans l'appli (« **ma cible d'abord** » sur le plan, P04 ; le **club sous le nom** pour distinguer les homonymes, P01/P02) et **quatre planches corrigées** là où elles étaient en retard sur vos arbitrages (P04, P05, P06, P07). ⚠️ **L'écran de salle reste à regarder projeté**, à plusieurs mètres : le poste de relevé ne dépasse pas 1366 px. |
 > | ~~🎯 1~~ ✅ | ~~`E17US011`~~ | **Livrée le 25/09/2026** (même PR qu'`E17US009`) — la ligne d'archer porte la volée en cours ; toucher une case ouvre le pavé **sur cette flèche**, qui se corrige avant envoi. Le pavé, ancré en bas de l'écran, rend sa colonne à la grille. `DETTE-111` résorbée pour la qualification (cinq sites de la règle, pas deux ; `saisie-duels/duel.ts` reste). |
 > | ~~🎯 1~~ ✅ | ~~`E17US007`~~ | **Livrée le 25/09/2026** (même PR qu'`E17US009`/`E17US011`), **rétrécie sur votre arbitrage** : les deux écrans qui livraient une variante **écartée** — A06 passe en liste + panneau latéral, A09 en « recherche d'abord » avec ses quatre compteurs. ⚠️ **Non vérifiée au navigateur** (l'outil affichait une page d'erreur sur l'admin) : à regarder. Les quatre 🟠 partent en `E17US012`. |
-> | 🎯 **1** | `E17US012` | **Les écrans d'administration en carte-tableau** (A04, A08, A12, A17) — fille d'`E17US007`, étalons déjà vérifiés. ⚠️ Re-mesurer A04, A08, A17 : ils ont bougé depuis le relevé du 06/08. |
+> | ~~🎯 1~~ ✅ | ~~`E17US012`~~ | **Livrée le 26/09/2026** — A04, A08, A12 et A17 en carte-tableau ; **A04** gagne inscrits et cibles, **A17** son bandeau de totaux et l'**ancienneté** de la dette (migration `0057`, nullable : l'existant reste « date inconnue »). Colonnes sans donnée **retirées des planches** (A04 avancement / ce qui reste, A08 état / périmètre / dernière validation, A12 type / rattachement / appareil / signe de vie). ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté. |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : `E09US005` (classement de qualification en PDF), le fil **équipes** (`E13US002`→`E13US004`), le jalon **J4**. |
+> | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | `E17US005` | **Une décision vous est demandée**, et l'US n'est **pas prenable** avant : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1298,7 +1342,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > (égalité 5–5 en duel) et le **conflit de saisie** (deux postes sur la même volée) : ils sont
 > maquettés, pas décidés.
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (10/12)**
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (11/12)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),
@@ -1314,7 +1358,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US005 | Embarquer la **police du club** pour le jour J (`DV-07`) | J3 | 🔒 *(**spécifiée, pas prenable** — arbitrage d'ajout d'actif en attente, règle 11 ; 3 options soumises dans la story)* |
 | ~~E17US006~~ | Distinguer l'**action destructrice** de l'alerte | J3 | ✅ *(livrée le 26/09/2026 — option (c) tranchée : **forme, pas couleur** ; ambre réservé à l'alerte, [ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md) ; gardé par `charte.test.ts`)* |
 | ~~E17US007~~ | **Résorber** les écarts relevés sur les écrans d'administration | J3 | ✅ *(livrée le 25/09/2026 — **rétrécie** aux deux 🔴 : A06 liste + panneau latéral, A09 recherche d'abord + compteurs ; **non vue au navigateur**. `DETTE-103` aggravée)* |
-| E17US012 | Les écrans d'administration en **carte-tableau** (A04, A08, A12, A17) | J3 | ⬜ *(fille d'`E17US007`, découpée le 25/09/2026)* |
+| ~~E17US012~~ | Les écrans d'administration en **carte-tableau** (A04, A08, A12, A17) | J3 | ✅ *(livrée le 26/09/2026 — colonnes des planches, inscrits/cibles A04, bandeau + ancienneté A17 — migration `0057` ; colonnes sans donnée retirées des planches ; **non vue au navigateur**)* |
 | ~~E17US008~~ | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ✅ *(livrée le 24/09/2026 — **relevé des 9 planches** dans `EPIC-17`, **5 écrans résorbés** (`S01`, `S02`, `S03`, `S04`, `S09`), sous le plafond de six. La tablette prend sa largeur (ligne d'archer 575 → 694 px), le pavé ne s'ouvre plus hors de l'écran (y=742 → y=275), le hors-ligne devient un **aplat pleine largeur** et le cumul cesse d'afficher 0 toute la série. ⚠️ **Le CA « questionnaire → variante retenue » a cédé sur cet axe** : questionnaires du 04/08 sur vignettes, planches redessinées le 05/08 — **4 planches sur 9** ne proposent plus la variante retenue (`S05` n'en avait aucune), lettres **inversées** sur `S01`. `S05` et `S08` sont **hors résorption** ; `S04` l'est pour son seul **parti pris**, sa phrase explicative étant livrée comme **proposition** à reposer au tour 2 (ADR-0113 §3). ⚠️ **`S07` n'a aucun écran ni endpoint** — US non livrée, pas écart de fidélité. L'écart 🔴 restant part en `E17US011`)* |
 | ~~E17US009~~ | Confronter les **7 planches publiques** `P**` et résorber | J3 | ✅ *(livrée le 25/09/2026 — relevé des 7 planches dans `EPIC-17` ; « ma cible d'abord » (P04) et le club sous le nom (P01/P02) résorbés ; P04, P05, P06, P07 corrigées ; P03 hors résorption. **Écran de salle non vu projeté**)* |
 | ~~E17US011~~ | La **ligne d'archer porte la volée en cours** (S02) | J3 | ✅ *(livrée le 25/09/2026 — volée en cours sur la ligne, case tapable qui vise la flèche, pavé ancré en bas et compacté (420 → 253 px) ; touches à 87 px sur une carte de 1 061 px. `DETTE-111` : quatre sites sur cinq résorbés)* |

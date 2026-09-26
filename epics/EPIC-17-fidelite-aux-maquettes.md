@@ -78,7 +78,7 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
       le destructeur se signale par la forme (contour épais neutre) et le dialogue ; l'ambre reste
       réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)).
 - [x] **Résorber** les écarts 🔴 des planches `A**` (admin) — `E17US007` : A06 et A09.
-- [ ] Les quatre écarts 🟠 — tableaux à colonnes A04, A08, A12, bandeau de totaux A17 — `E17US012`.
+- [x] Les quatre écarts 🟠 — tableaux à colonnes A04, A08, A12, bandeau de totaux A17 — `E17US012`.
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur) et résorber — `E17US008`.
 - [x] Confronter les 7 planches `P**` (public & écran de salle) et résorber — `E17US009`.
 - [ ] Resynchroniser `maquettes/assets/appareils.js` sur `axes.ts`, **et rendre la dérive détectable
@@ -127,13 +127,13 @@ L'écart le plus **systématique** : les planches présentent les données d'adm
 
 | Planche | Colonnes attendues | Livré |
 |---|---|---|
-| **A12 · postes** 🟡 | POSTE · TYPE · RATTACHEMENT · APPAREIL · SIGNE DE VIE · JETON | aucune table ; actions « Régénérer un jeton », « Détacher », « Réactiver » non repérées |
-| **A08 · scoreurs** 🟡 | NOM · CODE D'ACCÈS · ÉTAT · PÉRIMÈTRE · DERNIÈRE VALIDATION | aucune table ; l'impression des accès existe |
+| ~~**A12 · postes**~~ ✅ **corrigé** (E17US012) | POSTE · TYPE · RATTACHEMENT · APPAREIL · SIGNE DE VIE · JETON | aucune table ; actions « Régénérer un jeton », « Détacher », « Réactiver » non repérées |
+| ~~**A08 · scoreurs**~~ ✅ **corrigé** (E17US012) | NOM · CODE D'ACCÈS · ÉTAT · PÉRIMÈTRE · DERNIÈRE VALIDATION | aucune table ; l'impression des accès existe |
 | **A15 · bascule de tour** 🟡 | DUEL · CIBLE · ARCHER A · ARCHER B · HEURE, + encart « CE QUI SE FIGE / CONSÉQUENCE » | aucune table (recoupe `E16US008`) |
 | **A18 · exports** 🟡 | DOCUMENT · FORMAT · POUR QUI · CONTENU, + « Tout télécharger » | aucune table (recoupe `E16US007`) |
 | **A11 · placement** 🟡 | panneaux « Non placés — 3 » et « Contraintes actives » | aucune table (recoupe `E16US005`) |
-| **A04 · tournois** 🟡 | ÉTAT · NOM · DATE · INSCRITS · CIBLES · AVANCEMENT · CE QUI RESTE | ligne simple + pastille ; **les colonnes de droite supposent des données que l'écran ne va pas chercher** |
-| **A17 · paiements** ✅ | ARCHER · CLUB · CAT. · TARIF · DÛ · DEPUIS, + bandeau Attendu / Encaissé / Restant dû / Archers concernés, + « Exporter pour le trésorier » | table présente mais colonnes ARCHER · DÛ · PAYÉ · RESTE · STATUT · ACTION ; **ni bandeau de totaux, ni export trésorier, ni ancienneté** — et l'écran est ✅ |
+| ~~**A04 · tournois**~~ ✅ **corrigé** (E17US012) | ÉTAT · NOM · DATE · INSCRITS · CIBLES · AVANCEMENT · CE QUI RESTE | ligne simple + pastille ; **les colonnes de droite supposent des données que l'écran ne va pas chercher** |
+| ~~**A17 · paiements**~~ ✅ **corrigé** (E17US012 — bandeau et ancienneté ; export trésorier : `E16US007`) | ARCHER · CLUB · CAT. · TARIF · DÛ · DEPUIS, + bandeau Attendu / Encaissé / Restant dû / Archers concernés, + « Exporter pour le trésorier » | table présente mais colonnes ARCHER · DÛ · PAYÉ · RESTE · STATUT · ACTION ; **ni bandeau de totaux, ni export trésorier, ni ancienneté** — et l'écran est ✅ |
 
 ### 🟡 Écarts de forme, peu coûteux
 

@@ -173,7 +173,7 @@ class _Monde:
                 (ZoneScore(valeur), ZoneScore(valeur), ZoneScore(valeur)),
                 self.qualif_id,
             )
-            self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+            self.inscriptions.ajouter(Inscription(archer.id, self.depart_id))
             ids.append(archer.id)
         return ids
 

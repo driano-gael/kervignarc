@@ -102,7 +102,7 @@ def test_desinscrire_avec_remboursement_supprime_et_ouvre_le_poste(tmp_path: Pat
         audit = AuditRepositorySQL(db.session_factory)
         inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
         remboursements = RemboursementRepositorySQL(db.session_factory, audit)
-        cree = inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+        cree = inscriptions.ajouter(Inscription(archer_id, depart_id).marquer_paye(True))
         assert cree.id is not None
 
         inscriptions.supprimer_avec_remboursement(
@@ -127,7 +127,7 @@ def test_supprimer_depart_avec_remboursements_purge_et_ouvre_les_postes(tmp_path
         inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
         departs = DepartRepositorySQL(db.session_factory)
         remboursements = RemboursementRepositorySQL(db.session_factory, audit)
-        inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+        inscriptions.ajouter(Inscription(archer_id, depart_id).marquer_paye(True))
 
         departs.supprimer_avec_remboursements(
             depart_id, [_remboursement(tournoi_id, MotifRemboursement.DEPART_SUPPRIME)]
@@ -155,7 +155,7 @@ def test_supprimer_archer_avec_remboursements_purge_et_ouvre_les_postes(tmp_path
         inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
         archers = ArcherRepositorySQL(db.session_factory)
         remboursements = RemboursementRepositorySQL(db.session_factory, audit)
-        inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+        inscriptions.ajouter(Inscription(archer_id, depart_id).marquer_paye(True))
 
         archers.supprimer_avec_remboursements(
             archer_id, [_remboursement(tournoi_id, MotifRemboursement.ARCHER_SUPPRIME)]
@@ -178,7 +178,7 @@ def test_par_id_relit_l_instant_utc(tmp_path: Path) -> None:
         audit = AuditRepositorySQL(db.session_factory)
         inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
         remboursements = RemboursementRepositorySQL(db.session_factory, audit)
-        cree = inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+        cree = inscriptions.ajouter(Inscription(archer_id, depart_id).marquer_paye(True))
         assert cree.id is not None
         inscriptions.supprimer_avec_remboursement(
             cree.id, _remboursement(tournoi_id, MotifRemboursement.DESINSCRIPTION)
@@ -202,7 +202,7 @@ def test_enregistrer_avec_trace_traite_et_consigne(tmp_path: Path) -> None:
         audit = AuditRepositorySQL(db.session_factory)
         inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
         remboursements = RemboursementRepositorySQL(db.session_factory, audit)
-        cree = inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+        cree = inscriptions.ajouter(Inscription(archer_id, depart_id).marquer_paye(True))
         assert cree.id is not None
         inscriptions.supprimer_avec_remboursement(
             cree.id, _remboursement(tournoi_id, MotifRemboursement.DESINSCRIPTION)
@@ -236,7 +236,7 @@ def test_enregistrer_avec_trace_est_atomique_si_la_trace_echoue(tmp_path: Path) 
     try:
         audit = AuditRepositorySQL(db.session_factory)
         inscriptions = InscriptionRepositorySQL(db.session_factory, audit)
-        cree = inscriptions.ajouter(Inscription.creer(archer_id, depart_id).marquer_paye(True))
+        cree = inscriptions.ajouter(Inscription(archer_id, depart_id).marquer_paye(True))
         assert cree.id is not None
         inscriptions.supprimer_avec_remboursement(
             cree.id, _remboursement(tournoi_id, MotifRemboursement.DESINSCRIPTION)

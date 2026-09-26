@@ -140,7 +140,7 @@ def _service() -> ServiceClassement:
     )
     inscriptions = FauxInscriptionRepository()
     for archer_id in (alice.id, bob.id, chloe.id):
-        inscriptions.ajouter(Inscription.creer(archer_id, depart.id))
+        inscriptions.ajouter(Inscription(archer_id, depart.id))
     return ServiceClassement(
         tournois,
         archers,

@@ -165,7 +165,7 @@ class _TournoiADeuxDeparts:
                 )
             )
             assert archer.id is not None
-            inscriptions.ajouter(Inscription.creer(archer.id, depart_id))
+            inscriptions.ajouter(Inscription(archer.id, depart_id))
             series.enregistrer(
                 Serie(
                     tournoi_id=self.tournoi_id,

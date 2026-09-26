@@ -51,7 +51,6 @@
       <div class="ecran">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
           <span class="mini">Scoreurs du tournoi</span>
-          <span class="pas ok">3 en ligne</span><span class="pas neutre">1 attendue</span>
           <span class="fin" style="display:flex;gap:10px">
             <span class="bouton auto">Imprimer les accès — 4 QR</span>
             <span class="bouton auto principal">Ajouter un scoreur</span></span>
@@ -59,36 +58,23 @@
 
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:110px">CODE D'ACCÈS</span>
-            <span style="width:120px">ÉTAT</span><span style="width:200px">PÉRIMÈTRE</span>
-            <span style="width:150px">DERNIÈRE VALIDATION</span><span style="width:100px"></span></div>
+            <span style="width:240px"></span></div>
 
           <div class="rang"><span style="flex:1;font-weight:700">LE GALL Anne</span>
             <span style="width:110px" class="second">4K7-2M</span>
-            <span style="width:120px"><span class="pas ok">EN LIGNE</span></span>
-            <span style="width:200px" class="second">cibles 1 à 10 · pas de tir A</span>
-            <span style="width:150px" class="second">il y a 40 s</span>
-            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+            <span style="width:240px;display:flex;gap:8px"><span class="bouton auto discret">Afficher le QR</span><span class="bouton auto discret">Renommer</span></span></div>
 
           <div class="rang"><span style="flex:1;font-weight:700">MOREAU Yves</span>
             <span style="width:110px" class="second">9R3-8T</span>
-            <span style="width:120px"><span class="pas ok">EN LIGNE</span></span>
-            <span style="width:200px" class="second">cibles 11 à 20 · pas de tir A</span>
-            <span style="width:150px" class="second">il y a 1 min 10</span>
-            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+            <span style="width:240px;display:flex;gap:8px"><span class="bouton auto discret">Afficher le QR</span><span class="bouton auto discret">Renommer</span></span></div>
 
           <div class="rang"><span style="flex:1;font-weight:700">TANGUY Hervé</span>
             <span style="width:110px" class="second">2P6-5C</span>
-            <span style="width:120px"><span class="pas ok">EN LIGNE</span></span>
-            <span style="width:200px" class="second">cibles 21 à 30 · pas de tir B</span>
-            <span style="width:150px" class="second">il y a 25 s</span>
-            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+            <span style="width:240px;display:flex;gap:8px"><span class="bouton auto discret">Afficher le QR</span><span class="bouton auto discret">Renommer</span></span></div>
 
-          <div class="rang"><span style="flex:1;color:var(--text-muted)">RIOU Claire</span>
+          <div class="rang"><span style="flex:1;font-weight:700">RIOU Claire</span>
             <span style="width:110px" class="second">7B1-4X</span>
-            <span style="width:120px"><span class="pas neutre">ATTENDUE</span></span>
-            <span style="width:200px" class="faible">aucun périmètre</span>
-            <span style="width:150px" class="faible">jamais connectée</span>
-            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+            <span style="width:240px;display:flex;gap:8px"><span class="bouton auto discret">Afficher le QR</span><span class="bouton auto discret">Renommer</span></span></div>
         </div>
 
         <div class="carte info" style="margin-top:14px"><div class="rang bloc">
@@ -99,17 +85,18 @@
 
         <div class="carte" style="margin-top:14px"><div class="rang">
           <span class="second" style="flex:1">Un scoreur peut être ajouté <b>à 10 h du matin</b> : il apparaît
-          dans la liste, reçoit un code, et prend son périmètre sans redémarrage ni reconfiguration.</span>
+          dans la liste et reçoit un code, sans redémarrage ni reconfiguration.</span>
           <span class="pas ok">aucun blocage</span></div></div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Sobre, et suffisant : ce n'est pas un écran
     qu'on regarde longtemps.</p>
-    <p class="verdict"><span class="pouce peut">deux colonnes que la largeur permet, et qui changent l'écran</span>
-    <b>Le périmètre</b> — quelles cibles chacun couvre — répond à la seule question qu'on se pose vraiment ici :
-    « si Claire ne vient pas, qui reprend ses cibles ? ». Et <b>la dernière validation</b> dit sans jugement si
-    quelqu'un est réellement actif ou juste connecté. À confirmer : le périmètre est-il attribué à la main, ou
-    déduit du plan de salle ?</p>
+    <p class="verdict"><span class="pouce peut">colonnes retirées par E17US012</span> <b>État</b>,
+    <b>périmètre</b> et <b>dernière validation</b> sont sortis (arbitrage du 26/09/2026) : un scoreur n'a pas
+    de périmètre dans l'application ; sa session n'expire pas et ne donne aucun signe de vie, si bien qu'on
+    saurait dire « s'est connecté », jamais « en ligne » ; et le journal ne connaît ses validations que par
+    son <b>nom</b> — deux homonymes s'y confondraient. Chaque ligne ouvre en revanche son QR, comme tu le
+    demandais.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="scoreurs">
