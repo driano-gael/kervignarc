@@ -15,6 +15,7 @@ const ligne = (du: number, paye: number): LignePaiementArcher => ({
   club: null,
   categorie: 'Senior 1 Femme',
   dette: null,
+  nb_inscriptions: 1,
 })
 
 describe('totauxDuBandeau (A17)', () => {

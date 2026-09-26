@@ -192,6 +192,12 @@ class FauxArcherRepository:
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Archer]:
         return [a for a in self._archers.values() if a.tournoi_id == tournoi_id]
 
+    def compter_par_tournoi(self) -> dict[TournoiId, int]:
+        compte: dict[TournoiId, int] = {}
+        for archer in self._archers.values():
+            compte[archer.tournoi_id] = compte.get(archer.tournoi_id, 0) + 1
+        return compte
+
     def par_club(self, club_id: ClubId) -> list[Archer]:
         # Sans filtre sur le tournoi : le référentiel des clubs est global (E02US001).
         return [a for a in self._archers.values() if a.club_id == club_id]

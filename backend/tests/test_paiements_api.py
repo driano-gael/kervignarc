@@ -115,6 +115,7 @@ def test_vue_par_archer_porte_les_colonnes_de_la_planche(
 
     a, b = par_id[ids["archer_a"]], par_id[ids["archer_b"]]
     assert (a["club"], a["categorie"]) == ("Arc Rennes", "Senior 1 H")
+    assert (a["nb_inscriptions"], b["nb_inscriptions"]) == (2, 1)
     assert b["club"] is None
     # Inscrites par l'API : la dette est **datée** (une date inconnue serait `{"depuis": null}`).
     assert a["dette"]["depuis"] is not None and b["dette"]["depuis"] is not None

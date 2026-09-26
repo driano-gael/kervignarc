@@ -184,8 +184,8 @@ describe('Scoreurs — carte-tableau de la planche A08', () => {
         .map((th) => th.textContent),
     ).toEqual(['Nom', 'Code d’accès', 'Actions'])
     const ligne = screen.getByText('Alice').closest('tr')
-    expect(ligne).not.toBeNull()
-    expect(within(ligne as HTMLElement).getByText('AAA222')).toBeInTheDocument()
+    if (ligne === null) throw new Error('« Alice » n’est pas dans une ligne de tableau')
+    expect(within(ligne).getByText('AAA222')).toBeInTheDocument()
   })
 
   it('le QR s’ouvre sous SA ligne, dans le tableau', async () => {
@@ -195,7 +195,7 @@ describe('Scoreurs — carte-tableau de la planche A08', () => {
     const qr = await screen.findByText(/À scanner par Bob/)
     // Le détail vit dans le même `<tbody>` que la ligne de Bob — pas sous celle d'Alice.
     const groupe = qr.closest('tbody')
-    expect(groupe).not.toBeNull()
-    expect(within(groupe as HTMLElement).getByText('BBB333')).toBeInTheDocument()
+    if (groupe === null) throw new Error('le QR de Bob n’est pas dans un groupe de lignes')
+    expect(within(groupe).getByText('BBB333')).toBeInTheDocument()
   })
 })

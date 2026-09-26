@@ -25,7 +25,7 @@ from application.suivi_deroule import CompteurEngages
 from domain.deroule import exigence_minimale
 from domain.deroule_etape import EtapeDeroule, vues_du_deroule
 from domain.gabarit_salle import GabaritSalle
-from domain.ports import ArcherRepository, DepartRepository, TournoiRepository
+from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
     MESSAGE_SANS_DEPART,
     MESSAGE_TERMINER_HORS_EN_COURS,
@@ -39,6 +39,18 @@ from domain.tournoi import (
 from domain.tournoi import (
     transitions_possibles as topologie_transitions,
 )
+
+
+class CompteurArchersParTournoi(Protocol):
+    """Port **étroit** : l'effectif de chaque tournoi, en une lecture (A04, E17US012).
+
+    La liste est pollée à 5 s par la coquille admin : charger les archers pour les compter
+    relisait tout le référentiel à chaque tick. `ArcherRepositorySQL` le satisfait.
+    """
+
+    def compter_par_tournoi(self) -> dict[TournoiId, int]:
+        """Nombre d'archers par tournoi ; un tournoi sans archer est **absent** du dict."""
+        ...
 
 
 class LecteurPlanDeSalle(Protocol):
@@ -171,7 +183,7 @@ class ServiceTournois:
         depart_repository: DepartRepository,
         deroule_repository: LecteurDerouleDuTournoi,
         engages: CompteurEngages,
-        archer_repository: ArcherRepository,
+        archers: CompteurArchersParTournoi,
         plan_de_salle: LecteurPlanDeSalle,
     ) -> None:
         self._repository = repository
@@ -186,7 +198,7 @@ class ServiceTournois:
         self._deroules = deroule_repository
         self._engages = engages
         # E17US012 : les effectifs de la liste (A04) — archers et plan de salle, par leurs ports.
-        self._archers = archer_repository
+        self._archers = archers
         self._gabarits = plan_de_salle
 
     def creer(
@@ -214,16 +226,18 @@ class ServiceTournois:
     def lister_en_liste(self) -> list[TournoiEnListe]:
         """Tous les tournois avec leurs inscrits et leurs cibles (liste d'administration, A04).
 
-        Deux lectures par tournoi : tenable pour la douzaine de tournois d'un club (règle 12).
+        ⚠️ Pollée à 5 s par la coquille admin : les effectifs se comptent en une requête ; le plan
+        de salle reste lu par tournoi, pour la douzaine de tournois d'un club (règle 12).
         """
-        return [self._en_liste(tournoi) for tournoi in self._repository.lister()]
+        effectifs = self._archers.compter_par_tournoi()
+        return [self._en_liste(tournoi, effectifs) for tournoi in self._repository.lister()]
 
-    def _en_liste(self, tournoi: Tournoi) -> TournoiEnListe:
+    def _en_liste(self, tournoi: Tournoi, effectifs: dict[TournoiId, int]) -> TournoiEnListe:
         assert tournoi.id is not None, "Un tournoi relu est persisté."
         gabarit = self._gabarits.par_tournoi(tournoi.id)
         return TournoiEnListe(
             tournoi=tournoi,
-            nb_inscrits=len(self._archers.par_tournoi(tournoi.id)),
+            nb_inscrits=effectifs.get(tournoi.id, 0),
             nb_cibles=None if gabarit is None else gabarit.nb_cibles,
         )
 

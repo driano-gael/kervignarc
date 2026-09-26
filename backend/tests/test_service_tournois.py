@@ -843,6 +843,8 @@ def _liste() -> tuple[ServiceTournois, FauxArcherRepository, FauxInstancesDeGaba
 
 
 def test_la_liste_compte_les_inscrits_et_les_cibles_de_chaque_tournoi() -> None:
+    """INSCRITS = les archers **du tournoi** : aucun n'a ici de créneau, tous comptent — le même
+    compte que « Voir les N inscrits » d'A09, pas un décompte d'inscriptions (revue, axe B)."""
     service, archers, gabarits = _liste()
     salle = service.creer("Salle", DATE_TOURNOI)
     vide = service.creer("Vide", DATE_TOURNOI)

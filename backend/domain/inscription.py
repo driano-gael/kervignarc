@@ -31,23 +31,35 @@ class Inscription:
     depart_id: DepartId
     paye: bool = False
     id: InscriptionId | None = None
-    # `None` : inscription antérieure à E17US012 (migration `0057`), jamais datée — on ne lui
-    # invente pas de date, l'ancienneté de sa dette reste « inconnue » (`domain.paiement`).
+    # `None` : date inconnue — inscription antérieure à la migration `0057`, ou harnais de
+    # simulation en mémoire. Jamais inventée : la dette reste « inconnue » (`domain.paiement`).
     cree_le: datetime.datetime | None = None
 
     @staticmethod
     def creer(
-        archer_id: ArcherId, depart_id: DepartId, cree_le: datetime.datetime | None = None
+        archer_id: ArcherId, depart_id: DepartId, *, cree_le: datetime.datetime | None
     ) -> Inscription:
         """Crée une inscription **non encore payée** (`paye=False`).
 
         Aucune validation de bornes ici : les identifiants sont des FK dont l'existence et la
-        cohérence (même tournoi) relèvent du service, pas de l'entité. ⚠️ `cree_le` a un défaut
-        pour les décors de test : le seul créateur de production, `ServiceInscriptions.inscrire`,
-        le renseigne — et un test l'y épingle.
+        cohérence (même tournoi) relèvent du service, pas de l'entité. ⚠️ `cree_le` **sans défaut**,
+        exprès : un créateur qui l'oublierait écrirait des dettes « date inconnue » en silence.
         """
         return Inscription(archer_id=archer_id, depart_id=depart_id, paye=False, cree_le=cree_le)
 
     def marquer_paye(self, paye: bool) -> Inscription:
         """Renvoie une copie avec le statut de paiement voulu ; le reste est préservé."""
         return replace(self, paye=paye)
+
+
+def date_fusionnee(
+    a: datetime.datetime | None, b: datetime.datetime | None
+) -> datetime.datetime | None:
+    """Date de l'inscription qui reste quand deux se fondent (fusion d'archers, E17US012).
+
+    La plus ancienne, et « inconnue » l'emporte : une date plus récente rajeunirait la dette
+    (même règle que `domain.paiement.dater_la_dette`).
+    """
+    if a is None or b is None:
+        return None
+    return min(a, b)

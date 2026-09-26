@@ -145,7 +145,9 @@ function LigneArcher({ tournoiId, ligne }: { tournoiId: number; ligne: LignePaie
       </td>
       <td>{ligne.club ?? 'sans club'}</td>
       <td>{ligne.categorie ?? '?'}</td>
-      <td>{decrireTarif(ligne.recap.du_centimes)}</td>
+      <td>
+        {ligne.nb_inscriptions === 0 ? 'aucun créneau' : decrireTarif(ligne.recap.du_centimes)}
+      </td>
       <td>
         {decrireMontant(ligne.recap.reste_centimes)} <StatutPaiement recap={ligne.recap} />
       </td>
@@ -410,6 +412,8 @@ function BoutonMarquer({
 // la vue par club n'en porte que la somme.
 function BandeauTotaux({ tournoiId }: { tournoiId: number }) {
   const paiements = usePaiementsArchers(tournoiId)
+  // L'erreur se dit ici aussi : sous l'onglet « Par club », la vue par archer n'est pas montée.
+  if (paiements.isError) return <MessageErreur erreur={paiements.error} />
   if (!paiements.data) return null
   const totaux = totauxDuBandeau(paiements.data)
   return (

@@ -290,8 +290,9 @@
     son cycle, et les alimenter ferait calculer un avancement par tournoi pour une liste.
     **Règle retenue pour les autres colonnes** : alimentées si la donnée **existe en base et se lit
     simplement**, retirées si elles supposent un **concept neuf** ou une jointure fragile —
-    - **A04** : **INSCRITS** (archers distincts inscrits au tournoi) et **CIBLES** alimentées ;
-      liste classée **par statut, puis par date** ;
+    - **A04** : **INSCRITS** (les **archers du tournoi**, inscrits à un créneau ou non — le même
+      compte que « Voir les N inscrits » d'A09) et **CIBLES** alimentées ; liste classée **par
+      statut, puis par date** ;
     - **A08** : **retirées de la planche** — **PÉRIMÈTRE** (un scoreur n'a aucun périmètre au
       modèle), **ÉTAT** (la session scoreur n'expire pas et n'émet aucun signe de vie : on sait
       qu'elle a été *ouverte*, jamais qu'elle est *en ligne* — l'afficher mentirait) et **DERNIÈRE
@@ -324,6 +325,16 @@
   - **A17 · un montant nul n'est pas « Gratuit »** : `decrireTarif(0)` rendait « Gratuit » sur un
     reste réglé — y compris dans la vue par club, **avant** cette US. `decrireMontant` porte les
     montants, `decrireTarif` reste aux tarifs.
+  - **A17 · « aucun créneau »** : un archer du tournoi inscrit à **aucun** créneau doit 0, comme
+    un créneau gratuit — TARIF affiche « aucun créneau », pas « Gratuit » (`nb_inscriptions`).
+    **« Encaissé »** = ce qui est payé sur les inscriptions **en cours** ; l'argent d'une inscription
+    retirée vit dans l'onglet « Remboursements », hors du bandeau. *(Relevés en revue, axes B, C1,
+    D.)*
+  - **A04 · porte publique** : la même liste sert l'accueil public (`lectureSeule`). INSCRITS et
+    CIBLES y sont **masquées** — colonnes d'administration ; le public garde État · Nom · Date.
+  - **Fusion d'archers** : l'inscription qui reste sur un créneau commun garde la **plus
+    ancienne** date, « inconnue » l'emportant (`date_fusionnee`) — sans quoi une fusion rajeunissait
+    une dette. *(Relevé en revue, axe D.)*
   - Les **planches** A04, A08 et A12 sont corrigées (colonnes retirées, verdict « colonnes retirées
     par E17US012 ») ; A17 n'en perd aucune. Ses encarts « par moyen de paiement » ne sont pas au CA et
     ne sont **pas** faits — l'application ne connaît pas le moyen de paiement.

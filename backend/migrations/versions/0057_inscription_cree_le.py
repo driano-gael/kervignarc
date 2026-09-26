@@ -12,8 +12,8 @@ une métadonnée de persistance : l'ancienneté de la dette est une règle, test
 ⚠️ **Nullable, sans `server_default`** — l'inverse exact de `0027_volee_created_at`. Un défaut
 `CURRENT_TIMESTAMP` daterait chaque inscription existante **du jour de la migration** : une fausse
 date, indiscernable d'une vraie, qui rajeunirait toutes les dettes en cours. `NULL` dit la vérité —
-« date inconnue » — et c'est ce que l'écran affiche. `batch_alter_table` : SQLite ne sait pas
-`ALTER TABLE` autrement que par recréation de la table.
+« date inconnue » — et c'est ce que l'écran affiche. `batch_alter_table` (mode `auto`) : l'ajout
+passe en `ALTER TABLE ADD COLUMN` natif ; seul le `drop_column` du retour arrière recrée la table.
 """
 
 from __future__ import annotations

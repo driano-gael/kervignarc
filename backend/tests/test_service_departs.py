@@ -346,7 +346,7 @@ def test_supprimer_depart_avec_inscriptions_signale() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer_id=1, depart_id=depart.id))
+    m.inscriptions.ajouter(Inscription(archer_id=1, depart_id=depart.id))
 
     with pytest.raises(DepartAvecInscriptions):
         m.service.supprimer(m.tournoi_id, depart.id)
@@ -362,8 +362,8 @@ def test_signalement_depart_decompte_les_inscriptions_dont_payees() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
-    m.inscriptions.ajouter(Inscription.creer(2, depart.id).marquer_paye(True))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
+    m.inscriptions.ajouter(Inscription(2, depart.id).marquer_paye(True))
 
     with pytest.raises(DepartAvecInscriptions) as leve:
         m.service.supprimer(m.tournoi_id, depart.id)
@@ -380,7 +380,7 @@ def test_signalement_depart_accorde_au_singulier() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
 
     with pytest.raises(DepartAvecInscriptions) as leve:
         m.service.supprimer(m.tournoi_id, depart.id)
@@ -397,7 +397,7 @@ def test_supprimer_depart_avec_inscriptions_confirme_efface() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
 
     m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
     assert m.service.lister(m.tournoi_id) == []
@@ -426,8 +426,8 @@ def test_supprimer_depart_ouvre_un_remboursement_par_inscription_payee() -> None
     assert depart.id is not None
     paye = _archer_de(m, "Robin", "Jean")
     non_paye = _archer_de(m, "Martin", "Alice")
-    m.inscriptions.ajouter(Inscription.creer(paye, depart.id).marquer_paye(True))
-    m.inscriptions.ajouter(Inscription.creer(non_paye, depart.id))  # non payée : rien à rembourser
+    m.inscriptions.ajouter(Inscription(paye, depart.id).marquer_paye(True))
+    m.inscriptions.ajouter(Inscription(non_paye, depart.id))  # non payée : rien à rembourser
 
     m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
 
@@ -446,7 +446,7 @@ def test_supprimer_depart_sans_payee_ne_cree_aucun_remboursement() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(_archer_de(m, "Martin", "Alice"), depart.id))
+    m.inscriptions.ajouter(Inscription(_archer_de(m, "Martin", "Alice"), depart.id))
 
     m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
     assert m.departs.remboursements == []
@@ -461,7 +461,7 @@ def test_supprimer_depart_gratuit_ne_rembourse_pas_meme_les_payees() -> None:
     depart = m.service.creer(m.tournoi_id, 0, "09:00")  # créneau gratuit
     assert depart.id is not None
     m.inscriptions.ajouter(
-        Inscription.creer(_archer_de(m, "Robin", "Jean"), depart.id).marquer_paye(True)
+        Inscription(_archer_de(m, "Robin", "Jean"), depart.id).marquer_paye(True)
     )
 
     m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
@@ -481,7 +481,7 @@ def test_supprimer_depart_lance_paye_confirme_cycle_rembourse() -> None:
     assert depart.id is not None
     m.avancements.poser(depart.id, _lance())  # créneau lancé → confirmation de cycle requise
     m.inscriptions.ajouter(
-        Inscription.creer(_archer_de(m, "Robin", "Jean"), depart.id).marquer_paye(True)
+        Inscription(_archer_de(m, "Robin", "Jean"), depart.id).marquer_paye(True)
     )
 
     m.service.supprimer(m.tournoi_id, depart.id, confirme_cycle=True)
@@ -640,7 +640,7 @@ def test_supprimer_creneau_ouvert_garde_le_comportement_e02us009() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
 
     with pytest.raises(DepartAvecInscriptions):
         m.service.supprimer(m.tournoi_id, depart.id)
@@ -654,7 +654,7 @@ def test_supprimer_creneau_lance_exige_la_confirmation_de_cycle() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
     m.avancements.poser(depart.id, _lance())
 
     with pytest.raises(DepartEnCoursNonConfirme):
@@ -693,8 +693,8 @@ def test_lister_avec_synthese_chiffre_l_effectif_de_chaque_creneau() -> None:
     apres_midi = m.service.creer(m.tournoi_id, 810, "14:00")
     assert matin.id is not None and apres_midi.id is not None
     for archer_id in (1, 2, 3):
-        m.inscriptions.ajouter(Inscription.creer(ArcherId(archer_id), matin.id))
-    m.inscriptions.ajouter(Inscription.creer(ArcherId(4), apres_midi.id))
+        m.inscriptions.ajouter(Inscription(ArcherId(archer_id), matin.id))
+    m.inscriptions.ajouter(Inscription(ArcherId(4), apres_midi.id))
 
     effectifs = {s.depart.id: s.effectif for s in m.service.lister_avec_synthese(m.tournoi_id)}
     assert effectifs == {matin.id: 3, apres_midi.id: 1}
@@ -715,8 +715,8 @@ def test_l_effectif_passe_par_le_port_qui_en_porte_la_definition() -> None:
     assert creneau.id is not None
     # État volontairement hors-production (le faux repository n'a pas la garde d'unicité) : c'est
     # le seul moyen de distinguer les deux définitions, qui coïncident partout ailleurs.
-    m.inscriptions.ajouter(Inscription.creer(ArcherId(7), creneau.id))
-    m.inscriptions.ajouter(Inscription.creer(ArcherId(7), creneau.id))
+    m.inscriptions.ajouter(Inscription(ArcherId(7), creneau.id))
+    m.inscriptions.ajouter(Inscription(ArcherId(7), creneau.id))
 
     (synthese,) = m.service.lister_avec_synthese(m.tournoi_id)
     assert synthese.effectif == 1
@@ -753,7 +753,7 @@ def test_supprimer_creneau_lance_ne_se_contourne_pas_par_inscriptions() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
     m.avancements.poser(depart.id, _lance())
 
     with pytest.raises(DepartEnCoursNonConfirme):
@@ -772,7 +772,7 @@ def test_supprimer_creneau_lance_confirme_subsume_les_inscriptions() -> None:
     m = _monter()
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription(1, depart.id))
     m.avancements.poser(depart.id, _lance())
 
     m.service.supprimer(m.tournoi_id, depart.id, confirme_cycle=True)

@@ -183,8 +183,10 @@ export function GestionTournois({
                   <th scope="col">État</th>
                   <th scope="col">Nom</th>
                   <th scope="col">Date</th>
-                  <th scope="col">Inscrits</th>
-                  <th scope="col">Cibles</th>
+                  {/* Effectifs : colonnes d'**administration** (A04) — la porte publique, qui
+                      monte aussi cette liste, garde son allure d'avant (revue E17US012, axe D). */}
+                  {!lectureSeule && <th scope="col">Inscrits</th>}
+                  {!lectureSeule && <th scope="col">Cibles</th>}
                   {estAdmin && <th scope="col">Actions</th>}
                 </tr>
               </thead>
@@ -194,6 +196,7 @@ export function GestionTournois({
                     key={t.id}
                     tournoi={t}
                     estAdmin={estAdmin}
+                    effectifs={!lectureSeule}
                     selectionne={t.id === selectionneId}
                     aujourdhui={aujourdhui}
                     onChoisi={onChoisi}
@@ -228,6 +231,7 @@ const COLONNES_ADMIN = 6
 function LigneTournoi({
   tournoi,
   estAdmin,
+  effectifs,
   selectionne,
   aujourdhui,
   onChoisi,
@@ -237,6 +241,7 @@ function LigneTournoi({
 }: {
   tournoi: TournoiEnListe
   estAdmin: boolean
+  effectifs: boolean
   selectionne: boolean
   aujourdhui: string
   onChoisi: (t: Tournoi) => void
@@ -297,8 +302,8 @@ function LigneTournoi({
         )}
       </td>
       <td>{tournoi.date}</td>
-      <td>{tournoi.nb_inscrits}</td>
-      <td>{tournoi.nb_cibles ?? 'aucun plan'}</td>
+      {effectifs && <td>{tournoi.nb_inscrits}</td>}
+      {effectifs && <td>{tournoi.nb_cibles ?? 'aucun plan'}</td>}
       {estAdmin && (
         <td>
           <span className="tournoi__actions">

@@ -60,7 +60,8 @@ class LignePaiementArcher:
 
     Porte le `club_id` (éventuellement `None`) pour permettre le regroupement par club sans une
     seconde lecture. `club` et `categorie` sont les **libellés** des colonnes de la planche A17
-    (E17US012) ; `dette` est `None` quand l'archer ne doit rien.
+    (E17US012) ; `dette` est `None` quand l'archer ne doit rien. `nb_inscriptions` distingue
+    « inscrit à aucun créneau » d'un créneau gratuit, qui doivent tous deux 0.
     """
 
     archer_id: ArcherId
@@ -71,6 +72,7 @@ class LignePaiementArcher:
     club: str | None
     categorie: str | None
     dette: Dette | None
+    nb_inscriptions: int
 
 
 @dataclass(frozen=True)
@@ -298,6 +300,7 @@ class ServicePaiements:
             club=None if archer.club_id is None else libelles.clubs.get(archer.club_id),
             categorie=libelles.categories.get(archer.categorie_id),
             dette=dater_la_dette(lignes),
+            nb_inscriptions=len(lignes),
         )
 
     def _trace(

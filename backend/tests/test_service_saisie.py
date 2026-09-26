@@ -293,7 +293,7 @@ class Montage:
         Reproduit le placement réel (ADR-0033) : une inscription `(archer, départ)` et son
         affectation `(cible, position)`. Sans appel à `placer`, l'archer est en **réserve**.
         """
-        inscription = self.inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+        inscription = self.inscriptions.ajouter(Inscription(archer_id, depart_id))
         assert inscription.id is not None
         self.placements.poser_plusieurs(
             depart_id, [Affectation(inscription.id, cible_index, position)]
@@ -559,7 +559,7 @@ def test_saisir_pour_un_archer_d_un_autre_depart_est_refuse() -> None:
 def test_saisir_pour_un_archer_en_reserve_est_refuse() -> None:
     """Un archer **inscrit mais non placé** (réserve) n'est sur aucune cible → `SaisieHorsCible`."""
     m = Montage()
-    m.inscriptions.ajouter(Inscription.creer(m.archer_id, _DEPART))  # inscrit, jamais placé
+    m.inscriptions.ajouter(Inscription(m.archer_id, _DEPART))  # inscrit, jamais placé
     contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
 
     with pytest.raises(SaisieHorsCible):
@@ -992,7 +992,7 @@ def test_un_archer_en_reserve_ne_retient_pas_le_tour() -> None:
     m = Montage(nb_volees=20)
     _decouper(m, nb_tours=2)
     reserviste = m.nouvel_archer("MARTIN")
-    m.inscriptions.ajouter(Inscription.creer(reserviste, _DEPART))  # inscrit, jamais placé
+    m.inscriptions.ajouter(Inscription(reserviste, _DEPART))  # inscrit, jamais placé
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     _saisir_volees(m, m.archer_id, 12)
 

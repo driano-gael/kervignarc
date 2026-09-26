@@ -10,7 +10,6 @@ repository).
 
 from __future__ import annotations
 
-import dataclasses
 import datetime
 
 import pytest
@@ -29,48 +28,18 @@ from domain.depart import Depart, DepartId
 from domain.entree_audit import ActionAuditee
 from domain.inscription import Inscription
 from domain.paiement import Dette
-from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
+from domain.tournoi import Tournoi
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxClubRepository,
     FauxDepartRepository,
     FauxInscriptionRepository,
+    FauxTournoiRepository,
 )
 
 _TOURNOI = 1
 _QUAND = datetime.datetime(2026, 7, 21, 9, 30, tzinfo=datetime.UTC)
-
-
-class FauxTournoiRepository:
-    """Repository de tournois en mémoire conforme au port `TournoiRepository`."""
-
-    def __init__(self) -> None:
-        self._tournois: dict[int, Tournoi] = {}
-        self._sequence = 0
-
-    def ajouter(self, tournoi: Tournoi) -> Tournoi:
-        self._sequence += 1
-        persiste = dataclasses.replace(tournoi, id=self._sequence)
-        self._tournois[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
-        return self._tournois.get(tournoi_id)
-
-    def lister(self) -> list[Tournoi]:
-        return list(self._tournois.values())
-
-    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        assert tournoi.id in self._tournois, "Tournoi à mettre à jour absent."
-        self._tournois[tournoi.id] = tournoi
-        return tournoi
-
-    def supprimer(self, tournoi_id: TournoiId) -> None:
-        del self._tournois[tournoi_id]
-
-    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
-        return DescendanceTournoi()
 
 
 class HorlogeFigee:
@@ -389,3 +358,17 @@ def test_vue_par_archer_dette_inconnue_pour_une_inscription_non_datee() -> None:
 
     (ligne,) = m.service.lister_par_archer(_TOURNOI)
     assert ligne.dette == Dette(depuis=None)
+
+
+def test_vue_par_archer_compte_les_inscriptions() -> None:
+    """Un archer du tournoi inscrit à **aucun** créneau se distingue d'un créneau gratuit : tous
+    deux doivent 0, seul le premier n'a pas d'inscription (revue E17US012, axes B et C1)."""
+    m = Montage()
+    sans_creneau = m.archer("MARTIN", "Sophie")
+    gratuit = m.archer("DURAND", "Paul")
+    m.inscrire(gratuit, m.depart(1, 0))
+
+    lignes = {ligne.archer_id: ligne for ligne in m.service.lister_par_archer(_TOURNOI)}
+    assert lignes[sans_creneau].nb_inscriptions == 0
+    assert lignes[gratuit].nb_inscriptions == 1
+    assert lignes[sans_creneau].recap.du_centimes == lignes[gratuit].recap.du_centimes == 0

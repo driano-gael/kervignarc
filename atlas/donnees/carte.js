@@ -1499,6 +1499,22 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "ArcherRepositorySQL"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/tournois.py",
+   "hors_domaine": true,
+   "methodes": [
+    "compter_par_tournoi"
+   ],
+   "nom": "CompteurArchersParTournoi",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/application/suivi_deroule.py",
      "nom": "CompteurEngagesRepository"
     }
@@ -3256,8 +3272,8 @@ window.ATLAS.carte = {
   "imports": 966,
   "imports_entre_couches": 818,
   "plus_gros_noeud": 24,
-  "ports": 73,
-  "ports_hors_domaine": 29,
+  "ports": 74,
+  "ports_hors_domaine": 30,
   "ports_sans_adapter": 0,
   "violations": 0
  },

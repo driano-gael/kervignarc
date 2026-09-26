@@ -24,6 +24,8 @@ export interface LignePaiementArcher {
   categorie: string | null
   // `null` : l'archer ne doit rien. `{ depuis: null }` : il doit, depuis une date **inconnue**.
   dette: Dette | null
+  // 0 : l'archer n'est inscrit à aucun créneau — à ne pas confondre avec un créneau gratuit.
+  nb_inscriptions: number
 }
 
 // Ancienneté d'une dette : l'instant (ISO UTC) de la plus ancienne inscription non réglée.

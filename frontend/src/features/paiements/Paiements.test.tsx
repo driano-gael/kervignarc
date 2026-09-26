@@ -35,6 +35,7 @@ const MARTIN: LignePaiementArcher = {
   categorie: 'Senior 1 Femme',
   // Midi UTC : le même jour de calendrier dans tous les fuseaux d'Europe.
   dette: { depuis: '2026-11-02T12:00:00Z' },
+  nb_inscriptions: 1,
 }
 
 const DURAND: LignePaiementArcher = {
@@ -46,6 +47,7 @@ const DURAND: LignePaiementArcher = {
   club: null,
   categorie: 'Senior 1 Homme',
   dette: { depuis: null },
+  nb_inscriptions: 1,
 }
 
 const LE_GALL: LignePaiementArcher = {
@@ -57,6 +59,20 @@ const LE_GALL: LignePaiementArcher = {
   club: 'Kervignac',
   categorie: 'Senior 1 Femme',
   dette: null,
+  nb_inscriptions: 1,
+}
+
+// Inscrite au tournoi, à aucun créneau : elle doit 0, comme un créneau gratuit, sans en être un.
+const RIOU: LignePaiementArcher = {
+  archer_id: 4,
+  nom: 'RIOU',
+  prenom: 'Claire',
+  club_id: null,
+  recap: { du_centimes: 0, paye_centimes: 0, reste_centimes: 0 },
+  club: null,
+  categorie: 'Senior 1 Femme',
+  dette: null,
+  nb_inscriptions: 0,
 }
 
 function monter() {
@@ -70,7 +86,7 @@ function monter() {
 
 beforeEach(() => {
   vi.mocked(getCompletude).mockResolvedValue(COMPLETUDE)
-  vi.mocked(getPaiementsArchers).mockResolvedValue([MARTIN, DURAND, LE_GALL])
+  vi.mocked(getPaiementsArchers).mockResolvedValue([MARTIN, DURAND, LE_GALL, RIOU])
   vi.mocked(getPaiementsClubs).mockResolvedValue([])
   vi.mocked(getRemboursements).mockResolvedValue([])
 })
@@ -84,6 +100,13 @@ function cellulesDe(nom: string): (string | null)[] {
 }
 
 describe('paiements en carte-tableau (A17)', () => {
+  it('un archer inscrit à aucun créneau n’a pas un tarif « Gratuit »', async () => {
+    monter()
+
+    await screen.findByRole('table')
+    expect(cellulesDe('RIOU')[3]).toBe('aucun créneau')
+  })
+
   it('CA — le bandeau porte attendu, encaissé, restant dû et archers concernés', async () => {
     monter()
 

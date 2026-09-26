@@ -93,7 +93,7 @@ describe('liste des tournois en carte-tableau (A04)', () => {
     expect(cellules[4]).toHaveTextContent('aucun plan')
   })
 
-  it('en lecture seule, la colonne Actions disparaît avec les actions', async () => {
+  it('la porte publique garde son allure : ni effectifs ni actions (revue axe D)', async () => {
     monter(
       <GestionTournois
         selectionneId={null}
@@ -105,6 +105,11 @@ describe('liste des tournois en carte-tableau (A04)', () => {
     )
 
     const table = await screen.findByRole('table')
-    expect(within(table).queryByRole('columnheader', { name: 'Actions' })).toBeNull()
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['État', 'Nom', 'Date'])
+    expect(screen.queryByText('aucun plan')).toBeNull()
   })
 })

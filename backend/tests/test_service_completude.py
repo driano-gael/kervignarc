@@ -41,48 +41,18 @@ from domain.paiement import RecapPaiement
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie, Volee
-from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
+from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxLecteurPopulations,
     FauxPhaseRepository,
+    FauxTournoiRepository,
     identite_d_etape,
 )
 
 _DATE = datetime.date(2026, 3, 14)
-
-
-class FauxTournoiRepository:
-    """Double de `TournoiRepository` en mémoire (le service ne teste que `par_id` non nul)."""
-
-    def __init__(self) -> None:
-        self._tournois: dict[int, Tournoi] = {}
-        self._sequence = 0
-
-    def ajouter(self, tournoi: Tournoi) -> Tournoi:
-        self._sequence += 1
-        import dataclasses
-
-        persiste = dataclasses.replace(tournoi, id=self._sequence)
-        self._tournois[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
-        return self._tournois.get(tournoi_id)
-
-    def lister(self) -> list[Tournoi]:
-        raise NotImplementedError
-
-    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        raise NotImplementedError
-
-    def supprimer(self, tournoi_id: TournoiId) -> None:
-        raise NotImplementedError
-
-    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
-        return DescendanceTournoi()
 
 
 class FauxPlacementRepository:
@@ -158,6 +128,7 @@ class FauxLecteurPaiements:
                 club=None,
                 categorie=None,
                 dette=None,
+                nb_inscriptions=1,
             )
         )
 
@@ -303,7 +274,7 @@ class Montage:
         self, depart_id: DepartId, cible_index: int, archer_id: ArcherId, position: str
     ) -> None:
         """Inscrit un archer sur le départ et l'affecte à une cible (une case du plan)."""
-        inscription = self.inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+        inscription = self.inscriptions.ajouter(Inscription(archer_id, depart_id))
         assert inscription.id is not None
         self.placements.poser(
             depart_id,
@@ -422,7 +393,7 @@ def test_un_archer_en_reserve_ne_cree_pas_de_cible() -> None:
     m = Montage(nb_volees_bareme=3)
     depart = m.creer_depart()
     # inscription sans affectation (réserve) : on l'ajoute directement, sans `placer`
-    m.inscriptions.ajouter(Inscription.creer(archer_id=99, depart_id=depart))
+    m.inscriptions.ajouter(Inscription(archer_id=99, depart_id=depart))
     m.placer(depart, cible_index=1, archer_id=10, position="A")
     m.semer(depart, 10, volees_validees=3)
 

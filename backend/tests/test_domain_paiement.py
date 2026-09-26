@@ -114,6 +114,12 @@ def test_une_inscription_non_datee_rend_l_anciennete_inconnue() -> None:
     assert dette == Dette(depuis=None)
 
 
+def test_une_inscription_reglee_non_datee_ne_rend_pas_la_dette_inconnue() -> None:
+    """Le filtre « non réglé » passe **avant** l'examen de la date : une vieille inscription
+    réglée, d'avant la migration, ne doit pas masquer la date de la dette en cours."""
+    assert dater_la_dette([(1400, True, None), (1000, False, _MARDI)]) == Dette(depuis=_MARDI)
+
+
 def test_une_dette_existe_exactement_quand_il_reste_a_payer() -> None:
     """Invariant de ligne : ancienneté présente ⇔ reste > 0 (les deux colonnes ne divergent pas)."""
     cas: list[list[tuple[int, bool, datetime.datetime | None]]] = [

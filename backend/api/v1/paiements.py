@@ -72,6 +72,7 @@ class LignePaiementArcherReponse(BaseModel):
     club: str | None
     categorie: str | None
     dette: DetteReponse | None
+    nb_inscriptions: int
 
     @staticmethod
     def de(ligne: LignePaiementArcher) -> LignePaiementArcherReponse:
@@ -84,6 +85,7 @@ class LignePaiementArcherReponse(BaseModel):
             club=ligne.club,
             categorie=ligne.categorie,
             dette=None if ligne.dette is None else DetteReponse.de(ligne.dette),
+            nb_inscriptions=ligne.nb_inscriptions,
         )
 
 

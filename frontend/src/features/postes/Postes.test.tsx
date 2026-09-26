@@ -49,10 +49,10 @@ describe('Postes — carte-tableau de la planche A12', () => {
     monter()
 
     const ligne = (await screen.findByText('Cible 2')).closest('tr')
-    expect(ligne).not.toBeNull()
-    expect(within(ligne as HTMLElement).getByText('9PX-4A')).toBeInTheDocument()
+    if (ligne === null) throw new Error('« Cible 2 » n’est pas dans une ligne de tableau')
+    expect(within(ligne).getByText('9PX-4A')).toBeInTheDocument()
     expect(
-      await within(ligne as HTMLElement).findByAltText('QR de rattachement de la cible 2'),
+      await within(ligne).findByAltText('QR de rattachement de la cible 2'),
     ).toBeInTheDocument()
   })
 })

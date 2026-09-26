@@ -97,6 +97,7 @@ function registrePaiements(regles = 113, total = 120): LignePaiementArcher[] {
     club: null,
     categorie: 'Senior 1 Homme',
     dette: i < regles ? null : { depuis: null },
+    nb_inscriptions: 1,
   }))
 }
 
