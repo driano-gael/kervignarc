@@ -55,12 +55,15 @@ Options écartées, soumises au commanditaire le 26/09/2026 :
   ne repose sur la couleur seule (`DV-03`).
 - ✅ Contraste : l'encre neutre `--text` tient 15,16:1 (sombre) et 15,33:1 (clair) sur
   `--surface-1` — bien au-delà du 3:1 exigé pour un contour actionnable (WCAG 1.4.11).
-- ⚠️ **Piège de nommage laissé en place** : la classe s'appelle toujours `bouton--danger`, et la
-  prop `ton="danger"`, alors qu'elles ne portent plus le jeton `--danger`. Les renommer toucherait
-  ~30 écrans, dont ceux d'une US en vol le jour de la décision. Le piège est **gardé
-  mécaniquement** : `charte.test.ts` refuse tout jeton d'état (forme à repli comprise) dans les trois
-  règles destructrices. ⚠️ Ce que le test **ne couvre pas** : une **quatrième** règle destructrice
-  sous un autre nom de classe. Il connaît trois sélecteurs, pas l'intention.
+- ⚠️ **Piège de nommage laissé en place — [`DETTE-115`](../dette.md)** : la classe s'appelle
+  toujours `bouton--danger` (38 occurrences, 22 fichiers), et la prop `ton="danger"`, alors qu'elles
+  ne portent plus le jeton `--danger`. Le renommage est repoussé tant que des branches en vol
+  touchent ces fichiers. Le piège est **gardé mécaniquement** par `charte.test.ts` : aucun jeton
+  d'état ni encre `--sur-*` (forme à repli comprise) dans les règles destructrices — enfants
+  `.confirmation__*` et zone `.panneau-edition__danger` compris ; aucune autre règle ne retouche le
+  contour ou l'encre du bouton et du dialogue ; et **seules** les règles destructrices portent le
+  contour épais neutre. ⚠️ Ce que le test **ne couvre pas** : une règle destructrice sous un **autre
+  nom** de classe. Il connaît des sélecteurs, pas l'intention.
 - Au passage : `--danger` et `--danger-strong` portent désormais leur ratio mesuré dans les **trois**
   déclinaisons (`--danger-strong` clair : 6,78:1, jusqu'ici sans commentaire ; la déclinaison claire de
   « Système » n'en portait aucun).

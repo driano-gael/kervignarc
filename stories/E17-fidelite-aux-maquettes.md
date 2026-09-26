@@ -218,10 +218,10 @@
   partagent pas leur signalement ; le signalement ne repose **jamais sur la couleur seule** (`DV-03`) ;
   aucun jeton n'est ajouté (donc aucun ratio neuf à mesurer).
 - **Notes** : `DV-03` · [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)
-  (amendé par ADR-0114). ⚠️ **Piège de nommage laissé en place** : la classe s'appelle toujours
-  `bouton--danger` (et la prop `ton="danger"`) alors qu'elle ne porte plus le jeton `--danger` — la
-  renommer toucherait ~30 écrans, dont ceux d'une US en vol ; c'est le test de charte qui empêche
-  désormais d'y remettre l'ambre.
+  (amendé par ADR-0114). ⚠️ **Piège de nommage laissé en place — `DETTE-115`** : la classe
+  s'appelle toujours `bouton--danger` (et la prop `ton="danger"`) alors qu'elle ne porte plus le jeton
+  `--danger` ; le renommage attend qu'aucune branche en vol ne touche ses 22 fichiers. Le test de
+  charte empêche d'y remettre l'ambre.
 - **Dépend de** : E17US002 · **Jalon** : J3
 
 ### E17US007 — Résorber les écarts relevés sur les écrans d'administration

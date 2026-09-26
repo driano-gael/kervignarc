@@ -1125,8 +1125,8 @@ button:disabled {
 
 /* Destructif : **aucune couleur d'état** — contour épais en encre neutre, la seule forme de bouton
    qui le porte ([ADR-0114](../../../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)).
-   ⚠️ Le nom `--danger` est historique : y remettre `var(--danger)` referait partager son signal à
-   l'irréversible et à l'alerte — `charte.test.ts` le refuse. */
+   ⚠️ DETTE-115 — le nom `--danger` est historique : y remettre `var(--danger)` referait partager
+   son signal à l'irréversible et à l'alerte — `charte.test.ts` le refuse. */
 .bouton--danger {
   color: var(--text);
   background: var(--surface-1);

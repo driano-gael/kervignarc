@@ -533,44 +533,76 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
 })
 
 // Arbitrage du 26/09/2026 — option (c) : ADR-0114, `stories/E17-fidelite-aux-maquettes.md`.
+// ⚠️ La forme est le **seul** signal restant : elle se garde sur toutes les règles, pas la première.
 describe('CA — l’action destructrice se signale par la forme, jamais par une couleur d’état (E17US006)', () => {
-  const DESTRUCTEUR = /\.(bouton--danger|dialogue--danger|confirmation)(?![\w-])/
-  const COULEUR_D_ETAT = /var\(\s*--(danger|danger-strong|success|info|brand-[\w-]+)\s*[,)]/
-  const destructrices = features.flatMap(([chemin, source]) =>
-    regles(neutraliserCommentaires(source))
-      .filter(({ selecteurs }) => selecteurs.some((s) => DESTRUCTEUR.test(s)))
-      .map((r) => ({ chemin, ...r })),
+  const DESTRUCTEUR =
+    /\.(bouton--danger|dialogue--danger|confirmation(__[\w-]+)?|panneau-edition__danger)(?![\w-])/
+  const COULEUR_D_ETAT = /var\(\s*--(sur-)?(danger|danger-strong|success|info|brand[\w-]*)\s*[,)]/
+  const FORME_DESTRUCTRICE = /(^|[;\n])\s*border[\w-]*:\s*2px solid var\(--text\)/
+  const toutes = features.flatMap(([chemin, source]) =>
+    regles(neutraliserCommentaires(source)).map((r) => ({ chemin, ...r })),
   )
-  const corpsDe = (classe: string) =>
-    destructrices.find(({ selecteurs }) => selecteurs.includes(classe))?.corps ?? ''
+  const destructrices = toutes.filter(({ selecteurs }) =>
+    selecteurs.some((s) => DESTRUCTEUR.test(s)),
+  )
+  const reference = (classe: string) =>
+    destructrices.find(({ selecteurs }) => selecteurs.length === 1 && selecteurs[0] === classe)
+      ?.corps ?? ''
+  const decrire = ({ chemin, selecteurs }: { chemin: string; selecteurs: string[] }) =>
+    `${chemin} — ${selecteurs.join(', ')}`
 
-  it('les trois règles destructrices existent — sinon le test suivant passe à vide', () => {
+  it('les règles destructrices existent — sinon les tests suivants passent à vide', () => {
     const vues = destructrices.flatMap(({ selecteurs }) => selecteurs)
     expect(vues).toEqual(
-      expect.arrayContaining(['.bouton--danger', '.dialogue--danger', '.confirmation']),
+      expect.arrayContaining([
+        '.bouton--danger',
+        '.dialogue--danger',
+        '.confirmation',
+        '.confirmation__titre',
+        '.panneau-edition__danger',
+      ]),
     )
   })
 
-  it('aucune règle destructrice ne référence un jeton d’état ni la marque', () => {
-    const fautes = destructrices
-      .filter(({ corps }) => COULEUR_D_ETAT.test(corps))
-      .map(
-        ({ chemin, selecteurs, corps }) => `${chemin} — ${selecteurs.join(', ')} — ${corps.trim()}`,
-      )
+  it('aucune règle destructrice ne référence un jeton d’état, son encre, ni la marque', () => {
+    const fautes = destructrices.filter(({ corps }) => COULEUR_D_ETAT.test(corps)).map(decrire)
     expect(fautes).toEqual([])
   })
 
   it('le bouton destructeur est un contour épais en encre neutre, distinct du bouton discret', () => {
-    const danger = corpsDe('.bouton--danger')
+    const danger = reference('.bouton--danger')
     expect(danger).toMatch(/(^|[;\n])\s*color:\s*var\(--text\)\s*;/)
     expect(danger).toMatch(/(^|[;\n])\s*border:\s*2px solid var\(--text\)\s*;/)
     expect(danger).not.toMatch(/background(-color)?:\s*var\(--brand/)
+    expect(reference('.dialogue--danger')).toMatch(/border-top:\s*4px solid var\(--text\)\s*;/)
+    const discret = regles(neutraliserCommentaires(charte + features.map(([, s]) => s).join('\n')))
     expect(
-      regles(charte + features.map(([, s]) => s).join('\n')).find(({ selecteurs }) =>
-        selecteurs.includes('.bouton--discret'),
-      )?.corps,
+      discret.find(({ selecteurs }) => selecteurs.includes('.bouton--discret'))?.corps,
     ).toMatch(/border:\s*1px solid var\(--border\)/)
-    expect(corpsDe('.dialogue--danger')).toMatch(/border-top:\s*4px solid var\(--text\)\s*;/)
+  })
+
+  it('aucune autre règle ne retouche le contour ni l’encre du bouton ou du dialogue destructeur', () => {
+    // Le sujet du sélecteur (dernier composé) porte la classe : `.x .bouton--danger`, pas
+    // `.dialogue--danger .dialogue__titre`, qui habille un enfant et non la boîte.
+    const SUJET = /\.(bouton--danger|dialogue--danger)(?![\w-])[^\s>+~]*$/
+    const RETOUCHE = /(^|[;\n])\s*(border[\w-]*|color|outline[\w-]*)\s*:/
+    const fautes = toutes
+      .filter(({ selecteurs }) =>
+        selecteurs.some(
+          (s) => SUJET.test(s) && s !== '.bouton--danger' && s !== '.dialogue--danger',
+        ),
+      )
+      .filter(({ corps }) => RETOUCHE.test(corps))
+      .map(decrire)
+    expect(fautes).toEqual([])
+  })
+
+  it('seules les règles destructrices portent le contour épais en encre neutre', () => {
+    const fautes = toutes
+      .filter(({ corps }) => FORME_DESTRUCTRICE.test(corps))
+      .filter(({ selecteurs }) => !selecteurs.every((s) => DESTRUCTEUR.test(s)))
+      .map(decrire)
+    expect(fautes).toEqual([])
   })
 })
 

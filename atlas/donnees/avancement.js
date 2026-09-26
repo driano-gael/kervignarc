@@ -4,6 +4,19 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "115",
+   "introduite_par": [
+    "E17US006",
+    "E17US012",
+    "E02US007"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E02US007"
+   ],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "113",
    "introduite_par": [],
    "ouverte": true,
@@ -2280,8 +2293,12 @@ window.ATLAS.avancement = {
     "0014",
     "0015"
    ],
-   "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_introduites": [
+    "115"
+   ],
+   "dettes_resorbees": [
+    "115"
+   ],
    "epic": "02",
    "epic_titre": "Inscriptions & clubs",
    "etat": "⬜",
@@ -4776,7 +4793,9 @@ window.ATLAS.avancement = {
     "0074",
     "0114"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "115"
+   ],
    "dettes_resorbees": [],
    "epic": "17",
    "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
@@ -4890,7 +4909,9 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "115"
+   ],
    "dettes_resorbees": [],
    "epic": "17",
    "epic_titre": "Fidélité de l'application aux maquettes — charte du club, puis confrontation écran par écran",
