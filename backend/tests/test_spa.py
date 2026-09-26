@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from api.spa import frontend_dist_dir
+from api.spa import TYPES_DU_BUILD, frontend_dist_dir
 from bootstrap.composition import create_app
 
 
@@ -146,11 +146,11 @@ def test_le_repli_ne_sert_du_html_qu_a_une_navigation(tmp_path: Path) -> None:
 def registre_hostile() -> Iterator[None]:
     """Reproduit un registre Windows qui écrase la table de `mimetypes`, sur tout OS.
 
-    Sans cela, le test resterait vert en CI Linux (`/etc/mime.types` connaît `woff2`) même si
-    l'épinglage de `monter_spa` disparaissait. `init()` reconstruit la table à la sortie.
+    **Chaque** extension épinglée est empoisonnée en `text/plain` (`.woff2` retirée) : un
+    paramètre que la table par défaut sert déjà juste ne prouverait rien. `init()` restaure.
     """
     mimetypes.init()
-    for extension in (".js", ".mjs", ".css"):
+    for extension in TYPES_DU_BUILD:
         mimetypes.add_type("text/plain", extension)
     mimetypes.types_map.pop(".woff2", None)
     yield
@@ -158,23 +158,15 @@ def registre_hostile() -> Iterator[None]:
 
 
 @pytest.mark.usefixtures("registre_hostile")
-@pytest.mark.parametrize(
-    ("fichier", "attendu"),
-    [
-        ("InterVariable-abc123.woff2", "font/woff2"),
-        ("index-abc123.js", "text/javascript"),
-        ("module-abc123.mjs", "text/javascript"),
-        ("index-abc123.css", "text/css"),
-        ("icons.svg", "image/svg+xml"),
-    ],
-)
-def test_le_build_est_servi_avec_ses_types(tmp_path: Path, fichier: str, attendu: str) -> None:
-    """E17US005 : ce que Vite émet part avec son type, quoi que dise le registre du poste.
+@pytest.mark.parametrize(("extension", "attendu"), sorted(TYPES_DU_BUILD.items()))
+def test_le_build_est_servi_avec_ses_types(tmp_path: Path, extension: str, attendu: str) -> None:
+    """E17US005 : ce que le build sert part avec son type, quoi que dise le registre du poste.
 
-    Un `.js` en `text/plain` est refusé comme module (page blanche) ; une police mal typée est
-    un défaut du jour J que la CI Linux ne voit pas.
+    Un `.js` en `text/plain` est refusé comme module (page blanche), un `.html` s'affiche en
+    source ; une police mal typée est un défaut du jour J que la CI Linux ne voit pas.
     """
     dist = _faux_build(tmp_path / "dist")
+    fichier = f"fichier-abc123{extension}"
     (dist / "assets" / fichier).write_bytes(b"contenu")
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     app = create_app(url, frontend_dist=dist)
@@ -185,6 +177,15 @@ def test_le_build_est_servi_avec_ses_types(tmp_path: Path, fichier: str, attendu
             assert reponse.headers["content-type"].split(";")[0] == attendu
     finally:
         app.state.database.engine.dispose()
+
+
+def test_chaque_extension_du_build_est_epinglee() -> None:
+    """La table épinglée dérive du dépôt, pas d'une copie : un fichier ajouté à `public/` d'une
+    extension inconnue (`robots.txt`, `manifest.webmanifest`) fait rougir ici."""
+    front = Path(__file__).resolve().parents[2] / "frontend"
+    publiques = {f.suffix for f in (front / "public").rglob("*") if f.is_file()}
+    emises = {".html", ".js", ".css", ".woff2"}
+    assert publiques | emises <= set(TYPES_DU_BUILD)
 
 
 def test_repertoire_dist_par_defaut_pointe_vers_le_front(monkeypatch: pytest.MonkeyPatch) -> None:

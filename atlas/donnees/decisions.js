@@ -11170,8 +11170,7 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "TYPES_DU_BUILD",
-      "monter_spa",
-      "test_le_build_est_servi_avec_ses_types"
+      "monter_spa"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11180,9 +11179,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/tests/test_spa.py",
      "existe": true,
      "symboles": [
-      "TYPES_DU_BUILD",
-      "monter_spa",
-      "test_le_build_est_servi_avec_ses_types"
+      "test_le_build_est_servi_avec_ses_types",
+      "test_chaque_extension_du_build_est_epinglee"
      ],
      "symboles_absents": [],
      "verifiable": true

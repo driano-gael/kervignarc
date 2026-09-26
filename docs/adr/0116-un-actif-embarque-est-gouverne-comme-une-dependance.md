@@ -52,8 +52,11 @@ version périmée après une mise à jour, et le chemin reste juste quelle que s
 
 **5. Le serveur épingle les types de ce qu'il sert.** Sous Windows, `mimetypes` lit le registre, qui
 **écrase** sa table (`.js` en `application/javascript`, `.mjs` en `text/plain` sur le poste de dev)
-et ignore `.woff2`. `monter_spa` épingle donc tous les types émis par le build : un `.js` en
-`text/plain` serait refusé comme module, soit une page blanche sur toutes les tablettes.
+et ignore `.woff2`. `monter_spa` épingle donc **tout ce que le build sert** — `index.html`, les
+`assets/` de Vite et les fichiers de `public/` : un `.js` en `text/plain` serait refusé comme
+module (page blanche), un `.html` s'afficherait en source. La table **dérive du dépôt** : un test
+la confronte aux extensions réellement présentes, pour qu'un fichier ajouté à `public/` ne la
+laisse pas en retard.
 
 ## Conséquences
 
@@ -75,8 +78,9 @@ et ignore `.woff2`. `monter_spa` épingle donc tous les types émis par le build
 - `frontend/src/shared/police.test.ts` — les points 1 à 4 : fichier et licence présents, empreinte
   au registre, graisses employées couvertes, `swap`, aucun chargement externe (`index.html` et
   `public/` compris), planches alignées.
-- `backend/api/spa.py` — `TYPES_DU_BUILD`, épinglés par `monter_spa` (point 5) ;
-  `backend/tests/test_spa.py` (`test_le_build_est_servi_avec_ses_types`), sous registre hostile simulé.
+- `backend/api/spa.py` — `TYPES_DU_BUILD`, épinglés par `monter_spa` (point 5).
+- `backend/tests/test_spa.py` — `test_le_build_est_servi_avec_ses_types` (registre hostile simulé,
+  chaque type épinglé empoisonné) et `test_chaque_extension_du_build_est_epinglee`.
 - [`docs/dependances.md`](../dependances.md) — § « Actifs embarqués ».
 - `.gitattributes` — `*.woff2 binary` : déclaré, jamais laissé à l'heuristique de `text=auto`.
 - `maquettes/assets/systeme.css` — la même `@font-face`, par chemin relatif.

@@ -233,7 +233,8 @@ qu'aucune page n'invente sa propre couleur.
    *proportions* restent justes, le *dessin* des lettres ne l'est plus. ⚠️ **Non vérifié en `file://`** : les
    navigateurs restreignent les polices lues hors du dossier de la page (Firefox au moins). Si une planche
    s'affiche en police système, la servir par un serveur local depuis la racine du dépôt
-   (`python -m http.server`, puis `http://localhost:8000/maquettes/…`).
+   (`python -m http.server 8001` — le 8000 est celui du serveur de dev —, puis
+   `http://localhost:8001/maquettes/…`).
 2. **Ces maquettes vieillissent pendant qu'on les relit.** Exemple vécu : la planche **A15** (bascule de tour)
    a été dessinée comme un écran « à concevoir » ; **E12US002** a livré le feu vert le 28/07/2026, pendant la
    rédaction de ce dossier. La planche a été corrigée le jour même, mais le cas se reproduira — à chaque

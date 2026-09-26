@@ -50,6 +50,9 @@ describe('police embarquée', () => {
   it('déclare Inter depuis un fichier du dépôt, qui existe, licence à côté', () => {
     expect(regles).toHaveLength(1)
     expect(regle).toMatch(/url\(['"]?\.\.?\//)
+    // Sans `local()` : une Inter installée d'une autre version rendrait autrement (ADR-0116).
+    expect(regle).not.toMatch(/local\(/)
+    expect(police).toMatch(/\.woff2$/)
     expect(existsSync(police)).toBe(true)
     expect(existsSync(join(dirname(police), 'OFL.txt'))).toBe(true)
   })
@@ -68,10 +71,12 @@ describe('police embarquée', () => {
       /fontWeight=\{?['"]?(\d{3,4})\b/g,
       /\bfont:\s*(?:(?:italic|normal)\s+)?(\d{3,4})\s/g,
     ]
-    const employees = sources().flatMap(([, texte]) =>
-      motifs.flatMap((motif) => [...texte.matchAll(motif)].map((m) => Number(m[1]))),
-    )
-    expect(employees.length).toBeGreaterThan(0)
+    // La déclaration elle-même (`font-weight: 100 900`) n'est pas un usage.
+    const employees = sources().flatMap(([, texte]) => {
+      const usages = texte.replace(/@font-face\s*\{[^}]*\}/g, '')
+      return motifs.flatMap((motif) => [...usages.matchAll(motif)].map((m) => Number(m[1])))
+    })
+    expect(employees).toContain(600)
     for (const graisse of employees) {
       expect(graisse).toBeGreaterThanOrEqual(min)
       expect(graisse).toBeLessThanOrEqual(max)
@@ -89,11 +94,14 @@ describe('police embarquée', () => {
       [join(FRONT, 'index.html'), readFileSync(join(FRONT, 'index.html'), 'utf8')],
       ...fichiers(join(FRONT, 'public'), /\.(svg|html|css|json|webmanifest)$/),
     ]
-    const fautifs = [...sources(), ...pages]
-      .filter(([, texte]) =>
-        /((@import|url\()\s*['"]?|(href|src)=\s*['"])(https?:)?\/\//.test(texte),
-      )
-      .map(([chemin]) => chemin)
+    // Dans les sources, un `<a href>` externe est un lien, pas un chargement : seuls `@import`,
+    // `url()` et `<link>` comptent (forme JSX `href={'…'}` comprise). Dans les pages, tout compte.
+    const dansSources = /((@import|url\()\s*['"]?|<link\b[^>]*\bhref=\s*\{?\s*['"`])(https?:)?\/\//
+    const dansPages = /((@import|url\()\s*['"]?|\b(href|src)=\s*['"])(https?:)?\/\//
+    const fautifs = [
+      ...sources().filter(([, texte]) => dansSources.test(texte)),
+      ...pages.filter(([, texte]) => dansPages.test(texte)),
+    ].map(([chemin]) => chemin)
     expect(fautifs).toEqual([])
   })
 

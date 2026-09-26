@@ -20,10 +20,12 @@ from starlette.types import Scope
 
 _ENV_VAR = "KERVIGNARC_FRONTEND_DIST"
 
-# ⚠️ Sous Windows, `mimetypes` lit le registre, qui **écrase** sa table : un `.js` déclaré
-# `text/plain` par un logiciel tiers donnerait une page blanche (script de module refusé), et
-# `.woff2` n'y figure pas du tout. Tout ce que Vite émet est donc épinglé (E17US005).
+# ⚠️ Sous Windows, `mimetypes` lit le registre, qui **écrase** sa table : un `.html` ou un `.js`
+# déclaré `text/plain` par un logiciel tiers afficherait le source ou une page blanche, et
+# `.woff2` n'y figure pas. Tout ce que le build sert est épinglé ; `test_spa.py` confronte cette
+# table aux extensions réellement présentes (`public/` compris) — ADR-0116.
 TYPES_DU_BUILD: dict[str, str] = {
+    ".html": "text/html",
     ".js": "text/javascript",
     ".mjs": "text/javascript",
     ".css": "text/css",
