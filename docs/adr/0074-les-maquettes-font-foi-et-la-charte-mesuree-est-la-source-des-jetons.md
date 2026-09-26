@@ -120,6 +120,7 @@ absentes du CDC design §3.3.4 et proposées par le dossier de maquettes.
   (règle 11) et le jour J tourne **sans internet** : sans fichier local, aucune tablette ne la
   chargera. La pile de repli retenue est **exactement celle des maquettes**, de sorte que
   l'application et les planches se dégradent vers la même police. À trancher dans une US dédiée.
+  *(Amendé le 26/09/2026 : Inter est **embarquée** par `E17US005` — [ADR-0116](0116-un-actif-embarque-est-gouverne-comme-une-dependance.md).)*
 - **`E01US016`** (identité visuelle *par tournoi*) reste entière : elle surchargera ces jetons pour
   le public et l'écran de salle uniquement (`D-27`). Le fait qu'ils soient désormais **sémantiques et
   centralisés** est ce qui la rend implémentable sans toucher aux features.

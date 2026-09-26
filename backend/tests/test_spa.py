@@ -8,6 +8,8 @@ donc pas d'un vrai build (job CI backend, dépôt fraîchement cloné).
 
 from __future__ import annotations
 
+import mimetypes
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -140,21 +142,47 @@ def test_le_repli_ne_sert_du_html_qu_a_une_navigation(tmp_path: Path) -> None:
         app.state.database.engine.dispose()
 
 
-def test_la_police_embarquee_est_servie_comme_une_police(tmp_path: Path) -> None:
-    """E17US005 : la police du build part en `font/woff2`, pas en `text/plain`.
+@pytest.fixture
+def registre_hostile() -> Iterator[None]:
+    """Reproduit un registre Windows qui écrase la table de `mimetypes`, sur tout OS.
 
-    Sous Windows, `mimetypes` lit le registre, qui ignore `.woff2` : c'est le poste du jour J
-    qui le révèle, pas la CI Linux.
+    Sans cela, le test resterait vert en CI Linux (`/etc/mime.types` connaît `woff2`) même si
+    l'épinglage de `monter_spa` disparaissait. `init()` reconstruit la table à la sortie.
+    """
+    mimetypes.init()
+    for extension in (".js", ".mjs", ".css"):
+        mimetypes.add_type("text/plain", extension)
+    mimetypes.types_map.pop(".woff2", None)
+    yield
+    mimetypes.init()
+
+
+@pytest.mark.usefixtures("registre_hostile")
+@pytest.mark.parametrize(
+    ("fichier", "attendu"),
+    [
+        ("InterVariable-abc123.woff2", "font/woff2"),
+        ("index-abc123.js", "text/javascript"),
+        ("module-abc123.mjs", "text/javascript"),
+        ("index-abc123.css", "text/css"),
+        ("icons.svg", "image/svg+xml"),
+    ],
+)
+def test_le_build_est_servi_avec_ses_types(tmp_path: Path, fichier: str, attendu: str) -> None:
+    """E17US005 : ce que Vite émet part avec son type, quoi que dise le registre du poste.
+
+    Un `.js` en `text/plain` est refusé comme module (page blanche) ; une police mal typée est
+    un défaut du jour J que la CI Linux ne voit pas.
     """
     dist = _faux_build(tmp_path / "dist")
-    (dist / "assets" / "InterVariable-abc123.woff2").write_bytes(b"wOF2")
+    (dist / "assets" / fichier).write_bytes(b"contenu")
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     app = create_app(url, frontend_dist=dist)
     try:
         with TestClient(app) as client:
-            police = client.get("/assets/InterVariable-abc123.woff2", headers={"accept": "*/*"})
-            assert police.status_code == 200
-            assert police.headers["content-type"] == "font/woff2"
+            reponse = client.get(f"/assets/{fichier}", headers={"accept": "*/*"})
+            assert reponse.status_code == 200
+            assert reponse.headers["content-type"].split(";")[0] == attendu
     finally:
         app.state.database.engine.dispose()
 

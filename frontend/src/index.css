@@ -138,11 +138,9 @@
   }
 }
 
-/* `DV-07` — Inter **embarquée** (E17US005) : le jour J tourne sans internet, sur des tablettes qui
-   ne l'ont pas installée. ⚠️ Fichier **variable**, pas deux graisses statiques : le front emploie
-   400 à 800, et une graisse absente est rendue par la plus proche au-dessus — un 600 sortirait en
-   800. Pas de `local()` : une Inter installée d'une autre version rendrait autrement selon le poste.
-   Provenance, licence et poids : `docs/dependances.md`. */
+/* `DV-07` — Inter **embarquée** : le fichier, sa plage de graisses et l'absence de `local()` sont
+   justifiés par ADR-0116. ⚠️ Une graisse employée hors de `font-weight` ci-dessous serait rendue
+   par une voisine sans erreur visible : `shared/police.test.ts` le vérifie. */
 @font-face {
   font-family: Inter;
   src: url('./assets/fonts/InterVariable.woff2') format('woff2');
@@ -167,6 +165,15 @@
   background: var(--surface-0);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Les champs de formulaire n'héritent pas de la police : le navigateur leur impose la sienne et
+   remet les chiffres en chasse variable. Taille non héritée — chaque écran règle la sienne. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-variant-numeric: inherit;
 }
 
 * {

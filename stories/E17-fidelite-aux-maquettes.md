@@ -167,7 +167,8 @@
   latin reconditionné (~50 Ko) ou un paquet npm. ⚠️ **L'option telle que rédigée ici était fausse** :
   elle prévoyait « 2 graisses (400/800, les seules utilisées par la charte) » ; le code en emploie
   **cinq** (400, 500, 600, 700, 800), et une graisse absente est rendue par la plus proche
-  au-dessus — les 94 usages en 600/700 seraient sortis en 800. D'où une police **variable**.
+  **au-dessus** au-delà de 500 (en dessous jusqu'à 500) — les 94 usages en 600/700 seraient sortis
+  en 800. D'où une police **variable** ([ADR-0116](../docs/adr/0116-un-actif-embarque-est-gouverne-comme-une-dependance.md)).
 - **CA** :
   - l'application affiche **Inter** sur un poste **sans accès réseau et sans la police installée** :
     le fichier est livré avec le build et servi par le serveur de l'application ;

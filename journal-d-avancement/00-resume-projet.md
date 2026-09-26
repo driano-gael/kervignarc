@@ -889,8 +889,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   lignes. Décision de fond au passage : **les maquettes font foi**
   ([ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) —
   un écart entre un écran et sa planche est désormais un **défaut constatable**, plus une divergence
-  que personne n'avait à relever. **Deux points attendent une réponse du commanditaire** : embarquer
-  la police du dossier de maquettes (elle ne se chargera pas le jour J, qui tourne sans internet) et
+  que personne n'avait à relever. **Un point attend une réponse du commanditaire** *(ils étaient deux ;
+  la police a été embarquée le 26/09/2026, `E17US005`)* :
   la **couleur d'une action irréversible**, que la charte ne prévoit pas — aujourd'hui la même que
   celle d'un avertissement.
   *(⚠️ Ces quatre US étaient **absentes de ce résumé** jusqu'au 08/08/2026, alors que le tracker les

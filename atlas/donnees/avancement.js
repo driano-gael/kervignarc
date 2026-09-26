@@ -4678,7 +4678,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0074",
-    "0097"
+    "0097",
+    "0116"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -4741,7 +4742,10 @@ window.ATLAS.avancement = {
    "titre_story": "La supervision passe en grille de tuiles"
   },
   {
-   "adr": [],
+   "adr": [
+    "0074",
+    "0116"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [
     "043"

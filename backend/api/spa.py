@@ -20,6 +20,17 @@ from starlette.types import Scope
 
 _ENV_VAR = "KERVIGNARC_FRONTEND_DIST"
 
+# ⚠️ Sous Windows, `mimetypes` lit le registre, qui **écrase** sa table : un `.js` déclaré
+# `text/plain` par un logiciel tiers donnerait une page blanche (script de module refusé), et
+# `.woff2` n'y figure pas du tout. Tout ce que Vite émet est donc épinglé (E17US005).
+TYPES_DU_BUILD: dict[str, str] = {
+    ".js": "text/javascript",
+    ".mjs": "text/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+}
+
 # Premiers segments qui **appartiennent au serveur** et ne se replient jamais vers `index.html`
 # (E14US003). Sous ces chemins, une URL inconnue est une **vraie erreur** du client : lui renvoyer
 # un 404 est la seule réponse honnête. Un appel d'API vers une route inexistante qui recevrait une
@@ -95,7 +106,6 @@ def monter_spa(app: FastAPI, dist_dir: Path) -> None:
     assuré par `_StatiquesSpa` — la SPA a désormais des routes (`/admin/…`, `/cible`, `/scoreur`,
     `/public`), donc un rechargement sur une URL profonde doit rendre l'application, pas un 404.
     """
-    # ⚠️ `mimetypes` lit le registre sous Windows, qui ne connaît pas `.woff2` (Python 3.13) :
-    # Starlette servirait la police embarquée (E17US005) en `text/plain`. Idempotent.
-    mimetypes.add_type("font/woff2", ".woff2")
+    for extension, type_mime in TYPES_DU_BUILD.items():
+        mimetypes.add_type(type_mime, extension)
     app.mount("/", _StatiquesSpa(directory=str(dist_dir), html=True), name="spa")

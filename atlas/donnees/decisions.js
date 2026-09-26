@@ -3964,7 +3964,8 @@ window.ATLAS.decisions = {
    "amende_par": [
     "0074",
     "0075",
-    "0113"
+    "0113",
+    "0116"
    ],
    "date": "2026-08-05",
    "date_brute": "05/08/2026",
@@ -4012,6 +4013,7 @@ window.ATLAS.decisions = {
     "E01US016",
     "E17US001",
     "E17US002",
+    "E17US005",
     "E17US008"
    ]
   },
@@ -11126,6 +11128,112 @@ window.ATLAS.decisions = {
     "E17US008",
     "E17US009",
     "E17US011"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-26",
+   "date_brute": "2026-09-26",
+   "extrait": "1. Un actif embarqué se déclare comme une dépendance. Il a sa ligne dans docs/dependances.md § « Actifs embarqués » : version, rôle, justification, provenance (URL de la release officielle), empreinte sha256, licence. Sa licence est versionnée à côté du fichier. Le mettre à jour, c'est remplacer le fichier et sa ligne dans le même commit. L'ajout reste un arbitrage du commanditaire (règle 11), jamais de la plomberie. 2. L'empreinte est opposable. Sans manifeste, la ligne du registre est la seule trace de provenance : un test la confronte au fichier (police.test.ts), sans quoi elle dériverait en silence — exactement la dérive « registre ≠ réalité » que combat ADR-0009. 3. Un actif référencé […]",
+   "fichier": "docs/adr/0116-un-actif-embarque-est-gouverne-comme-une-dependance.md",
+   "identifiant": "0116",
+   "liens": [
+    {
+     "cible": "E17US005",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0009",
+     "libelle": "Étend",
+     "sens": "sortant",
+     "type": "complete"
+    },
+    {
+     "cible": "0074",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": ".gitattributes",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/spa.py",
+     "existe": true,
+     "symboles": [
+      "TYPES_DU_BUILD",
+      "monter_spa",
+      "test_le_build_est_servi_avec_ses_types"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_spa.py",
+     "existe": true,
+     "symboles": [
+      "TYPES_DU_BUILD",
+      "monter_spa",
+      "test_le_build_est_servi_avec_ses_types"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "docs/dependances.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/assets/fonts/",
+     "existe": true,
+     "symboles": [
+      "InterVariable.woff2",
+      "OFL.txt"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
+    },
+    {
+     "chemin": "frontend/src/index.css",
+     "existe": true,
+     "symboles": [
+      "swap",
+      "input",
+      "select",
+      "textarea"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
+    },
+    {
+     "chemin": "frontend/src/shared/police.test.ts",
+     "existe": true,
+     "symboles": [
+      "swap",
+      "index.html"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un actif embarqué est gouverné comme une dépendance, sans manifeste",
+   "us": [
+    "E17US001",
+    "E17US005"
    ]
   }
  ]

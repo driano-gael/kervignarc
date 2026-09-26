@@ -82,10 +82,12 @@
 
 Un actif n'a **ni manifeste ni lockfile** : sa version, sa provenance et son empreinte ne sont
 tenues **qu'ici**. Le mettre à jour, c'est remplacer le fichier **et** cette ligne dans le même commit.
+L'empreinte est confrontée au fichier par `frontend/src/shared/police.test.ts`
+([ADR-0116](adr/0116-un-actif-embarque-est-gouverne-comme-une-dependance.md)).
 
 | Actif | Version | Rôle | Justification | Licence |
 |---|---|---|---|---|
-| `frontend/src/assets/fonts/InterVariable.woff2` | Inter **4.1** (variable, graisses 100–900), 344 Ko — sha256 `693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3` | Police de l'interface (`DV-07`), déclarée en `@font-face` dans `frontend/src/index.css` | Le jour J tourne **sans internet**, sur des tablettes **BYOD** : sans fichier livré, chaque tablette retombait sur sa police système (`DETTE-043`). Fichier **officiel** tel quel (`web/InterVariable.woff2` de [`Inter-4.1.zip`](https://github.com/rsms/inter/releases/tag/v4.1)), non découpé — arbitrage du commanditaire, E17US005. Variable plutôt que statique : le front emploie cinq graisses (400 à 800) | SIL **OFL 1.1** — texte à côté du fichier (`OFL.txt`) |
+| `frontend/src/assets/fonts/InterVariable.woff2` | Inter **4.1** (variable, graisses 100–900), 344 Ko — sha256 `693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3` | Police de l'interface (`DV-07`), déclarée en `@font-face` dans `frontend/src/index.css` — **romain seul** : l'italique (3 usages) est synthétisée par le navigateur | Le jour J tourne **sans internet**, sur des tablettes **BYOD** : sans fichier livré, chaque tablette retombait sur sa police système (`DETTE-043`). Fichier **officiel** tel quel (`web/InterVariable.woff2` de [`Inter-4.1.zip`](https://github.com/rsms/inter/releases/tag/v4.1)), non découpé — arbitrage du commanditaire, E17US005. Variable plutôt que statique : le front emploie cinq graisses (400 à 800) | SIL **OFL 1.1** — texte à côté du fichier (`OFL.txt`) |
 
 ## Procédure d'ajout d'une dépendance
 
