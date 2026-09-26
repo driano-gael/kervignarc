@@ -23,6 +23,7 @@ const archer = (id: number, nom: string, prenom: string): Archer => ({
   club_id: null,
   handicap_officiel: null,
   handicap_surcharge: null,
+  licence: null,
   handicap: 0,
 })
 

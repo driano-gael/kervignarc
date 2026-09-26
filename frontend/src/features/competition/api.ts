@@ -49,6 +49,8 @@ export interface Archer {
   handicap_officiel: number | null
   handicap_surcharge: number | null
   handicap: number
+  // N° de licence FFTA, facultatif ; unique dans le tournoi (E02US007, ADR-0115).
+  licence: string | null
 }
 
 // Inscription d'un archer (E02US002). `categorie_id` est **obligatoire** ; `club_id` reste
@@ -59,6 +61,7 @@ export interface NouvelArcher {
   prenom: string
   categorie_id: number
   club_id: number | null
+  licence?: string | null
   // Confirmation de l'admin après un refus `homonyme_archer` (409) : déclare que ce nouvel
   // archer, malgré des nom/prénom/club identiques à un inscrit, est bien une autre personne.
   autoriser_homonyme?: boolean

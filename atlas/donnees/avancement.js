@@ -930,11 +930,11 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
-   "0113",
-   "0074",
+   "0115",
+   "0014",
    "0104"
   ],
-  "derniere": "E17US007"
+  "derniere": "E02US007"
  },
  "epics": [
   {
@@ -1833,7 +1833,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1848,7 +1848,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Gérer plusieurs gabarits",
@@ -2289,10 +2289,10 @@ window.ATLAS.avancement = {
    "dettes_resorbees": [],
    "epic": "02",
    "epic_titre": "Inscriptions & clubs",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2470,7 +2470,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2794,7 +2794,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3663,7 +3663,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3801,7 +3801,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -3873,7 +3873,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -4906,7 +4906,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 150,
+  "livrees": 151,
   "vivantes": 180
  },
  "sections": [
@@ -5591,17 +5591,17 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    0,
+    1,
     7
    ],
    "compteur_ecrit": [
-    0,
+    1,
     7
    ],
    "lignes": [
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E02US007",
      "titre": "Importer un fichier inscript'arc"
     },
@@ -5648,7 +5648,7 @@ window.ATLAS.avancement = {
      "titre": "Modifier le mot de passe admin"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
   },
   {
    "calcule": [

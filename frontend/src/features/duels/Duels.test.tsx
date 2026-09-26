@@ -78,6 +78,7 @@ const ARCHER: Archer = {
   club_id: 7,
   handicap_officiel: null,
   handicap_surcharge: null,
+  licence: null,
   handicap: 0,
 }
 

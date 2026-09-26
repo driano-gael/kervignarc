@@ -66,7 +66,7 @@ window.ATLAS.carte = {
     "feature": "salle"
    },
    {
-    "clientes": 8,
+    "clientes": 9,
     "feature": "categories"
    },
    {
@@ -219,6 +219,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 1,
+    "feature": "import-inscrits"
+   },
+   {
+    "clientes": 1,
     "feature": "inscriptions"
    },
    {
@@ -246,7 +250,7 @@ window.ATLAS.carte = {
     "feature": "validation-qualif"
    }
   ],
-  "features": 51
+  "features": 52
  },
  "matrice": [
   {
@@ -3237,9 +3241,9 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 180,
+  "aretes_front": 182,
   "enchevetrements": 4,
-  "features": 51,
+  "features": 52,
   "imports": 992,
   "imports_entre_couches": 838,
   "plus_gros_noeud": 24,
