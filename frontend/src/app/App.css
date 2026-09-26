@@ -671,10 +671,10 @@
   padding: 0 18px;
 }
 
-/* Ton « danger » : filet haut rouge. Le fond reste neutre — un aplat de danger sur toute la boîte
-   rendrait le texte moins lisible au moment précis où il faut le lire. */
+/* Ton « danger » : filet haut épais, en encre **neutre** — l'ambre est réservé à l'alerte, le
+   destructeur se signale par la forme ([ADR-0114](../../../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). */
 .dialogue--danger {
-  border-top: 4px solid var(--danger);
+  border-top: 4px solid var(--text);
 }
 
 /* ————————————————————————————————————————————————————————————————————————————————————————————————
@@ -1123,18 +1123,14 @@ button:disabled {
   border: 1px solid var(--border);
 }
 
-/* Destructif : ambre **en texte et en contour**, pas en aplat — et surtout **pas rouge**, qui ne
-   signale rien sur l'anthracite (2,55:1, `DV-03`).
-   L'aplat a été essayé et rejeté sur pièce (E17US002, vérification au navigateur) : sur l'accueil de
-   pilotage, « Annuler le tournoi » en ambre plein **écrasait** « Marquer prêt », l'action principale.
-   Une action destructrice doit être *trouvable*, pas *dominante* — et ce n'est de toute façon pas la
-   couleur du bouton qui protège ici, c'est le dialogue de confirmation ([ADR-0072](../../../docs/adr/0072-confirmation-destructrice-dialog-natif.md)).
-   La charte ne définit **aucune** couleur d'action destructrice : c'est un trou constaté, et ce choix
-   reste soumis au commanditaire. */
+/* Destructif : **aucune couleur d'état** — contour épais en encre neutre, la seule forme de bouton
+   qui le porte ([ADR-0114](../../../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)).
+   ⚠️ Le nom `--danger` est historique : y remettre `var(--danger)` referait partager son signal à
+   l'irréversible et à l'alerte — `charte.test.ts` le refuse. */
 .bouton--danger {
-  color: var(--danger);
+  color: var(--text);
   background: var(--surface-1);
-  border: 1px solid var(--danger);
+  border: 2px solid var(--text);
 }
 
 .formulaire__actions {
@@ -2307,12 +2303,13 @@ button:disabled {
   font-size: 14px;
 }
 
-/* Confirmation par calcul d'impact (E12US007, ADR-0040) : panneau chiffré, ambre (`--danger`) — une
-   alerte à lire, pas une erreur rouge ; le mot à taper arme le bouton pour l'action massive. */
+/* Confirmation par calcul d'impact (E12US007, ADR-0040) : fait partie de la confirmation d'une action
+   **irréversible**, donc même registre que le destructeur — encre neutre, pas l'ambre de l'alerte
+   (ADR-0114) ; le mot à taper arme le bouton pour l'action massive. */
 .confirmation {
   margin: 8px 0;
   padding: 10px 12px;
-  border: 1px solid var(--danger);
+  border: 2px solid var(--text);
   border-radius: 10px;
   background: var(--surface-1);
 }

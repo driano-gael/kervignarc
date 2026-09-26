@@ -10,6 +10,11 @@
   ⚠️ **Un arbitrage se lit donc par son intention, jamais par la lettre** ; sans étalon, on ne
   résorbe pas le parti pris. Inscrit **en en-tête** et non dans la *Décision* : ADR-0074 n'est pas
   rouvert au sens d'ADR-0075 §2 et n'appelle donc pas de section « Porté dans le code par ».
+- **Amendé par** : [ADR-0114](0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)
+  (26/09/2026, `E17US006`) — la conséquence « **un bouton destructif devient ambre** » ci-dessous
+  **ne tient plus** : l'action destructrice ne porte aucune couleur d'état, elle se signale par la
+  forme (contour épais neutre) et le dialogue ; l'ambre est réservé à l'alerte. Inscrit en en-tête,
+  pour la même raison que l'amendement précédent.
 - **Amende** : [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) *(inchangé sur le
   fond — l'ossature à trois axes est confirmée, c'est sa **palette** qui change)* ·
   [`epics/EPIC-16`](../../epics/EPIC-16-retours-maquettes.md) § Exclus

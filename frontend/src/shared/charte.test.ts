@@ -531,3 +531,64 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
     expect(fautes).toEqual([])
   })
 })
+
+// Arbitrage du 26/09/2026 — option (c) : ADR-0114, `stories/E17-fidelite-aux-maquettes.md`.
+describe('CA — l’action destructrice se signale par la forme, jamais par une couleur d’état (E17US006)', () => {
+  const DESTRUCTEUR = /\.(bouton--danger|dialogue--danger|confirmation)(?![\w-])/
+  const COULEUR_D_ETAT = /var\(\s*--(danger|danger-strong|success|info|brand-[\w-]+)\s*[,)]/
+  const destructrices = features.flatMap(([chemin, source]) =>
+    regles(neutraliserCommentaires(source))
+      .filter(({ selecteurs }) => selecteurs.some((s) => DESTRUCTEUR.test(s)))
+      .map((r) => ({ chemin, ...r })),
+  )
+  const corpsDe = (classe: string) =>
+    destructrices.find(({ selecteurs }) => selecteurs.includes(classe))?.corps ?? ''
+
+  it('les trois règles destructrices existent — sinon le test suivant passe à vide', () => {
+    const vues = destructrices.flatMap(({ selecteurs }) => selecteurs)
+    expect(vues).toEqual(
+      expect.arrayContaining(['.bouton--danger', '.dialogue--danger', '.confirmation']),
+    )
+  })
+
+  it('aucune règle destructrice ne référence un jeton d’état ni la marque', () => {
+    const fautes = destructrices
+      .filter(({ corps }) => COULEUR_D_ETAT.test(corps))
+      .map(
+        ({ chemin, selecteurs, corps }) => `${chemin} — ${selecteurs.join(', ')} — ${corps.trim()}`,
+      )
+    expect(fautes).toEqual([])
+  })
+
+  it('le bouton destructeur est un contour épais en encre neutre, distinct du bouton discret', () => {
+    const danger = corpsDe('.bouton--danger')
+    expect(danger).toMatch(/(^|[;\n])\s*color:\s*var\(--text\)\s*;/)
+    expect(danger).toMatch(/(^|[;\n])\s*border:\s*2px solid var\(--text\)\s*;/)
+    expect(danger).not.toMatch(/background(-color)?:\s*var\(--brand/)
+    expect(
+      regles(charte + features.map(([, s]) => s).join('\n')).find(({ selecteurs }) =>
+        selecteurs.includes('.bouton--discret'),
+      )?.corps,
+    ).toMatch(/border:\s*1px solid var\(--border\)/)
+    expect(corpsDe('.dialogue--danger')).toMatch(/border-top:\s*4px solid var\(--text\)\s*;/)
+  })
+})
+
+describe('CA — les jetons d’alerte portent leur ratio mesuré dans chaque déclinaison (E17US006)', () => {
+  const BLOCS = [...charte.matchAll(/(:root[^{}]*?)\{([^{}]*)\}/g)].filter(([, , corps]) =>
+    /--surface-0:/.test(corps ?? ''),
+  )
+
+  it('le test voit les trois déclinaisons de couleur', () => {
+    expect(BLOCS).toHaveLength(3)
+  })
+
+  it.each(
+    BLOCS.flatMap(([, sel, corps]) =>
+      ['--danger', '--danger-strong'].map((jeton) => [jeton, (sel ?? '').trim(), corps ?? '']),
+    ),
+  )('%s porte son ratio dans %s', (jeton, _sel, corps) => {
+    const ligne = corps.split('\n').find((l) => l.trim().startsWith(`${jeton}:`)) ?? ''
+    expect(ligne).toMatch(/\/\*[^*]*\d+,\d+:1/)
+  })
+})
