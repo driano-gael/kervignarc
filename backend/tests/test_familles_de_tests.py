@@ -36,6 +36,7 @@ MODULES_SANS_FAMILLE: frozenset[str] = frozenset(
         "test_health",
         "test_horloge",
         "test_idempotence",
+        "test_lecteur_import_inscrits",
         "test_listes_impression_csv",
         "test_listes_impression_reportlab",
         "test_pdf_palmares",
