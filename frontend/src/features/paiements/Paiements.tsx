@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { CompletudeAdministrative } from '../completude/CompletudeAdministrative'
-import { decrireTarif } from '../competition/format'
+import { decrireMontant, decrireTarif } from '../competition/format'
 import type { LignePaiementArcher, RecapClub, RecapPaiement, Remboursement } from './api'
 import {
   useMarquerArcher,
@@ -19,6 +19,7 @@ import {
   useRemboursements,
   useTraiterRemboursement,
 } from './hooks'
+import { libelleDepuis, totauxDuBandeau } from './planche'
 import { actionMarquage, statutPaiement, type StatutPaiement } from './statut'
 
 type Onglet = 'archers' | 'clubs' | 'remboursements'
@@ -36,6 +37,10 @@ export function Paiements({ tournoiId }: { tournoiId: number }) {
           Elle vient de `GET /completude` (section `hors_sportif`), séparée du sportif — resté au
           pilotage — après le refus d'A14. */}
       <CompletudeAdministrative tournoiId={tournoiId} />
+
+      {/* Bandeau de totaux de la planche A17 (E17US012) — hors des onglets pour la même raison que
+          la complétude : il porte sur tout le tournoi, quelle que soit la vue. */}
+      <BandeauTotaux tournoiId={tournoiId} />
 
       <div className="onglets" role="tablist" aria-label="Vue des paiements">
         <button
@@ -89,7 +94,9 @@ function VueParArcher({ tournoiId }: { tournoiId: number }) {
 
   const terme = filtre.trim().toLowerCase()
   const lignes = terme
-    ? paiements.data.filter((l) => `${l.nom} ${l.prenom}`.toLowerCase().includes(terme))
+    ? paiements.data.filter((l) =>
+        `${l.nom} ${l.prenom} ${l.club ?? ''}`.toLowerCase().includes(terme),
+      )
     : paiements.data
 
   return (
@@ -97,21 +104,23 @@ function VueParArcher({ tournoiId }: { tournoiId: number }) {
       <input
         type="search"
         className="formulaire__champ"
-        placeholder="Filtrer par nom ou prénom…"
+        placeholder="Nom, prénom, club…"
         value={filtre}
         onChange={(e) => setFiltre(e.target.value)}
         aria-label="Filtrer les archers"
       />
-      <TotalGeneral recaps={paiements.data.map((l) => l.recap)} />
+      {/* Colonnes de la planche A17 (E17US012). TARIF = ce que l'archer devait en tout ; DÛ = ce
+          qu'il doit encore, avec son statut — PAYÉ s'en déduit, la planche ne le montre pas. */}
       <div className="table-defilement">
         <table className="table paiements__table">
           <thead>
             <tr>
               <th scope="col">Archer</th>
+              <th scope="col">Club</th>
+              <th scope="col">Cat.</th>
+              <th scope="col">Tarif</th>
               <th scope="col">Dû</th>
-              <th scope="col">Payé</th>
-              <th scope="col">Reste</th>
-              <th scope="col">Statut</th>
+              <th scope="col">Depuis</th>
               <th scope="col">Action</th>
             </tr>
           </thead>
@@ -134,7 +143,15 @@ function LigneArcher({ tournoiId, ligne }: { tournoiId: number; ligne: LignePaie
       <td>
         {ligne.nom} {ligne.prenom}
       </td>
-      <CellulesMontants recap={ligne.recap} />
+      <td>{ligne.club ?? 'sans club'}</td>
+      <td>{ligne.categorie ?? '?'}</td>
+      <td>
+        {ligne.nb_inscriptions === 0 ? 'aucun créneau' : decrireTarif(ligne.recap.du_centimes)}
+      </td>
+      <td>
+        {decrireMontant(ligne.recap.reste_centimes)} <StatutPaiement recap={ligne.recap} />
+      </td>
+      <td>{libelleDepuis(ligne.dette)}</td>
       <td>
         <BoutonMarquer
           recap={ligne.recap}
@@ -161,7 +178,6 @@ function VueParClub({ tournoiId }: { tournoiId: number }) {
 
   return (
     <>
-      <TotalGeneral recaps={paiements.data.map((c) => c.recap)} />
       {paiements.data.map((club) => (
         <BlocClub key={club.club_id ?? 'sans-club'} tournoiId={tournoiId} club={club} />
       ))}
@@ -176,8 +192,8 @@ function BlocClub({ tournoiId, club }: { tournoiId: number; club: RecapClub }) {
       <div className="bloc-club__entete">
         <h4 className="carte__soustitre">{club.nom}</h4>
         <span className="bloc-club__total">
-          Dû {decrireTarif(club.recap.du_centimes)} · Reste{' '}
-          {decrireTarif(club.recap.reste_centimes)}
+          Dû {decrireMontant(club.recap.du_centimes)} · Reste{' '}
+          {decrireMontant(club.recap.reste_centimes)}
         </span>
         {/* Le bucket « sans club » (club_id null) n'est pas un club réel : pas de marquage groupé. */}
         {club.club_id !== null && (
@@ -253,7 +269,7 @@ function VueRemboursements({ tournoiId }: { tournoiId: number }) {
       <p className="paiements__total">
         {aTraiter.length === 0
           ? 'Tous les remboursements sont traités.'
-          : `${aTraiter.length} remboursement(s) à traiter — ${decrireTarif(total)}`}
+          : `${aTraiter.length} remboursement(s) à traiter — ${decrireMontant(total)}`}
       </p>
       <div className="table-defilement">
         <table className="table paiements__table">
@@ -299,7 +315,7 @@ function LigneRemboursement({
       </td>
       <td>{remboursement.creneau}</td>
       <td>{LIBELLE_MOTIF[remboursement.motif] ?? remboursement.motif}</td>
-      <td>{decrireTarif(remboursement.montant_centimes)}</td>
+      <td>{decrireMontant(remboursement.montant_centimes)}</td>
       <td>
         <span className={`statut statut--${aTraiter ? 'du' : 'regle'}`}>
           {LIBELLE_STATUT_REMBOURSEMENT[remboursement.statut] ?? remboursement.statut}
@@ -340,14 +356,13 @@ function LigneRemboursement({
 // Briques partagées.
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
-// Trois cellules (dû, payé, reste) + une cellule statut — factorisées pour que les deux vues
-// affichent les montants **exactement** de la même façon.
+// Trois cellules (dû, payé, reste) + une cellule statut, de la vue par club.
 function CellulesMontants({ recap }: { recap: RecapPaiement }) {
   return (
     <>
-      <td>{decrireTarif(recap.du_centimes)}</td>
-      <td>{decrireTarif(recap.paye_centimes)}</td>
-      <td>{decrireTarif(recap.reste_centimes)}</td>
+      <td>{decrireMontant(recap.du_centimes)}</td>
+      <td>{decrireMontant(recap.paye_centimes)}</td>
+      <td>{decrireMontant(recap.reste_centimes)}</td>
       <td>
         <StatutPaiement recap={recap} />
       </td>
@@ -393,13 +408,29 @@ function BoutonMarquer({
   )
 }
 
-function TotalGeneral({ recaps }: { recaps: RecapPaiement[] }) {
-  const du = recaps.reduce((s, r) => s + r.du_centimes, 0)
-  const paye = recaps.reduce((s, r) => s + r.paye_centimes, 0)
+// Le bandeau lit la vue **par archer** : c'est elle qui sait qui doit encore (« archers concernés »),
+// la vue par club n'en porte que la somme.
+function BandeauTotaux({ tournoiId }: { tournoiId: number }) {
+  const paiements = usePaiementsArchers(tournoiId)
+  // L'erreur se dit ici aussi : sous l'onglet « Par club », la vue par archer n'est pas montée.
+  if (paiements.isError) return <MessageErreur erreur={paiements.error} />
+  if (!paiements.data) return null
+  const totaux = totauxDuBandeau(paiements.data)
   return (
-    <p className="paiements__total">
-      Total tournoi — Dû {decrireTarif(du)} · Payé {decrireTarif(paye)} · Reste{' '}
-      {decrireTarif(du - paye)}
-    </p>
+    <dl className="paiements__totaux" role="group" aria-label="Totaux du tournoi">
+      <Chiffre libelle="Attendu" valeur={decrireMontant(totaux.attendu_centimes)} />
+      <Chiffre libelle="Encaissé" valeur={decrireMontant(totaux.encaisse_centimes)} />
+      <Chiffre libelle="Restant dû" valeur={decrireMontant(totaux.restant_du_centimes)} />
+      <Chiffre libelle="Archers concernés" valeur={String(totaux.archers_concernes)} />
+    </dl>
+  )
+}
+
+function Chiffre({ libelle, valeur }: { libelle: string; valeur: string }) {
+  return (
+    <div className="chiffre">
+      <dt className="chiffre__libelle">{libelle}</dt>
+      <dd className="chiffre__valeur">{valeur}</dd>
+    </div>
   )
 }

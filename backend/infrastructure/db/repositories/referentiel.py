@@ -25,7 +25,7 @@ from domain.entree_audit import EntreeAudit
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.identite import Couleur, EmplacementLogo, IdentiteVisuelle, Logo, TypeLogo
-from domain.inscription import Inscription, InscriptionId
+from domain.inscription import Inscription, InscriptionId, date_fusionnee
 from domain.patrimoine import OrigineBrique
 from domain.podium import PorteePodium, ReglagePodiums
 from domain.remboursement import (
@@ -283,12 +283,20 @@ def _vers_depart(ligne: DepartORM) -> Depart:
 
 
 def _vers_inscription(ligne: InscriptionORM) -> Inscription:
-    """Traduit une ligne ORM en agrégat de domaine `Inscription` (E02US009)."""
+    """Traduit une ligne ORM en agrégat de domaine `Inscription` (E02US009).
+
+    `cree_le` : SQLite relit un `datetime` **naïf** — on lui rend son fuseau UTC, comme les
+    remboursements. `NULL` reste `None` (inscription antérieure à E17US012).
+    """
+    cree_le = ligne.cree_le
+    if cree_le is not None and cree_le.tzinfo is None:
+        cree_le = cree_le.replace(tzinfo=datetime.UTC)
     return Inscription(
         archer_id=ligne.archer_id,
         depart_id=ligne.depart_id,
         paye=ligne.paye,
         id=ligne.id,
+        cree_le=cree_le,
     )
 
 
@@ -561,6 +569,17 @@ class ArcherRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des archers du tournoi.") from exc
 
+    def compter_par_tournoi(self) -> dict[TournoiId, int]:
+        """Nombre d'archers de chaque tournoi, en **une** requête — la liste A04 est pollée."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ArcherORM.tournoi_id, func.count()).group_by(ArcherORM.tournoi_id)
+                ).all()
+                return {int(tournoi_id): int(nombre) for tournoi_id, nombre in lignes}
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec du comptage des archers par tournoi.") from exc
+
     def par_club(self, club_id: ClubId) -> list[Archer]:
         """Renvoie les archers rattachés à un club, **tous tournois confondus** (E02US001)."""
         try:
@@ -676,20 +695,23 @@ class ArcherRepositorySQL:
                     raise InfrastructureError("Archer(s) à fusionner introuvable(s) en base.")
                 # Inscriptions : réassigner celles du perdant, sauf collision sur un départ où le
                 # gagnant est déjà inscrit (UNIQUE(archer_id, depart_id)) — on garde alors celle du
-                # gagnant, en y **reportant le paiement** (paye vrai si l'une des deux l'était),
-                # et on supprime celle du perdant (son placement éventuel cascade).
+                # gagnant, en y **reportant le paiement** (paye vrai si l'une des deux l'était) et
+                # la **plus ancienne date** (`date_fusionnee`), et on supprime celle du perdant (son
+                # placement éventuel cascade).
+                colonnes = (
+                    InscriptionORM.id,
+                    InscriptionORM.depart_id,
+                    InscriptionORM.paye,
+                    InscriptionORM.cree_le,
+                )
                 gagnant_par_depart = {
-                    depart_id: (inscription_id, paye)
-                    for inscription_id, depart_id, paye in session.execute(
-                        select(
-                            InscriptionORM.id, InscriptionORM.depart_id, InscriptionORM.paye
-                        ).where(InscriptionORM.archer_id == gagnant_id)
+                    depart_id: (inscription_id, paye, cree_le)
+                    for inscription_id, depart_id, paye, cree_le in session.execute(
+                        select(*colonnes).where(InscriptionORM.archer_id == gagnant_id)
                     ).all()
                 }
-                for inscription_id, depart_id, paye in session.execute(
-                    select(InscriptionORM.id, InscriptionORM.depart_id, InscriptionORM.paye).where(
-                        InscriptionORM.archer_id == perdant_id
-                    )
+                for inscription_id, depart_id, paye, cree_le in session.execute(
+                    select(*colonnes).where(InscriptionORM.archer_id == perdant_id)
                 ).all():
                     collision = gagnant_par_depart.get(depart_id)
                     if collision is None:
@@ -699,13 +721,15 @@ class ArcherRepositorySQL:
                             .values(archer_id=gagnant_id)
                         )
                         continue
-                    gagnant_inscription_id, gagnant_paye = collision
-                    if paye and not gagnant_paye:
-                        session.execute(
-                            update(InscriptionORM)
-                            .where(InscriptionORM.id == gagnant_inscription_id)
-                            .values(paye=True)
+                    gagnant_inscription_id, gagnant_paye, gagnant_cree_le = collision
+                    session.execute(
+                        update(InscriptionORM)
+                        .where(InscriptionORM.id == gagnant_inscription_id)
+                        .values(
+                            paye=paye or gagnant_paye,
+                            cree_le=date_fusionnee(cree_le, gagnant_cree_le),
                         )
+                    )
                     session.execute(
                         delete(InscriptionORM).where(InscriptionORM.id == inscription_id)
                     )
@@ -980,6 +1004,7 @@ class InscriptionRepositorySQL:
                     archer_id=inscription.archer_id,
                     depart_id=inscription.depart_id,
                     paye=inscription.paye,
+                    cree_le=inscription.cree_le,
                 )
                 session.add(ligne)
                 session.commit()

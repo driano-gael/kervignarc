@@ -15,7 +15,12 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from application.tournois import ExigenceEffectifTournoi, OrigineExigence, ServiceTournois
+from application.tournois import (
+    ExigenceEffectifTournoi,
+    OrigineExigence,
+    ServiceTournois,
+    TournoiEnListe,
+)
 from domain.tournoi import StatutTournoi, Tournoi, TransitionTournoi, TypeTournoi
 from infrastructure.db import WriteQueue
 
@@ -65,6 +70,23 @@ class TournoiReponse(BaseModel):
             lieu=tournoi.lieu,
             type_tournoi=tournoi.type_tournoi,
             statut=tournoi.statut,
+        )
+
+
+class TournoiEnListeReponse(TournoiReponse):
+    """Un tournoi de la liste d'administration (planche A04, E17US012), avec ses effectifs.
+
+    `nb_cibles` est `null` sans plan de salle — « aucune salle posée », pas « zéro cible ».
+    """
+
+    nb_inscrits: int
+    nb_cibles: int | None
+
+    @staticmethod
+    def de_liste(effectif: TournoiEnListe) -> TournoiEnListeReponse:
+        base = TournoiReponse.de_agregat(effectif.tournoi)
+        return TournoiEnListeReponse(
+            **base.model_dump(), nb_inscrits=effectif.nb_inscrits, nb_cibles=effectif.nb_cibles
         )
 
 
@@ -148,12 +170,12 @@ async def creer_tournoi(requete: CreerTournoiRequete, request: Request) -> Tourn
     return TournoiReponse.de_agregat(tournoi)
 
 
-@router.get("", response_model=list[TournoiReponse])
-async def lister_tournois(request: Request) -> list[TournoiReponse]:
-    """Liste tous les tournois : lecture directe exécutée hors de la boucle événementielle."""
+@router.get("", response_model=list[TournoiEnListeReponse])
+async def lister_tournois(request: Request) -> list[TournoiEnListeReponse]:
+    """Liste tous les tournois et leurs effectifs : lecture directe hors boucle événementielle."""
     service: ServiceTournois = request.app.state.service_tournois
-    tournois = await run_in_threadpool(service.lister)
-    return [TournoiReponse.de_agregat(tournoi) for tournoi in tournois]
+    effectifs = await run_in_threadpool(service.lister_en_liste)
+    return [TournoiEnListeReponse.de_liste(effectif) for effectif in effectifs]
 
 
 @router.get("/{tournoi_id}", response_model=TournoiReponse)

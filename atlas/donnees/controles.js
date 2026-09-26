@@ -85,7 +85,7 @@ window.ATLAS.controles = {
    "code": "derniere-us-orpheline",
    "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0113, ADR-0074, ADR-0104, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
    "severite": "signal",
-   "sujet": "E17US007"
+   "sujet": "E17US012"
   },
   {
    "code": "features-enchevetrees",
@@ -113,7 +113,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 28 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 30 port(s) hors du domaine (CompteurArchersParTournoi, CompteurEngages, ConstructeurArchive, DiffusionSimulation…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application, infrastructure"
   },

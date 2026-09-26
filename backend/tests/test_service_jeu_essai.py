@@ -45,6 +45,7 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxInscriptionRepository,
+    FauxInstancesDeGabarit,
     FauxPhaseRepository,
     HorlogeFigee,
 )
@@ -116,6 +117,8 @@ def _atteler() -> Attelage:
         depart_repo,
         _DerouleVide(),
         CompteurEngagesRepository(depart_repo, inscription_repo),
+        archer_repo,
+        FauxInstancesDeGabarit(),
     )
     service_categories = ServiceCategories(tournoi_repo, categorie_repo, blason_repo)
     service_departs = ServiceDeparts(

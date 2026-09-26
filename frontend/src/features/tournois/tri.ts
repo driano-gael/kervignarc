@@ -39,7 +39,7 @@ const OUVERTS: readonly StatutTournoi[] = ['brouillon', 'pret', 'en_cours', 'en_
  * aujourd'hui » aurait placé un tournoi d'hier avant un tournoi de demain. ⚠️ Tri **non
  * destructif** : on copie avant de trier, sinon on réordonnerait le cache React Query.
  */
-export function ordonnerTournois(tournois: readonly Tournoi[]): Tournoi[] {
+export function ordonnerTournois<T extends Tournoi>(tournois: readonly T[]): T[] {
   return [...tournois].sort((a, b) => {
     const parStatut = RANG_STATUT[a.statut] - RANG_STATUT[b.statut]
     if (parStatut !== 0) return parStatut
@@ -82,10 +82,10 @@ export function statutsPresents(
 /** Applique le filtre par statut. Un filtre **vide vaut « tout »** : c'est l'état d'ouverture de
  * l'écran, et il ne faut jamais qu'un clic malheureux laisse l'organisateur devant une liste vide
  * sans comprendre pourquoi. */
-export function filtrerParStatut(
-  tournois: readonly Tournoi[],
+export function filtrerParStatut<T extends Tournoi>(
+  tournois: readonly T[],
   retenus: ReadonlySet<StatutTournoi>,
-): Tournoi[] {
+): T[] {
   if (retenus.size === 0) return [...tournois]
   return tournois.filter((t) => retenus.has(t.statut))
 }

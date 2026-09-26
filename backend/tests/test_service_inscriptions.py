@@ -89,6 +89,20 @@ def test_inscrire_cree_un_lien_non_paye_avec_montant_derive() -> None:
     assert detail.montant_du_centimes == 810
 
 
+def test_inscrire_date_l_inscription_a_l_horloge() -> None:
+    """E17US012 (A17) : l'inscription **persistée** porte l'instant de l'horloge injectée — c'est
+    d'elle que l'ancienneté de la dette sera lue. Sans date, la dette resterait « inconnue »."""
+    service, archers, departs, inscriptions = _monter()
+    archer_id = _archer(archers)
+    depart_id = _depart(departs)
+
+    detail = service.inscrire(archer_id, depart_id)
+    assert detail.inscription.id is not None
+    relue = inscriptions.par_id(detail.inscription.id)
+    assert relue is not None
+    assert relue.cree_le == _QUAND
+
+
 def test_inscrire_archer_inconnu_leve() -> None:
     """Inscrire un archer inexistant lève `ArcherIntrouvable`."""
     service, _, departs, _ = _monter()

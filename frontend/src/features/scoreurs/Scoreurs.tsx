@@ -43,17 +43,29 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
       )}
       {scoreurs.data && scoreurs.data.length > 0 && (
         <>
-          <ul className="liste-scoreurs">
-            {scoreurs.data.map((scoreur) => (
-              <LigneScoreur
-                key={scoreur.code}
-                tournoiId={tournoiId}
-                scoreur={scoreur}
-                qrOuvert={qrOuvert === scoreur.code}
-                ouvrirQr={(ouvrir) => setQrOuvert(ouvrir ? scoreur.code : null)}
-              />
-            ))}
-          </ul>
+          {/* Planche A08, variante « liste simple avec état de connexion » (E17US012). ÉTAT,
+              PÉRIMÈTRE et DERNIÈRE VALIDATION sont **retirés de la planche** (arbitrage du
+              26/09/2026, `stories/E17`) : aucune de ces données n'existe pour un scoreur. */}
+          <div className="table-defilement">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">Nom</th>
+                  <th scope="col">Code d’accès</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              {scoreurs.data.map((scoreur) => (
+                <LigneScoreur
+                  key={scoreur.code}
+                  tournoiId={tournoiId}
+                  scoreur={scoreur}
+                  qrOuvert={qrOuvert === scoreur.code}
+                  ouvrirQr={(ouvrir) => setQrOuvert(ouvrir ? scoreur.code : null)}
+                />
+              ))}
+            </table>
+          </div>
           {/* **Imprimer toutes les cartes** (A08 : *« garde quand meme la possibilite de pouvoir
               tous les imprimer »*). Comme les etiquettes de cible, la route existait cote serveur
               depuis E09US008 sans qu'aucun ecran ne l'atteigne. */}
@@ -72,6 +84,9 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
   )
 }
 
+// Nom, code d'accès, actions — la largeur d'une ligne de détail ou d'un formulaire de renommage.
+const COLONNES = 3
+
 function LigneScoreur({
   tournoiId,
   scoreur,
@@ -87,99 +102,115 @@ function LigneScoreur({
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerScoreur(tournoiId)
 
+  // Un `<tbody>` par scoreur : la ligne et son détail (QR, avertissement) se tiennent ensemble.
   if (edition) {
     return (
-      <li>
-        <FormulaireScoreur
-          tournoiId={tournoiId}
-          scoreur={scoreur}
-          onTermine={() => setEdition(false)}
-        />
-      </li>
+      <tbody>
+        <tr>
+          <td colSpan={COLONNES}>
+            <FormulaireScoreur
+              tournoiId={tournoiId}
+              scoreur={scoreur}
+              onTermine={() => setEdition(false)}
+            />
+          </td>
+        </tr>
+      </tbody>
     )
   }
 
+  const detail = qrOuvert || confirmationSuppression || supprimer.error !== null
   return (
-    <li className="scoreur">
-      <div className="scoreur__ligne">
-        <span className="scoreur__nom">{scoreur.nom}</span>
+    <tbody>
+      <tr>
+        <td className="scoreur__nom">{scoreur.nom}</td>
         {/* Code en évidence, en chiffres/lettres lisibles : c'est ce qu'on recopie sur le papier. */}
-        <code className="scoreur__code">{scoreur.code}</code>
-        <span className="scoreur__actions">
-          {/* ⚠️ Révélation **une par une** (arbitrage E16US015) : le QR rend le code personnel
+        <td>
+          <code className="scoreur__code">{scoreur.code}</code>
+        </td>
+        <td>
+          <span className="scoreur__actions">
+            {/* ⚠️ Révélation **une par une** (arbitrage E16US015) : le QR rend le code personnel
               scannable à distance, là où le code écrit demande de s'approcher. */}
-          {/* ⚠️ Le libellé visible tient sur la ligne, mais le **nom accessible** nomme le
+            {/* ⚠️ Le libellé visible tient sur la ligne, mais le **nom accessible** nomme le
               scoreur — sur TOUS les boutons de la ligne, y compris les destructeurs : dix
               « Supprimer » identiques au lecteur d'écran, sur une action qui coupe une session. */}
-          <button
-            type="button"
-            className="bouton--discret"
-            aria-expanded={qrOuvert}
-            aria-label={`${qrOuvert ? 'Masquer' : 'Afficher'} le QR de ${scoreur.nom}`}
-            onClick={() => ouvrirQr(!qrOuvert)}
-          >
-            {qrOuvert ? 'Masquer le QR' : 'Afficher le QR'}
-          </button>
-          <button
-            type="button"
-            className="bouton--discret"
-            aria-label={`Renommer ${scoreur.nom}`}
-            onClick={() => setEdition(true)}
-          >
-            Renommer
-          </button>
-          {confirmationSuppression ? (
-            <>
+            <button
+              type="button"
+              className="bouton--discret"
+              aria-expanded={qrOuvert}
+              aria-label={`${qrOuvert ? 'Masquer' : 'Afficher'} le QR de ${scoreur.nom}`}
+              onClick={() => ouvrirQr(!qrOuvert)}
+            >
+              {qrOuvert ? 'Masquer le QR' : 'Afficher le QR'}
+            </button>
+            <button
+              type="button"
+              className="bouton--discret"
+              aria-label={`Renommer ${scoreur.nom}`}
+              onClick={() => setEdition(true)}
+            >
+              Renommer
+            </button>
+            {confirmationSuppression ? (
+              <>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Confirmer la suppression de ${scoreur.nom}`}
+                  onClick={() => supprimer.mutate(scoreur.id)}
+                >
+                  Confirmer la suppression
+                </button>
+                <button
+                  type="button"
+                  className="bouton--discret"
+                  aria-label={`Annuler la suppression de ${scoreur.nom}`}
+                  onClick={() => setConfirmationSuppression(false)}
+                >
+                  Annuler
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="bouton--danger"
-                disabled={supprimer.isPending}
-                aria-label={`Confirmer la suppression de ${scoreur.nom}`}
-                onClick={() => supprimer.mutate(scoreur.id)}
+                aria-label={`Supprimer ${scoreur.nom}`}
+                onClick={() => setConfirmationSuppression(true)}
               >
-                Confirmer la suppression
+                Supprimer
               </button>
-              <button
-                type="button"
-                className="bouton--discret"
-                aria-label={`Annuler la suppression de ${scoreur.nom}`}
-                onClick={() => setConfirmationSuppression(false)}
-              >
-                Annuler
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="bouton--danger"
-              aria-label={`Supprimer ${scoreur.nom}`}
-              onClick={() => setConfirmationSuppression(true)}
-            >
-              Supprimer
-            </button>
-          )}
-        </span>
-      </div>
-      {qrOuvert && (
-        <div className="scoreur__qr">
-          <QrScoreur
-            tournoiId={tournoiId}
-            scoreurId={scoreur.id}
-            code={scoreur.code}
-            nom={scoreur.nom}
-          />
-          <p className="carte__etat">
-            À scanner par {scoreur.nom} : ouvre sa session sans retaper le code.
-          </p>
-        </div>
+            )}
+          </span>
+        </td>
+      </tr>
+      {detail && (
+        <tr>
+          <td colSpan={COLONNES}>
+            {qrOuvert && (
+              <div className="scoreur__qr">
+                <QrScoreur
+                  tournoiId={tournoiId}
+                  scoreurId={scoreur.id}
+                  code={scoreur.code}
+                  nom={scoreur.nom}
+                />
+                <p className="carte__etat">
+                  À scanner par {scoreur.nom} : ouvre sa session sans retaper le code.
+                </p>
+              </div>
+            )}
+            {confirmationSuppression && (
+              <p className="carte__etat">
+                Sa session en cours sera coupée ; ses validations passées restent tracées.
+              </p>
+            )}
+            <MessageErreur erreur={supprimer.error} />
+          </td>
+        </tr>
       )}
-      {confirmationSuppression && (
-        <p className="carte__etat">
-          Sa session en cours sera coupée ; ses validations passées restent tracées.
-        </p>
-      )}
-      <MessageErreur erreur={supprimer.error} />
-    </li>
+    </tbody>
   )
 }
 

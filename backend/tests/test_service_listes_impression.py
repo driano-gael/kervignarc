@@ -46,7 +46,7 @@ from domain.listes_impression import (
     TriPlacement,
 )
 from domain.placement import Affectation
-from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
+from domain.tournoi import Tournoi
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -54,44 +54,10 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxInscriptionRepository,
     FauxPlacementRepository,
+    FauxTournoiRepository,
 )
 
 # --- Fakes locaux --------------------------------------------------------------------------------
-
-
-class FauxTournoiRepository:
-    """Repository de tournois en mémoire conforme au port `TournoiRepository`.
-
-    Recopié localement — patron assumé du projet pour ce faux (cf. conftest, doctrine des
-    doublures : « recopié dans trois modules, on le laisse »). Seul `par_id` est exercé ici.
-    """
-
-    def __init__(self) -> None:
-        self._tournois: dict[int, Tournoi] = {}
-        self._sequence = 0
-
-    def ajouter(self, tournoi: Tournoi) -> Tournoi:
-        self._sequence += 1
-        persiste = dataclasses.replace(tournoi, id=self._sequence)
-        self._tournois[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
-        return self._tournois.get(tournoi_id)
-
-    def lister(self) -> list[Tournoi]:
-        return list(self._tournois.values())
-
-    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        assert tournoi.id is not None
-        self._tournois[tournoi.id] = tournoi
-        return tournoi
-
-    def supprimer(self, tournoi_id: TournoiId) -> None:
-        del self._tournois[tournoi_id]
-
-    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
-        return DescendanceTournoi()
 
 
 class FauxHorloge:
@@ -165,7 +131,7 @@ class _Monde:
         )
         assert archer.id is not None
         inscription = self.inscriptions.ajouter(
-            Inscription.creer(archer.id, self.departs_par_numero[numero_depart])
+            Inscription(archer.id, self.departs_par_numero[numero_depart])
         )
         assert inscription.id is not None
         if paye:
@@ -218,7 +184,9 @@ def _monde(
     categorie = categories.ajouter(Categorie.creer(tournoi.id, "Sénior Homme"))
     assert categorie.id is not None
 
-    paiements = ServicePaiements(tournois, archers, departs, inscriptions, clubs, FauxHorloge())
+    paiements = ServicePaiements(
+        tournois, archers, departs, inscriptions, clubs, categories, FauxHorloge()
+    )
     service = ServiceListesImpression(
         tournois,
         departs,
@@ -397,7 +365,7 @@ def test_club_paiement_numeros_de_depart_et_compte() -> None:
     club = monde.creer_club("Club")
     archer_id, _ = monde.inscrire("Multi", "Jean", numero_depart=3, paye=False, club_id=club)
     # Deuxième inscription du même archer (sur un autre départ) via le repository.
-    autre = monde.inscriptions.ajouter(Inscription.creer(archer_id, monde.departs_par_numero[1]))
+    autre = monde.inscriptions.ajouter(Inscription(archer_id, monde.departs_par_numero[1]))
     assert autre.id is not None
 
     monde.service.generer_club_paiement(monde.tournoi_id)
@@ -440,7 +408,7 @@ def test_club_paiement_paiement_partiel_reste_du() -> None:
     monde = _monde(numeros_departs=(1, 2), tarif_centimes=800)
     club = monde.creer_club("Club")
     archer_id, _ = monde.inscrire("Partiel", "Paul", numero_depart=1, paye=True, club_id=club)
-    autre = monde.inscriptions.ajouter(Inscription.creer(archer_id, monde.departs_par_numero[2]))
+    autre = monde.inscriptions.ajouter(Inscription(archer_id, monde.departs_par_numero[2]))
     assert autre.id is not None
 
     monde.service.generer_club_paiement(monde.tournoi_id)

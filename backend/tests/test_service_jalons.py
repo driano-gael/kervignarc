@@ -40,9 +40,11 @@ from domain.jalon import (
 from domain.tournoi import MESSAGE_SANS_DEPART, StatutTournoi, TournoiId
 from tests.conftest import (
     DATE_TOURNOI,
+    FauxArcherRepository,
     FauxCompteurEngages,
     FauxDepartRepository,
     FauxDerouleRepository,
+    FauxInstancesDeGabarit,
     FauxTournoiRepository,
     deroule_120,
 )
@@ -84,7 +86,9 @@ def _attelage(
     departs = FauxDepartRepository()
     deroules = FauxDerouleRepository()
     engages = FauxCompteurEngages(inscrits)
-    service_tournois = ServiceTournois(tournois, departs, deroules, engages)
+    service_tournois = ServiceTournois(
+        tournois, departs, deroules, engages, FauxArcherRepository(), FauxInstancesDeGabarit()
+    )
 
     cree = service_tournois.creer("Trophée", DATE_TOURNOI)
     assert cree.id is not None

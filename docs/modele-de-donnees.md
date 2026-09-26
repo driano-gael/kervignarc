@@ -1,8 +1,9 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.13
+- **Version** : 0.14
 - ⚠️ **Retard connu (`DETTE-096`)** : les migrations **0048 → 0051** ne sont pas encore reflétées ici — tables `franchissement_arret`, `arret_de_circonstance`, `identite_tournoi`, et colonnes `poste.noms_par_page` / `cadence_page_s`. La date ci-dessous est celle de la **dernière entrée**, pas d'un audit du schéma.
-- **Date** : 2026-08-31 *(v0.13 : `TOURNOI` gagne **`podium_portees`** et **`podium_profondeur`** — ce que le tournoi récompense et sur combien de places, réglage **du tournoi** comme `cloisonnement` — E16US014, [ADR-0103](adr/0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md), migration 0052)*
+- **Date** : 2026-09-26 *(v0.14 : `INSCRIPTION` gagne **`cree_le`** — la date d'inscription, d'où se lit l'ancienneté d'une dette (planche A17) ; **nullable et sans défaut** : les inscriptions antérieures restent sans date plutôt que datées du jour de la migration — E17US012, migration 0057)*
+- *v0.13 : 2026-08-31 — `TOURNOI` gagne **`podium_portees`** et **`podium_profondeur`** — ce que le tournoi récompense et sur combien de places, réglage **du tournoi** comme `cloisonnement` — E16US014, [ADR-0103](adr/0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md), migration 0052*
 - *v0.12 : 2026-08-07 — **la définition quitte `PHASE`** — table **`DEROULE_ETAPE`** neuve (le déroulé, défini **une fois** au tournoi : `ordre`, `type`, `config`), `PHASE` réduite à l'**avancement** d'une étape dans un créneau (`depart_id`, `ordre`, `statut`) et perd `type`/`config` — E01US025, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), migration 0043)*
 - *v0.11 : 2026-08-06 — **`PHASE` change de parent** — `depart_id` remplace `tournoi_id`, le **départ** devenant la portée sportive (séquence, classements, tableaux, duels). Rattrapage d'une divergence de treize mois avec [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), qui l'avait décidé sans que le moteur le porte — E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042)*
 - *v0.10 : 2026-08-04 — `TOURNOI` gagne `cloisonnement` — ce qu'une cible n'a pas le droit de mêler (`aucun` | `categorie` | `blason` | `blason_et_categorie`), réglage **activable** du tournoi et non du gabarit, qui est partagé entre tournois — E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041)*
@@ -239,6 +240,7 @@ erDiagram
 | archer_id | INTEGER | FK → ARCHER, NOT NULL |
 | depart_id | INTEGER | FK → DEPART, NOT NULL |
 | paye | BOOLEAN | NOT NULL, défaut `false` |
+| cree_le | DATETIME | **NULL** = inscription antérieure à la migration 0057 (date inconnue) ; sinon UTC |
 
 > **Table de liaison archer ↔ départ** (E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md)) :
 > l'inscription d'un archer sur un **créneau** du tournoi. `UNIQUE(archer_id, depart_id)` — un archer ne
@@ -249,7 +251,10 @@ erDiagram
 > **Le montant dû n'est pas une colonne** : il se **dérive** du `tarif_centimes` du départ à la lecture
 > (rien à recopier, rien à resynchroniser). C'est l'erreur que la v0.3 faisait en posant
 > `montant_du_centimes`/`paye` sur `DEPART` ; seul `paye` — un **fait** propre à l'inscription, non
-> dérivable — vit ici. Les **sommes** d'EPIC-08 (montant par archer = somme des tarifs de ses départs)
+> dérivable — vit ici, avec `cree_le` (E17US012) : l'instant de l'inscription, fait tout aussi
+> propre, d'où `domain.paiement.dater_la_dette` lit l'**ancienneté** d'une dette. ⚠️ **Sans défaut
+> serveur**, à l'inverse de `VOLEE.created_at` : un `CURRENT_TIMESTAMP` aurait daté chaque inscription
+> existante du jour de la migration. Les **sommes** d'EPIC-08 (montant par archer = somme des tarifs de ses départs)
 > se calculent par jointure `INSCRIPTION → DEPART`.
 > **Deux FK sans `ON DELETE`** (`archer_id`, `depart_id`) → [ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) : la suppression
 > d'un archer (E02US003) **et** celle d'un départ (E02US009) purgent les inscriptions par **cascade
