@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Tournoi } from '../competition/api'
+import type { TournoiEnListe } from '../competition/api'
 import type { Archer } from '../archers/api'
 import { getArchers } from '../archers/api'
 import { getTournois } from '../competition/api'
@@ -37,13 +37,15 @@ vi.mock('../clubs/hooks', () => ({ useClubs: () => ({ data: [] }) }))
 vi.mock('../categories/hooks', () => ({ useCategories: () => ({ data: [] }) }))
 vi.mock('../blasons/hooks', () => ({ useBlasons: () => ({ data: [] }) }))
 
-const TOURNOI: Tournoi = {
+const TOURNOI: TournoiEnListe = {
   id: 12,
   nom: 'Salle 18m',
   date: '2026-03-14',
   lieu: 'Kervignarc',
   type_tournoi: 'non_officiel',
   statut: 'brouillon',
+  nb_inscrits: 0,
+  nb_cibles: null,
 }
 
 function monter(enfants: ReactNode) {

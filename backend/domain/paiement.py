@@ -9,6 +9,7 @@ du calcul, pas une garde à poser. ADR-0017
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -57,3 +58,30 @@ def total(recaps: Iterable[RecapPaiement]) -> RecapPaiement:
         du += recap.du_centimes
         paye += recap.paye_centimes
     return RecapPaiement(du_centimes=du, paye_centimes=paye)
+
+
+@dataclass(frozen=True)
+class Dette:
+    """Ancienneté d'une dette : l'instant de la plus ancienne inscription non réglée (E17US012).
+
+    `depuis is None` : la dette existe mais sa date est **inconnue** — une inscription antérieure à
+    la date d'inscription (migration `0057`) n'en porte aucune.
+    """
+
+    depuis: datetime.datetime | None
+
+
+def dater_la_dette(lignes: Iterable[tuple[int, bool, datetime.datetime | None]]) -> Dette | None:
+    """Date la dette d'un ensemble de `(tarif_centimes, paye, cree_le)` ; `None` s'il n'y en a pas.
+
+    Seule une inscription **non réglée à tarif non nul** fait une dette : c'est ce qui tient
+    « ancienneté présente ⇔ reste > 0 ». ⚠️ Une inscription non datée l'emporte sur toutes les
+    datées — elle leur est antérieure, et prendre la plus ancienne date **connue** rajeunirait la
+    dette.
+    """
+    dues = [cree_le for tarif, paye, cree_le in lignes if tarif > 0 and not paye]
+    if not dues:
+        return None
+    if any(cree_le is None for cree_le in dues):
+        return Dette(depuis=None)
+    return Dette(depuis=min(cree_le for cree_le in dues if cree_le is not None))

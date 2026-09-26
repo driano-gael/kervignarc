@@ -255,6 +255,8 @@ class InscriptionORM(Base):
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     paye: Mapped[bool] = mapped_column(nullable=False, default=False)
+    # ⚠️ Nullable et **sans** `server_default` (≠ `volee.created_at`) : cf. migration 0057.
+    cree_le: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
 
 
 class PlacementORM(Base):

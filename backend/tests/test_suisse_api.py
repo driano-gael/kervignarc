@@ -101,7 +101,7 @@ class Scenario:
                     phase_id=self.qualif_id,
                 )
             )
-            inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+            inscriptions.ajouter(Inscription(archer.id, self.depart_id))
             self.archers.append(archer.id)
         phase = poser_phase_sql(
             db.session_factory,

@@ -138,7 +138,7 @@ class _Monde:
         self.series.semer(
             self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs), self.qualif_id
         )
-        self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+        self.inscriptions.ajouter(Inscription(archer.id, self.depart_id))
         return archer.id
 
     def service(self) -> ServiceSaisieDuels:

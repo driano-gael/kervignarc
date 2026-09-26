@@ -204,7 +204,7 @@ class Decor:
         self.inscriptions = FauxInscriptionRepository()
         for depart_id in (_MATIN, _APRES_MIDI):
             for archer_id in (self.alice, self.bob):
-                self.inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+                self.inscriptions.ajouter(Inscription(archer_id, depart_id))
 
         # Le déroulé est composé **une fois** (ADR-0076) et instancié dans les deux créneaux : une
         # qualification au rang 1, avec un seuil de barrage jusqu'au rang 1.

@@ -8,6 +8,7 @@ des classements.
 from __future__ import annotations
 
 import asyncio
+import datetime
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -15,7 +16,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.paiements import LignePaiementArcher, RecapClub, ServicePaiements
-from domain.paiement import RecapPaiement
+from domain.paiement import Dette, RecapPaiement
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["paiements"])
@@ -47,14 +48,31 @@ class RecapPaiementReponse(BaseModel):
         )
 
 
+class DetteReponse(BaseModel):
+    """Ancienneté d'une dette (E17US012) : `depuis` est `null` quand la date est **inconnue**."""
+
+    depuis: datetime.datetime | None
+
+    @staticmethod
+    def de(dette: Dette) -> DetteReponse:
+        return DetteReponse(depuis=dette.depuis)
+
+
 class LignePaiementArcherReponse(BaseModel):
-    """Une ligne de la vue par archer : l'archer, son club éventuel et son récapitulatif."""
+    """Une ligne de la vue par archer : l'archer, son club éventuel et son récapitulatif.
+
+    `dette` est `null` quand l'archer ne doit rien — à distinguer d'une dette de date inconnue.
+    """
 
     archer_id: int
     nom: str
     prenom: str
     club_id: int | None
     recap: RecapPaiementReponse
+    club: str | None
+    categorie: str | None
+    dette: DetteReponse | None
+    nb_inscriptions: int
 
     @staticmethod
     def de(ligne: LignePaiementArcher) -> LignePaiementArcherReponse:
@@ -64,6 +82,10 @@ class LignePaiementArcherReponse(BaseModel):
             prenom=ligne.prenom,
             club_id=ligne.club_id,
             recap=RecapPaiementReponse.de(ligne.recap),
+            club=ligne.club,
+            categorie=ligne.categorie,
+            dette=None if ligne.dette is None else DetteReponse.de(ligne.dette),
+            nb_inscriptions=ligne.nb_inscriptions,
         )
 
 

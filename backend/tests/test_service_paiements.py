@@ -10,7 +10,6 @@ repository).
 
 from __future__ import annotations
 
-import dataclasses
 import datetime
 
 import pytest
@@ -23,51 +22,24 @@ from application.erreurs import (
 )
 from application.paiements import LIBELLE_SANS_CLUB, ServicePaiements
 from domain.archer import Archer, ArcherId
+from domain.categorie import Categorie
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.entree_audit import ActionAuditee
 from domain.inscription import Inscription
-from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
+from domain.paiement import Dette
+from domain.tournoi import Tournoi
 from tests.conftest import (
     FauxArcherRepository,
+    FauxCategorieRepository,
     FauxClubRepository,
     FauxDepartRepository,
     FauxInscriptionRepository,
+    FauxTournoiRepository,
 )
 
 _TOURNOI = 1
 _QUAND = datetime.datetime(2026, 7, 21, 9, 30, tzinfo=datetime.UTC)
-
-
-class FauxTournoiRepository:
-    """Repository de tournois en mémoire conforme au port `TournoiRepository`."""
-
-    def __init__(self) -> None:
-        self._tournois: dict[int, Tournoi] = {}
-        self._sequence = 0
-
-    def ajouter(self, tournoi: Tournoi) -> Tournoi:
-        self._sequence += 1
-        persiste = dataclasses.replace(tournoi, id=self._sequence)
-        self._tournois[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
-        return self._tournois.get(tournoi_id)
-
-    def lister(self) -> list[Tournoi]:
-        return list(self._tournois.values())
-
-    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        assert tournoi.id in self._tournois, "Tournoi à mettre à jour absent."
-        self._tournois[tournoi.id] = tournoi
-        return tournoi
-
-    def supprimer(self, tournoi_id: TournoiId) -> None:
-        del self._tournois[tournoi_id]
-
-    def compter_descendance(self, tournoi_id: TournoiId) -> DescendanceTournoi:
-        return DescendanceTournoi()
 
 
 class HorlogeFigee:
@@ -89,13 +61,17 @@ class Montage:
         self.departs = FauxDepartRepository()
         self.inscriptions = FauxInscriptionRepository()
         self.clubs = FauxClubRepository()
+        self.categories = FauxCategorieRepository()
         self.tournois.ajouter(Tournoi.creer("Tournoi", datetime.date(2026, 3, 14)))
+        # `categorie_id=1` de `archer()` désigne cette catégorie : la première ajoutée.
+        self.categories.ajouter(Categorie.creer(_TOURNOI, "Senior 1 Femme"))
         self.service = ServicePaiements(
             self.tournois,
             self.archers,
             self.departs,
             self.inscriptions,
             self.clubs,
+            self.categories,
             HorlogeFigee(_QUAND),
         )
 
@@ -118,10 +94,16 @@ class Montage:
         assert depart.id is not None
         return depart.id
 
-    def inscrire(self, archer_id: ArcherId, depart_id: DepartId, paye: bool = False) -> int:
+    def inscrire(
+        self,
+        archer_id: ArcherId,
+        depart_id: DepartId,
+        paye: bool = False,
+        cree_le: datetime.datetime | None = None,
+    ) -> int:
         """Inscrit directement (le service Inscriptions est testé ailleurs) ; renvoie l'id."""
         inscription = self.inscriptions.ajouter(
-            Inscription(archer_id=archer_id, depart_id=depart_id, paye=paye)
+            Inscription(archer_id=archer_id, depart_id=depart_id, paye=paye, cree_le=cree_le)
         )
         assert inscription.id is not None
         return inscription.id
@@ -327,3 +309,66 @@ def test_marquer_club_inconnu_leve() -> None:
     m = Montage()
     with pytest.raises(ClubIntrouvable):
         m.service.marquer_club(_TOURNOI, 404, True)
+
+
+# --- Colonnes de la planche A17 (E17US012) -----------------------------------------------------
+# Source : `stories/E17-fidelite-aux-maquettes.md`, E17US012, puce « A17 » de l'arbitrage du
+# 26/09/2026 : CLUB, CAT. et l'ancienneté de la dette sont alimentés.
+
+_LE_02_11 = datetime.datetime(2026, 11, 2, 18, 0, tzinfo=datetime.UTC)
+_LE_05_11 = datetime.datetime(2026, 11, 5, 18, 0, tzinfo=datetime.UTC)
+
+
+def test_vue_par_archer_nomme_le_club_et_la_categorie() -> None:
+    """La ligne porte le **nom** du club et le **libellé** de la catégorie, pas leurs ids."""
+    m = Montage()
+    m.archer("MARTIN", "Sophie", club_id=m.club("Kervignac"))
+    m.archer("DURAND", "Paul")
+
+    lignes = {ligne.nom: ligne for ligne in m.service.lister_par_archer(_TOURNOI)}
+    assert (lignes["MARTIN"].club, lignes["MARTIN"].categorie) == ("Kervignac", "Senior 1 Femme")
+    assert lignes["DURAND"].club is None  # sans club (ADR-0014) : pas de libellé inventé
+
+
+def test_vue_par_archer_date_la_dette_de_la_plus_ancienne_inscription_non_reglee() -> None:
+    m = Montage()
+    archer = m.archer("MARTIN", "Sophie")
+    m.inscrire(archer, m.depart(1, 1400), paye=True, cree_le=_LE_02_11)
+    m.inscrire(archer, m.depart(2, 1000), cree_le=_LE_05_11)
+
+    (ligne,) = m.service.lister_par_archer(_TOURNOI)
+    assert ligne.dette == Dette(depuis=_LE_05_11)
+
+
+def test_vue_par_archer_sans_dette_quand_tout_est_regle() -> None:
+    m = Montage()
+    archer = m.archer("MARTIN", "Sophie")
+    m.inscrire(archer, m.depart(1, 1400), paye=True, cree_le=_LE_02_11)
+
+    (ligne,) = m.service.lister_par_archer(_TOURNOI)
+    assert ligne.dette is None
+
+
+def test_vue_par_archer_dette_inconnue_pour_une_inscription_non_datee() -> None:
+    """Une inscription d'avant E17US012 (sans date) : la dette existe, sa date est inconnue."""
+    m = Montage()
+    archer = m.archer("MARTIN", "Sophie")
+    m.inscrire(archer, m.depart(1, 1400))
+    m.inscrire(archer, m.depart(2, 1000), cree_le=_LE_05_11)
+
+    (ligne,) = m.service.lister_par_archer(_TOURNOI)
+    assert ligne.dette == Dette(depuis=None)
+
+
+def test_vue_par_archer_compte_les_inscriptions() -> None:
+    """Un archer du tournoi inscrit à **aucun** créneau se distingue d'un créneau gratuit : tous
+    deux doivent 0, seul le premier n'a pas d'inscription (revue E17US012, axes B et C1)."""
+    m = Montage()
+    sans_creneau = m.archer("MARTIN", "Sophie")
+    gratuit = m.archer("DURAND", "Paul")
+    m.inscrire(gratuit, m.depart(1, 0))
+
+    lignes = {ligne.archer_id: ligne for ligne in m.service.lister_par_archer(_TOURNOI)}
+    assert lignes[sans_creneau].nb_inscriptions == 0
+    assert lignes[gratuit].nb_inscriptions == 1
+    assert lignes[sans_creneau].recap.du_centimes == lignes[gratuit].recap.du_centimes == 0

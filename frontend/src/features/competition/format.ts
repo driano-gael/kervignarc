@@ -37,3 +37,9 @@ export function decrireTarif(centimes: number): string {
   if (centimes === 0) return 'Gratuit'
   return `${centimesVersSaisieEuros(centimes)} €`
 }
+
+// Centimes → montant lisible, **zéro compris** (« 0,00 € »). ⚠️ Pas `decrireTarif` pour un dû, un
+// payé ou un reste : « Gratuit » y dirait qu'il n'y avait rien à payer, pas que tout est réglé.
+export function decrireMontant(centimes: number): string {
+  return `${centimesVersSaisieEuros(centimes)} €`
+}

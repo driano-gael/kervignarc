@@ -276,7 +276,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 370,
+   "occurrences": 372,
    "source": "application"
   },
   {
@@ -767,7 +767,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 355,
+   "occurrences": 357,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1494,6 +1494,22 @@ window.ATLAS.carte = {
     "supprimer"
    ],
    "nom": "ClubRepository",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "ArcherRepositorySQL"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/tournois.py",
+   "hors_domaine": true,
+   "methodes": [
+    "compter_par_tournoi"
+   ],
+   "nom": "CompteurArchersParTournoi",
    "sans_adapter": false
   },
   {
@@ -2499,10 +2515,6 @@ window.ATLAS.carte = {
      "nom": "ServiceScoreurs"
     },
     {
-     "fichier": "backend/application/tournois.py",
-     "nom": "ServiceTournois"
-    },
-    {
      "fichier": "backend/infrastructure/db/repositories/moteur.py",
      "nom": "FormatTournoiRepositorySQL"
     },
@@ -2554,6 +2566,114 @@ window.ATLAS.carte = {
     "lister_par_archer"
    ],
    "nom": "LecteurPaiements",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/infrastructure/db/repositories/exploitation.py",
+     "nom": "AuditRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/exploitation.py",
+     "nom": "PosteRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/exploitation.py",
+     "nom": "ScoreurRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "DerouleEtapeRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "PhaseRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "ArcherRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "BlasonRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "CategorieRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "DepartRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "GabaritSalleRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "RemboursementRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/tir.py",
+     "nom": "BarrageRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/tir.py",
+     "nom": "ForfaitRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/tir.py",
+     "nom": "ScoreRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/tir.py",
+     "nom": "SerieRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryArcherRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryBlasonRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryCategorieRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryDepartRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryDerouleRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryForfaitRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryGabaritSalleRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryPhaseRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemorySerieRepository"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/tournois.py",
+   "hors_domaine": true,
+   "methodes": [
+    "par_tournoi"
+   ],
+   "nom": "LecteurPlanDeSalle",
    "sans_adapter": false
   },
   {
@@ -3149,11 +3269,11 @@ window.ATLAS.carte = {
   "aretes_front": 180,
   "enchevetrements": 4,
   "features": 51,
-  "imports": 964,
-  "imports_entre_couches": 816,
+  "imports": 966,
+  "imports_entre_couches": 818,
   "plus_gros_noeud": 24,
-  "ports": 72,
-  "ports_hors_domaine": 28,
+  "ports": 74,
+  "ports_hors_domaine": 30,
   "ports_sans_adapter": 0,
   "violations": 0
  },

@@ -164,7 +164,7 @@ class _Monde:
             Archer.creer(nom, prenom, self.tournoi_id, categorie_id or self.categorie_id)
         )
         assert archer.id is not None
-        inscription = self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+        inscription = self.inscriptions.ajouter(Inscription(archer.id, self.depart_id))
         assert inscription.id is not None
         self.placements.poser_plusieurs(
             self.depart_id,
@@ -179,7 +179,7 @@ class _Monde:
         """Inscrit un archer sur le départ **sans** le poser : il reste en réserve."""
         archer = self.archers.ajouter(Archer.creer(nom, prenom, self.tournoi_id, self.categorie_id))
         assert archer.id is not None
-        self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+        self.inscriptions.ajouter(Inscription(archer.id, self.depart_id))
 
     def categorie_sans_blason(self) -> int:
         """Crée une catégorie **sans blason par défaut** et renvoie son id."""
