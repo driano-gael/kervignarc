@@ -238,6 +238,10 @@ class InscriptionORM(Base):
     montant dû n'est **pas** stocké — il se dérive du `tarif_centimes` du départ à la lecture
     (ADR-0017). C'est là que reviennent les colonnes `paye`/`montant_du` que le modèle v0.3 posait à
     tort sur `depart` (elles étaient par-archer).
+
+    `cree_le` (E17US012) date l'inscription, d'où se lit l'ancienneté d'une dette. ⚠️ **Nullable
+    et sans défaut serveur**, à l'inverse de `volee.created_at` : un défaut daterait toutes les
+    inscriptions antérieures du jour de la migration — une fausse date lue comme vraie.
     """
 
     __tablename__ = "inscription"
@@ -255,6 +259,7 @@ class InscriptionORM(Base):
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     paye: Mapped[bool] = mapped_column(nullable=False, default=False)
+    cree_le: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
 
 
 class PlacementORM(Base):

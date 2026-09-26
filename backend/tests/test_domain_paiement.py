@@ -8,7 +8,9 @@ qui agrège des récapitulatifs (le club somme ses archers).
 
 from __future__ import annotations
 
-from domain.paiement import RecapPaiement, recapituler, total
+import datetime
+
+from domain.paiement import Dette, RecapPaiement, dater_la_dette, recapituler, total
 
 
 def test_recap_vide_est_zero() -> None:
@@ -63,3 +65,64 @@ def test_recap_est_immuable() -> None:
     """`RecapPaiement` est un value object gelé (règle 4) : reste n'est pas un champ modifiable."""
     recap = RecapPaiement(du_centimes=1000, paye_centimes=300)
     assert recap.reste_centimes == 700
+
+
+# --- Ancienneté de la dette (E17US012, CA A17) -------------------------------------------------
+# Source : `stories/E17-fidelite-aux-maquettes.md`, E17US012, puce « A17 » de l'arbitrage du
+# 26/09/2026 : la dette date de la **plus ancienne inscription non réglée** ; une inscription
+# antérieure à la migration n'a pas de date et s'affiche « date inconnue ».
+
+_LUNDI = datetime.datetime(2026, 11, 2, 18, 0, tzinfo=datetime.UTC)
+_MARDI = datetime.datetime(2026, 11, 3, 9, 0, tzinfo=datetime.UTC)
+
+
+def test_sans_inscription_il_n_y_a_pas_de_dette() -> None:
+    assert dater_la_dette([]) is None
+
+
+def test_tout_regle_il_n_y_a_pas_de_dette() -> None:
+    """Un archer qui ne doit plus rien n'a pas d'ancienneté, même inscrit à des dates connues."""
+    assert dater_la_dette([(1400, True, _LUNDI), (1000, True, _MARDI)]) is None
+
+
+def test_la_dette_date_de_la_plus_ancienne_inscription_non_reglee() -> None:
+    """Deux créneaux non réglés : la dette court depuis le **premier** des deux."""
+    dette = dater_la_dette([(1000, False, _MARDI), (1400, False, _LUNDI)])
+    assert dette == Dette(depuis=_LUNDI)
+
+
+def test_une_inscription_reglee_ne_date_pas_la_dette() -> None:
+    """La plus ancienne inscription est **réglée** : elle ne compte pas, la suivante date."""
+    dette = dater_la_dette([(1400, True, _LUNDI), (1000, False, _MARDI)])
+    assert dette == Dette(depuis=_MARDI)
+
+
+def test_un_creneau_gratuit_n_est_pas_une_dette() -> None:
+    """Un créneau à 0 € non « réglé » ne doit rien : il ne crée ni ne date une dette.
+
+    Sans cette exclusion, un archer au reste nul porterait une ancienneté — deux colonnes de la
+    même ligne se contrediraient.
+    """
+    assert dater_la_dette([(0, False, _LUNDI)]) is None
+    assert dater_la_dette([(0, False, _LUNDI), (1000, False, _MARDI)]) == Dette(depuis=_MARDI)
+
+
+def test_une_inscription_non_datee_rend_l_anciennete_inconnue() -> None:
+    """Une inscription sans date est antérieure à toutes les datées : la dette date d'**avant**
+    la première date connue, on ne sait pas de quand — jamais la date de la suivante."""
+    dette = dater_la_dette([(1000, False, _MARDI), (1400, False, None)])
+    assert dette == Dette(depuis=None)
+
+
+def test_une_dette_existe_exactement_quand_il_reste_a_payer() -> None:
+    """Invariant de ligne : ancienneté présente ⇔ reste > 0 (les deux colonnes ne divergent pas)."""
+    cas: list[list[tuple[int, bool, datetime.datetime | None]]] = [
+        [],
+        [(0, False, _LUNDI)],
+        [(1000, True, _LUNDI)],
+        [(1000, False, None)],
+        [(1000, True, _LUNDI), (500, False, _MARDI)],
+    ]
+    for lignes in cas:
+        reste = recapituler((tarif, paye) for tarif, paye, _ in lignes).reste_centimes
+        assert (dater_la_dette(lignes) is not None) == (reste > 0), lignes

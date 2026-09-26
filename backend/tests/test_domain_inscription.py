@@ -8,6 +8,7 @@ seulement le contrat de l'entité : création non payée, bascule de `paye`, imm
 from __future__ import annotations
 
 import dataclasses
+import datetime
 
 import pytest
 
@@ -41,3 +42,19 @@ def test_inscription_est_immuable() -> None:
     inscription = Inscription.creer(7, 3)
     with pytest.raises(dataclasses.FrozenInstanceError):
         inscription.paye = True  # type: ignore[misc]
+
+
+def test_creer_porte_la_date_d_inscription() -> None:
+    """E17US012 (A17) : l'inscription est datée à la création — c'est d'elle que la dette date."""
+    quand = datetime.datetime(2026, 11, 2, 18, 0, tzinfo=datetime.UTC)
+    assert Inscription.creer(7, 3, cree_le=quand).cree_le == quand
+
+
+def test_une_inscription_anterieure_a_la_date_n_en_a_pas() -> None:
+    """Une inscription d'avant E17US012 se relit **sans** date — jamais une date inventée."""
+    assert Inscription(archer_id=7, depart_id=3).cree_le is None
+
+
+def test_marquer_paye_preserve_la_date_d_inscription() -> None:
+    quand = datetime.datetime(2026, 11, 2, 18, 0, tzinfo=datetime.UTC)
+    assert Inscription.creer(7, 3, cree_le=quand).marquer_paye(True).cree_le == quand

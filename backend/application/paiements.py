@@ -19,12 +19,14 @@ from application.erreurs import (
 )
 from application.inscriptions import InscriptionDetaillee
 from domain.archer import Archer, ArcherId
+from domain.categorie import CategorieId
 from domain.club import ClubId
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
-from domain.paiement import RecapPaiement, recapituler, total
+from domain.paiement import Dette, RecapPaiement, dater_la_dette, recapituler, total
 from domain.ports import (
     ArcherRepository,
+    CategorieRepository,
     ClubRepository,
     DepartRepository,
     Horloge,
@@ -57,7 +59,8 @@ class LignePaiementArcher:
     """Vue de lecture : un archer et son récapitulatif de paiement (dû / payé / reste).
 
     Porte le `club_id` (éventuellement `None`) pour permettre le regroupement par club sans une
-    seconde lecture. Le nom du club, lui, est résolu au niveau de la vue par club.
+    seconde lecture. `club` et `categorie` sont les **libellés** des colonnes de la planche A17
+    (E17US012) ; `dette` est `None` quand l'archer ne doit rien.
     """
 
     archer_id: ArcherId
@@ -65,6 +68,9 @@ class LignePaiementArcher:
     prenom: str
     club_id: ClubId | None
     recap: RecapPaiement
+    club: str | None
+    categorie: str | None
+    dette: Dette | None
 
 
 @dataclass(frozen=True)
@@ -81,6 +87,14 @@ class RecapClub:
     archers: list[LignePaiementArcher]
 
 
+@dataclass(frozen=True)
+class _Libelles:
+    """Noms de clubs et libellés de catégories, lus **une fois** par vue, non par archer."""
+
+    clubs: dict[ClubId, str]
+    categories: dict[CategorieId, str]
+
+
 class ServicePaiements:
     """Cas d'usage du suivi des paiements : consulter (par archer, par club) et marquer (simple,
     par archer, par club — tout audité)."""
@@ -92,6 +106,7 @@ class ServicePaiements:
         depart_repository: DepartRepository,
         inscription_repository: InscriptionRepository,
         club_repository: ClubRepository,
+        categorie_repository: CategorieRepository,
         horloge: Horloge,
     ) -> None:
         self._tournois = tournoi_repository
@@ -99,6 +114,7 @@ class ServicePaiements:
         self._departs = depart_repository
         self._inscriptions = inscription_repository
         self._clubs = club_repository
+        self._categories = categorie_repository
         self._horloge = horloge
 
     # --- Lectures (vues) ---------------------------------------------------------------------
@@ -114,7 +130,11 @@ class ServicePaiements:
         """
         self._tournoi_existant(tournoi_id)
         tarifs = self._tarifs(tournoi_id)
-        lignes = [self._ligne(archer, tarifs) for archer in self._archers.par_tournoi(tournoi_id)]
+        libelles = self._libelles(tournoi_id)
+        lignes = [
+            self._ligne(archer, tarifs, libelles)
+            for archer in self._archers.par_tournoi(tournoi_id)
+        ]
         return sorted(lignes, key=lambda ligne: (ligne.nom.casefold(), ligne.prenom.casefold()))
 
     def recap_par_club(self, tournoi_id: TournoiId) -> list[RecapClub]:
@@ -194,7 +214,7 @@ class ServicePaiements:
                 paye=paye,
             )
             self._inscriptions.definir_paye_avec_trace(ids, paye, entree)
-        return self._ligne(archer, self._tarifs(tournoi_id))
+        return self._ligne(archer, self._tarifs(tournoi_id), self._libelles(tournoi_id))
 
     def marquer_club(self, tournoi_id: TournoiId, club_id: ClubId, paye: bool) -> RecapClub:
         """Marque **toutes** les inscriptions des archers d'un club (de ce tournoi) ; audite.
@@ -223,8 +243,9 @@ class ServicePaiements:
             )
             self._inscriptions.definir_paye_avec_trace(ids, paye, entree)
         tarifs = self._tarifs(tournoi_id)
+        libelles = self._libelles(tournoi_id)
         lignes = sorted(
-            (self._ligne(a, tarifs) for a in archers),
+            (self._ligne(a, tarifs, libelles) for a in archers),
             key=lambda ligne: (ligne.nom.casefold(), ligne.prenom.casefold()),
         )
         return RecapClub(
@@ -244,7 +265,19 @@ class ServicePaiements:
             if depart.id is not None
         }
 
-    def _ligne(self, archer: Archer, tarifs: dict[DepartId, int]) -> LignePaiementArcher:
+    def _libelles(self, tournoi_id: TournoiId) -> _Libelles:
+        return _Libelles(
+            clubs={club.id: club.nom for club in self._clubs.lister() if club.id is not None},
+            categories={
+                c.id: c.libelle
+                for c in self._categories.par_tournoi(tournoi_id)
+                if c.id is not None
+            },
+        )
+
+    def _ligne(
+        self, archer: Archer, tarifs: dict[DepartId, int], libelles: _Libelles
+    ) -> LignePaiementArcher:
         """Récapitule un archer depuis ses inscriptions et la table des tarifs.
 
         Une inscription dont le créneau est absent de `tarifs` (purge en cascade concurrente,
@@ -252,7 +285,7 @@ class ServicePaiements:
         """
         assert archer.id is not None, "Un archer relu est persisté."
         lignes = [
-            (tarifs[i.depart_id], i.paye)
+            (tarifs[i.depart_id], i.paye, i.cree_le)
             for i in self._inscriptions.par_archer(archer.id)
             if i.depart_id in tarifs
         ]
@@ -261,7 +294,10 @@ class ServicePaiements:
             nom=archer.nom,
             prenom=archer.prenom,
             club_id=archer.club_id,
-            recap=recapituler(lignes),
+            recap=recapituler((tarif, paye) for tarif, paye, _ in lignes),
+            club=None if archer.club_id is None else libelles.clubs.get(archer.club_id),
+            categorie=libelles.categories.get(archer.categorie_id),
+            dette=dater_la_dette(lignes),
         )
 
     def _trace(

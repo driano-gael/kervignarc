@@ -285,6 +285,25 @@
   - une colonne de planche qui **suppose une donnée que l'écran ne va pas chercher** (A04 :
     avancement, ce qui reste — **absents** de `TournoiReponse`) est soit **alimentée**, soit
     **retirée de la planche** — jamais affichée vide. Le choix se fait par colonne et s'écrit.
+    **Tranché au cadrage du 26/09/2026** : A04 **avancement** et **ce qui reste** sont **retirés
+    de la planche** — l'accueil d'un tournoi (A03, `FriseCycleDeVie`) situe déjà le tournoi dans
+    son cycle, et les alimenter ferait calculer un avancement par tournoi pour une liste.
+    **Règle retenue pour les autres colonnes** : alimentées si la donnée **existe en base et se lit
+    simplement**, retirées si elles supposent un **concept neuf** ou une jointure fragile —
+    - **A04** : **INSCRITS** (archers distincts inscrits au tournoi) et **CIBLES** alimentées ;
+      liste classée **par statut, puis par date** ;
+    - **A08** : **PÉRIMÈTRE** (un scoreur n'a aucun périmètre au modèle), **ÉTAT** et **DERNIÈRE
+      VALIDATION** (le journal d'audit ne connaît le scoreur que par son **nom**, homonymes
+      compris) **retirées de la planche** ; chaque ligne ouvre son QR et son code ;
+    - **A12** : le tableau est l'écran **Postes** (préparation des codes), une ligne par poste,
+      QR à la ligne ; rattachement, appareil et signe de vie restent à la **supervision** (A13,
+      tuiles retenues), qui porte déjà le bandeau par type d'écran. **Régénérer un jeton,
+      Détacher, Réactiver** n'existent ni au front ni au serveur : capacités neuves, **hors
+      fidélité**, portées au tracker comme besoin sans porteur ;
+    - **A17** : **CLUB**, **CAT.** et **TARIF** alimentées ; l'**ancienneté** est alimentée par
+      une **date d'inscription** neuve (migration) — la dette date de la **plus ancienne
+      inscription non réglée** ; une inscription antérieure à la migration n'a **pas** de date et
+      s'affiche « date inconnue », jamais une case vide.
 - **Notes** : ⚠️ **A04, A08 et A17 ont bougé depuis le relevé du 06/08** (`E01US026`,
   `E16US015`) : **re-mesurer**, ne pas se fier au relevé. Les évolutions écrites au questionnaire
   font partie de la cible — A08 et A12 : « chaque ligne doit ouvrir le QR et le code de

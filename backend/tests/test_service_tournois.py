@@ -20,10 +20,12 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.tournois import OrigineExigence, ServiceTournois
+from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.depart import Depart
 from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import NomTournoiInvalide
+from domain.gabarit_salle import GabaritSalle
 from domain.grain_validation import GrainValidation
 from domain.phase import TypePhase
 from domain.tournoi import (
@@ -34,9 +36,11 @@ from domain.tournoi import (
 )
 from tests.conftest import (
     DATE_TOURNOI,
+    FauxArcherRepository,
     FauxCompteurEngages,
     FauxDepartRepository,
     FauxDerouleRepository,
+    FauxInstancesDeGabarit,
     FauxTournoiRepository,
     deroule_120,
 )
@@ -62,7 +66,9 @@ def _service_complet() -> (
     deroules = FauxDerouleRepository()
     engages = FauxCompteurEngages()
     tournois = FauxTournoiRepository()
-    service = ServiceTournois(tournois, departs, deroules, engages)
+    service = ServiceTournois(
+        tournois, departs, deroules, engages, FauxArcherRepository(), FauxInstancesDeGabarit()
+    )
     return service, departs, deroules, engages, tournois
 
 
@@ -122,12 +128,12 @@ def test_consulter_leve_si_introuvable() -> None:
 
 
 def test_lister_renvoie_tous_les_tournois() -> None:
-    """`lister` renvoie tous les tournois créés."""
+    """`lister_en_liste` renvoie tous les tournois créés."""
     service, _ = _service()
-    assert service.lister() == []
+    assert service.lister_en_liste() == []
     service.creer("A", DATE_TOURNOI)
     service.creer("B", DATE_TOURNOI)
-    assert [t.nom for t in service.lister()] == ["A", "B"]
+    assert [e.tournoi.nom for e in service.lister_en_liste()] == ["A", "B"]
 
 
 # --- Édition des métadonnées (E01US002) ---
@@ -633,7 +639,7 @@ def test_supprimer_autorise_hors_etats_vivants(depuis: StatutTournoi) -> None:
     tid = _id_cree(service, departs)
     _amener(service, tid, depuis)
     service.supprimer(tid)
-    assert service.lister() == []
+    assert service.lister_en_liste() == []
 
 
 def test_supprimer_un_annule() -> None:
@@ -642,7 +648,7 @@ def test_supprimer_un_annule() -> None:
     tid = _id_cree(service, departs)
     service.annuler(tid)
     service.supprimer(tid)
-    assert service.lister() == []
+    assert service.lister_en_liste() == []
 
 
 @pytest.mark.parametrize("depuis", [StatutTournoi.EN_COURS, StatutTournoi.EN_PAUSE])
@@ -691,7 +697,7 @@ def test_supprimer_un_tournoi_vide_ne_demande_rien() -> None:
     service, departs, _, _, _ = _service_complet()
     tid = _id_cree(service, departs)
     service.supprimer(tid)
-    assert service.lister() == []
+    assert service.lister_en_liste() == []
 
 
 def test_supprimer_un_tournoi_peuple_est_signale() -> None:
@@ -778,7 +784,7 @@ def test_la_confirmation_explicite_supprime() -> None:
     tid = _id_cree(service, departs)
     tournois.descendance = _peuple(archers=42, inscriptions=118)
     service.supprimer(tid, autoriser_suppression_peuplee=True)
-    assert service.lister() == []
+    assert service.lister_en_liste() == []
 
 
 @pytest.mark.parametrize("depuis", [StatutTournoi.EN_COURS, StatutTournoi.EN_PAUSE])
@@ -815,3 +821,45 @@ def test_le_signalement_precede_la_garde_d_etat_jamais_l_inverse() -> None:
     tournois.descendance = _peuple(archers=42)
     with pytest.raises(TournoiEnCoursNonSupprimable):
         service.supprimer(tid)
+
+
+# --- Liste des tournois, planche A04 (E17US012) ------------------------------------------------
+# Source : `stories/E17-fidelite-aux-maquettes.md`, E17US012, puce « A04 » de l'arbitrage du
+# 26/09/2026 : INSCRITS (archers du tournoi) et CIBLES sont alimentées.
+
+
+def _liste() -> tuple[ServiceTournois, FauxArcherRepository, FauxInstancesDeGabarit]:
+    archers = FauxArcherRepository()
+    gabarits = FauxInstancesDeGabarit()
+    service = ServiceTournois(
+        FauxTournoiRepository(),
+        FauxDepartRepository(),
+        FauxDerouleRepository(),
+        FauxCompteurEngages(),
+        archers,
+        gabarits,
+    )
+    return service, archers, gabarits
+
+
+def test_la_liste_compte_les_inscrits_et_les_cibles_de_chaque_tournoi() -> None:
+    service, archers, gabarits = _liste()
+    salle = service.creer("Salle", DATE_TOURNOI)
+    vide = service.creer("Vide", DATE_TOURNOI)
+    assert salle.id is not None and vide.id is not None
+    for nom in ("MARTIN", "DURAND", "LE GALL"):
+        archers.ajouter(Archer.creer(nom, "X", salle.id, categorie_id=1))
+    gabarits.instances[salle.id] = GabaritSalle.creer("Salle 18 m", 12).pour_tournoi(salle.id)
+
+    effectifs = {e.tournoi.nom: (e.nb_inscrits, e.nb_cibles) for e in service.lister_en_liste()}
+    # Les inscrits de « Salle » ne débordent pas sur « Vide » : le compte est par tournoi.
+    assert effectifs == {"Salle": (3, 12), "Vide": (0, None)}
+
+
+def test_un_tournoi_sans_plan_de_salle_n_a_pas_de_cibles_plutot_que_zero() -> None:
+    """Sans gabarit, le nombre de cibles est **absent** (`None`), pas `0` : « aucune salle posée »
+    et « une salle de zéro cible » ne se confondent pas à l'écran."""
+    service, _, _ = _liste()
+    service.creer("Sans salle", DATE_TOURNOI)
+    (effectif,) = service.lister_en_liste()
+    assert effectif.nb_cibles is None

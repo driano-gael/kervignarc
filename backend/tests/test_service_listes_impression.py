@@ -218,7 +218,9 @@ def _monde(
     categorie = categories.ajouter(Categorie.creer(tournoi.id, "Sénior Homme"))
     assert categorie.id is not None
 
-    paiements = ServicePaiements(tournois, archers, departs, inscriptions, clubs, FauxHorloge())
+    paiements = ServicePaiements(
+        tournois, archers, departs, inscriptions, clubs, categories, FauxHorloge()
+    )
     service = ServiceListesImpression(
         tournois,
         departs,

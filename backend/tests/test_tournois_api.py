@@ -115,6 +115,33 @@ def test_lister_les_tournois(app_tournois: FastAPI, connecter_admin: ConnecterAd
     assert noms == ["Récent", "Ancien"]
 
 
+def test_la_liste_porte_les_inscrits_et_les_cibles(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E17US012 (A04) : chaque tournoi de la liste porte ses inscrits et ses cibles ; sans plan
+    de salle, `nb_cibles` est `null` (pas `0`)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        tid = client.post("/api/v1/tournois", json={"nom": "Salle", "date": "2026-03-14"}).json()[
+            "id"
+        ]
+        client.post("/api/v1/tournois", json={"nom": "Vide", "date": "2026-03-15"})
+        categorie = client.post(
+            f"/api/v1/tournois/{tid}/categories", json={"libelle": "Senior 1 H"}
+        ).json()["id"]
+        for nom in ("Un", "Deux"):
+            client.post(
+                f"/api/v1/tournois/{tid}/archers",
+                json={"nom": nom, "prenom": "X", "categorie_id": categorie},
+            )
+        modele = client.post("/api/v1/gabarits", json={"nom": "Salle", "nb_cibles": 12}).json()
+        applique = client.put(f"/api/v1/tournois/{tid}/gabarit", json={"modele_id": modele["id"]})
+        assert applique.status_code == 200, applique.text
+        liste = {t["nom"]: t for t in client.get("/api/v1/tournois").json()}
+    assert (liste["Salle"]["nb_inscrits"], liste["Salle"]["nb_cibles"]) == (2, 12)
+    assert (liste["Vide"]["nb_inscrits"], liste["Vide"]["nb_cibles"]) == (0, None)
+
+
 def test_consulter_tournoi_introuvable(app_tournois: FastAPI) -> None:
     """Un identifiant inconnu → 404 avec le code applicatif typé."""
     with TestClient(app_tournois) as client:

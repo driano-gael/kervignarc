@@ -97,6 +97,30 @@ def test_vue_par_archer(app_paiements: FastAPI, connecter_admin: ConnecterAdmin)
     assert [ligne["nom"] for ligne in corps] == ["Deux", "Un"]
 
 
+def test_vue_par_archer_porte_les_colonnes_de_la_planche(
+    app_paiements: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E17US012 (A17) : club et catégorie **nommés**, et l'ancienneté de la dette — datée par
+    l'inscription faite par l'API, `null` une fois tout réglé."""
+    with TestClient(app_paiements) as client:
+        connecter_admin(client)
+        ids = _preparer(client)
+        url = f"/api/v1/tournois/{ids['tid']}/paiements/archers"
+        par_id = {ligne["archer_id"]: ligne for ligne in client.get(url).json()}
+        client.put(
+            f"/api/v1/tournois/{ids['tid']}/paiements/archers/{ids['archer_a']}",
+            json={"paye": True},
+        )
+        apres = {ligne["archer_id"]: ligne for ligne in client.get(url).json()}
+
+    a, b = par_id[ids["archer_a"]], par_id[ids["archer_b"]]
+    assert (a["club"], a["categorie"]) == ("Arc Rennes", "Senior 1 H")
+    assert b["club"] is None
+    # Inscrites par l'API : la dette est **datée** (une date inconnue serait `{"depuis": null}`).
+    assert a["dette"]["depuis"] is not None and b["dette"]["depuis"] is not None
+    assert apres[ids["archer_a"]]["dette"] is None
+
+
 def test_vue_par_club_avec_bucket_sans_club(
     app_paiements: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

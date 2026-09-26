@@ -155,6 +155,9 @@ class FauxLecteurPaiements:
                 prenom="X",
                 club_id=None,
                 recap=RecapPaiement(du_centimes=du, paye_centimes=paye),
+                club=None,
+                categorie=None,
+                dette=None,
             )
         )
 

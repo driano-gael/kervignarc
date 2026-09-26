@@ -96,6 +96,29 @@ def test_ajouter_puis_relire(tmp_path: Path) -> None:
         db.engine.dispose()
 
 
+def test_la_date_d_inscription_fait_l_aller_retour_en_utc(tmp_path: Path) -> None:
+    """E17US012 : `cree_le` se relit **avec** son fuseau (SQLite le rend naïf) ; une inscription
+    sans date (antérieure à la migration `0057`) se relit sans date."""
+    db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
+    try:
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+        datee = repository.ajouter(Inscription.creer(archer_id, depart_id, cree_le=_QUAND))
+        assert datee.id is not None
+        relue = repository.par_id(datee.id)
+        assert relue is not None and relue.cree_le == _QUAND
+        assert relue.cree_le.tzinfo is not None
+
+        repository.supprimer(datee.id)
+        sans_date = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        assert sans_date.id is not None
+        relue = repository.par_id(sans_date.id)
+        assert relue is not None and relue.cree_le is None
+    finally:
+        db.engine.dispose()
+
+
 def test_enregistrer_bascule_paye(tmp_path: Path) -> None:
     """`enregistrer` persiste la bascule de `paye` ; le couple ne change pas."""
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)

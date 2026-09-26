@@ -64,6 +64,7 @@ from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi
+from domain.gabarit_salle import GabaritSalle
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
@@ -259,6 +260,20 @@ class FauxCategorieRepository:
 
     def supprimer(self, categorie_id: CategorieId) -> None:
         del self._categories[categorie_id]
+
+
+class FauxInstancesDeGabarit:
+    """Le seul `par_tournoi` du port `GabaritSalleRepository` : le plan de salle de chaque tournoi.
+
+    Partagé par les décors de `ServiceTournois` (E17US012) ; les cinq `FauxGabaritRepository`
+    locaux, plus larges, servent des services qui écrivent aussi des gabarits.
+    """
+
+    def __init__(self) -> None:
+        self.instances: dict[TournoiId, GabaritSalle] = {}
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> GabaritSalle | None:
+        return self.instances.get(tournoi_id)
 
 
 class FauxDepartRepository:

@@ -283,12 +283,20 @@ def _vers_depart(ligne: DepartORM) -> Depart:
 
 
 def _vers_inscription(ligne: InscriptionORM) -> Inscription:
-    """Traduit une ligne ORM en agrégat de domaine `Inscription` (E02US009)."""
+    """Traduit une ligne ORM en agrégat de domaine `Inscription` (E02US009).
+
+    `cree_le` : SQLite relit un `datetime` **naïf** — on lui rend son fuseau UTC, comme les
+    remboursements. `NULL` reste `None` (inscription antérieure à E17US012).
+    """
+    cree_le = ligne.cree_le
+    if cree_le is not None and cree_le.tzinfo is None:
+        cree_le = cree_le.replace(tzinfo=datetime.UTC)
     return Inscription(
         archer_id=ligne.archer_id,
         depart_id=ligne.depart_id,
         paye=ligne.paye,
         id=ligne.id,
+        cree_le=cree_le,
     )
 
 
@@ -980,6 +988,7 @@ class InscriptionRepositorySQL:
                     archer_id=inscription.archer_id,
                     depart_id=inscription.depart_id,
                     paye=inscription.paye,
+                    cree_le=inscription.cree_le,
                 )
                 session.add(ligne)
                 session.commit()
