@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
+
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -20,7 +22,9 @@ class ImportInscritsRepositorySQL:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def appliquer(self, tournoi_id: TournoiId, plan: PlanImport) -> None:
+    def appliquer(
+        self, tournoi_id: TournoiId, plan: PlanImport, cree_le: datetime.datetime
+    ) -> None:
         try:
             with self._session_factory() as session:
                 clubs: dict[str, ClubId] = {}
@@ -28,7 +32,11 @@ class ImportInscritsRepositorySQL:
                 for ligne in plan.importables:
                     archer_id = self._archer(session, tournoi_id, ligne, clubs, fiches)
                     assert ligne.depart_id is not None
-                    session.add(InscriptionORM(archer_id=archer_id, depart_id=ligne.depart_id))
+                    session.add(
+                        InscriptionORM(
+                            archer_id=archer_id, depart_id=ligne.depart_id, cree_le=cree_le
+                        )
+                    )
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError(

@@ -499,7 +499,12 @@ def create_app(
     # de la **définition** — unique au tournoi —, pas des N copies d'avancement des créneaux, dont
     # la concaténation faussait le plancher.
     app.state.service_tournois = ServiceTournois(
-        tournoi_repository, depart_repository, deroule_repository, compteur_engages
+        tournoi_repository,
+        depart_repository,
+        deroule_repository,
+        compteur_engages,
+        archer_repository,
+        gabarit_repository,
     )
     # `service_departs` est câblé **plus bas**, après `service_completude` : son garde-fou de cycle
     # (E12US008) dépend du port étroit `LecteurAvancementDepart`, que réalise `ServiceCompletude`.
@@ -651,6 +656,7 @@ def create_app(
         inscriptions=inscription_repository,
         lecteur=LecteurFichierInscritsAuto(),
         ecrivain=ImportInscritsRepositorySQL(database.session_factory),
+        horloge=HorlogeSysteme(),
     )
     # Traitement des remboursements (E08US005, ADR-0057) : lister les postes à traiter et les
     # marquer
@@ -671,6 +677,7 @@ def create_app(
         depart_repository,
         inscription_repository,
         club_repository,
+        categorie_repository,
         HorlogeSysteme(),
     )
     # Placement (E03US001 lecture ; E03US004 matérialisation + ajustement, ADR-0024). Le service

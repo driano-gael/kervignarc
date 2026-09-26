@@ -45,6 +45,8 @@ deux appels, et l'état écrit est celui du moment, pas celui de l'aperçu.
 `ImportInscritsRepositorySQL.appliquer` écrit clubs, fiches et inscriptions dans **une** session et
 commite une fois (patron de `fusionner` et de la cascade d'E01US026). Il ne revérifie rien : le plan
 a été calculé dans la même commande sérialisée. Une erreur en cours de route annule tout.
+Les inscriptions sont **datées** de l'instant de la confirmation (`cree_le`, E17US012) : non datées,
+elles passeraient pour les plus anciennes dans l'ancienneté d'une dette.
 
 ### 3. La licence identifie la fiche dans le tournoi
 

@@ -12,7 +12,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
-import type { Tournoi } from '../competition/api'
+import type { TournoiEnListe } from '../competition/api'
 import { getTournois, supprimerTournoi } from '../competition/api'
 import { getApercusJalon } from '../jalons/api'
 import { GestionTournois } from './Tournois'
@@ -28,13 +28,15 @@ vi.mock('../jalons/api', async (importOriginal) => ({
   getApercusJalon: vi.fn(),
 }))
 
-const TERMINE: Tournoi = {
+const TERMINE: TournoiEnListe = {
   id: 12,
   nom: 'Salle 18m',
   date: '2026-03-14',
   lieu: 'Kervignarc',
   type_tournoi: 'non_officiel',
   statut: 'termine',
+  nb_inscrits: 0,
+  nb_cibles: null,
 }
 
 const SIGNALEMENT =

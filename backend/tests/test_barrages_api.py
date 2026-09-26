@@ -122,7 +122,7 @@ class Scenario:
                     phase_id=self.qualif_id,
                 )
             )
-            inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+            inscriptions.ajouter(Inscription(archer.id, self.depart_id))
             self.archers.append(archer.id)
 
 
@@ -176,7 +176,7 @@ def _ajouter_archer(app: FastAPI, scenario: Scenario, valeurs: tuple[str, ...]) 
     # (ADR-0075) : c'est l'inscription qui dit qui tire ici, pas `Archer.tournoi_id`. Sans elle,
     # l'archer « en retard » ne ferait bouger aucun rang et le scénario de péremption serait muet.
     InscriptionRepositorySQL(db.session_factory, AuditRepositorySQL(db.session_factory)).ajouter(
-        Inscription.creer(archer.id, scenario.depart_id)
+        Inscription(archer.id, scenario.depart_id)
     )
     SerieRepositorySQL(
         db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()

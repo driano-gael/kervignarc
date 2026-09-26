@@ -87,11 +87,34 @@ def test_ajouter_puis_relire(tmp_path: Path) -> None:
         repository = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         assert cree.id is not None
         assert (cree.archer_id, cree.depart_id) == (archer_id, depart_id)
         assert cree.paye is False
         assert repository.par_id(cree.id) == cree
+    finally:
+        db.engine.dispose()
+
+
+def test_la_date_d_inscription_fait_l_aller_retour_en_utc(tmp_path: Path) -> None:
+    """E17US012 : `cree_le` se relit **avec** son fuseau (SQLite le rend naïf) ; une inscription
+    sans date (antérieure à la migration `0057`) se relit sans date."""
+    db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
+    try:
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+        datee = repository.ajouter(Inscription.creer(archer_id, depart_id, cree_le=_QUAND))
+        assert datee.id is not None
+        relue = repository.par_id(datee.id)
+        assert relue is not None and relue.cree_le == _QUAND
+        assert relue.cree_le.tzinfo is not None
+
+        repository.supprimer(datee.id)
+        sans_date = repository.ajouter(Inscription(archer_id, depart_id))
+        assert sans_date.id is not None
+        relue = repository.par_id(sans_date.id)
+        assert relue is not None and relue.cree_le is None
     finally:
         db.engine.dispose()
 
@@ -103,7 +126,7 @@ def test_enregistrer_bascule_paye(tmp_path: Path) -> None:
         repository = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         assert cree.id is not None
 
         paye = repository.enregistrer(cree.marquer_paye(True))
@@ -121,7 +144,7 @@ def test_par_archer_et_par_depart(tmp_path: Path) -> None:
         repository = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         assert [i.id for i in repository.par_archer(archer_id)] == [cree.id]
         assert [i.id for i in repository.par_depart(depart_id)] == [cree.id]
     finally:
@@ -136,7 +159,7 @@ def test_par_archer_et_depart_trouve_ou_none(tmp_path: Path) -> None:
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
         assert repository.par_archer_et_depart(archer_id, depart_id) is None
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         trouve = repository.par_archer_et_depart(archer_id, depart_id)
         assert trouve is not None and trouve.id == cree.id
     finally:
@@ -154,9 +177,9 @@ def test_unicite_du_couple_archer_depart(tmp_path: Path) -> None:
         repository = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        repository.ajouter(Inscription.creer(archer_id, depart_id))
+        repository.ajouter(Inscription(archer_id, depart_id))
         with pytest.raises(InfrastructureError):
-            repository.ajouter(Inscription.creer(archer_id, depart_id))
+            repository.ajouter(Inscription(archer_id, depart_id))
     finally:
         db.engine.dispose()
 
@@ -168,7 +191,7 @@ def test_supprimer_retire_l_inscription(tmp_path: Path) -> None:
         repository = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         assert cree.id is not None
         repository.supprimer(cree.id)
         assert repository.par_id(cree.id) is None
@@ -187,7 +210,7 @@ def test_supprimer_l_archer_purge_ses_inscriptions(tmp_path: Path) -> None:
         inscriptions = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+        inscriptions.ajouter(Inscription(archer_id, depart_id))
 
         ArcherRepositorySQL(db.session_factory).supprimer(archer_id)
         assert inscriptions.par_depart(depart_id) == []
@@ -206,7 +229,7 @@ def test_supprimer_le_depart_purge_ses_inscriptions(tmp_path: Path) -> None:
         inscriptions = InscriptionRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
-        inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+        inscriptions.ajouter(Inscription(archer_id, depart_id))
 
         DepartRepositorySQL(db.session_factory).supprimer(depart_id)
         assert inscriptions.par_archer(archer_id) == []
@@ -236,7 +259,7 @@ def test_definir_paye_avec_trace_bascule_et_consigne(tmp_path: Path) -> None:
     try:
         audit = AuditRepositorySQL(db.session_factory)
         repository = InscriptionRepositorySQL(db.session_factory, audit)
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         assert cree.id is not None
         tournoi_id = TournoiRepositorySQL(db.session_factory).lister()[0].id
         assert tournoi_id is not None
@@ -269,7 +292,7 @@ def test_definir_paye_avec_trace_est_atomique_si_la_trace_echoue(tmp_path: Path)
         repository = InscriptionRepositorySQL(
             db.session_factory, _AuditQuiEchoue(db.session_factory)
         )
-        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        cree = repository.ajouter(Inscription(archer_id, depart_id))
         assert cree.id is not None
         tournoi_id = TournoiRepositorySQL(db.session_factory).lister()[0].id
         assert tournoi_id is not None

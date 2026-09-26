@@ -13,6 +13,7 @@ from domain.ports import (
     CategorieRepository,
     ClubRepository,
     DepartRepository,
+    Horloge,
     ImportInscritsRepository,
     InscriptionRepository,
     LecteurFichierInscrits,
@@ -32,6 +33,7 @@ class ServiceImportInscrits:
         inscriptions: InscriptionRepository,
         lecteur: LecteurFichierInscrits,
         ecrivain: ImportInscritsRepository,
+        horloge: Horloge,
     ) -> None:
         self._tournois = tournois
         self._categories = categories
@@ -41,6 +43,7 @@ class ServiceImportInscrits:
         self._inscriptions = inscriptions
         self._lecteur = lecteur
         self._ecrivain = ecrivain
+        self._horloge = horloge
 
     def apercu(self, tournoi_id: TournoiId, contenu: bytes) -> PlanImport:
         """Le rapport de ce que ferait l'import, homonymes non cochés ; n'écrit rien."""
@@ -52,7 +55,9 @@ class ServiceImportInscrits:
         """Écrit toutes les lignes importables en une transaction ; rend le rapport final."""
         plan = self._planifier(tournoi_id, contenu, homonymes_acceptes)
         if plan.importables:
-            self._ecrivain.appliquer(tournoi_id, plan)
+            # Daté comme au guichet (E17US012) : non daté, l'import passerait pour la plus
+            # ancienne dette du tournoi.
+            self._ecrivain.appliquer(tournoi_id, plan, self._horloge.maintenant())
         return plan
 
     def _planifier(

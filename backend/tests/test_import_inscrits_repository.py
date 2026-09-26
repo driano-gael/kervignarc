@@ -26,6 +26,8 @@ from infrastructure.db import (
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
 
+_QUAND = datetime.datetime(2026, 11, 2, 18, 30, tzinfo=datetime.UTC)
+
 
 class _Base:
     def __init__(self, tmp_path: Path) -> None:
@@ -74,12 +76,15 @@ def test_le_plan_cree_clubs_fiches_et_inscriptions(tmp_path: Path) -> None:
     b.ecrivain.appliquer(
         b.tournoi_id,
         _plan(b.creer(1, "1234567A"), b.creer(2, "7654321B", club="MONTOIR", nom="Martin")),
+        _QUAND,
     )
 
     archers = b.archers.par_tournoi(b.tournoi_id)
     assert sorted(a.licence or "" for a in archers) == ["1234567A", "7654321B"]
     assert [club.nom for club in b.clubs.lister()] == ["Montoir"]  # créé une seule fois
-    assert len(b.inscriptions.par_depart(b.depart_id)) == 2
+    inscrites = b.inscriptions.par_depart(b.depart_id)
+    assert len(inscrites) == 2
+    assert {i.cree_le for i in inscrites} == {_QUAND}
 
 
 def test_une_inscription_designee_par_la_ligne_creatrice(tmp_path: Path) -> None:
@@ -94,7 +99,7 @@ def test_une_inscription_designee_par_la_ligne_creatrice(tmp_path: Path) -> None
         fiche_de_la_ligne=1,
     )
 
-    b.ecrivain.appliquer(b.tournoi_id, _plan(b.creer(1, "1234567A"), inscrire))
+    b.ecrivain.appliquer(b.tournoi_id, _plan(b.creer(1, "1234567A"), inscrire), _QUAND)
 
     (archer,) = b.archers.par_tournoi(b.tournoi_id)
     assert archer.id is not None
@@ -109,7 +114,7 @@ def test_les_lignes_non_importables_ne_sont_pas_ecrites(tmp_path: Path) -> None:
         motif="départ",
     )
 
-    b.ecrivain.appliquer(b.tournoi_id, _plan(b.creer(1, None, club=None), rejetee))
+    b.ecrivain.appliquer(b.tournoi_id, _plan(b.creer(1, None, club=None), rejetee), _QUAND)
 
     assert len(b.archers.par_tournoi(b.tournoi_id)) == 1
 
@@ -122,7 +127,9 @@ def test_un_echec_en_cours_de_fichier_n_ecrit_rien(tmp_path: Path) -> None:
     )
 
     with pytest.raises(InfrastructureError):
-        b.ecrivain.appliquer(b.tournoi_id, _plan(b.creer(1, "1234567A"), b.creer(2, "9999999Z")))
+        b.ecrivain.appliquer(
+            b.tournoi_id, _plan(b.creer(1, "1234567A"), b.creer(2, "9999999Z")), _QUAND
+        )
 
     assert [a.licence for a in b.archers.par_tournoi(b.tournoi_id)] == ["9999999Z"]
     assert b.clubs.lister() == []

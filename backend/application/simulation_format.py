@@ -333,7 +333,8 @@ def _peupler(
         # ⚠️ **L'inscrire sur le créneau** : depuis ADR-0075 c'est l'inscription qui fait entrer un
         # archer au classement d'un départ, pas son rattachement au tournoi. Sans elle, la
         # simulation tournerait sur un classement vide — sans erreur, ce qui est le pire cas.
-        harnais.inscriptions.ajouter(Inscription.creer(archer.id, depart_id))
+        # Sans date : le harnais vit en mémoire et aucune dette n'y est lue.
+        harnais.inscriptions.ajouter(Inscription.creer(archer.id, depart_id, cree_le=None))
 
 
 def _phases_jouees(

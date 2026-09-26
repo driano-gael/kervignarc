@@ -1107,7 +1107,7 @@ def test_supprimer_archer_inscrit_sur_un_depart_signale() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer.id, depart_id=1))
+    m.inscriptions.ajouter(Inscription(archer.id, depart_id=1))
     with pytest.raises(ArcherEngage):
         m.archers.supprimer(archer.id)
     assert m.inscrits.par_id(archer.id) is not None
@@ -1122,8 +1122,8 @@ def test_signalement_d_engagement_mentionne_les_inscriptions() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 2))
+    m.inscriptions.ajouter(Inscription(archer.id, 1))
+    m.inscriptions.ajouter(Inscription(archer.id, 2))
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
     assert "2 inscriptions sur des départs" in leve.value.message
@@ -1139,7 +1139,7 @@ def test_signalement_d_engagement_inscription_accorde_au_singulier() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    m.inscriptions.ajouter(Inscription(archer.id, 1))
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
     assert "1 inscription sur un départ" in leve.value.message
@@ -1156,8 +1156,8 @@ def test_signalement_d_engagement_alerte_sur_les_payees_a_rembourser() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 1).marquer_paye(True))
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 2))  # non payée : pas comptée à rembourser
+    m.inscriptions.ajouter(Inscription(archer.id, 1).marquer_paye(True))
+    m.inscriptions.ajouter(Inscription(archer.id, 2))  # non payée : pas comptée à rembourser
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
     assert "dont 1 payée" in leve.value.message
@@ -1173,7 +1173,7 @@ def test_supprimer_archer_inscrit_confirme_efface_l_archer() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    m.inscriptions.ajouter(Inscription(archer.id, 1))
     m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
     assert m.inscrits.par_id(archer.id) is None
 
@@ -1425,7 +1425,7 @@ def test_fusionner_passe_si_une_seule_fiche_a_tire() -> None:
 
 def _inscrire_et_payer(m: Montage, archer_id: int, depart_id: int = 1) -> None:
     """Inscrit l'archer sur un créneau **tarifé** et marque l'inscription payée."""
-    inscription = m.inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+    inscription = m.inscriptions.ajouter(Inscription(archer_id, depart_id))
     assert inscription.id is not None
     m.inscriptions.enregistrer(dataclasses.replace(inscription, paye=True))
 
@@ -1453,7 +1453,7 @@ def test_supprimer_un_archer_non_paye_n_ouvre_rien() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    m.inscriptions.ajouter(Inscription(archer.id, 1))
     m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
     assert m.inscrits.remboursements_ouverts == []
 

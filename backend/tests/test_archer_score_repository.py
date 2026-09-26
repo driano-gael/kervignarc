@@ -43,6 +43,8 @@ from tests.conftest import qualification_de_secours
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
+_LE_02_11 = datetime.datetime(2026, 11, 2, 18, 0, tzinfo=datetime.UTC)
+_LE_20_11 = datetime.datetime(2026, 11, 20, 18, 0, tzinfo=datetime.UTC)
 
 
 def _migrer(url: str) -> None:
@@ -98,6 +100,24 @@ def test_archers_et_scores_bout_en_bout(tmp_path: Path) -> None:
         scores.ajouter(Score.creer(alice.id, 9))
         scores.ajouter(Score.creer(bob.id, 8))
         assert sorted(s.points for s in scores.par_tournoi(tournoi_id)) == [8, 9, 10]
+    finally:
+        db.engine.dispose()
+
+
+def test_compter_par_tournoi_compte_chaque_tournoi_en_une_lecture(tmp_path: Path) -> None:
+    """E17US012 (A04) : l'effectif de chaque tournoi ; un tournoi sans archer est **absent**."""
+    db = _base(tmp_path)
+    try:
+        salle, categorie_salle = _tournoi_et_categorie(db, "Salle")
+        autre, categorie_autre = _tournoi_et_categorie(db, "Autre")
+        vide, _ = _tournoi_et_categorie(db, "Vide")
+        archers = ArcherRepositorySQL(db.session_factory)
+        for nom in ("Un", "Deux", "Trois"):
+            archers.ajouter(Archer.creer(nom, "X", salle, categorie_salle))
+        archers.ajouter(Archer.creer("Seul", "X", autre, categorie_autre))
+
+        assert archers.compter_par_tournoi() == {salle: 3, autre: 1}
+        assert vide not in archers.compter_par_tournoi()
     finally:
         db.engine.dispose()
 
@@ -410,7 +430,7 @@ def test_fusionner_reassigne_inscriptions_et_scores_puis_supprime_le_perdant(
         assert gagnant.id is not None and perdant.id is not None
         depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
-        inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        inscriptions.ajouter(Inscription(perdant.id, depart.id))
         scores.ajouter(Score.creer(perdant.id, 9))
 
         archers.fusionner(gagnant.id, perdant.id)
@@ -448,8 +468,8 @@ def test_fusionner_collision_inscription_garde_une_ligne_et_reporte_le_paiement(
         depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
         # Le gagnant est inscrit **non payé** ; le perdant **payé** sur le même créneau.
-        inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
-        inscrit_perdant = inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        inscriptions.ajouter(Inscription(gagnant.id, depart.id))
+        inscrit_perdant = inscriptions.ajouter(Inscription(perdant.id, depart.id))
         inscriptions.enregistrer(inscrit_perdant.marquer_paye(True))
 
         archers.fusionner(gagnant.id, perdant.id)
@@ -457,6 +477,47 @@ def test_fusionner_collision_inscription_garde_une_ligne_et_reporte_le_paiement(
         restantes = inscriptions.par_archer(gagnant.id)
         assert [(i.depart_id, i.paye) for i in restantes] == [(depart.id, True)]
         assert inscriptions.par_archer(perdant.id) == []
+    finally:
+        db.engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("date_gagnant", "date_perdant", "attendue"),
+    [
+        # Le perdant était inscrit **avant** : sa date survit, la dette ne rajeunit pas.
+        (_LE_20_11, _LE_02_11, _LE_02_11),
+        # Le perdant date d'avant la migration 0057 : la fusion reste « date inconnue ».
+        (_LE_20_11, None, None),
+    ],
+)
+def test_fusionner_collision_garde_la_plus_ancienne_date_d_inscription(
+    tmp_path: Path,
+    date_gagnant: datetime.datetime | None,
+    date_perdant: datetime.datetime | None,
+    attendue: datetime.datetime | None,
+) -> None:
+    """E17US012 (revue axe D) : sur collision, l'inscription gardée prend la date fusionnée —
+    sans quoi A17 afficherait une dette plus récente qu'elle n'est."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        departs = DepartRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+        gagnant = archers.ajouter(Archer.creer("Martin", "Sophie", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Martin", "Sophie", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1400, "09:00"))
+        assert depart.id is not None
+        inscriptions.ajouter(Inscription(gagnant.id, depart.id, cree_le=date_gagnant))
+        inscriptions.ajouter(Inscription(perdant.id, depart.id, cree_le=date_perdant))
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        (restante,) = inscriptions.par_archer(gagnant.id)
+        assert restante.cree_le == attendue
     finally:
         db.engine.dispose()
 
@@ -481,9 +542,9 @@ def test_fusionner_collision_ne_deprecie_pas_un_paiement_du_gagnant(tmp_path: Pa
         assert gagnant.id is not None and perdant.id is not None
         depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
-        inscrit_gagnant = inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
+        inscrit_gagnant = inscriptions.ajouter(Inscription(gagnant.id, depart.id))
         inscriptions.enregistrer(inscrit_gagnant.marquer_paye(True))
-        inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        inscriptions.ajouter(Inscription(perdant.id, depart.id))
 
         archers.fusionner(gagnant.id, perdant.id)
 
@@ -514,8 +575,8 @@ def test_fusionner_collision_les_deux_non_payes_reste_non_paye(tmp_path: Path) -
         assert gagnant.id is not None and perdant.id is not None
         depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
-        inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
-        inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        inscriptions.ajouter(Inscription(gagnant.id, depart.id))
+        inscriptions.ajouter(Inscription(perdant.id, depart.id))
 
         archers.fusionner(gagnant.id, perdant.id)
 
@@ -553,8 +614,8 @@ def test_fusionner_collision_cascade_le_placement_de_l_inscription_supprimee(
         assert gagnant.id is not None and perdant.id is not None
         depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
-        insc_gagnant = inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
-        insc_perdant = inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        insc_gagnant = inscriptions.ajouter(Inscription(gagnant.id, depart.id))
+        insc_perdant = inscriptions.ajouter(Inscription(perdant.id, depart.id))
         assert insc_gagnant.id is not None and insc_perdant.id is not None
         placements.poser_plusieurs(
             depart.id,

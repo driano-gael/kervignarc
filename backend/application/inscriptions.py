@@ -89,7 +89,9 @@ class ServiceInscriptions:
                 f"Le départ n° {depart.numero} est complet "
                 f"({depart.quota} inscrit{'s' if depart.quota > 1 else ''} maximum)."
             )
-        inscription = self._inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+        inscription = self._inscriptions.ajouter(
+            Inscription.creer(archer_id, depart_id, cree_le=self._horloge.maintenant())
+        )
         return InscriptionDetaillee(inscription, depart)
 
     def lister_par_archer(self, archer_id: ArcherId) -> list[InscriptionDetaillee]:

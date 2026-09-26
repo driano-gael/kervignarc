@@ -1,7 +1,7 @@
 """le n° de licence de l'archer, unique dans le tournoi — E02US007, ADR-0115
 
 Revision ID: 0058_archer_licence
-Revises: 0056_ancrage_par_identite
+Revises: 0057_inscription_cree_le
 Create Date: 2026-09-26
 
 Colonne **nullable** : la licence reste facultative au guichet (ADR-0014). L'unicité est un index
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0058_archer_licence"
-down_revision = "0056_ancrage_par_identite"
+down_revision = "0057_inscription_cree_le"
 branch_labels = None
 depends_on = None
 

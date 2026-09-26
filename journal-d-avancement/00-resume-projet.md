@@ -230,6 +230,14 @@ scoreur, compte désormais ce qui est **saisi**. Et le **hors-ligne** n'est plus
 saisie continue*. Détail dans
 [`2026-09-24-20h02-la-tablette-prend-sa-largeur.md`](2026-09-24-20h02-la-tablette-prend-sa-largeur.md).
 
+Le **26/09/2026**, les dernières listes de l'administration ont rejoint leurs planches : **tournois,
+scoreurs, postes de cible et paiements** se lisent en tableaux à colonnes nommées. La liste des
+tournois donne le nombre d'**inscrits** et de **cibles** de chacun ; les paiements s'ouvrent sur un
+bandeau **attendu / encaissé / restant dû / archers concernés** et disent, pour chaque archer,
+**depuis quand** il doit. Les colonnes que l'application ne sait pas remplir ont été retirées des
+planches plutôt qu'affichées vides. Détail dans
+[`2026-09-26-11h43-les-listes-de-l-admin-en-tableaux.md`](2026-09-26-11h43-les-listes-de-l-admin-en-tableaux.md).
+
 ---
 
 ## Ce qui a été construit, par blocs
@@ -616,10 +624,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **151 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E02US007`,
+- **152 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E02US007`,
   **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
-  d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US007`, aussi à
-  **surface visible** : les **blasons** s'éditent dans un panneau à côté
+  d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US012` : les
+  listes des **tournois, scoreurs, postes et paiements** passent en tableaux à colonnes nommées, avec
+  les inscrits et les cibles de chaque tournoi, et l'ancienneté de chaque dette. Juste avant,
+  `E17US007` : les **blasons** s'éditent dans un panneau à côté
   de la liste, et les **inscriptions** s'ouvrent sur une recherche et quatre compteurs (inscrits,
   non placés, non réglés, doublons) au lieu de la liste entière. Juste avant, `E17US011` : sur la
   tablette de cible, la **ligne de chaque

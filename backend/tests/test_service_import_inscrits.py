@@ -32,9 +32,11 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxInscriptionRepository,
     FauxTournoiRepository,
+    HorlogeFigee,
 )
 
 _CONTENU = b"fichier"
+_INSTANT = datetime.datetime(2026, 11, 2, 18, 30, tzinfo=datetime.UTC)
 
 
 class LecteurFactice:
@@ -49,10 +51,12 @@ class LecteurFactice:
 
 class EcrivainFactice:
     def __init__(self) -> None:
-        self.appliques: list[tuple[TournoiId, PlanImport]] = []
+        self.appliques: list[tuple[TournoiId, PlanImport, datetime.datetime]] = []
 
-    def appliquer(self, tournoi_id: TournoiId, plan: PlanImport) -> None:
-        self.appliques.append((tournoi_id, plan))
+    def appliquer(
+        self, tournoi_id: TournoiId, plan: PlanImport, cree_le: datetime.datetime
+    ) -> None:
+        self.appliques.append((tournoi_id, plan, cree_le))
 
 
 def _ligne(numero: int, licence: str | None, depart: int = 1, nom: str = "Dupont") -> LigneFichier:
@@ -93,6 +97,7 @@ class _Montage:
             inscriptions=self.inscriptions,
             lecteur=self.lecteur,
             ecrivain=self.ecrivain,
+            horloge=HorlogeFigee(_INSTANT),
         )
 
 
@@ -111,9 +116,11 @@ def test_confirmer_ecrit_le_plan_des_lignes_importables() -> None:
 
     plan = m.service.importer(m.tournoi_id, _CONTENU, frozenset())
 
-    ((tournoi_id, applique),) = m.ecrivain.appliques
+    ((tournoi_id, applique, cree_le),) = m.ecrivain.appliques
     assert tournoi_id == m.tournoi_id
     assert applique == plan
+    # E17US012 : une inscription non datée passerait pour la plus ancienne dette du tournoi.
+    assert cree_le == _INSTANT
     assert [ligne.ligne.numero for ligne in plan.importables] == [1]
     assert [ligne.ligne.numero for ligne in plan.rejetees] == [2]
 
@@ -145,7 +152,7 @@ def test_l_instantane_ne_voit_que_le_tournoi_importe() -> None:
     ailleurs = m.archers.ajouter(Archer.creer("Dupont", "Jeanne", autre.id, 1, licence="1234567A"))
     autre_depart = m.departs.ajouter(Depart.creer(autre.id, 1, 0, "10:00"))
     assert ailleurs.id is not None and autre_depart.id is not None
-    m.inscriptions.ajouter(Inscription.creer(ailleurs.id, autre_depart.id))
+    m.inscriptions.ajouter(Inscription.creer(ailleurs.id, autre_depart.id, cree_le=None))
 
     plan = m.service.apercu(m.tournoi_id, _CONTENU)
 

@@ -19,6 +19,18 @@ export interface LignePaiementArcher {
   // `null` = archer sans club (regroupé sous « Sans club » dans la vue par club, ADR-0014).
   club_id: number | null
   recap: RecapPaiement
+  // Colonnes de la planche A17 (E17US012) : les **libellés** du club et de la catégorie.
+  club: string | null
+  categorie: string | null
+  // `null` : l'archer ne doit rien. `{ depuis: null }` : il doit, depuis une date **inconnue**.
+  dette: Dette | null
+  // 0 : l'archer n'est inscrit à aucun créneau — à ne pas confondre avec un créneau gratuit.
+  nb_inscriptions: number
+}
+
+// Ancienneté d'une dette : l'instant (ISO UTC) de la plus ancienne inscription non réglée.
+export interface Dette {
+  depuis: string | null
 }
 
 export interface RecapClub {

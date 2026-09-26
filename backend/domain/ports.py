@@ -270,7 +270,9 @@ class ImportInscritsRepository(Protocol):
     commande de la file d'écriture (règle 7), sur un instantané que rien n'a pu changer.
     """
 
-    def appliquer(self, tournoi_id: TournoiId, plan: PlanImport) -> None: ...
+    def appliquer(
+        self, tournoi_id: TournoiId, plan: PlanImport, cree_le: datetime.datetime
+    ) -> None: ...
 
 
 class InscriptionRepository(Protocol):
