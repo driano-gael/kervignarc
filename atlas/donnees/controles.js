@@ -142,6 +142,18 @@ window.ATLAS.controles = {
    "sujet": "ADR-0086"
   },
   {
+   "code": "portage-non-verifiable",
+   "message": "annonce InterVariable.woff2, OFL.txt dans « frontend/src/assets/fonts/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0116"
+  },
+  {
+   "code": "portage-non-verifiable",
+   "message": "annonce swap, input, select, textarea dans « frontend/src/index.css », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0116"
+  },
+  {
    "code": "portage-symbole-absent",
    "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
@@ -312,6 +324,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 51
+  "signaux": 53
  }
 };

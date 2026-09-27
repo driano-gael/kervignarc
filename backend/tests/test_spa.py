@@ -8,12 +8,14 @@ donc pas d'un vrai build (job CI backend, dépôt fraîchement cloné).
 
 from __future__ import annotations
 
+import mimetypes
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from api.spa import frontend_dist_dir
+from api.spa import TYPES_DU_BUILD, frontend_dist_dir
 from bootstrap.composition import create_app
 
 
@@ -138,6 +140,57 @@ def test_le_repli_ne_sert_du_html_qu_a_une_navigation(tmp_path: Path) -> None:
             assert client.get("/assets/app.js").status_code == 200
     finally:
         app.state.database.engine.dispose()
+
+
+@pytest.fixture
+def registre_hostile() -> Iterator[None]:
+    """Reproduit un registre Windows qui écrase la table de `mimetypes`, sur tout OS.
+
+    **Chaque** extension épinglée est empoisonnée (`.woff2` retirée) d'un type qu'aucune n'a : un
+    paramètre que la table par défaut sert déjà juste ne prouverait rien. `init()` restaure.
+    """
+    mimetypes.init()
+    for extension in TYPES_DU_BUILD:
+        mimetypes.add_type("application/octet-stream", extension)
+    mimetypes.types_map.pop(".woff2", None)
+    yield
+    mimetypes.init()
+
+
+@pytest.mark.usefixtures("registre_hostile")
+@pytest.mark.parametrize(("extension", "attendu"), sorted(TYPES_DU_BUILD.items()))
+def test_le_build_est_servi_avec_ses_types(tmp_path: Path, extension: str, attendu: str) -> None:
+    """E17US005 : ce que le build sert part avec son type, quoi que dise le registre du poste.
+
+    Un `.js` en `text/plain` est refusé comme module (page blanche), un `.html` s'affiche en
+    source ; une police mal typée est un défaut du jour J que la CI Linux ne voit pas.
+    """
+    dist = _faux_build(tmp_path / "dist")
+    fichier = f"fichier-abc123{extension}"
+    (dist / "assets" / fichier).write_bytes(b"contenu")
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    app = create_app(url, frontend_dist=dist)
+    try:
+        with TestClient(app) as client:
+            reponse = client.get(f"/assets/{fichier}", headers={"accept": "*/*"})
+            assert reponse.status_code == 200
+            assert reponse.headers["content-type"].split(";")[0] == attendu
+    finally:
+        app.state.database.engine.dispose()
+
+
+def test_chaque_extension_du_build_est_epinglee() -> None:
+    """Les actifs du dépôt (`public/`, et `src/assets/` où ADR-0116 range les prochains) sont
+    lus, pas recopiés : un `.png` ou un `robots.txt` ajouté fait rougir ici. Seuls `.html`,
+    `.js` et `.css` sont écrits en dur — Vite les émet par construction."""
+    front = Path(__file__).resolve().parents[2] / "frontend"
+    extensions = {".html", ".js", ".css"}
+    for dossier in (front / "public", front / "src" / "assets"):
+        assert dossier.is_dir(), f"{dossier} absent : le balayage serait vide, donc vert"
+        extensions |= {
+            f.suffix for f in dossier.rglob("*") if f.is_file() and not f.name.startswith(".")
+        }
+    assert extensions <= set(TYPES_DU_BUILD)
 
 
 def test_repertoire_dist_par_defaut_pointe_vers_le_front(monkeypatch: pytest.MonkeyPatch) -> None:

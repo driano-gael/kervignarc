@@ -625,8 +625,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **153 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E02US007`,
-  **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
+- **154 US livrées** (mergées, revues, CI verte) à la date du 27/09/2026 — la dernière, `E17US005`,
+  à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
+  sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
+  sienne. Juste avant, `E02US007`, qui **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
   d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US006` : un
   bouton qui **supprime ou annule** ne partage plus la couleur des **alertes** — il se reconnaît à sa
   forme (contour épais, couleur du texte), et l'ambre ne veut plus dire que « attention ». Juste
@@ -897,8 +899,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   lignes. Décision de fond au passage : **les maquettes font foi**
   ([ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) —
   un écart entre un écran et sa planche est désormais un **défaut constatable**, plus une divergence
-  que personne n'avait à relever. **Deux points attendent une réponse du commanditaire** : embarquer
-  la police du dossier de maquettes (elle ne se chargera pas le jour J, qui tourne sans internet) et
+  que personne n'avait à relever. **Un point attend une réponse du commanditaire** *(ils étaient deux ;
+  la police a été embarquée le 26/09/2026, `E17US005`)* :
   la **couleur d'une action irréversible**, que la charte ne prévoit pas — aujourd'hui la même que
   celle d'un avertissement.
   *(⚠️ Ces quatre US étaient **absentes de ce résumé** jusqu'au 08/08/2026, alors que le tracker les

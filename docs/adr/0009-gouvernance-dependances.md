@@ -56,3 +56,4 @@ est porté par la **CI** (EPIC-00 / E00US003).
 
 `guide-architecture.md` §3 et §12 ; `docs/dependances.md` ; ADR-0002 ; ADR-0008 ;
 CDC technique §3 ; EPIC-00 (E00US003 — CI bloquante).
+Étendu aux **actifs embarqués** (fichiers versionnés sans manifeste) par [ADR-0116](0116-un-actif-embarque-est-gouverne-comme-une-dependance.md).

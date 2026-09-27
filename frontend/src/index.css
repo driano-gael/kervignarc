@@ -139,13 +139,21 @@
   }
 }
 
+/* `DV-07` — Inter **embarquée** : le fichier, sa plage de graisses et l'absence de `local()` sont
+   justifiés par ADR-0116. ⚠️ Une graisse employée hors de `font-weight` ci-dessous serait rendue
+   par une voisine sans erreur visible : `shared/police.test.ts` le vérifie. */
+@font-face {
+  font-family: Inter;
+  src: url('./assets/fonts/InterVariable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Typographie et bases non colorées — communes aux thèmes. */
 :root {
-  /* DETTE-043 — `DV-07` impose **Inter**, et elle n'est **pas embarquée** : sur un poste qui ne l'a
-     pas installée, le repli est silencieux, et le jour J tourne sans internet pour la télécharger.
-     L'embarquer est un ajout d'actif à arbitrer (règle 11). La pile est exactement celle des
-     maquettes, de sorte que l'application et les planches se dégradent vers la **même** police —
-     une comparaison écran ↔ planche reste donc valable sans Inter. */
+  /* La pile reste celle des maquettes (`maquettes/assets/systeme.css`, `--ui`) : Inter est servie
+     par l'application, les replis ne jouent plus que si le fichier est introuvable. */
   --sans: Inter, 'Inter var', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
@@ -158,6 +166,15 @@
   background: var(--surface-0);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Les champs de formulaire n'héritent pas de la police : le navigateur leur impose la sienne et
+   remet les chiffres en chasse variable. Taille non héritée — chaque écran règle la sienne. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-variant-numeric: inherit;
 }
 
 * {

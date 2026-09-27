@@ -18,3 +18,4 @@ atlas/donnees/*.js linguist-generated=true
 *.png binary
 *.svg text eol=lf
 *.ico binary
+*.woff2 binary

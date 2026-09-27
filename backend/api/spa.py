@@ -8,6 +8,7 @@ racine `/`, pour ne jamais masquer `/api/v1/…`, `/ws`, `/health` ni `/docs`.
 
 from __future__ import annotations
 
+import mimetypes
 import os
 from pathlib import Path
 
@@ -18,6 +19,20 @@ from starlette.responses import Response
 from starlette.types import Scope
 
 _ENV_VAR = "KERVIGNARC_FRONTEND_DIST"
+
+# ⚠️ Sous Windows, `mimetypes` lit le registre, qui **écrase** sa table : un `.html` ou un `.js`
+# déclaré `text/plain` par un logiciel tiers afficherait le source ou une page blanche, et
+# `.woff2` n'y figure pas. Tout ce que le build sert est épinglé ; `test_spa.py` confronte cette
+# table aux extensions de `public/` et de `src/assets/` — ADR-0116.
+TYPES_DU_BUILD: dict[str, str] = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".mjs": "text/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+    ".txt": "text/plain",
+}
 
 # Premiers segments qui **appartiennent au serveur** et ne se replient jamais vers `index.html`
 # (E14US003). Sous ces chemins, une URL inconnue est une **vraie erreur** du client : lui renvoyer
@@ -94,4 +109,6 @@ def monter_spa(app: FastAPI, dist_dir: Path) -> None:
     assuré par `_StatiquesSpa` — la SPA a désormais des routes (`/admin/…`, `/cible`, `/scoreur`,
     `/public`), donc un rechargement sur une URL profonde doit rendre l'application, pas un 404.
     """
+    for extension, type_mime in TYPES_DU_BUILD.items():
+        mimetypes.add_type(type_mime, extension)
     app.mount("/", _StatiquesSpa(directory=str(dist_dir), html=True), name="spa")
