@@ -203,7 +203,7 @@ Registre de l'affiche événement : **grunge / stencil**, lettres éraillées, c
 | Rôle | Token | Thème sombre | Sur `#1D1D1B` | Thème clair | Sur `#FFFFFF` |
 |---|---|---|---|---|---|
 | **Alerte / critique** | `--danger` | **`#FFB000`** | **9,22:1** | **`#9F6D00`** | **4,50:1** |
-| **Alerte renforcée** | `--danger-strong` | `#FFD400` | 11,79:1 | `⟦à dériver⟧` | — |
+| **Alerte renforcée** | `--danger-strong` | `#FFD400` | 11,79:1 | `#7A5400` ⟦DÉRIVÉ⟧ | 6,78:1 |
 | **Succès / feu vert** | `--success` | `#22D3AA` | 8,82:1 | `⟦à dériver⟧` | — |
 | **Info / live** | `--info` | `#38BDF8` | 7,88:1 | `⟦à dériver⟧` | — |
 | ~~Orange `#FF6B35`~~ | — | **écarté** | 5,95:1 | — | **se noie dans le rouge club (2,34:1)** |
@@ -220,6 +220,11 @@ Registre de l'affiche événement : **grunge / stencil**, lettres éraillées, c
 ambre plein, texte anthracite**. Sur fond sombre, un aplat lumineux est le signal le plus fort disponible, et
 il est **structurellement impossible à confondre** avec un accent de marque (rouge, sombre, en surface fine).
 Rappel `P-4` (CDC UX) : **l'alerte chiffre son impact** — la couleur ne fait que la rendre visible.
+
+**L'action destructrice n'a pas de couleur — `DV-03`, [ADR-0114](docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)
+(arbitré le 26/09/2026).** L'ambre est réservé à l'alerte : « supprimer le tournoi » ne doit pas se lire
+comme « poste hors ligne ». Le destructeur se signale par la **forme** — contour épais en encre neutre,
+dialogue à filet haut dont « Annuler » prend le focus — et **aucun** token de cette palette ne s'y applique.
 
 > **Ne jamais coder par la seule couleur** (§6) : tout état porte **couleur + icône + texte**.
 
