@@ -22,6 +22,9 @@ dependencies = [
     # couvre pas (une feuille nommée, l'en-tête figé, des montants réellement numériques). Pur
     # Python, licence MIT, une seule transitive (`et-xmlfile`, MIT) ; embarquable PyInstaller.
     "openpyxl==3.1.5",
+    # Lecture du classeur Résult'Arc (E02US007, ADR-0115) : un `.xls` OLE2 que `openpyxl` ne lit
+    # pas. Pur Python, licence BSD, aucune transitive ; lecture seule, pas d'XML (pas de XXE).
+    "xlrd==2.0.2",
 ]
 
 [project.optional-dependencies]
@@ -94,6 +97,12 @@ ignore_missing_imports = true
 # dépendance de plus (règle 11) pour type-vérifier une quinzaine d'appels.
 [[tool.mypy.overrides]]
 module = ["openpyxl.*"]
+ignore_missing_imports = true
+
+# DETTE-102 — xlrd (E02US007) : même cas, même remède. Trois appels, dans
+# `infrastructure/import_inscrits/resultarc.py` ; aucun paquet de stubs retenu (règle 11).
+[[tool.mypy.overrides]]
+module = ["xlrd.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

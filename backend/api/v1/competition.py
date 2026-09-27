@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from api.dependances import autoriser_saisie, exiger_admin
+from api.dependances import autoriser_saisie, est_admin, exiger_admin
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from domain.archer import Archer
@@ -41,6 +42,7 @@ class AjouterArcherRequete(BaseModel):
     categorie_id: int
     club_id: int | None = None
     autoriser_homonyme: bool = False
+    licence: str | None = None
 
 
 class ModifierArcherRequete(BaseModel):
@@ -56,6 +58,9 @@ class ModifierArcherRequete(BaseModel):
     nom: str
     prenom: str
     categorie_id: int
+    # **Requis** (`null` explicite pour effacer) : c'est un PUT total, un défaut à `None` effacerait
+    # la licence de tout client qui omet le champ — la confusion que `Archer.modifier` refuse.
+    licence: str | None
     club_id: int | None = None
     autoriser_homonyme: bool = False
     autoriser_changement_categorie: bool = False
@@ -98,6 +103,7 @@ class ArcherReponse(BaseModel):
     club_id: int | None
     handicap_officiel: int | None
     handicap_surcharge: int | None
+    licence: str | None
     handicap: int
     """Le handicap **effectif** — la surcharge si elle existe, sinon l'officiel, sinon 0.
 
@@ -120,6 +126,7 @@ class ArcherReponse(BaseModel):
             club_id=archer.club_id,
             handicap_officiel=archer.handicap_officiel,
             handicap_surcharge=archer.handicap_surcharge,
+            licence=archer.licence,
             handicap=archer.handicap,
         )
 
@@ -279,6 +286,7 @@ async def ajouter_archer(
                 requete.categorie_id,
                 requete.club_id,
                 requete.autoriser_homonyme,
+                requete.licence,
             )
         )
     )
@@ -290,11 +298,16 @@ async def lister_archers(tournoi_id: int, request: Request) -> list[ArcherRepons
     """Renvoie les inscrits d'un tournoi, triés par nom puis prénom (lecture hors boucle).
 
     Alimente l'écran d'administration des archers (E02US003). Lecture **ouverte**, comme le
-    classement : la liste des inscrits est affichée publiquement le jour J.
+    classement : la liste des inscrits est affichée publiquement le jour J. ⚠️ La **licence** n'y est
+    servie qu'à une session admin (donnée personnelle, arbitrage du 26/09/2026, ADR-0115).
     """
     service: ServiceArchers = request.app.state.service_archers
     archers = await run_in_threadpool(service.lister, tournoi_id)
-    return [ArcherReponse.de_agregat(archer) for archer in archers]
+    admin = est_admin(request)
+    return [
+        ArcherReponse.de_agregat(archer if admin else replace(archer, licence=None))
+        for archer in archers
+    ]
 
 
 @router.put(
@@ -308,7 +321,8 @@ async def modifier_archer(
     """Corrige un archer inscrit (**écriture**, session requise — E10US001 ; E02US003).
 
     Renvoie `409 homonyme_archer` ou `409 changement_categorie_archer_engage` — des
-    **signalements**, que le client lève en rejouant l'appel avec le drapeau correspondant.
+    **signalements**, que le client lève en rejouant l'appel avec le drapeau correspondant — et
+    `409 licence_deja_prise`, un **refus** qu'aucun drapeau ne lève (E02US007).
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
@@ -322,6 +336,7 @@ async def modifier_archer(
                 requete.club_id,
                 requete.autoriser_homonyme,
                 requete.autoriser_changement_categorie,
+                requete.licence,
             )
         )
     )

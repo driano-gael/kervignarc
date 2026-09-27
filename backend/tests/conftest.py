@@ -227,7 +227,11 @@ class FauxArcherRepository:
         # réassignation des inscriptions/scores/séries est un contrat d'adapter (prouvé au niveau du
         # repository, `test_archer_score_repository`), invisible ici — comme `supprimer` ne purge
         # pas la descendance dans ce faux. Un faux qui la simulerait recoderait la règle.
-        del self._archers[perdant_id]
+        perdant = self._archers.pop(perdant_id)
+        gagnant = self._archers[gagnant_id]
+        # E02US007 : le report de licence est un effet **au niveau archer**, observable ici.
+        if gagnant.licence is None and perdant.licence is not None:
+            self._archers[gagnant_id] = dataclasses.replace(gagnant, licence=perdant.licence)
 
 
 class FauxCategorieRepository:

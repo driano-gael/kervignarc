@@ -368,6 +368,7 @@ function FormulaireArcher({
   const [prenom, setPrenom] = useState(archer.prenom)
   const [categorieId, setCategorieId] = useState(String(archer.categorie_id))
   const [clubId, setClubId] = useState(archer.club_id === null ? '' : String(archer.club_id))
+  const [licence, setLicence] = useState(archer.licence ?? '')
   // Handicap (E05US015) : **ressource séparée**, donc état et mutation séparés. Le mêler à
   // `modifier` obligerait à renvoyer nom/prénom/catégorie à chaque ajustement de handicap — et
   // écraserait une correction d'état civil faite entre-temps depuis un autre poste.
@@ -420,6 +421,7 @@ function FormulaireArcher({
           prenom,
           categorie_id: Number(categorieId),
           club_id: clubId === '' ? null : Number(clubId),
+          licence: licence.trim() === '' ? null : licence,
           ...cumul,
         },
       },
@@ -512,6 +514,13 @@ function FormulaireArcher({
             </option>
           ))}
         </select>
+        <input
+          className="formulaire__champ"
+          value={licence}
+          onChange={(e) => surChamp(setLicence)(e.target.value)}
+          placeholder="N° de licence (facultatif)"
+          aria-label="N° de licence de l'archer"
+        />
         <div className="formulaire__actions">
           <button type="submit" disabled={modifier.isPending || incomplet}>
             Enregistrer

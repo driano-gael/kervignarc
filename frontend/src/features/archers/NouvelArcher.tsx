@@ -19,6 +19,7 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
   const [nomArcher, setNomArcher] = useState('')
   const [prenomArcher, setPrenomArcher] = useState('')
   const [clubId, setClubId] = useState('')
+  const [licence, setLicence] = useState('')
   const [categorieId, setCategorieId] = useState('')
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
@@ -55,6 +56,7 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
         prenom: prenomArcher,
         categorie_id: Number(categorieId),
         club_id: clubId === '' ? null : Number(clubId),
+        licence: licence.trim() === '' ? null : licence,
         autoriser_homonyme: autoriserHomonyme,
       },
       // Ni le club ni la catégorie ne sont réinitialisés : on inscrit souvent plusieurs archers
@@ -63,6 +65,7 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
         onSuccess: () => {
           setNomArcher('')
           setPrenomArcher('')
+          setLicence('')
         },
       },
     )
@@ -90,6 +93,14 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
           onChange={(e) => surIdentite(setPrenomArcher)(e.target.value)}
           placeholder="Prénom de l'archer"
           aria-label="Prénom de l'archer"
+        />
+        {/* Facultative (ADR-0014) ; elle entre dans l'homonymie depuis ADR-0115, d'où `surIdentite`. */}
+        <input
+          className="formulaire__champ"
+          value={licence}
+          onChange={(e) => surIdentite(setLicence)(e.target.value)}
+          placeholder="N° de licence (facultatif)"
+          aria-label="N° de licence de l'archer"
         />
         <select
           className="formulaire__champ"

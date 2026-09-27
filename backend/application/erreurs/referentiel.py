@@ -153,6 +153,16 @@ class HomonymeArcher(ApplicationError):
     code = "homonyme_archer"
 
 
+class LicenceDejaPrise(ApplicationError):
+    """Un autre inscrit du tournoi porte déjà cette licence (E02US007) → 409.
+
+    **Un refus, pas un signalement** — l'inverse d'`HomonymeArcher` : même licence = même
+    personne, il n'y a rien à confirmer. ADR-0115.
+    """
+
+    code = "licence_deja_prise"
+
+
 class ChangementCategorieArcherEngage(ApplicationError):
     """Édition suspendue : on change la catégorie d'un archer qui a déjà tiré (E02US003) → 409.
 

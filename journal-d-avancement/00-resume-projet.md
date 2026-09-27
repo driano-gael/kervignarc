@@ -15,7 +15,7 @@ que le contexte est petit et local.
 ## L'état en une phrase
 
 **Les fondations techniques sont complètes, la configuration d'un tournoi et les inscriptions
-fonctionnent, le placement des archers sur les cibles existe, la saisie des scores de qualification
+fonctionnent — une liste d'inscrits s'importe désormais d'un fichier Ianseo ou Résult'Arc —, le placement des archers sur les cibles existe, la saisie des scores de qualification
 tourne en temps réel — y compris quand le wifi saute — et un tournoi de qualification se suit
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
 public le consulte en direct sans compte — jusqu'à suivre un archer, voir sa feuille de marque se
@@ -324,8 +324,13 @@ ne doit pas réécrire le tournoi 2026 déjà archivé. Détail dans
   (faute de frappe, prénom abrégé) classé « à vérifier ». L'organisateur choisit la fiche à **garder** ;
   l'autre y est **fusionnée** (ses inscriptions et scores sont repris) puis supprimée. Rien n'est perdu,
   et le geste demande une confirmation explicite.
-
-*Restent à venir : import de fichiers d'inscription.*
+- **Importer une liste d'inscrits** : l'organisateur dépose l'export **Ianseo** ou le classeur
+  **Résult'Arc** ; un **aperçu** dit, ligne à ligne, qui sera créé, qui est refusé et **pourquoi**
+  (catégorie introuvable, départ inexistant, départ complet…), et quels homonymes il doit trancher.
+  Rien n'est enregistré avant « Importer », et l'import passe **en entier ou pas du tout**. Le
+  **n° de licence** entre dans la fiche de l'archer : un même licencié n'a qu'une fiche par tournoi,
+  même s'il tire à plusieurs départs. Détail dans
+  [`2026-09-26-14h06-importer-une-liste-d-inscrits.md`](2026-09-26-14h06-importer-une-liste-d-inscrits.md).
 
 ### 4. Les rôles et l'accès — *socle en place*
 
@@ -609,8 +614,8 @@ Dans l'ordre de valeur prévu par le backlog :
 3. **Le placement intégral 1→N** (le grand format du classeur 120) est **fait** ; l'**écran de salle**
    aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
-4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
-   et restauration.
+4. **Confort et robustesse** : presets de barèmes, déroulé horaire, sauvegarde et restauration
+   (l'import inscript'arc est **fait**, `E02US007`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
@@ -620,12 +625,14 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **152 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E17US006`,
-  étant aussi la dernière à **surface visible** : un bouton qui **supprime ou annule** ne partage
-  plus la couleur des **alertes** — il se reconnaît à sa forme (contour épais, couleur du texte), et
-  l'ambre ne veut plus dire que « attention ». Juste avant, `E17US012` : les listes des **tournois, scoreurs, postes et
-  paiements** passent en tableaux à colonnes nommées, avec les inscrits et les cibles de chaque
-  tournoi, et l'ancienneté de chaque dette. Juste avant, `E17US007` : les **blasons** s'éditent dans un panneau à côté
+- **153 US livrées** (mergées, revues, CI verte) à la date du 26/09/2026 — la dernière, `E02US007`,
+  **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
+  d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US006` : un
+  bouton qui **supprime ou annule** ne partage plus la couleur des **alertes** — il se reconnaît à sa
+  forme (contour épais, couleur du texte), et l'ambre ne veut plus dire que « attention ». Juste
+  avant, `E17US012` : les listes des **tournois, scoreurs, postes et paiements** passent en tableaux
+  à colonnes nommées, avec les inscrits et les cibles de chaque tournoi, et l'ancienneté de chaque
+  dette. Juste avant, `E17US007` : les **blasons** s'éditent dans un panneau à côté
   de la liste, et les **inscriptions** s'ouvrent sur une recherche et quatre compteurs (inscrits,
   non placés, non réglés, doublons) au lieu de la liste entière. Juste avant, `E17US011` : sur la
   tablette de cible, la **ligne de chaque

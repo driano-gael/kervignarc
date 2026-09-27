@@ -443,6 +443,7 @@ def test_modifier_archer_corrige_les_champs_et_diffuse(
                 "prenom": "Jeanne",
                 "categorie_id": categorie_id,
                 "club_id": club["id"],
+                "licence": None,
             },
         )
         assert ws.receive_json()["type"] == "donnees_modifiees"
@@ -461,7 +462,7 @@ def test_modifier_archer_inconnu_404(
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
         reponse = client.put(
             "/api/v1/archers/999",
-            json={"nom": "Robin", "prenom": "Jean", "categorie_id": categorie_id},
+            json={"nom": "Robin", "prenom": "Jean", "categorie_id": categorie_id, "licence": None},
         )
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "archer_introuvable"
@@ -476,7 +477,7 @@ def test_modifier_archer_homonyme_409_puis_passe_sur_confirmation(
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
         _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
         autre_id = _inscrire(client, tournoi_id, categorie_id, "Martin", "Alice")
-        corps = {"nom": "Dupont", "prenom": "Jean", "categorie_id": categorie_id}
+        corps = {"nom": "Dupont", "prenom": "Jean", "categorie_id": categorie_id, "licence": None}
 
         signale = client.put(f"/api/v1/archers/{autre_id}", json=corps)
         assert signale.status_code == 409
@@ -507,7 +508,12 @@ def test_modifier_categorie_d_un_archer_engage_409_puis_passe_sur_confirmation(
         # « A tiré » = au moins une volée **validée** (E04US002), plus l'agrégat `Score` que plus
         # aucun flux n'écrit (DETTE-013). On sème la volée validée directement, comme le classement.
         _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)
-        corps = {"nom": "Robin", "prenom": "Jean", "categorie_id": autre_categorie["id"]}
+        corps = {
+            "nom": "Robin",
+            "prenom": "Jean",
+            "categorie_id": autre_categorie["id"],
+            "licence": None,
+        }
 
         signale = client.put(f"/api/v1/archers/{archer_id}", json=corps)
         assert signale.status_code == 409
@@ -846,7 +852,7 @@ def test_editer_l_etat_civil_ne_perd_pas_le_handicap(
 
         edite = client.put(
             f"/api/v1/archers/{archer_id}",
-            json={"nom": "Dupond", "prenom": "Jean", "categorie_id": categorie_id},
+            json={"nom": "Dupond", "prenom": "Jean", "categorie_id": categorie_id, "licence": None},
         )
 
     assert edite.status_code == 200, edite.text
