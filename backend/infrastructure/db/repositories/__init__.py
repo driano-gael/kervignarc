@@ -13,6 +13,7 @@ from infrastructure.db.repositories.exploitation import (
     PosteRepositorySQL,
     ScoreurRepositorySQL,
 )
+from infrastructure.db.repositories.import_inscrits import ImportInscritsRepositorySQL
 from infrastructure.db.repositories.moteur import (
     ArretDeCirconstanceRepositorySQL,
     DerouleEtapeRepositorySQL,
@@ -59,6 +60,7 @@ __all__ = [
     "FranchissementArretRepositorySQL",
     "GabaritSalleRepositorySQL",
     "IdentiteVisuelleRepositorySQL",
+    "ImportInscritsRepositorySQL",
     "InscriptionRepositorySQL",
     "PhaseRepositorySQL",
     "PlacementParBlocRepositorySQL",

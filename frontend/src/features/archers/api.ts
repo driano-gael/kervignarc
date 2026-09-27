@@ -20,6 +20,7 @@ export interface ModifierArcher {
   prenom: string
   categorie_id: number
   club_id: number | null
+  licence: string | null
   // Confirmations de l'admin après un premier 409, une par signalement. `autoriser_homonyme` :
   // l'édition fait entrer l'archer dans l'identité d'un autre inscrit (ADR-0015).
   // `autoriser_changement_categorie` : elle change la catégorie d'un archer qui a déjà tiré.

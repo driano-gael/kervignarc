@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from domain.archer import Archer
+from domain.archer import Archer, licences_distinctes
 from domain.club import cle_nom
 
 # Seuil de distance d'édition (nom + prénom repliés) en deçà duquel deux fiches sont « à vérifier ».
@@ -88,6 +88,8 @@ def detecter_doublons(archers: list[Archer]) -> list[PaireDoublon]:
 
 def _rapprocher(a: Archer, b: Archer) -> NiveauDoublon | None:
     """Niveau de rapprochement de deux fiches, ou `None` si elles ne se ressemblent pas."""
+    if licences_distinctes(a.licence, b.licence):
+        return None
     nom_a, prenom_a = cle_nom(a.nom), cle_nom(a.prenom)
     nom_b, prenom_b = cle_nom(b.nom), cle_nom(b.prenom)
     meme_identite = nom_a == nom_b and prenom_a == prenom_b

@@ -1173,6 +1173,14 @@ window.ATLAS.corpus = {
   },
   {
    "genre": "decision",
+   "identifiant": "0115",
+   "lien": "adr.html?id=0115",
+   "recherche": "adr-0115 l'import des inscrits est un plan pur, ecrit en une transaction ; la licence identifie la fiche us adr-e02us007 amende adr-0014 amende adr-0015 e01us026 e02us005 e02us006 e02us007 e02us010 e17us012 ### 1. un plan pur, calcule deux fois le domaine (domain/import_inscrits.py) decide de chaque ligne sur un instantane du tournoi : creer (fiche + inscription), inscrire (fiche deja designee par la licence), homonyme, rejetee + motif. l'ordre du fichier compte : une ligne voit les fiches creees et les places prises par les precedentes — c'est ce qui re-controle le quota (contrainte 2), via depart.est_complet, regle desormais partagee avec serviceinscriptions.inscrire plutot que dupliquee. l'apercu calcule le plan et le rend. la confirmation redepose le fichier et recalcule le plan dans la meme commande de la file d'ecriture (regle 7) : rien n'est garde cote serveur entre les deux appels, et […]",
+   "texte": "### 1. Un plan pur, calculé deux fois Le domaine (domain/import_inscrits.py) décide de chaque ligne sur un instantané du tournoi : CREER (fiche + inscription), INSCRIRE (fiche déjà désignée par la licence), HOMONYME, REJETEE + motif. L'ordre du fichier compte : une ligne voit les fiches créées et les places prises par les précédentes — c'est ce qui re-contrôle le quota (contrainte 2), via Depart.est_complet, règle désormais partagée avec ServiceInscriptions.inscrire plutôt que dupliquée. L'aperçu calcule le plan et le rend. La confirmation redépose le fichier et recalcule le plan dans la même commande de la file d'écriture (règle 7) : rien n'est gardé côté serveur entre les deux appels, et […]",
+   "titre": "ADR-0115 — L'import des inscrits est un plan pur, écrit en une transaction ; la licence identifie la fiche"
+  },
+  {
+   "genre": "decision",
    "identifiant": "0116",
    "lien": "adr.html?id=0116",
    "recherche": "adr-0116 un actif embarque est gouverne comme une dependance, sans manifeste us adr-e17us005 etend adr-0009 amende adr-0074 e17us001 e17us005 1. un actif embarque se declare comme une dependance. il a sa ligne dans docs/dependances.md § « actifs embarques » : version, role, justification, provenance (url de la release officielle), empreinte sha256, licence. sa licence est versionnee a cote du fichier. le mettre a jour, c'est remplacer le fichier et sa ligne dans le meme commit. l'ajout reste un arbitrage du commanditaire (regle 11), jamais de la plomberie. 2. l'empreinte est opposable. sans manifeste, la ligne du registre est la seule trace de provenance : un test la confronte au fichier (police.test.ts), sans quoi elle deriverait en silence — exactement la derive « registre = realite » que combat adr-0009. 3. un actif reference […]",

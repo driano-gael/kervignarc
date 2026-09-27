@@ -1,6 +1,6 @@
 # ADR-0015 — Signaler un doublon d'archer plutôt que l'interdire : 409 + confirmation
 
-- **Statut** : Accepté
+- **Statut** : Accepté — **amendé** le 2026-09-26 par [ADR-0115](0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md) (E02US007)
 - **Date** : 2026-07-15
 - **Décideurs** : Organisateur / Architecte
 - **Amende** : [`stories/E02-inscriptions.md`](../../stories/E02-inscriptions.md) (E02US002 : le CA
@@ -62,6 +62,17 @@ sérialisées ; la seconde voit la première.
 (mono-club, LAN — ADR-0005). Un second worker uvicorn la romprait en silence. Cette hypothèse est
 déjà celle du projet entier ; elle n'est pas introduite ici.
 
+### Amendement du 26/09/2026 — la licence rend le doublon décidable (E02US007, [ADR-0115](0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md))
+
+- **Deux licences connues et différentes ne sont jamais des homonymes** : le signalement ne se
+  déclenche plus entre elles. Une seule licence connue ne décide rien — la question reste posée.
+- **Même licence = même personne** : c'est un **refus** (`409 licence_deja_prise`), pas un
+  signalement. Aucun drapeau ne le lève, et un index `UNIQUE` partiel le double en base — l'inverse
+  de l'identité (nom, prénom, club), qui reste sans contrainte pour la raison exposée plus haut.
+- **L'import collecte les homonymes** au lieu de poser le drapeau pour tout le fichier : le rapport
+  les présente, l'admin coche ceux qu'il confirme. La conséquence « E02US007 devra trancher à
+  nouveau » est soldée.
+
 ## Conséquences
 
 - **+** Le père et le fils s'inscrivent tous les deux, et le doublon accidentel est arrêté net.
@@ -91,13 +102,22 @@ déjà celle du projet entier ; elle n'est pas introduite ici.
   bouton « Inscrire quand même » confirmerait un archer que le serveur n'a jamais examiné. C'est un
   piège réel, trouvé en revue d'E02US002 : voir `InscriptionArcher` (`surIdentite` → `reset()`).
 
-## Alternative écartée — un numéro de licence FFTA
+## Alternative écartée — un numéro de licence FFTA *(levée par ADR-0115)*
 
 Un identifiant national rendrait le doublon **décidable** et fermerait la question (deux licences
 différentes = deux archers). Écartée pour l'instant, mêmes raisons qu'en
 [ADR-0014](0014-club-inconnu-plutot-que-club-sentinelle.md) : nullable elle ne dédoublonne rien,
 obligatoire elle impose la saisie d'un numéro à 7 chiffres au guichet. Elle arrivera avec E02US007,
 où le fichier fédéral la porte déjà — et c'est **là** que ce protocole pourra être reconsidéré.
+
+## Porté dans le code par
+
+- `backend/application/archers.py` — `_signaler_homonyme` (drapeau `autoriser_homonyme`) ;
+  `_refuser_licence_prise`.
+- `backend/domain/archer.py` — `cle_identite`, `licences_distinctes`.
+- `backend/domain/import_inscrits.py` — décision `HOMONYME`, levée par `homonymes_acceptes`.
+- `backend/api/v1/competition.py` — drapeau `autoriser_homonyme` d'`AjouterArcherRequete` et de
+  `ModifierArcherRequete`.
 
 ## Liens
 

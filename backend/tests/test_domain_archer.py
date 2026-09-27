@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from domain.archer import Archer, cle_identite
+from domain.archer import Archer, cle_identite, licences_distinctes
 from domain.erreurs import (
     CibleInvalide,
     HandicapInvalide,
+    LicenceInvalide,
     NomArcherInvalide,
     PrenomArcherInvalide,
     ScoreInvalide,
@@ -67,7 +68,9 @@ def test_placer_refuse_une_cible_non_positive(cible: int) -> None:
 def test_modifier_remplace_les_quatre_champs_sans_muter_l_original() -> None:
     """`modifier` renvoie une copie éditée ; l'agrégat d'origine reste inchangé (immuable)."""
     archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, club_id=3, id=7)
-    edite = archer.modifier(nom="Robin des Bois", prenom="Jeanne", categorie_id=6, club_id=4)
+    edite = archer.modifier(
+        nom="Robin des Bois", prenom="Jeanne", categorie_id=6, club_id=4, licence=None
+    )
     assert edite == Archer(
         nom="Robin des Bois", prenom="Jeanne", tournoi_id=1, categorie_id=6, club_id=4, id=7
     )
@@ -81,14 +84,16 @@ def test_modifier_preserve_le_tournoi_l_identifiant_et_le_placement() -> None:
     `tournoi_id` et `id` n'en sont pas et doivent traverser l'édition intacts.
     """
     place = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, cible=3, id=7)
-    edite = place.modifier(nom="Robin", prenom="Jeanne", categorie_id=5, club_id=None)
+    edite = place.modifier(nom="Robin", prenom="Jeanne", categorie_id=5, club_id=None, licence=None)
     assert (edite.cible, edite.tournoi_id, edite.id) == (3, 1, 7)
 
 
 def test_modifier_normalise_les_espaces() -> None:
     """Le nom et le prénom édités sont normalisés, comme à la création."""
     archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7)
-    edite = archer.modifier(nom="  Marion  ", prenom="  Lise  ", categorie_id=5, club_id=None)
+    edite = archer.modifier(
+        nom="  Marion  ", prenom="  Lise  ", categorie_id=5, club_id=None, licence=None
+    )
     assert (edite.nom, edite.prenom) == ("Marion", "Lise")
 
 
@@ -97,7 +102,7 @@ def test_modifier_refuse_un_nom_vide(nom: str) -> None:
     """L'édition rejoue les contrôles de la création : un nom vide reste refusé (E02US003)."""
     archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7)
     with pytest.raises(NomArcherInvalide):
-        archer.modifier(nom=nom, prenom="Jean", categorie_id=5, club_id=None)
+        archer.modifier(nom=nom, prenom="Jean", categorie_id=5, club_id=None, licence=None)
 
 
 @pytest.mark.parametrize("prenom", ["", "   ", "\t\n"])
@@ -105,7 +110,7 @@ def test_modifier_refuse_un_prenom_vide(prenom: str) -> None:
     """L'édition rejoue les contrôles de la création : un prénom vide reste refusé (E02US003)."""
     archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7)
     with pytest.raises(PrenomArcherInvalide):
-        archer.modifier(nom="Robin", prenom=prenom, categorie_id=5, club_id=None)
+        archer.modifier(nom="Robin", prenom=prenom, categorie_id=5, club_id=None, licence=None)
 
 
 def test_modifier_detache_le_club() -> None:
@@ -116,7 +121,12 @@ def test_modifier_detache_le_club() -> None:
     rien », ce choix serait silencieusement sans effet.
     """
     archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, club_id=3, id=7)
-    assert archer.modifier(nom="Robin", prenom="Jean", categorie_id=5, club_id=None).club_id is None
+    assert (
+        archer.modifier(
+            nom="Robin", prenom="Jean", categorie_id=5, club_id=None, licence=None
+        ).club_id
+        is None
+    )
 
 
 def test_cle_identite_replie_la_casse_et_les_accents() -> None:
@@ -217,5 +227,48 @@ def test_un_handicap_negatif_est_refuse() -> None:
 def test_le_handicap_traverse_une_edition_d_etat_civil() -> None:
     """`modifier` ne touche que l'état civil : corriger un nom ne remet pas un handicap à zéro."""
     archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(officiel=80)
-    edite = archer.modifier(nom="Durand-Martin", prenom="Léa", categorie_id=2, club_id=None)
+    edite = archer.modifier(
+        nom="Durand-Martin", prenom="Léa", categorie_id=2, club_id=None, licence=None
+    )
     assert edite.handicap == 80
+
+
+# --- Licence (E02US007, arbitrage 3 — ADR-0014/0015 rouverts) ------------------------------------
+
+
+def test_la_licence_est_facultative() -> None:
+    assert Archer.creer("Robin", "Jean", tournoi_id=1, categorie_id=5).licence is None
+
+
+def test_la_licence_est_normalisee_espaces_retires_et_en_majuscules() -> None:
+    archer = Archer.creer("Robin", "Jean", tournoi_id=1, categorie_id=5, licence=" 12 34567a ")
+
+    assert archer.licence == "1234567A"
+
+
+def test_une_licence_blanche_vaut_absence() -> None:
+    assert Archer.creer("Robin", "Jean", 1, 5, licence="   ").licence is None
+
+
+@pytest.mark.parametrize("licence", ["1234-567A", "12345678901234567", "é234567A"])
+def test_une_licence_hors_alphabet_ou_trop_longue_est_refusee(licence: str) -> None:
+    with pytest.raises(LicenceInvalide):
+        Archer.creer("Robin", "Jean", 1, 5, licence=licence)
+
+
+def test_modifier_remplace_la_licence() -> None:
+    archer = Archer.creer("Robin", "Jean", 1, 5, licence="1234567A")
+
+    assert archer.modifier("Robin", "Jean", 5, None, licence="7654321b").licence == "7654321B"
+    assert archer.modifier("Robin", "Jean", 5, None, licence=None).licence is None
+
+
+def test_deux_licences_connues_et_differentes_designent_deux_personnes() -> None:
+    a = Archer.creer("Robin", "Jean", 1, 5, licence="1234567A")
+    b = Archer.creer("Robin", "Jean", 1, 5, licence="7654321B")
+    sans = Archer.creer("Robin", "Jean", 1, 5)
+
+    assert licences_distinctes(a.licence, b.licence)
+    assert not licences_distinctes(a.licence, a.licence)
+    assert not licences_distinctes(a.licence, sans.licence)
+    assert not licences_distinctes(None, None)

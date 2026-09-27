@@ -116,7 +116,9 @@ window.ATLAS.avancement = {
     "E16US016"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E02US007"
+   ],
    "severite": "mineur"
   },
   {
@@ -932,8 +934,9 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0115",
+   "0014",
    "0114",
-   "0072",
    "0113",
    "0074",
    "0104"
@@ -1837,7 +1840,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1852,7 +1855,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Gérer plusieurs gabarits",
@@ -2135,7 +2138,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0057",
     "0075",
-    "0077"
+    "0077",
+    "0115"
    ],
    "dettes_introduites": [
     "104"
@@ -2246,7 +2250,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0014",
     "0015",
-    "0057"
+    "0057",
+    "0115"
    ],
    "dettes_introduites": [
     "006"
@@ -2265,7 +2270,8 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0017"
+    "0017",
+    "0115"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -2283,20 +2289,22 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0014",
-    "0015"
+    "0015",
+    "0115"
    ],
    "dettes_introduites": [
     "115"
    ],
    "dettes_resorbees": [
+    "102",
     "115"
    ],
    "epic": "02",
    "epic_titre": "Inscriptions & clubs",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2330,7 +2338,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0077",
-    "0096"
+    "0096",
+    "0115"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [
@@ -2473,7 +2482,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2797,7 +2806,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3666,7 +3675,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3804,7 +3813,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -3876,7 +3885,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -4902,7 +4911,9 @@ window.ATLAS.avancement = {
    "titre_story": "La ligne d'archer porte la volée en cours"
   },
   {
-   "adr": [],
+   "adr": [
+    "0115"
+   ],
    "dettes_introduites": [
     "115"
    ],
@@ -4920,7 +4931,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 153,
+  "livrees": 154,
   "vivantes": 180
  },
  "sections": [
@@ -5605,17 +5616,17 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    0,
+    1,
     7
    ],
    "compteur_ecrit": [
-    0,
+    1,
     7
    ],
    "lignes": [
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E02US007",
      "titre": "Importer un fichier inscript'arc"
     },
@@ -5662,7 +5673,7 @@ window.ATLAS.avancement = {
      "titre": "Modifier le mot de passe admin"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
   },
   {
    "calcule": [

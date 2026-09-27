@@ -7,6 +7,8 @@ déterminisme de la liste, sur des agrégats `Archer` purs — ni base, ni servi
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from domain.archer import Archer
@@ -182,3 +184,18 @@ def test_distance_edition(a: str, b: str, attendu: int) -> None:
     """La distance de Levenshtein maison donne les valeurs de référence (symétrique)."""
     assert distance_edition(a, b) == attendu
     assert distance_edition(b, a) == attendu
+
+
+def test_deux_licences_differentes_ne_forment_jamais_une_paire() -> None:
+    """E02US007, ADR-0015 rouvert : la licence rend le doublon **décidable**."""
+    a = replace(_archer(1, "Robin", "Jean", club_id=3), licence="1234567A")
+    b = replace(_archer(2, "Robin", "Jean", club_id=3), licence="7654321B")
+
+    assert detecter_doublons([a, b]) == []
+
+
+def test_une_seule_licence_connue_laisse_la_paire_signalee() -> None:
+    a = replace(_archer(1, "Robin", "Jean", club_id=3), licence="1234567A")
+    b = _archer(2, "Robin", "Jean", club_id=3)
+
+    assert len(detecter_doublons([a, b])) == 1

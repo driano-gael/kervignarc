@@ -53,6 +53,18 @@ class PrenomArcherInvalide(DomainError):
     code = "prenom_archer_invalide"
 
 
+class FichierInscritsIllisible(DomainError):
+    """Le fichier déposé n'est ni un export Ianseo ni un classeur Résult'Arc (E02US007)."""
+
+    code = "fichier_inscrits_illisible"
+
+
+class LicenceInvalide(DomainError):
+    """Un n° de licence porte un caractère hors `[A-Z0-9]` ou dépasse 12 caractères (E02US007)."""
+
+    code = "licence_invalide"
+
+
 class NomClubInvalide(DomainError):
     """Le nom d'un club est vide (après normalisation)."""
 

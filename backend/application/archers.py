@@ -16,10 +16,11 @@ from application.erreurs import (
     FusionArchersEngages,
     FusionImpossible,
     HomonymeArcher,
+    LicenceDejaPrise,
     SaisieHorsCible,
     TournoiIntrouvable,
 )
-from domain.archer import Archer, ArcherId, CleIdentite
+from domain.archer import Archer, ArcherId, CleIdentite, licences_distinctes, sont_homonymes
 from domain.categorie import CategorieId
 from domain.club import ClubId, cle_nom
 from domain.doublons import PaireDoublon, detecter_doublons
@@ -81,14 +82,15 @@ class ServiceArchers:
         categorie_id: CategorieId,
         club_id: ClubId | None = None,
         autoriser_homonyme: bool = False,
+        licence: str | None = None,
     ) -> Archer:
         """Inscrit un archer à un tournoi (E02US002).
 
         La **catégorie est obligatoire** et doit appartenir au tournoi ; le **club est facultatif**
         (`None` = club encore inconnu, ADR-0014) mais doit exister s'il est fourni. Lève
-        `TournoiIntrouvable`, `CategorieHorsTournoi`, `ClubIntrouvable`, et `HomonymeArcher` si un
-        archer de même identité est déjà inscrit — sauf `autoriser_homonyme=True`, par lequel
-        l'admin confirme qu'il s'agit bien de deux personnes distinctes.
+        `TournoiIntrouvable`, `CategorieHorsTournoi`, `ClubIntrouvable`, `LicenceDejaPrise` (refus,
+        ADR-0115), et `HomonymeArcher` si un archer de même identité est déjà inscrit — sauf
+        `autoriser_homonyme=True`, par lequel l'admin confirme deux personnes distinctes.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -101,9 +103,10 @@ class ServiceArchers:
         # de `cle_nom` et celle de `_texte_obligatoire` — qu'une évolution de l'une romprait en
         # silence. Effet de bord voulu : une saisie invalide rend 422 avant 409, ce qui est l'ordre
         # juste (une entrée invalide n'est pas un conflit).
-        archer = Archer.creer(nom, prenom, tournoi_id, categorie_id, club_id)
+        archer = Archer.creer(nom, prenom, tournoi_id, categorie_id, club_id, licence)
+        self._refuser_licence_prise(archer)
         if not autoriser_homonyme:
-            self._signaler_homonyme(tournoi_id, archer.cle_identite())
+            self._signaler_homonyme(tournoi_id, archer.cle_identite(), archer.licence)
         return self._archers.ajouter(archer)
 
     def lister(self, tournoi_id: TournoiId) -> list[Archer]:
@@ -158,6 +161,12 @@ class ServiceArchers:
                 "chacun une saisie enregistrée : les fusionner mêlerait leurs volées. Corrigez la "
                 "saisie avant de fusionner (le doublon se règle avant que le tournoi tire)."
             )
+        if licences_distinctes(gagnant.licence, perdant.licence):
+            raise FusionImpossible(
+                f"Ces deux fiches portent deux licences différentes ({gagnant.licence} et "
+                f"{perdant.licence}) : ce sont deux personnes, pas un doublon."
+            )
+        # Le gagnant sans licence hérite de celle de l'absorbé, dans la transaction de l'adapter.
         self._archers.fusionner(gagnant_id, perdant_id)
         return self._archer_existant(gagnant_id)
 
@@ -170,6 +179,7 @@ class ServiceArchers:
         club_id: ClubId | None = None,
         autoriser_homonyme: bool = False,
         autoriser_changement_categorie: bool = False,
+        licence: str | None = None,
     ) -> Archer:
         """Corrige un archer inscrit (E02US003) — **remplacement total** des champs éditables.
 
@@ -185,13 +195,19 @@ class ServiceArchers:
         # Édité **avant** les deux contrôles de conflit, comme dans `ajouter` et pour les mêmes
         # raisons : la clé d'homonymie doit dériver du nom normalisé, et une saisie invalide doit
         # rendre 422 avant 409 (une entrée invalide n'est pas un conflit).
-        edite = archer.modifier(nom, prenom, categorie_id, club_id)
+        edite = archer.modifier(nom, prenom, categorie_id, club_id, licence)
+        self._refuser_licence_prise(edite)
         # Les deux signalements ne se déclenchent que sur un **changement** effectif. Rejouer
         # l'arbitrage à chaque édition, sur un homonyme déjà confirmé ou une catégorie qu'on ne
         # touche pas, apprendrait à l'admin à confirmer sans lire — c'est ainsi qu'un garde-fou
         # cesse d'en être un.
-        if not autoriser_homonyme and edite.cle_identite() != archer.cle_identite():
-            self._signaler_homonyme(archer.tournoi_id, edite.cle_identite(), sauf=archer_id)
+        # La licence entre dans l'homonymie (ADR-0115) : l'effacer peut rendre deux fiches à
+        # nouveau indécidables, donc elle relance le signalement comme l'identité.
+        change = (edite.cle_identite(), edite.licence) != (archer.cle_identite(), archer.licence)
+        if not autoriser_homonyme and change:
+            self._signaler_homonyme(
+                archer.tournoi_id, edite.cle_identite(), edite.licence, sauf=archer_id
+            )
         if not autoriser_changement_categorie and edite.categorie_id != archer.categorie_id:
             self._signaler_changement_categorie(archer_id, edite)
         return self._archers.enregistrer(edite)
@@ -327,8 +343,23 @@ class ServiceArchers:
                 f"La catégorie {categorie_id} n'appartient pas au tournoi {tournoi_id}."
             )
 
+    def _refuser_licence_prise(self, archer: Archer) -> None:
+        if archer.licence is None:
+            return
+        for inscrit in self._archers.par_tournoi(archer.tournoi_id):
+            if inscrit.id != archer.id and inscrit.licence == archer.licence:
+                raise LicenceDejaPrise(
+                    f"La licence {archer.licence} est déjà celle de « {inscrit.prenom} "
+                    f"{inscrit.nom} » dans ce tournoi. Pour l'inscrire sur un autre départ, "
+                    "ouvrez sa fiche plutôt que d'en créer une seconde."
+                )
+
     def _signaler_homonyme(
-        self, tournoi_id: TournoiId, cle: CleIdentite, sauf: ArcherId | None = None
+        self,
+        tournoi_id: TournoiId,
+        cle: CleIdentite,
+        licence: str | None,
+        sauf: ArcherId | None = None,
     ) -> None:
         """Lève `HomonymeArcher` si un archer de même identité est déjà inscrit au tournoi.
 
@@ -337,7 +368,9 @@ class ServiceArchers:
         sur une inscription : la simplicité prime hors du domaine (règle 12).
         """
         for inscrit in self._archers.par_tournoi(tournoi_id):
-            if inscrit.id != sauf and inscrit.cle_identite() == cle:
+            if inscrit.id != sauf and sont_homonymes(
+                inscrit.cle_identite(), inscrit.licence, cle, licence
+            ):
                 raise HomonymeArcher(
                     f"« {inscrit.prenom} {inscrit.nom} » est déjà inscrit à ce tournoi. "
                     "S'il s'agit d'un homonyme (un père et son fils, par exemple), confirmez "
