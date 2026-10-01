@@ -12,8 +12,8 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/09/2026, 16 h 56** · **154 US livrées** · dernière : `E17US005`
-*(**Inter est embarquée** : la même police sur chaque tablette, sans réseau ni police installée. Police **variable** — la fiche comptait deux graisses, le front en emploie cinq. `DETTE-043` refermée.)*
+**Dernière mise à jour : 01/10/2026, 19 h 06** · **155 US livrées** · dernière : `E13US002`
+*(**Les équipes se composent** : un écran « Équipes » où chaque équipe dit si elle est conforme, sans jamais être bloquée. Elles ne se **jouent** pas encore — `E13US003` (scoring d'équipe) est la suite du fil.)*
 Précédente : `E02US007`
 *(**les inscrits s'importent depuis un fichier** — export Ianseo (`.csv`) ou classeur Résult'Arc
 (`.xls`), reconnus au contenu. Un **aperçu** dit ligne à ligne ce qui sera créé, refusé (avec le
@@ -396,7 +396,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯 1~~ ✅ | ~~`E17US012`~~ | **Livrée le 26/09/2026** — A04, A08, A12 et A17 en carte-tableau ; **A04** gagne inscrits et cibles, **A17** son bandeau de totaux et l'**ancienneté** de la dette (migration `0057`, nullable : l'existant reste « date inconnue »). Colonnes sans donnée **retirées des planches** (A04 avancement / ce qui reste, A08 état / périmètre / dernière validation, A12 type / rattachement / appareil / signe de vie). ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté. |
 > | ~~🎯~~ ✅ | ~~`E02US007`~~ | **Livrée le 26/09/2026 — choisie hors file par le commanditaire**, qui l'a tirée du « à choisir » (option b) pendant qu'`E17US012` était en vol ailleurs. Import Ianseo / Résult'Arc en **aperçu puis confirmation**, écrit en **une** transaction ; licence **unique dans le tournoi** (une fiche, N inscriptions). ⚠️ **Le blocage QT1 était levé depuis le 18/07/2026** (échantillons versés dans `docs/sources/`, `dc85faa`) : la fiche se disait « bloquée » plus de deux mois après. [ADR-0115](../docs/adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md). |
 > | ~~🔒~~ ✅ | ~~`E17US005`~~ | **Livrée le 26/09/2026 — débloquée par votre arbitrage du jour** : Inter est **embarquée** (fichier officiel `rsms/inter` 4.1, tel quel), donc la même sur chaque tablette, sans réseau et sans police installée — vérifié au navigateur sur un poste qui ne l'a pas. ⚠️ **La fiche se trompait** : « 2 graisses, 400/800 » ; le front en emploie **cinq**, d'où une police **variable** (94 usages en 600/700 seraient sortis en 800). Piège trouvé en route : le serveur sous Windows servait `.woff2` en `text/plain`. `DETTE-043` refermée ; les planches lisent le même fichier. |
-> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : `E09US005` (classement de qualification en PDF), le fil **équipes** (`E13US002`→`E13US004`), le jalon **J4**. |
+> | ~~🎯~~ ✅ | ~~`E13US002`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Composer les équipes d'un tournoi : un écran « Équipes » (axe Gestion), une conformité **signalée, jamais bloquante**. Quatre arbitrages au cadrage, reversés dans `stories/` : sexe lu sur la **catégorie**, composition signalée, **une équipe par type**, backend + écran. ⚠️ Le CA d'origine renvoyait à une `DETTE-001` soldée depuis : les tables d'équipe entrent dans la cascade d'`E01US026`. |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : `E09US005` (classement de qualification en PDF), la suite du fil **équipes** (`E13US003` scoring d'équipe, puis `E13US004`), le jalon **J4**. |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1238,7 +1239,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
 | 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
 
-## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (4/10)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (5/10)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -1252,7 +1253,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E01US019 | Capacité de cible non bornée | J1→J3 | ⬜ *(idem)* |
 | E02US010 | Horaire de départ HH:MM obligatoire | J1 | ✅ |
 | E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
-| E13US002 | Composer les équipes d'un tournoi | J2 | ⬜ |
+| E13US002 | Composer les équipes d'un tournoi | J2 | ✅ *(entité `Equipe` + écran « Équipes » ; composition **signalée, pas bloquée** ; sexe et arme lus sur la catégorie ; une équipe par type ; migration `0059`. ADR-0028 porté à moitié : les équipes se composent, elles ne se jouent pas encore)* |
 | E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
 | E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
 

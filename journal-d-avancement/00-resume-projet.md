@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 26 septembre 2026
+# Résumé du projet — où on en est au 1er octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -619,14 +619,18 @@ Dans l'ordre de valeur prévu par le backlog :
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
-**épreuves par équipes** (nouvel EPIC-13, désormais dans le périmètre MVP), pas encore implémentés.
+**épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
+— standard ou mixte, avec leur conformité affichée —, mais elles ne se **jouent** pas encore
+(scoring, placement et classement par équipe restent à faire).
 
 ---
 
 ## Chiffres repères
 
-- **154 US livrées** (mergées, revues, CI verte) à la date du 27/09/2026 — la dernière, `E17US005`,
-  à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
+- **155 US livrées** (mergées, revues, CI verte) à la date du 01/10/2026 — la dernière, `E13US002`,
+  à **surface visible** : l'organisateur **compose les équipes** du tournoi sur un écran « Équipes »,
+  qui lui dit pour chacune si elle est conforme (nombre d'archers, même arme, mixité) sans jamais
+  l'empêcher d'enregistrer. Juste avant, `E17US005`, à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
   sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
   sienne. Juste avant, `E02US007`, qui **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
   d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US006` : un

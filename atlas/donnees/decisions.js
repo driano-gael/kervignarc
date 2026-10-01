@@ -1241,10 +1241,58 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/api/v1/equipes.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/equipes.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/duel.py",
      "existe": true,
      "symboles": [
       "Participant"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/equipe.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1270,6 +1318,38 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [],
      "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/equipes.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/equipes/",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
     }
    ],
    "remplace_par": "",

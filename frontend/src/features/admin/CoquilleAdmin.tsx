@@ -27,6 +27,7 @@ import { VuePalmares } from '../palmares/VuePalmares'
 import { Departs } from '../departs/Departs'
 import { Duels } from '../duels/Duels'
 import { Ecrans } from '../ecrans/Ecrans'
+import { Equipes } from '../equipes/Equipes'
 import { Audit } from '../audit/Audit'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
@@ -354,6 +355,11 @@ function Coquille() {
             onOuvrir={ouvreurDe('inscriptions')}
           />
         ),
+    },
+    {
+      id: 'equipes',
+      libelle: 'Équipes',
+      rendu: () => courant && <Equipes tournoiId={courant.id} />,
     },
     {
       id: 'archer',

@@ -68,10 +68,13 @@ from domain.erreurs.moteur import (
     VainqueurHorsMatch,
 )
 from domain.erreurs.referentiel import (
+    ArcherDejaMembre,
+    ArcherNonMembre,
     CapaciteBlasonInvalide,
     CapaciteCibleInvalide,
     CibleInvalide,
     CouleurInvalide,
+    EffectifEquipeInvalide,
     FichierInscritsIllisible,
     FormatSansDepart,
     FormatSansEtape,
@@ -87,6 +90,7 @@ from domain.erreurs.referentiel import (
     NombreFlechesParVoleeInvalide,
     NombreVoleesInvalide,
     NomClubInvalide,
+    NomEquipeInvalide,
     NomFormatInvalide,
     NomGabaritInvalide,
     NomTournoiInvalide,
@@ -134,6 +138,8 @@ from domain.erreurs.tir import (
 
 __all__ = [
     "AppariementImpossible",
+    "ArcherDejaMembre",
+    "ArcherNonMembre",
     "ArretProgrammeInvalide",
     "AuteurAuditInvalide",
     "BaremeDuelInvalide",
@@ -164,6 +170,7 @@ __all__ = [
     "DuelIncomplet",
     "DuelVerrouille",
     "DureePriseDeControleInvalide",
+    "EffectifEquipeInvalide",
     "EffectifIncompatible",
     "EffectifMinimumIncoherent",
     "EffectifPhaseInvalide",
@@ -189,6 +196,7 @@ __all__ = [
     "NomArcherInvalide",
     "NomBlasonInvalide",
     "NomClubInvalide",
+    "NomEquipeInvalide",
     "NomFormatInvalide",
     "NomGabaritInvalide",
     "NomIntervenantInvalide",

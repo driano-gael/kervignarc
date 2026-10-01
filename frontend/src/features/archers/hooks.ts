@@ -8,6 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cleClassement } from '../competition/hooks'
+import { cleEquipes } from '../equipes/hooks'
 import {
   type DefinirHandicap,
   definirHandicap,
@@ -42,6 +43,8 @@ function useInvaliderArchers(tournoiId: number) {
     // une fusion peut la changer (une fusion en retire une paire ; une édition peut en créer ou en
     // défaire une). On l'invalide avec le reste plutôt que de la laisser afficher un état périmé.
     await queryClient.invalidateQueries({ queryKey: cleDoublons(tournoiId) })
+    // La conformité d'une équipe se lit sur la catégorie de ses membres (E13US002, CA 5 et 6).
+    await queryClient.invalidateQueries({ queryKey: cleEquipes(tournoiId) })
   }
 }
 

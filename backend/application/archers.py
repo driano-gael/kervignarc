@@ -13,6 +13,7 @@ from application.erreurs import (
     CategorieHorsTournoi,
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
+    FusionArchersEnEquipes,
     FusionArchersEngages,
     FusionImpossible,
     HomonymeArcher,
@@ -24,11 +25,13 @@ from domain.archer import Archer, ArcherId, CleIdentite, licences_distinctes, so
 from domain.categorie import CategorieId
 from domain.club import ClubId, cle_nom
 from domain.doublons import PaireDoublon, detecter_doublons
+from domain.equipe import Equipe
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
     ClubRepository,
     DepartRepository,
+    EquipeRepository,
     Horloge,
     InscriptionRepository,
     ScoreRepository,
@@ -56,6 +59,7 @@ class ServiceArchers:
         series: SerieRepository,
         departs: DepartRepository,
         horloge: Horloge,
+        equipes: EquipeRepository,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
@@ -73,6 +77,8 @@ class ServiceArchers:
         # le service non déterministe en test (règle 9).
         self._departs = departs
         self._horloge = horloge
+        # E13US002 : l'appartenance à une équipe engage l'archer et contraint la fusion (CA 3, 6).
+        self._equipes = equipes
 
     def ajouter(
         self,
@@ -166,6 +172,7 @@ class ServiceArchers:
                 f"Ces deux fiches portent deux licences différentes ({gagnant.licence} et "
                 f"{perdant.licence}) : ce sont deux personnes, pas un doublon."
             )
+        self._refuser_fusion_d_equipes(gagnant_id, perdant_id)
         # Le gagnant sans licence hérite de celle de l'absorbé, dans la transaction de l'adapter.
         self._archers.fusionner(gagnant_id, perdant_id)
         return self._archer_existant(gagnant_id)
@@ -397,7 +404,8 @@ class ServiceArchers:
         # « un remboursement sera ouvert » sur la foi de `paye` seul envoyait l'admin chercher au
         # registre un poste qui n'existerait pas — une promesse d'action, pas un sur-signalement.
         payees = len(self._remboursements_des_payees(archer, archer_id))
-        if archer.cible is None and fleches == 0 and inscriptions == 0:
+        equipes = self._equipes.par_archer(archer_id)
+        if archer.cible is None and fleches == 0 and inscriptions == 0 and not equipes:
             return
         motifs = []
         if fleches:
@@ -418,12 +426,27 @@ class ServiceArchers:
             motifs.append(detail)
         if archer.cible is not None:
             motifs.append(f"un placement sur la cible {archer.cible}")
+        if equipes:
+            motifs.append(f"une place de membre {_noms_d_equipes(equipes)}")
         raise ArcherEngage(
             f"« {archer.prenom} {archer.nom} » a {' et '.join(motifs)}. Le supprimer effacera ces "
             "données définitivement. S'il abandonne en cours d'épreuve, ne le supprimez pas : "
             "c'est un forfait, qui conserve ses résultats. Confirmez seulement s'il n'aurait "
             "jamais dû être inscrit."
         )
+
+    def _refuser_fusion_d_equipes(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
+        """Refus si les fiches sont dans deux équipes **distinctes** du même type (E13US002)."""
+        du_gagnant = {e.type: e for e in self._equipes.par_archer(gagnant_id)}
+        for equipe in self._equipes.par_archer(perdant_id):
+            autre = du_gagnant.get(equipe.type)
+            if autre is not None and autre.id != equipe.id:
+                raise FusionArchersEnEquipes(
+                    f"Ces deux fiches sont dans deux équipes {equipe.type.value}s différentes "
+                    f"(« {autre.nom} » et « {equipe.nom} ») : la fiche conservée ne peut "
+                    "appartenir qu'à une seule. Retirez l'une des deux de son équipe avant de "
+                    "fusionner."
+                )
 
     def _feuilles(self, tournoi_id: TournoiId, archer_id: ArcherId) -> list[Serie]:
         """Les feuilles de cet archer dans ce tournoi — **toutes phases confondues**.
@@ -461,3 +484,10 @@ class ServiceArchers:
                 "de catégorie emporte ses flèches vers un autre classement ; confirmez s'il "
                 "s'agit bien de corriger une catégorie mal saisie."
             )
+
+
+def _noms_d_equipes(equipes: list[Equipe]) -> str:
+    noms = [f"« {e.nom} »" for e in equipes]
+    if len(noms) == 1:
+        return f"de l'équipe {noms[0]}"
+    return f"des équipes {', '.join(noms[:-1])} et {noms[-1]}"

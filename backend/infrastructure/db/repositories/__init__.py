@@ -8,6 +8,7 @@ quand les 21 adapters ont quitté leur fichier unique de 3 378 lignes. Une seule
 
 from __future__ import annotations
 
+from infrastructure.db.repositories.equipes import EquipeRepositorySQL
 from infrastructure.db.repositories.exploitation import (
     AuditRepositorySQL,
     PosteRepositorySQL,
@@ -55,6 +56,7 @@ __all__ = [
     "DepartRepositorySQL",
     "DerouleEtapeRepositorySQL",
     "DuelRepositorySQL",
+    "EquipeRepositorySQL",
     "ForfaitRepositorySQL",
     "FormatTournoiRepositorySQL",
     "FranchissementArretRepositorySQL",

@@ -87,6 +87,30 @@ class HauteurCentreInvalide(DomainError):
     code = "hauteur_centre_invalide"
 
 
+class NomEquipeInvalide(DomainError):
+    """Le nom d'une équipe est vide (après normalisation, E13US002)."""
+
+    code = "nom_equipe_invalide"
+
+
+class EffectifEquipeInvalide(DomainError):
+    """L'effectif attendu d'une équipe n'est pas un entier strictement positif (E13US002)."""
+
+    code = "effectif_equipe_invalide"
+
+
+class ArcherDejaMembre(DomainError):
+    """L'archer figure déjà dans cette équipe (E13US002)."""
+
+    code = "archer_deja_membre"
+
+
+class ArcherNonMembre(DomainError):
+    """L'archer à retirer ne figure pas dans cette équipe (E13US002)."""
+
+    code = "archer_non_membre"
+
+
 class NomFormatInvalide(DomainError):
     """Le nom d'un format de tournoi est vide (après normalisation) — E01US023."""
 

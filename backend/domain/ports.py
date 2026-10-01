@@ -23,6 +23,7 @@ from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.ecran import PriseDeControle
 from domain.entree_audit import EntreeAudit, JournalAudit
+from domain.equipe import Equipe, EquipeId
 from domain.feuille_marque import FeuilleDeMarque
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
@@ -830,6 +831,28 @@ class ScoreurRepository(Protocol):
         **Feuille** : un scoreur n'a pas d'enfant en base (les validations tracées d'E10US005
         porteront son **nom**, pas une FK — la trace survit à sa suppression). Aucune cascade.
         """
+        ...
+
+
+class EquipeRepository(Protocol):
+    """Port de persistance des équipes d'un tournoi et de leurs membres ordonnés (E13US002)."""
+
+    def par_id(self, equipe_id: EquipeId) -> Equipe | None: ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Equipe]:
+        """Ordre non garanti par le port : le service trie."""
+        ...
+
+    def par_archer(self, archer_id: ArcherId) -> list[Equipe]:
+        """Les équipes dont l'archer est membre (liste éventuellement vide)."""
+        ...
+
+    def enregistrer(self, equipe: Equipe) -> Equipe:
+        """Crée l'équipe si `id` vaut `None`, sinon la met à jour — membres et ordre compris."""
+        ...
+
+    def supprimer(self, equipe_id: EquipeId) -> None:
+        """Supprime l'équipe et ses appartenances ; aucun archer n'est touché (CA 7)."""
         ...
 
 

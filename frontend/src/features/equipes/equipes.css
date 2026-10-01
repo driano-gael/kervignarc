@@ -1,0 +1,71 @@
+/* Composition des équipes (E13US002) — carte-tableau des listes admin (E17US012). */
+.equipe__nom {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.equipe__type,
+.equipe__categorie {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.equipe__membres,
+.equipe__ecarts,
+.equipe__candidats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipe__membre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Ambre, pas rouge : une équipe non conforme est un état normal en cours de composition (DV-03). */
+.equipe__ecarts {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.equipe__conforme {
+  color: var(--success);
+}
+
+.equipe__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.equipe__choix {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.equipe__candidats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+
+/* Cible tactile (règle 10) : toute la carte de l'archer est le bouton. */
+.equipe__candidat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+}
+
+.equipe__deja {
+  font-size: 12px;
+  color: var(--danger);
+}

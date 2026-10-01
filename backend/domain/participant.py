@@ -3,7 +3,8 @@
 La résolution `Participant → {archer | équipe}` vit en couche **haute**, jamais dans le moteur.
 
 ⚠️ **C'est la porte qu'ADR-0028 a franchie** : un moteur pensé « participants » fait de l'ajout des
-équipes une **réalisation**, pas une refonte. L'entité `Equipe` n'existe pas encore.
+équipes une **réalisation**, pas une refonte. `Equipe` existe (E13US002) mais ne se joue pas
+encore : aucun module de production ne construit `Participant.equipe` avant E13US003/E13US004.
 """
 
 from __future__ import annotations
@@ -40,5 +41,5 @@ class Participant:
 
     @staticmethod
     def equipe(equipe_id: int) -> Participant:
-        """Le participant d'une épreuve **par équipes** (E13US002 en composera les membres)."""
+        """Le participant d'une épreuve **par équipes** : une `Equipe` (E13US002)."""
         return Participant(GenreParticipant.EQUIPE, equipe_id)

@@ -44,6 +44,7 @@ from tests.conftest import (
     FauxClubRepository,
     FauxDepartRepository,
     FauxDerouleRepository,
+    FauxEquipeRepository,
     FauxInscriptionRepository,
     FauxInstancesDeGabarit,
     FauxPhaseRepository,
@@ -144,6 +145,7 @@ def _atteler() -> Attelage:
         serie_repo,
         depart_repo,
         _horloge(),
+        FauxEquipeRepository(),
     )
     service_inscriptions = ServiceInscriptions(
         inscription_repo, archer_repo, depart_repo, _horloge()

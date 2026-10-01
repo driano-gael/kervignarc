@@ -29,11 +29,13 @@ from infrastructure.db.models import (
     DerouleEtapeORM,
     DuelORM,
     EntreeAuditORM,
+    EquipeORM,
     ForfaitORM,
     FranchissementArretORM,
     GabaritSalleORM,
     IdentiteVisuelleORM,
     InscriptionORM,
+    MembreEquipeORM,
     PhaseORM,
     PlacementORM,
     PlacementParBlocORM,
@@ -163,6 +165,7 @@ _RATTACHEMENT = {
         "serie",
         "forfait",
         "identite_tournoi",
+        "equipe",
     ),
     "depart_id IN (SELECT id FROM depart WHERE tournoi_id = {tid})": (
         "phase",
@@ -174,6 +177,7 @@ _RATTACHEMENT = {
         "inscription",
         "barrage_tir",
         "score",
+        "membre_equipe",
     ),
     "serie_id IN (SELECT id FROM serie WHERE tournoi_id = {tid})": ("volee",),
     (
@@ -269,8 +273,18 @@ def _garnir(session: Session, tournoi_id: int) -> None:
         participants_json=f"[{archers[0].id}]",
         cree_le=instant,
     )
-    session.add_all([*inscriptions, *series, barrage])
+    equipes = [
+        EquipeORM(tournoi_id=tournoi_id, nom=nom, type="standard", effectif_attendu=3)
+        for nom in ("Les Archers", "Les Flèches")
+    ]
+    session.add_all([*inscriptions, *series, barrage, *equipes])
     session.flush()
+    # E13US002 : un archer dans deux équipes — la purge passe par l'archer **et** par l'équipe.
+    session.add_all(
+        MembreEquipeORM(equipe_id=equipe.id, archer_id=archer.id, ordre=rang)
+        for equipe in equipes
+        for rang, archer in enumerate(archers)
+    )
     session.add_all(
         [
             PlacementORM(

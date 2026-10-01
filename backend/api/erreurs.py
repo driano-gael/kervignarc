@@ -29,6 +29,7 @@ from application.erreurs import (
     CorpsHorsDeProportion,
     DepartIntrouvable,
     EffectifSimulationInvalide,
+    EquipeIntrouvable,
     ForfaitIntrouvable,
     FormatExportIndisponible,
     FormatIntrouvable,
@@ -111,6 +112,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | PhaseIntrouvable
         | PosteIntrouvable
         | ScoreurIntrouvable
+        | EquipeIntrouvable
         | ForfaitIntrouvable
         | BarrageIntrouvable
         | RemboursementIntrouvable

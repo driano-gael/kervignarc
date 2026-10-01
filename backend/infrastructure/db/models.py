@@ -471,6 +471,36 @@ class ScoreurORM(Base):
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
 
 
+class EquipeORM(Base):
+    """Table `equipe` — persistance de l'agrégat `Equipe` (E13US002).
+
+    `UNIQUE(tournoi_id, nom)` est exact : le service refuse déjà un nom de même forme repliée.
+    """
+
+    __tablename__ = "equipe"
+    __table_args__ = (UniqueConstraint("tournoi_id", "nom", name="uq_equipe_tournoi_nom"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    nom: Mapped[str] = mapped_column(nullable=False)
+    type: Mapped[str] = mapped_column(nullable=False)
+    effectif_attendu: Mapped[int] = mapped_column(nullable=False)
+
+
+class MembreEquipeORM(Base):
+    """Table `membre_equipe` — appartenance d'un archer à une équipe, à son rang d'ajout (E13US002).
+
+    ⚠️ Deux FK sans `ON DELETE` : tout chemin qui supprime un `archer` (suppression, fusion,
+    suppression de tournoi) traite cette table d'abord, dans `repositories/referentiel.py`.
+    """
+
+    __tablename__ = "membre_equipe"
+
+    equipe_id: Mapped[int] = mapped_column(ForeignKey("equipe.id"), primary_key=True)
+    archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), primary_key=True)
+    ordre: Mapped[int] = mapped_column(nullable=False)
+
+
 class PosteORM(Base):
     """Table `poste` — persistance de l'agrégat `Poste` (E04US001, ADR-0029 ; E07US004, ADR-0064).
 

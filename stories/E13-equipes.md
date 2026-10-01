@@ -13,8 +13,20 @@
 
 ### E13US002 — Composer les équipes d'un tournoi
 *En tant qu'*organisateur, *je veux* créer des équipes et y affecter des archers, *afin d'*inscrire des équipes à une épreuve.
-- **CA** : entité `Equipe` du tournoi (nom, membres) ; CRUD ; un archer est affecté à une équipe **de son propre tournoi** ; la **contrainte de composition** (nombre d'archers, mixité) est **configurable**, défaut FFTA (§6.3/§7 : 3 archers ; mixte = 2 archers H/F) ; un archer engagé en équipe **élargit** la notion d'« engagé » (glossaire).
-- **Notes** : entité enfant du tournoi (comme `Depart`, `Scoreur`) ; contrainte de composition = template modifiable (référentiel §10). Élargit [DETTE-001](../docs/dette.md) (FK `equipe.tournoi_id`, `membre_equipe.*` sans `ON DELETE`). Tests domaine (règle de composition) depuis ce CA.
+- **CA** :
+  1. Entité `Equipe` du tournoi : **nom** (non vide, unique dans le tournoi), **type** (`standard` | `mixte`), **effectif attendu** (entier ≥ 1, prérempli selon le type : **3** en standard, **2** en mixte — FFTA §6.4/§7 — et modifiable), **membres** (archers). CRUD : créer, renommer / changer type et effectif, supprimer, ajouter et retirer un membre.
+  2. Un membre est un archer **du même tournoi** que l'équipe ; sinon refus.
+  3. Un archer appartient à **au plus une équipe par type** dans le tournoi (une standard **et** une mixte au plus) : une seconde affectation du même type est **refusée** (conflit).
+  4. La composition se **compose membre par membre** : une équipe non conforme **s'enregistre**, elle n'est **pas bloquée**. Chaque équipe expose sa **conformité** — conforme, ou la liste des écarts :
+     - **effectif** différent de l'effectif attendu (trop peu / trop de membres) ;
+     - **armes différentes** entre membres (l'arme est lue sur la catégorie) ;
+     - en **mixte** : il manque un homme **ou** une femme ; en **standard** : membres de **sexes différents** (FFTA §6.4, épreuves par sexe) ;
+     - **non vérifiable** quand une catégorie de membre n'a pas d'arme, ou pas de sexe (sexe absent ou « mixte ») — le critère concerné est signalé « non vérifiable », jamais deviné.
+  5. Le **sexe** et l'**arme** d'un archer sont ceux de **sa catégorie** — l'archer n'en porte pas (arbitrage du 01/10/2026). Changer la catégorie d'un membre change la conformité de son équipe.
+  6. **« Engagé » s'élargit** : un archer membre d'une équipe est engagé. Sa suppression est **signalée** en nommant l'équipe ; confirmée, elle le **retire** de l'équipe (l'équipe subsiste).
+  7. Supprimer un tournoi supprime ses équipes et leurs membres (cascade explicite d'E01US026) ; supprimer une équipe ne touche à aucun archer.
+  8. Écran d'administration **« Équipes »** du tournoi : liste des équipes avec type, membres et conformité (écarts lisibles en clair), création, édition, suppression, ajout / retrait de membre.
+- **Notes** : entité enfant du tournoi (comme `Depart`, `Scoreur`). Arbitrages du **01/10/2026** au cadrage : sexe **lu sur la catégorie** (pas de champ neuf sur l'archer) ; composition **signalée, pas bloquée** — le refus d'une équipe non conforme viendra à l'**engagement dans une phase** (E13US004) ; **une équipe par type** ; périmètre **backend + écran**. Choix technique de l'auteur : l'effectif « configurable » est porté **par l'équipe** plutôt que par un réglage du tournoi (aucun écran de réglage neuf). Cas limite tranché par l'auteur, hors CA d'origine : à la **fusion de deux archers**, les appartenances de l'absorbé passent au survivant ; si le survivant est déjà dans une **autre** équipe du même type, la fusion est **refusée** (rien ne se perd en silence). ~~Élargit DETTE-001~~ — périmé : `DETTE-001` est soldée par `E01US026` (cascade explicite), les tables d'équipe **entrent** dans cette cascade (CA 7). Réf. FFTA corrigée : la composition est au **§6.4**, pas §6.3. Tests domaine (règle de composition) depuis ce CA.
 - **Dépend de** : E13US001, E02US002 · **Jalon** : J2
 
 ### E13US003 — Scoring d'équipe (politique injectable)

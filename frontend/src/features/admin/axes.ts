@@ -102,6 +102,8 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   departs: 'pilotage',
   // Gestion — l'administratif, transverse au temps.
   inscriptions: 'gestion',
+  // E13US002 : composer une équipe, c'est l'inscrire — même axe que les archers.
+  equipes: 'gestion',
   paiements: 'gestion',
   exports: 'gestion',
   // E16US016 : consultation du journal — de l'administratif, sur une édition précise.
@@ -148,6 +150,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   duels: true,
   departs: true,
   inscriptions: true,
+  equipes: true,
   paiements: true,
   exports: true,
   audit: true,
@@ -382,6 +385,7 @@ export const OUVRE_UN_ELEMENT: Record<Exclude<DestinationAdminId, 'tournoi'>, bo
   placement: false,
   duels: false,
   departs: false,
+  equipes: false,
   paiements: false,
   exports: false,
   // Le dépliage avant/après est **local à la ligne** : rien à porter dans l'adresse (ADR-0100 §5).
