@@ -237,7 +237,7 @@ class _Monde:
     def cycle_de_vie(self) -> ServicePhases:
         """Le service des transitions de phase, **branché comme au composition root** : c'est lui
         qui rattrape la pose sautée pendant une pause (ADR-0106 §5, 3ᵉ chemin)."""
-        service = ServicePhases(self.tournois, self.phases, self.departs, self.deroules)
+        service = ServicePhases(self.tournois, self.phases, self.departs, self.deroules, self.duels)
         service.brancher_poseur_de_tour(self.placement)
         return service
 

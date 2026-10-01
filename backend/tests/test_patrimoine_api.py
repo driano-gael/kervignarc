@@ -1120,3 +1120,42 @@ def test_un_prelevement_a_l_ordre_zero_reste_lisible_et_diagnostique(
         assert diagnostic.status_code == 200, diagnostic.text
         assert diagnostic.json()["applicable"] is False
         assert "source_phase_introuvable" in {a["code"] for a in diagnostic.json()["anomalies"]}
+
+
+def test_un_format_garde_le_bareme_de_duel_de_ses_etapes(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US011, CA 6 — DTO → agrégat → `config` → agrégat → DTO, surcharges comprises."""
+    bareme_duel = {
+        "par_defaut": {
+            "mode": "sets",
+            "nb_manches": 5,
+            "nb_fleches_par_volee": 3,
+            "points_pour_gagner": 4,
+        },
+        "surcharges": [
+            {
+                "arme": "Arc à poulies",
+                "bareme": {
+                    "mode": "cumul",
+                    "nb_manches": 5,
+                    "nb_fleches_par_volee": 3,
+                    "points_pour_gagner": 0,
+                },
+            }
+        ],
+    }
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        creation = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Club à 4 points",
+                "etapes": [{"ordre": 1, "type": "elimination_directe", "bareme_duel": bareme_duel}],
+            },
+        )
+
+        assert creation.status_code == 201, creation.text
+        (relu,) = client.get("/api/v1/formats").json()
+        assert relu["etapes"][0]["bareme_duel"] == bareme_duel

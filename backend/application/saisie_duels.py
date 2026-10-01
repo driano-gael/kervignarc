@@ -41,7 +41,7 @@ from domain.classement_de_tableau import ClassementSource, classement_de_tableau
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDerouleId
-from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
+from domain.duel import BaremeDuel, Cote, Duel, ReglageBaremeDuel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId, TypePhase
@@ -250,8 +250,10 @@ class ServiceSaisieDuels:
     def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
         """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
         tableau, lignes = self._decor(tournoi_id, phase_id)
+        reglage = self._reglage_de(tournoi_id, phase_id)
         duels = tuple(
-            self._etat_du_match(m, phase_id, lignes, tableau.nb_tours) for m in tableau.matchs
+            self._etat_du_match(m, phase_id, lignes, tableau.nb_tours, reglage)
+            for m in tableau.matchs
         )
         podium = tuple(
             (place.rang, duelliste)
@@ -271,7 +273,13 @@ class ServiceSaisieDuels:
     def etat_duel(self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int) -> EtatDuel:
         """L'état d'un match précis (câblage, occupants, tir). `MatchIntrouvable` si rang absent."""
         tableau, lignes = self._decor(tournoi_id, phase_id)
-        return self._etat_du_match(tableau.match(match_numero), phase_id, lignes, tableau.nb_tours)
+        return self._etat_du_match(
+            tableau.match(match_numero),
+            phase_id,
+            lignes,
+            tableau.nb_tours,
+            self._reglage_de(tournoi_id, phase_id),
+        )
 
     def reconstruire(
         self, tournoi_id: TournoiId, phase_id: PhaseId
@@ -295,13 +303,15 @@ class ServiceSaisieDuels:
         verrouillait le seul geste qui répare un plan devenu faux.
         """
         tableau, lignes = self.reconstruire(tournoi_id, phase_id)
+        reglage = self._reglage_de(tournoi_id, phase_id)
         enregistres = self._duels.numeros_enregistres(phase_id)
         vivants = set()
         for numero in enregistres & {m.numero for m in tableau.matchs}:
             match = tableau.match(numero)
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
-            duel = self._duels.charger(phase_id, numero, bareme=self._bareme_du(match.haut, lignes))
+            bareme = self._bareme_du(reglage, match.haut, lignes)
+            duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is not None and (duel.participant_haut, duel.participant_bas) == (
                 match.haut,
                 match.bas,
@@ -333,7 +343,8 @@ class ServiceSaisieDuels:
         """Saisit (ou réédite) une manche d'un match : les deux volées opposées."""
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        bareme = self._bareme_du(haut, lignes)
+        reglage = self._reglage_de(tournoi_id, phase_id)
+        bareme = self._bareme_du(reglage, haut, lignes)
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.saisir_manche(
@@ -344,7 +355,7 @@ class ServiceSaisieDuels:
             nb_fleches_par_volee=bareme.nb_fleches_par_volee,
         )
         self._duels.enregistrer(phase_id, match_numero, duel)
-        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
+        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, reglage, duel=duel)
 
     def saisir_barrage(
         self,
@@ -358,14 +369,15 @@ class ServiceSaisieDuels:
         """Saisit le tir de barrage d'un match à égalité (§8.2)."""
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        bareme = self._bareme_du(haut, lignes)
+        reglage = self._reglage_de(tournoi_id, phase_id)
+        bareme = self._bareme_du(reglage, haut, lignes)
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.saisir_barrage(
             fleche_haut, fleche_bas, zones_admises=zones, gagnant_designe=gagnant_designe
         )
         self._duels.enregistrer(phase_id, match_numero, duel)
-        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
+        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, reglage, duel=duel)
 
     def valider(
         self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int, scoreur: str
@@ -374,7 +386,8 @@ class ServiceSaisieDuels:
         self._refuser_si_en_pause(tournoi_id, phase_id)
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        bareme = self._bareme_du(haut, lignes)
+        reglage = self._reglage_de(tournoi_id, phase_id)
+        bareme = self._bareme_du(reglage, haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
         self._duels.enregistrer(phase_id, match_numero, duel)
@@ -387,7 +400,7 @@ class ServiceSaisieDuels:
         # volée pour un résultat identique (`DETTE-031`). ⚠️ **La résolution de la phase est DANS le
         # bloc protégé** : hors du `except`, une `InfrastructureError` rendait un 500 au scoreur.
         self._signaler_validation_de(tournoi_id, phase_id)
-        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
+        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, reglage, duel=duel)
 
     def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
         """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""
@@ -499,7 +512,7 @@ class ServiceSaisieDuels:
             self._routing,
             profondeur_de(phase, self._registre),
         )
-        tableau = self._rejouer(tableau, phase_id, lignes)
+        tableau = self._rejouer(tableau, phase_id, lignes, phase.bareme_duel)
         return self._appliquer_forfaits(tableau, phase_id), lignes
 
     def resolveur_de_classement(
@@ -674,7 +687,11 @@ class ServiceSaisieDuels:
         return tableau
 
     def _rejouer(
-        self, tableau: Tableau, phase_id: PhaseId, lignes: dict[int, LigneClassement]
+        self,
+        tableau: Tableau,
+        phase_id: PhaseId,
+        lignes: dict[int, LigneClassement],
+        reglage: ReglageBaremeDuel | None,
     ) -> Tableau:
         """Rejoue les duels **validés** dans l'ordre des tours pour peupler les tours ≥ 2.
 
@@ -690,7 +707,7 @@ class ServiceSaisieDuels:
             match = tableau.match(numero)
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
-            bareme = self._bareme_du(match.haut, lignes)
+            bareme = self._bareme_du(reglage, match.haut, lignes)
             duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is None or duel.validee_par is None:
                 continue
@@ -747,7 +764,12 @@ class ServiceSaisieDuels:
 
     # --- Résolution de pavé, **partagée** ------------------------------------------------------
 
-    def bareme_de(self, participant: Participant, lignes: dict[int, LigneClassement]) -> BaremeDuel:
+    def bareme_de(
+        self,
+        reglage: ReglageBaremeDuel | None,
+        participant: Participant,
+        lignes: dict[int, LigneClassement],
+    ) -> BaremeDuel:
         """Le barème d'un duel, résolu par l'arme du participant — **exposé** pour `ServicePoules`.
 
         Même motif que `resolveur_de_classement` : une rencontre de poule *est* un duel ordinaire
@@ -756,7 +778,7 @@ class ServiceSaisieDuels:
         sur l'ensemencement (E05US020, plan de 8 pour un tableau de 4) ; on n'en écrit pas une
         seconde.
         """
-        return self._bareme_du(participant, lignes)
+        return self._bareme_du(reglage, participant, lignes)
 
     def zones_de(
         self, participant: Participant, lignes: dict[int, LigneClassement]
@@ -779,10 +801,23 @@ class ServiceSaisieDuels:
     # --- Interne : résolution barème / zones / duelliste ---------------------------------------
 
     def _bareme_du(
-        self, participant: Participant, lignes: dict[int, LigneClassement]
+        self,
+        reglage: ReglageBaremeDuel | None,
+        participant: Participant,
+        lignes: dict[int, LigneClassement],
     ) -> BaremeDuel:
-        """Le barème du duel, résolu par l'**arme** du participant (défaut FFTA, ADR-0049)."""
-        return self._resolveur.bareme_pour(self._arme_du(participant, lignes))
+        """Le barème du duel par l'**arme** du participant : le réglage de la phase s'il existe,
+        le défaut injecté sinon (ADR-0117). ⚠️ `reglage` **sans défaut** : l'omettre retomberait en
+        silence sur FFTA."""
+        arme = self._arme_du(participant, lignes)
+        if reglage is not None:
+            return reglage.pour(arme)
+        return self._resolveur.bareme_pour(arme)
+
+    def _reglage_de(self, tournoi_id: TournoiId, phase_id: PhaseId) -> ReglageBaremeDuel | None:
+        """Le réglage de barème de la phase, lu **une fois par opération**, jamais par match."""
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        return None if phase is None else phase.bareme_duel
 
     def _arme_du(self, participant: Participant, lignes: dict[int, LigneClassement]) -> str | None:
         """L'arme (texte libre de la catégorie) d'un participant individuel, ou `None`."""
@@ -841,6 +876,7 @@ class ServiceSaisieDuels:
         phase_id: PhaseId,
         lignes: dict[int, LigneClassement],
         nb_tours: int,
+        reglage: ReglageBaremeDuel | None,
         *,
         duel: Duel | None = None,
     ) -> EtatDuel:
@@ -856,7 +892,7 @@ class ServiceSaisieDuels:
         if haut is not None and bas is not None and not match.est_bye:
             # Match jouable : le pavé est déterminé (barème par arme + zones du blason), même avant
             # tout tir — la grille front sait d'emblée sets/cumul, nb de manches et zones légales.
-            bareme = self._bareme_du(haut, lignes)
+            bareme = self._bareme_du(reglage, haut, lignes)
             zones = self._zones_best_effort(haut, lignes)
             if duel is None:
                 charge = self._duels.charger(phase_id, match.numero, bareme=bareme)

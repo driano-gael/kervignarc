@@ -102,6 +102,7 @@ from application.erreurs.referentiel import (
 from application.erreurs.tir import (
     ArcherEngage,
     ArcherIntrouvable,
+    BaremeDuelVerrouille,
     BarrageIntrouvable,
     BarragePerime,
     BlasonIntrouvable,
@@ -128,6 +129,7 @@ __all__ = [
     "ArcherIntrouvable",
     "ArretIntrouvable",
     "AucunDuelALancer",
+    "BaremeDuelVerrouille",
     "BarrageIntrouvable",
     "BarragePerime",
     "BlasonHorsTournoi",

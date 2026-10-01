@@ -8,6 +8,7 @@ le service, le barème étant résolu par un `ResolveurBaremeDuel` injecté (rè
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Protocol
@@ -351,10 +352,10 @@ class Duel:
 
 
 class ResolveurBaremeDuel(Protocol):
-    """Résout le barème d'un duel pour une **arme** (référentiel §10 : par (phase, division)).
+    """Le barème d'un duel pour une **arme**, sur une phase **sans** `ReglageBaremeDuel`.
 
-    Point d'injection d'ADR-0004 (règle 2) : E01US011 y branchera les catalogues configurables
-    (FFTA / club, surcharge par arme) sans toucher l'agrégat ni le service."""
+    Point d'injection d'ADR-0004 (règle 2). ⚠️ Depuis E01US011, ce n'est plus que le **défaut** :
+    une phase réglée l'emporte (ADR-0117)."""
 
     def bareme_pour(self, arme: str | None) -> BaremeDuel: ...
 
@@ -372,6 +373,75 @@ class ResolveurBaremeDuelFfta:
         if _est_poulies(arme):
             return BaremeDuel.preset_ffta_poulies()
         return BaremeDuel.preset_ffta_classique()
+
+
+@dataclass(frozen=True)
+class SurchargeArme:
+    """Le barème d'une **arme**, désignée par son libellé, qui prime sur le défaut de la phase."""
+
+    arme: str
+    bareme: BaremeDuel
+
+    def __post_init__(self) -> None:
+        normalise = self.arme.strip()
+        if not normalise:
+            raise BaremeDuelInvalide("Une surcharge de barème doit nommer une arme.")
+        object.__setattr__(self, "arme", normalise)
+
+    def designe(self, arme: str) -> bool:
+        """Sans casse ni espaces de bord — et **jamais par inclusion**, à la différence de la
+        reconnaissance des poulies : « Poulies » ne désigne pas « Arc à poulies »."""
+        return arme.strip().casefold() == self.arme.casefold()
+
+
+@dataclass(frozen=True)
+class ReglageBaremeDuel:
+    """Le barème de duel **réglé sur une phase** : un défaut, des surcharges par arme (E01US011).
+
+    ⚠️ Les surcharges sont **explicites** : rien ne s'y devine sur le libellé. La reconnaissance
+    des poulies ne survit qu'en **pré-remplissage** des presets, que l'organisateur voit et corrige.
+    ADR-0117.
+    """
+
+    par_defaut: BaremeDuel
+    surcharges: tuple[SurchargeArme, ...] = ()
+
+    def __post_init__(self) -> None:
+        vues: set[str] = set()
+        for surcharge in self.surcharges:
+            cle = surcharge.arme.casefold()
+            if cle in vues:
+                raise BaremeDuelInvalide(
+                    f"L'arme « {surcharge.arme} » a deux surcharges : une seule est permise."
+                )
+            vues.add(cle)
+
+    def pour(self, arme: str | None) -> BaremeDuel:
+        if arme is not None:
+            for surcharge in self.surcharges:
+                if surcharge.designe(arme):
+                    return surcharge.bareme
+        return self.par_defaut
+
+    @staticmethod
+    def preset_ffta(armes: Iterable[str]) -> ReglageBaremeDuel:
+        """FFTA officiel : sets à 6 points, poulies au cumul pour celles des `armes` qui en sont."""
+        return ReglageBaremeDuel(BaremeDuel.preset_ffta_classique(), _poulies_au_cumul(armes))
+
+    @staticmethod
+    def preset_club(armes: Iterable[str]) -> ReglageBaremeDuel:
+        """Format club : sets à 4 points ; les poulies restent au cumul, règle d'arme (A.7.5.2)."""
+        return ReglageBaremeDuel(BaremeDuel.preset_club(), _poulies_au_cumul(armes))
+
+
+def _poulies_au_cumul(armes: Iterable[str]) -> tuple[SurchargeArme, ...]:
+    """Une surcharge « cumul » par arme à poulies **distincte** (catégories de même arme)."""
+    retenues: dict[str, SurchargeArme] = {}
+    for arme in armes:
+        cle = arme.strip().casefold()
+        if _est_poulies(arme) and cle not in retenues:
+            retenues[cle] = SurchargeArme(arme, BaremeDuel.preset_ffta_poulies())
+    return tuple(retenues.values())
 
 
 def _est_poulies(arme: str | None) -> bool:

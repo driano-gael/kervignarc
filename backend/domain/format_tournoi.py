@@ -25,6 +25,7 @@ from domain.deroule_etape import (
     table_des_rangs,
     titre_normalise,
 )
+from domain.duel import ReglageBaremeDuel
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
@@ -65,9 +66,6 @@ _IDENTITE_A_BLANC = 1_000_000
 Hors de portée de toute identité réelle, et **distincte du rang** : la pose à blanc ne doit pas
 valider sous la coïncidence que cette US retire partout ailleurs.
 """
-
-PRESET_CLUB_NB_VOLEES = 5
-PRESET_CLUB_NB_FLECHES_PAR_VOLEE = 3
 
 
 @dataclass(frozen=True)
@@ -131,6 +129,13 @@ class ModelePhase:
     rien vérifier ici : une portée de 3 est jouable à 12 archers et ne l'est pas à 3. La borne se
     juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
     de bibliothèque."""
+
+    bareme_duel: ReglageBaremeDuel | None = None
+    """Le barème des duels (E01US011) — présent ici pour qu'il **voyage avec le format** (CA 6).
+
+    Même leçon que `decoupage` ci-dessous : un champ d'étape absent du modèle se perd en silence à
+    la promotion. Même régime de brouillon : son type n'est jugé qu'à l'application.
+    """
 
     decoupage: DecoupageEnTours | None = None
     """Le découpage d'une **qualification** en tours (E05US035, ADR-0093).
@@ -213,6 +218,7 @@ class ModelePhase:
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
             colline=self.colline,
+            bareme_duel=self.bareme_duel,
             decoupage=self.decoupage,
             arrets=self.arrets,
             titre=self.titre,
@@ -241,6 +247,7 @@ class ModelePhase:
             big_shoot_off=etape.big_shoot_off,
             suisse=etape.suisse,
             colline=etape.colline,
+            bareme_duel=etape.bareme_duel,
             decoupage=etape.decoupage,
             arrets=etape.arrets,
             titre=etape.titre,
@@ -385,13 +392,7 @@ class FormatTournoi:
         """
         return FormatTournoi.creer(
             "Format club",
-            [
-                ModelePhase.qualification(
-                    BaremeQualification.creer(
-                        PRESET_CLUB_NB_VOLEES, PRESET_CLUB_NB_FLECHES_PAR_VOLEE
-                    )
-                )
-            ],
+            [ModelePhase.qualification(BaremeQualification.preset_club())],
         )
 
     def modifier(

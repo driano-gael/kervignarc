@@ -23,12 +23,14 @@ from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
+from domain.contrat_phase import TYPES_A_BAREME_DE_DUEL
 from domain.contrat_phase import TYPES_EN_TABLEAU as TYPES_EN_TABLEAU
 from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
 from domain.contrat_phase import TypePhase as TypePhase
 from domain.contrat_phase import produit_un_classement as produit_un_classement
 from domain.depart import DepartId
 from domain.erreurs import (
+    BaremeDuelInvalide,
     CadenceValidationSuperieureAuBareme,
     ConfigurationBigShootOffInvalide,
     ConfigurationCollineInvalide,
@@ -61,6 +63,9 @@ if TYPE_CHECKING:
     # doit rester déclarée auprès de son entité (comme `TournoiId`). `from __future__ import
     # annotations` rend les annotations paresseuses, donc le cycle n'existe qu'au typage.
     from domain.deroule_etape import EtapeDerouleId
+
+    # Même motif : `domain.duel` → `domain.serie` → ce module (`PhaseId`).
+    from domain.duel import ReglageBaremeDuel
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
@@ -590,6 +595,14 @@ class Phase:
     règle FFTA ne prévoit. Seul usage : rendre la qualification **arrêtable** (ADR-0093).
     """
 
+    bareme_duel: ReglageBaremeDuel | None = None
+    """Le barème des duels de cette phase, défaut et surcharges par arme (E01US011, ADR-0117).
+
+    `None` = le défaut injecté (`ResolveurBaremeDuel`), le comportement d'avant l'US. ⚠️ **Non
+    stocké avec le tir** (ADR-0049 §4) : il est verrouillé dès le premier tir par
+    `ServicePhases.modifier`, sans quoi un duel validé se relirait sous un autre barème.
+    """
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -648,6 +661,11 @@ class Phase:
             raise ConfigurationCollineInvalide(
                 f"Une phase de type « {self.type.value} » n'est pas une colline : elle n'a pas de "
                 "nombre de manches ni de portée de défi à régler."
+            )
+        if self.bareme_duel is not None and self.type not in TYPES_A_BAREME_DE_DUEL:
+            raise BaremeDuelInvalide(
+                f"Une phase de type « {self.type.value} » ne tire pas de duels : elle n'a pas de "
+                "barème de duel à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

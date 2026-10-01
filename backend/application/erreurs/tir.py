@@ -97,6 +97,16 @@ class DuelDesynchronise(ApplicationError):
     code = "duel_desynchronise"
 
 
+class BaremeDuelVerrouille(ApplicationError):
+    """Changer le barème de duel d'une étape dont une phase a déjà un tir (E01US011) → 409.
+
+    Le barème n'est pas stocké avec le tir (ADR-0049 §4) : le changer ferait relire des duels
+    validés sous un autre barème, et basculer un vainqueur en silence. ADR-0117.
+    """
+
+    code = "bareme_duel_verrouille"
+
+
 class EcritureDeRoleInferieur(ApplicationError):
     """Un rôle **inférieur** à celui qui a déjà écrit la volée tente de l'écraser (E16US020) → 409.
 

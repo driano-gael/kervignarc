@@ -34,6 +34,7 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule
+from domain.duel import BaremeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
@@ -1536,5 +1537,101 @@ def test_un_format_conserve_le_titre_de_ses_etapes(tmp_path: Path) -> None:
         assert relu is not None
         assert relu.etapes == (modele,)
         assert relu.etapes[0].titre == "Tableau des jeunes"
+    finally:
+        db.engine.dispose()
+
+
+_BAREME_CLUB_AVEC_POULIES = ReglageBaremeDuel(
+    par_defaut=BaremeDuel.preset_club(),
+    surcharges=(SurchargeArme("Arc à poulies", BaremeDuel.preset_ffta_poulies()),),
+)
+
+
+def test_le_bareme_de_duel_fait_l_aller_retour(tmp_path: Path) -> None:
+    """E01US011 : `config.bareme_duel` s'écrit et se relit à l'identique, surcharges comprises."""
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            bareme_duel=_BAREME_CLUB_AVEC_POULIES,
+        )
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+        etape = DerouleEtapeRepositorySQL(db.session_factory).par_tournoi(
+            _tournoi_du(db, depart_id)
+        )[0]
+
+        assert relue.bareme_duel == _BAREME_CLUB_AVEC_POULIES
+        assert etape.bareme_duel == _BAREME_CLUB_AVEC_POULIES
+    finally:
+        db.engine.dispose()
+
+
+def test_une_etape_sans_bareme_de_duel_se_relit_non_reglee(tmp_path: Path) -> None:
+    """CA 3 sans migration : une étape écrite avant E01US011 garde le défaut injecté."""
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(db, depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.bareme_duel is None
+    finally:
+        db.engine.dispose()
+
+
+def test_un_bareme_de_duel_incomplet_remonte_en_erreur_typee(tmp_path: Path) -> None:
+    """Un seuil de points absent ne se devine pas : la relecture refuse."""
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        incomplet = {
+            "bareme_duel": {
+                "defaut": {"mode": "sets", "manches": 5, "fleches": 3},
+                "surcharges": [],
+            }
+        }
+        with db.session_factory() as session:
+            depart = session.get(DepartORM, depart_id)
+            assert depart is not None
+            etape = DerouleEtapeORM(
+                tournoi_id=depart.tournoi_id,
+                ordre=1,
+                type="elimination_directe",
+                config=json.dumps(incomplet),
+            )
+            session.add(etape)
+            session.flush()
+            session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
+            session.commit()
+
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+    finally:
+        db.engine.dispose()
+
+
+def test_un_format_conserve_le_bareme_de_duel_de_ses_etapes(tmp_path: Path) -> None:
+    """CA 6 persistant : `_politiques_json` a deux appelants, les deux doivent porter le champ."""
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(
+            ordre=1, type=TypePhase.ELIMINATION_DIRECTE, bareme_duel=_BAREME_CLUB_AVEC_POULIES
+        )
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Format club", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
     finally:
         db.engine.dispose()

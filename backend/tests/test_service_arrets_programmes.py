@@ -56,6 +56,7 @@ from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
+    FauxDuelRepository,
     FauxPhaseRepository,
     poser_phase_factice,
 )
@@ -252,7 +253,9 @@ class Decor:
         self.arrets_de_circonstance = FauxArretsDeCirconstance()
         self.horloge = FauxHorloge()
         self.suivi = FauxSuivi()
-        self.service_phases = ServicePhases(self.tournois, self.phases, self.departs, self.deroules)
+        self.service_phases = ServicePhases(
+            self.tournois, self.phases, self.departs, self.deroules, FauxDuelRepository()
+        )
         self.service = ServiceArretsProgrammes(
             phases=self.phases,
             deroules=self.deroules,

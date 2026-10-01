@@ -36,7 +36,7 @@ from domain.blason import ZoneScore
 from domain.classement import LigneClassement
 from domain.classement_de_suisse import classement_de_suisse
 from domain.classement_de_tableau import ClassementSource
-from domain.duel import BaremeDuel, Cote, Duel
+from domain.duel import BaremeDuel, Cote, Duel, ReglageBaremeDuel
 from domain.participant import Participant
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement_par_bloc import (
@@ -273,7 +273,9 @@ class ServiceSuisse:
         # Un **seul** bloc pour toute la phase : une ronde apparie tout le plateau d'un coup, il n'y
         # a donc pas de groupes à distinguer. Le numéro 1 est celui que `placer_les_blocs` attribue.
         bloc = next(iter(self._placements.par_phase(phase_id)), None)
-        rondes, resultats, byes = self._rejouer(phase_id, tireurs, jouables, lignes, bloc)
+        rondes, resultats, byes = self._rejouer(
+            phase_id, phase.bareme_duel, tireurs, jouables, lignes, bloc
+        )
         return EtatSuisse(
             phase_id=phase_id,
             nb_rondes=configuration.nb_rondes,
@@ -295,6 +297,7 @@ class ServiceSuisse:
     def _rejouer(
         self,
         phase_id: PhaseId,
+        reglage: ReglageBaremeDuel | None,
         tireurs: list[Participant],
         configuration: ConfigurationSuisse,
         lignes: dict[int, LigneClassement],
@@ -327,7 +330,14 @@ class ServiceSuisse:
                     continue
                 numero += 1
                 rencontre = self._rencontre(
-                    numero, index + 1, appariement, phase_id, lignes, bloc, position
+                    numero,
+                    index + 1,
+                    appariement,
+                    phase_id,
+                    reglage,
+                    lignes,
+                    bloc,
+                    position,
                 )
                 position += 1
                 rencontres.append(rencontre)
@@ -357,6 +367,7 @@ class ServiceSuisse:
         ronde: int,
         appariement: Appariement,
         phase_id: PhaseId,
+        reglage: ReglageBaremeDuel | None,
         lignes: dict[int, LigneClassement],
         bloc: BlocDeCouloirs | None,
         position: int,
@@ -370,7 +381,7 @@ class ServiceSuisse:
         a = appariement.a
         b = appariement.b
         assert b is not None, "`_rejouer` écarte les byes avant d'appeler cette méthode."
-        bareme = self._saisie_duels.bareme_de(a, lignes)
+        bareme = self._saisie_duels.bareme_de(reglage, a, lignes)
         charge = self._duels.charger(phase_id, numero, bareme=bareme)
         # ⚠️ **L'ancrage d'ADR-0049 §4.** Un tir dont les duellistes enregistrés divergent des
         # adversaires recalculés est **masqué**, jamais ré-attribué : la rencontre s'affiche non

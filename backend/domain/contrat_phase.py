@@ -512,3 +512,23 @@ le commentaire d'un ensemble calculé cesse de lui correspondre.
 def produit_un_classement(type_phase: TypePhase) -> bool:
     """Cette phase ordonne-t-elle ses participants en sortie ? (E05US015, référentiel §10.1)"""
     return type_phase not in TYPES_SANS_CLASSEMENT
+
+
+_DECORS_EN_DUELS = frozenset(
+    {
+        DecorDeSaisie.ARBRE_DE_DUELS,
+        DecorDeSaisie.RENCONTRES_EN_GROUPES,
+        DecorDeSaisie.RONDES_APPARIEES,
+    }
+)
+
+TYPES_A_BAREME_DE_DUEL: frozenset[TypePhase] = frozenset(
+    type_phase
+    for type_phase, contrat in _CONTRATS.items()
+    if contrat.deroule_par_un_service and contrat.decor in _DECORS_EN_DUELS
+)
+"""Les types dont les rencontres se tirent au **barème de duel** — les seuls à le régler (E01US011).
+
+Miroir des appelants de `ServiceSaisieDuels.bareme_de` (tableau, poules, suisse, colline). ⚠️
+`placement` a un arbre mais aucun service ne le joue : un barème y serait accepté puis inerte.
+"""

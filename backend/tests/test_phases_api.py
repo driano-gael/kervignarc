@@ -16,6 +16,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.duel import BaremeDuel, Duel
+from domain.participant import GenreParticipant, Participant
+from infrastructure.db.repositories.moteur import PhaseRepositorySQL
+from infrastructure.db.repositories.tir import DuelRepositorySQL
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 
@@ -837,3 +841,81 @@ def test_un_reglage_pose_sur_le_mauvais_type_est_refuse_sans_rien_persister(
         creneau = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()[0]["id"]
         avancement = client.get(f"/api/v1/departs/{creneau}/phases")
         assert avancement.status_code == 200, avancement.text
+
+
+_SETS_4 = {"mode": "sets", "nb_manches": 5, "nb_fleches_par_volee": 3, "points_pour_gagner": 4}
+_CUMUL = {"mode": "cumul", "nb_manches": 5, "nb_fleches_par_volee": 3, "points_pour_gagner": 0}
+_BAREME_CLUB = {
+    "par_defaut": _SETS_4,
+    "surcharges": [{"arme": "Arc à poulies", "bareme": _CUMUL}],
+}
+
+
+def test_le_bareme_de_duel_fait_l_aller_retour_http(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US011 — le barème s'envoie à l'ajout, se relit au `GET`, et l'édition totale l'efface."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(
+            base, json={"type": "elimination_directe", "bareme_duel": _BAREME_CLUB}
+        )
+        assert creation.status_code == 201, creation.text
+        assert client.get(base).json()[0]["bareme_duel"] == _BAREME_CLUB
+
+        efface = client.put(
+            f"{base}/{creation.json()['id']}", json={"type": "elimination_directe", "sources": []}
+        )
+        assert efface.status_code == 200, efface.text
+        assert client.get(base).json()[0]["bareme_duel"] is None
+
+
+def test_un_bareme_de_duel_sur_une_phase_sans_duel_est_refuse(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={"type": "echauffement", "bareme_duel": _BAREME_CLUB},
+        )
+
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "bareme_duel_invalide"
+
+
+def test_changer_le_bareme_d_une_phase_deja_tiree_repond_409(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA 4 bout en bout : le refus du service sort en conflit d'état, code stable."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        creation = client.post(base, json={"type": "elimination_directe"})
+        assert creation.status_code == 201, creation.text
+        fabrique = app_phases.state.database.session_factory
+        (phase,) = PhaseRepositorySQL(fabrique).par_tournoi(tournoi_id)
+        assert phase.id is not None
+        DuelRepositorySQL(fabrique).enregistrer(
+            phase.id,
+            1,
+            Duel.vide(
+                BaremeDuel.preset_ffta_classique(),
+                Participant(GenreParticipant.INDIVIDUEL, 1),
+                Participant(GenreParticipant.INDIVIDUEL, 2),
+            ),
+        )
+
+        reponse = client.put(
+            f"{base}/{creation.json()['id']}",
+            json={"type": "elimination_directe", "sources": [], "bareme_duel": _BAREME_CLUB},
+        )
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "bareme_duel_verrouille"

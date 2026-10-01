@@ -32,7 +32,13 @@ from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.classement import Classement, StatutClassement
 from domain.depart import Depart
-from domain.duel import ModeDuel, ResolveurBaremeDuelFfta
+from domain.duel import (
+    BaremeDuel,
+    ModeDuel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+    SurchargeArme,
+)
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
@@ -954,3 +960,76 @@ def test_l_amorce_du_cache_ignore_une_qualification_prelevee() -> None:
     assert amorce is not None
     assert amorce[0] == identite_d_etape(1), "l'identité de la TÊTE, pas celle de la prélevée"
     assert amorce[1].ordre == 1
+
+
+# --- E01US011 : le barème de duel est un réglage de la phase ----------------------------------
+
+
+def _regler_le_bareme(monde: _Monde, reglage: ReglageBaremeDuel) -> None:
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(replace(phase, bareme_duel=reglage))
+
+
+def _bareme_de_la_finale(monde: _Monde) -> BaremeDuel | None:
+    service = monde.service()
+    finale = next(
+        m for m in service.etat_tableau(1, monde.phase_id).duels if m.place_en_jeu == (1, 2)
+    )
+    return finale.bareme
+
+
+def test_le_bareme_regle_sur_la_phase_l_emporte_sur_le_defaut_ffta() -> None:
+    """CA 1 et 2 : une phase réglée au format club tire en sets, premier à **4**."""
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("9", "9", "9"))
+    _regler_le_bareme(monde, ReglageBaremeDuel.preset_club(("Arc Classique",)))
+
+    bareme = _bareme_de_la_finale(monde)
+
+    assert bareme is not None
+    assert (bareme.mode, bareme.points_pour_gagner) == (ModeDuel.SETS, 4)
+
+
+def test_la_surcharge_d_arme_de_la_phase_est_appliquee_au_duel() -> None:
+    """CA 1 : la surcharge explicite décide, même pour une arme que la devinette ignorerait."""
+    monde = _Monde(arme="Barebow")
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("9", "9", "9"))
+    cumul = BaremeDuel(ModeDuel.CUMUL, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=0)
+    _regler_le_bareme(
+        monde,
+        ReglageBaremeDuel(
+            par_defaut=BaremeDuel.preset_club(), surcharges=(SurchargeArme("barebow", cumul),)
+        ),
+    )
+
+    assert _bareme_de_la_finale(monde) == cumul
+
+
+def test_une_phase_sans_reglage_garde_le_defaut_ffta_et_la_reconnaissance_des_poulies() -> None:
+    """CA 3 : sans réglage, rien ne change — poulies reconnues au libellé, au cumul."""
+    monde = _Monde(arme="Arc à Poulies")
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("9", "9", "9"))
+
+    assert _bareme_de_la_finale(monde) == BaremeDuel.preset_ffta_poulies()
+
+
+def test_le_reglage_de_la_phase_atteint_l_ecriture_pas_seulement_la_lecture() -> None:
+    """Le barème réglé borne la saisie : au format club, 2 manches gagnées suffisent (4 points)."""
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("9", "9", "9"))
+    _regler_le_bareme(monde, ReglageBaremeDuel.preset_club(()))
+    service = monde.service()
+    numero = next(m.numero for m in service.etat_tableau(1, monde.phase_id).duels)
+
+    for manche in (1, 2):
+        etat = service.saisir_manche(
+            1, monde.phase_id, numero, manche, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
+        )
+
+    assert etat.duel is not None
+    assert etat.duel.resultat.termine

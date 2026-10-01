@@ -573,8 +573,13 @@ def create_app(
     # tournoi et faire vivre leur cycle de vie. Le service vérifie l'existence du tournoi et arbitre
     # les conflits d'état ; la cohérence de la séquence (source, ordres) est une règle du domaine
     # (`SequencePhases`). Même port `phase_repository` que le barème/grain (une table `phase`).
+    # E01US011 : le dépôt de duels sert le verrou du barème au premier tir (ADR-0117).
     app.state.service_phases = ServicePhases(
-        tournoi_repository, phase_repository, depart_repository, deroule_repository
+        tournoi_repository,
+        phase_repository,
+        depart_repository,
+        deroule_repository,
+        duel_repository,
     )
     # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue
     # nom → implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
