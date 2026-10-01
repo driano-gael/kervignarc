@@ -280,7 +280,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 381,
+   "occurrences": 382,
    "source": "application"
   },
   {
@@ -304,7 +304,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 112,
+   "occurrences": 111,
    "source": "infrastructure"
   },
   {
@@ -780,7 +780,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 366,
+   "occurrences": 367,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1107,6 +1107,17 @@ window.ATLAS.carte = {
    "couche_source": "infrastructure",
    "occurrences": 1,
    "origines": [
+    "backend/infrastructure/libelles.py"
+   ],
+   "source": "infrastructure"
+  },
+  {
+   "autorise": true,
+   "cible": "domain",
+   "couche_cible": "domain",
+   "couche_source": "infrastructure",
+   "occurrences": 1,
+   "origines": [
     "backend/infrastructure/backup/sauvegarde.py"
    ],
    "source": "infrastructure/backup"
@@ -1182,9 +1193,8 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 10,
+   "occurrences": 9,
    "origines": [
-    "backend/infrastructure/pdf/_commun.py",
     "backend/infrastructure/pdf/classement_qualification.py",
     "backend/infrastructure/pdf/documents_salle.py",
     "backend/infrastructure/pdf/feuille_de_marque.py",
@@ -1222,7 +1232,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 7,
+   "occurrences": 6,
    "origines": [
     "backend/infrastructure/tableur/audit.py",
     "backend/infrastructure/tableur/classement_qualification.py",
@@ -1295,7 +1305,7 @@ window.ATLAS.carte = {
    "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "infrastructure",
-   "occurrences": 5,
+   "occurrences": 7,
    "origines": [
     "backend/infrastructure/pdf/classement_qualification.py",
     "backend/infrastructure/pdf/documents_salle.py",
@@ -1310,9 +1320,11 @@ window.ATLAS.carte = {
    "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "infrastructure",
-   "occurrences": 1,
+   "occurrences": 3,
    "origines": [
-    "backend/infrastructure/tableur/grille.py"
+    "backend/infrastructure/tableur/classement_qualification.py",
+    "backend/infrastructure/tableur/grille.py",
+    "backend/infrastructure/tableur/palmares.py"
    ],
    "source": "infrastructure/tableur"
   }
@@ -3396,7 +3408,7 @@ window.ATLAS.carte = {
   "aretes_front": 182,
   "enchevetrements": 4,
   "features": 52,
-  "imports": 1012,
+  "imports": 1016,
   "imports_entre_couches": 855,
   "plus_gros_noeud": 24,
   "ports": 77,

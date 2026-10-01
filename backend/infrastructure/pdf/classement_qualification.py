@@ -31,18 +31,24 @@ from domain.classement_imprime import (
 )
 from domain.club import ClubId
 from infrastructure.erreurs import InfrastructureError
-from infrastructure.pdf._commun import echapper, libelle_statut
+from infrastructure.libelles import libelle_statut
+from infrastructure.pdf._commun import echapper
 
 _MARGE = 15 * mm
+
+# Ligne 0 : le **rappel** (tournoi, créneau, catégorie, provisoire), fusionnée sur toute la
+# largeur ; ligne 1 : les intitulés. Les deux se répètent à chaque page (`_LIGNES_REPETEES`).
+_LIGNES_REPETEES = 2
 
 _STYLE_TABLE = TableStyle(
     [
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("SPAN", (0, 0), (-1, 0)),
+        ("BACKGROUND", (0, 1), (-1, 1), colors.whitesmoke),
+        ("FONTNAME", (0, 0), (-1, 1), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (5, 1), (7, -1), "RIGHT"),
+        ("ALIGN", (5, 2), (7, -1), "RIGHT"),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]
@@ -50,7 +56,7 @@ _STYLE_TABLE = TableStyle(
 
 _ENTETE = ["Rang", "Général", "Nom", "Prénom", "Club", "Total", "10", "9", "Statut"]
 
-PROVISOIRE = "Classement provisoire — des volées restent à valider."
+PROVISOIRE = "Classement provisoire — des volées restent à valider ou un barrage à tirer."
 """⚠️ Le papier circule : une feuille imprimée à la pause n'a plus d'indice de fraîcheur."""
 
 
@@ -99,7 +105,7 @@ class GenerateurClassementQualificationPdf:
                     [
                         *self._entete(document.tournoi, section),
                         Paragraph(echapper(bloc.libelle), self._categorie),
-                        self._table(bloc, document.clubs),
+                        self._table(bloc, document.clubs, _rappel(document.tournoi, section, bloc)),
                     ]
                 )
         elements: list[Flowable] = []
@@ -119,10 +125,14 @@ class GenerateurClassementQualificationPdf:
         elements.append(Spacer(1, 2 * mm))
         return elements
 
-    def _table(self, bloc: BlocCategorie, clubs: Mapping[ClubId, str]) -> Table:
+    def _table(self, bloc: BlocCategorie, clubs: Mapping[ClubId, str], rappel: str) -> Table:
+        """⚠️ Au-delà d'une trentaine d'archers, la catégorie déborde : seules les lignes
+        répétées reviennent en tête de la page suivante, d'où le rappel **dans** la table.
+        """
         # Cellules de `Table` : chaînes **brutes**, jamais échappées (cf. `_commun.echapper`).
         corps = [_cellules(ligne, clubs) for ligne in bloc.lignes]
-        table = Table([_ENTETE, *corps], repeatRows=1)
+        ligne_rappel = [rappel] + [""] * (len(_ENTETE) - 1)
+        table = Table([ligne_rappel, _ENTETE, *corps], repeatRows=_LIGNES_REPETEES)
         table.setStyle(_STYLE_TABLE)
         return table
 
@@ -139,6 +149,13 @@ class GenerateurClassementQualificationPdf:
         )
         document.build(elements)
         return tampon.getvalue()
+
+
+def _rappel(tournoi: str, section: SectionClassementQualification, bloc: BlocCategorie) -> str:
+    morceaux = [tournoi, section.libelle, bloc.libelle]
+    if section.provisoire:
+        morceaux.append("Classement provisoire")
+    return " — ".join(morceaux)
 
 
 def _cellules(ligne: LigneClassement, clubs: Mapping[ClubId, str]) -> list[str]:

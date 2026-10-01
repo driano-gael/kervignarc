@@ -2,11 +2,15 @@
 
 Tests **après** l'implémentation (règle 9 : adapters). Le PDF s'inspecte par `_corps()`, comme
 `test_pdf_palmares` : ReportLab n'offre pas de lecture, et les `Flowable` portent ce que l'adapter
-a décidé d'émettre.
+a décidé d'émettre. Le débordement, lui, se vérifie par le **découpage réel** de la table
+(`Table.split`) et par le nombre de pages du document rendu.
 """
 
 from __future__ import annotations
 
+import re
+
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import Flowable, PageBreak, Paragraph, Table
 
 from domain.classement import LigneClassement, StatutClassement
@@ -22,11 +26,14 @@ from infrastructure.pdf.classement_qualification import (
 
 
 def _ligne(
-    archer_id: int, rang: int | None, statut: StatutClassement = StatutClassement.EN_LICE
+    archer_id: int,
+    rang_categorie: int | None,
+    rang_scratch: int | None,
+    statut: StatutClassement = StatutClassement.EN_LICE,
 ) -> LigneClassement:
     return LigneClassement(
-        rang_scratch=rang,
-        rang_categorie=rang,
+        rang_scratch=rang_scratch,
+        rang_categorie=rang_categorie,
         archer_id=archer_id,
         nom=f"NOM{archer_id}",
         prenom="Jean",
@@ -47,14 +54,20 @@ def _document(*sections: SectionClassementQualification) -> ClassementQualificat
     )
 
 
+# Rangs de catégorie et général **différents** : des fixtures à rangs égaux laissaient passer
+# l'inversion des deux colonnes (revue, axe B).
 _SENIORS = BlocCategorie(
-    "Senior Homme", (_ligne(1, 1), _ligne(2, None, StatutClassement.DISQUALIFIE))
+    "Senior Homme", (_ligne(1, 1, 4), _ligne(2, None, None, StatutClassement.DISQUALIFIE))
 )
-_CADETS = BlocCategorie("Cadet", (_ligne(3, 1),))
+_CADETS = BlocCategorie("Cadet", (_ligne(3, 1, 2),))
 
 
 def _textes(elements: list[Flowable]) -> list[str]:
     return [element.text for element in elements if isinstance(element, Paragraph)]
+
+
+def _tables(elements: list[Flowable]) -> list[Table]:
+    return [e for e in elements if isinstance(e, Table)]
 
 
 def test_le_pdf_rend_une_page_par_categorie_qui_se_lit_seule() -> None:
@@ -77,18 +90,25 @@ def test_le_pdf_marque_chaque_page_d_un_depart_provisoire() -> None:
     elements = GenerateurClassementQualificationPdf()._corps(_document(matin, apres_midi))
 
     assert _textes(elements).count(PROVISOIRE) == 2
+    rappels = [table._cellvalues[0][0] for table in _tables(elements)]
+    assert rappels == [
+        "Salle 18m — Matin — Senior Homme",
+        "Salle 18m — Après-midi — Senior Homme — Classement provisoire",
+        "Salle 18m — Après-midi — Cadet — Classement provisoire",
+    ]
 
 
-def test_le_pdf_imprime_club_statut_et_rang_absent() -> None:
+def test_le_pdf_imprime_rang_de_categorie_avant_rang_general() -> None:
     section = SectionClassementQualification("Matin", False, (_SENIORS,))
 
     elements = GenerateurClassementQualificationPdf()._corps(_document(section))
 
-    (table,) = [e for e in elements if isinstance(e, Table)]
+    (table,) = _tables(elements)
     contenu = table._cellvalues
-    assert contenu[1] == [
+    assert contenu[1][:2] == ["Rang", "Général"]
+    assert contenu[2] == [
         "1",
-        "1",
+        "4",
         "NOM1",
         "Jean",
         "Compagnie de Kervignarc",
@@ -97,7 +117,26 @@ def test_le_pdf_imprime_club_statut_et_rang_absent() -> None:
         "15",
         "",
     ]
-    assert contenu[2][:2] == ["—", "—"] and contenu[2][-1] == "Disqualifié"
+    assert contenu[3][:2] == ["—", "—"] and contenu[3][-1] == "Disqualifié"
+
+
+def test_une_categorie_qui_deborde_garde_son_rappel_sur_chaque_page() -> None:
+    nombreux = BlocCategorie("Senior Homme", tuple(_ligne(n, n, n) for n in range(1, 61)))
+    section = SectionClassementQualification("Après-midi", True, (nombreux,))
+    generateur = GenerateurClassementQualificationPdf()
+
+    (table,) = _tables(generateur._corps(_document(section)))
+    largeur, hauteur = A4
+    morceaux = table.split(largeur - 30 * 2.835, hauteur - 30 * 2.835)
+
+    assert len(morceaux) >= 2
+    for morceau in morceaux:
+        assert morceau._cellvalues[0][0] == (
+            "Salle 18m — Après-midi — Senior Homme — Classement provisoire"
+        )
+        assert morceau._cellvalues[1][0] == "Rang"
+    octets = generateur.classement_qualification(_document(section))
+    assert len(re.findall(rb"/Type /Page\b(?!s)", octets)) >= 2
 
 
 def test_un_creneau_sans_archer_le_dit() -> None:

@@ -72,10 +72,11 @@ de* l'afficher au mur — pendant la qualification comme à son terme — et le 
   nom, prénom, club, total, nombre de 10, nombre de 9, statut (abandon / disqualifié).
 - **CA — même calcul que l'écran** : rangs, départage, barrages et forfaits sont ceux du
   classement affiché (E06US001, E06US003, ADR-0050) — le document ne recalcule rien de son côté.
-- **CA — provisoire** : le document s'imprime **à tout moment**. Tant qu'un archer **en lice** du
-  départ n'a pas validé toutes les volées du barème (ou que le barème n'est pas réglé), chaque
-  page de ce départ porte « Classement provisoire ». Un archer forfait (abandon, disqualifié) ne
-  retient pas le départ en provisoire.
+- **CA — provisoire** : le document s'imprime **à tout moment**. Chaque page d'un départ porte
+  « Classement provisoire » tant que : (a) un archer **en lice et placé** sur ce départ n'a pas
+  validé toutes les volées du barème (ou que le barème n'est pas réglé) ; **ou** (b) une égalité
+  attend encore son **barrage** — ses rangs partagés changeront au verdict. Un archer forfait
+  (abandon, disqualifié) ou **inscrit sans être placé** ne retient pas le départ en provisoire.
 - **CA — formats** : PDF, CSV et Excel, proposés par l'écran « Exports & impressions ». Le tableur
   rend le classement **à plat** (une ligne par archer, colonnes départ, catégorie et
   provisoire/définitif), sans pages ni titres dans la grille (ADR-0101 §4).
@@ -87,6 +88,10 @@ de* l'afficher au mur — pendant la qualification comme à son terme — et le 
     affiche au mur, catégorie par catégorie.
   - **Provisoire autorisé** : utile à l'affichage de la pause ; refuser l'export avant la fin
     aurait privé l'organisateur du document au moment où on le lui demande.
+  - **Barrage en attente ⇒ provisoire** et **seuls les placés comptent** : tranchés en revue
+    (axes C1 et D). Le second aligne le jugement sur l'avancement du créneau, qui ne juge que les
+    archers placés — sinon un absent non déclaré laissait la feuille provisoire pour toujours.
+    ⚠️ Le **forfait**, lui, se lit sur le classement, à la maille tournoi (`DETTE-047`).
   - **Route publique**, comme le classement qu'elle rend (`GET /departs/{id}/classement`) et le
     document du palmarès : rien n'y est plus confidentiel qu'à l'écran de salle.
 - **Absorbe** : ex-E09US005, E09US006. **Dépend de** : E09US001, E06US001, E06US006 · **Jalon** : J3

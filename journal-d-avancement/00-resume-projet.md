@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 26 septembre 2026
+# Résumé du projet — où on en est au 1ᵉʳ octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -599,7 +599,8 @@ rencontres.*
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé) et les **classements imprimables**. C'est **le dernier reliquat** de J1 :
+   (« c'est moi » mémorisé) — les **classements imprimables** sont faits (01/10). C'est **le dernier
+   reliquat** de J1 :
    le jalon est sinon **terminé**.
    *(Supervision des postes, classement, vues publiques, suivi des paiements, complétude du tournoi,
    recherche d'un archer, **premières listes imprimables** (placement, club & paiement), la **mise en
@@ -629,8 +630,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **154 US livrées** (mergées, revues, CI verte) à la date du 27/09/2026 — la dernière, `E17US005`,
-  à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
+- **155 US livrées** (mergées, revues, CI verte) à la date du 01/10/2026 — la dernière, `E09US005`,
+  à **surface visible** : le **classement de qualification s'imprime**, une page par catégorie à
+  afficher au mur, marquée « provisoire » tant que tout n'est pas tiré — et elle **clôt le jalon
+  J3**. Juste avant, `E17US005`, à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
   sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
   sienne. Juste avant, `E02US007`, qui **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
   d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US006` : un
@@ -930,8 +933,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
-  et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : terminé (14/14)**
+  et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » reste, hors
+  décompte du jalon ; les classements imprimables sont faits depuis le 01/10.)* Jalon **J2 (les duels) : terminé (14/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**

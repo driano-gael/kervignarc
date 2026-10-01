@@ -7,10 +7,12 @@ doit dire ce que dit l'écran (CA « même calcul que l'écran »).
 from __future__ import annotations
 
 from collections.abc import Sequence
+from types import MappingProxyType
 
 from application.classements import ServiceClassement
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable, TournoiSansDepart
 from application.exports import FormatExport, RegistreDeFormats
+from domain.archer import ArcherId
 from domain.categorie import Categorie
 from domain.classement_imprime import (
     ClassementQualificationImprime,
@@ -24,6 +26,8 @@ from domain.ports import (
     ClubRepository,
     DepartRepository,
     GenerateurClassementQualification,
+    InscriptionRepository,
+    PlacementRepository,
     SerieRepository,
     TournoiRepository,
 )
@@ -42,6 +46,8 @@ class ServiceClassementImprime:
         categories: CategorieRepository,
         clubs: ClubRepository,
         series: SerieRepository,
+        inscriptions: InscriptionRepository,
+        placements: PlacementRepository,
         classements: ServiceClassement,
         generateurs: RegistreDeFormats[GenerateurClassementQualification],
     ) -> None:
@@ -50,6 +56,8 @@ class ServiceClassementImprime:
         self._categories = categories
         self._clubs = clubs
         self._series = series
+        self._inscriptions = inscriptions
+        self._placements = placements
         self._classements = classements
         self._generateurs = generateurs
 
@@ -74,7 +82,10 @@ class ServiceClassementImprime:
         return ClassementQualificationImprime(
             tournoi=tournoi.nom,
             sections=tuple(self._section(depart, categories) for depart in departs),
-            clubs={club.id: club.nom for club in self._clubs.lister() if club.id is not None},
+            # Lecture seule : le `frozen` de la dataclass ne protège que la référence (axe A).
+            clubs=MappingProxyType(
+                {club.id: club.nom for club in self._clubs.lister() if club.id is not None}
+            ),
         )
 
     def imprimer(
@@ -116,6 +127,13 @@ class ServiceClassementImprime:
             nb_volees = phase.bareme.nb_volees if phase.bareme is not None else 0
         return SectionClassementQualification(
             libelle=depart.libelle_creneau(),
-            provisoire=qualification_provisoire(classement, series, nb_volees),
+            provisoire=qualification_provisoire(
+                classement, series, nb_volees, self._places(depart.id)
+            ),
             categories=blocs_par_categorie(classement, categories),
         )
+
+    def _places(self, depart_id: DepartId) -> set[ArcherId]:
+        """Les archers **placés** sur ce créneau — même population que l'avancement du créneau."""
+        affectees = {a.inscription_id for a in self._placements.par_depart(depart_id)}
+        return {i.archer_id for i in self._inscriptions.par_depart(depart_id) if i.id in affectees}

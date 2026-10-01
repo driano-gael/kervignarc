@@ -5,13 +5,15 @@ service ajoute au domaine (`test_domain_classement_imprime.py`) :
 
 - « un document **par départ** — tous les départs à la suite, ou un seul choisi » ;
 - « même calcul que l'écran » : les lignes sont celles de `ServiceClassement.pour_depart` ;
-- « provisoire » se juge **départ par départ** ;
+- « provisoire » se juge **départ par départ**, sur les seuls archers **placés**, et un barrage
+  en attente le maintient (CA amendé en revue) ;
 - le club s'imprime par son **nom** ;
 - les formats PDF, CSV et Excel passent par le registre (ADR-0101).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 
 import pytest
@@ -29,6 +31,7 @@ from domain.club import Club
 from domain.depart import Depart
 from domain.inscription import Inscription
 from domain.phase import Phase
+from domain.placement import Affectation
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
 from tests.conftest import (
@@ -39,6 +42,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxPlacementRepository,
     FauxTournoiRepository,
 )
 from tests.test_service_classement import FauxSerieRepository
@@ -61,11 +65,13 @@ class _GenerateurEspion:
 class _Decor:
     """Un tournoi, deux créneaux de deux archers chacun, barème de 2 volées.
 
-    Le matin est **terminé** (toutes les volées validées), l'après-midi **en cours** (une volée
-    manque) — de quoi distinguer le provisoire départ par départ.
+    Le matin est **terminé** (toutes les volées validées, deux totaux **égaux**), l'après-midi
+    **en cours** (une volée manque au cadet) — de quoi distinguer le provisoire départ par départ.
+    `barrage_matin` règle le seuil de barrage du matin : l'égalité devient alors à départager.
+    `placer_retardataire=False` laisse le cadet de l'après-midi inscrit **sans** cible.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, barrage_matin: bool = False, placer_retardataire: bool = True) -> None:
         self.tournois = FauxTournoiRepository()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
@@ -87,6 +93,7 @@ class _Decor:
         self.departs = FauxDepartRepository()
         self.inscriptions = FauxInscriptionRepository()
         self.phases = FauxPhaseRepository(self.departs)
+        self.placements = FauxPlacementRepository()
         series: list[Serie] = []
 
         matin = self.departs.ajouter(
@@ -105,9 +112,10 @@ class _Decor:
 
         for depart, volees_du_second in ((matin, 2), (apres_midi, 1)):
             assert depart.id is not None
-            qualif = self.phases.ajouter(
-                Phase.qualification(depart.id, BaremeQualification.creer(2, 1))
-            )
+            phase = Phase.qualification(depart.id, BaremeQualification.creer(2, 1))
+            if barrage_matin and depart is matin:
+                phase = dataclasses.replace(phase, barrage_jusqu_au=1)
+            qualif = self.phases.ajouter(phase)
             assert qualif.id is not None
             for indice, (categorie_id, volees) in enumerate(
                 ((senior.id, 2), (cadet.id, volees_du_second))
@@ -122,7 +130,15 @@ class _Decor:
                     )
                 )
                 assert archer.id is not None
-                self.inscriptions.ajouter(Inscription.creer(archer.id, depart.id, cree_le=None))
+                inscription = self.inscriptions.ajouter(
+                    Inscription.creer(archer.id, depart.id, cree_le=None)
+                )
+                assert inscription.id is not None
+                retardataire = depart is apres_midi and indice == 1
+                if placer_retardataire or not retardataire:
+                    self.placements.poser_plusieurs(
+                        depart.id, [Affectation(inscription.id, indice + 1, "A")]
+                    )
                 series.append(
                     Serie(
                         tournoi_id=self.tournoi_id,
@@ -155,6 +171,8 @@ class _Decor:
             categories=self.categories,
             clubs=self.clubs,
             series=self.series,
+            inscriptions=self.inscriptions,
+            placements=self.placements,
             classements=self.classements,
             generateurs=RegistreDeFormats({FormatExport.PDF: self.pdf, FormatExport.CSV: self.csv}),
         )
@@ -189,12 +207,13 @@ def test_les_lignes_sont_celles_du_classement_affiche() -> None:
 
     document = decor.service().document(decor.tournoi_id, decor.matin.id)
 
-    imprimees = [ligne for bloc in document.sections[0].categories for ligne in bloc.lignes]
     affichees = decor.classements.pour_depart(decor.matin.id).lignes
-    assert sorted(imprimees, key=lambda ligne: ligne.archer_id) == sorted(
-        affichees, key=lambda ligne: ligne.archer_id
-    )
-    assert [bloc.libelle for bloc in document.sections[0].categories] == ["Senior Homme", "Cadet"]
+    blocs = document.sections[0].categories
+    assert [bloc.libelle for bloc in blocs] == ["Senior Homme", "Cadet"]
+    # Sans tri : chaque bloc garde l'**ordre** du classement affiché, pas seulement ses archers.
+    for bloc in blocs:
+        attendu = [ligne for ligne in affichees if ligne.categorie_libelle == bloc.libelle]
+        assert list(bloc.lignes) == attendu
 
 
 def test_le_provisoire_se_juge_depart_par_depart() -> None:
@@ -203,6 +222,44 @@ def test_le_provisoire_se_juge_depart_par_depart() -> None:
     document = decor.service().document(decor.tournoi_id)
 
     assert [section.provisoire for section in document.sections] == [False, True]
+
+
+def test_un_inscrit_non_place_ne_retient_pas_son_depart_en_provisoire() -> None:
+    decor = _Decor(placer_retardataire=False)
+
+    document = decor.service().document(decor.tournoi_id)
+
+    assert [section.provisoire for section in document.sections] == [False, False]
+
+
+def test_un_barrage_en_attente_maintient_le_depart_en_provisoire() -> None:
+    # Matin : toutes les volées validées, mais les deux archers sont ex æquo au rang 1 et le
+    # seuil de barrage couvre ce rang.
+    decor = _Decor(barrage_matin=True)
+
+    document = decor.service().document(decor.tournoi_id)
+
+    assert document.sections[0].provisoire
+
+
+def test_un_depart_sans_qualification_reste_provisoire() -> None:
+    decor = _Decor()
+    depart = decor.departs.ajouter(
+        Depart.creer(tournoi_id=decor.tournoi_id, numero=3, tarif_centimes=800, horaire="18:00")
+    )
+    assert depart.id is not None
+    (categorie, *_) = decor.categories.par_tournoi(decor.tournoi_id)
+    assert categorie.id is not None
+    archer = decor.archers.ajouter(Archer.creer("TARD", "Jean", decor.tournoi_id, categorie.id))
+    assert archer.id is not None
+    inscription = decor.inscriptions.ajouter(Inscription.creer(archer.id, depart.id, cree_le=None))
+    assert inscription.id is not None
+    decor.placements.poser_plusieurs(depart.id, [Affectation(inscription.id, 1, "A")])
+
+    (section,) = decor.service().document(decor.tournoi_id, depart.id).sections
+
+    assert section.provisoire
+    assert [ligne.archer_id for bloc in section.categories for ligne in bloc.lignes] == [archer.id]
 
 
 def test_le_club_s_imprime_par_son_nom() -> None:

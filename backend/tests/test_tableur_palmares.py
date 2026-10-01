@@ -16,9 +16,10 @@ from domain.classement import StatutClassement
 from domain.entree_audit import ActionAuditee, EntreeAudit, JournalAudit
 from domain.palmares import LignePalmares, Palmares, SectionPalmares
 from domain.podium import ReglagePodiums
+from infrastructure.libelles import LIBELLES_STATUT
 from infrastructure.tableur.audit import _LIBELLES_ACTION, GenerateurJournalAuditTableur
 from infrastructure.tableur.grille import rendre_csv
-from infrastructure.tableur.palmares import LIBELLES_STATUT, GenerateurPalmaresTableur
+from infrastructure.tableur.palmares import GenerateurPalmaresTableur
 
 
 def _ligne(**surcharges: object) -> LignePalmares:

@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from domain.classement import StatutClassement
 from domain.palmares import LignePalmares, SectionPalmares
 from domain.podium import ReglagePodiums
+from infrastructure.libelles import LIBELLES_STATUT
 from infrastructure.tableur.grille import Cellule, Grille, RenduTableur
 
 _ENTETE = (
@@ -78,16 +79,8 @@ def _rang(borne_min: int | None, borne_max: int | None) -> str:
     return str(borne_min) if borne_min == borne_max else f"{borne_min}-{borne_max}"
 
 
-# Les **deux statuts de forfait** reprennent les mots du PDF (`infrastructure/pdf/palmares.py`) :
-# le document du mur et celui de la presse nomment le même archer pareil (règle 3). « En cours » et
-# « Acquis » sont propres au tableur — le PDF n'affiche rien pour un archer en lice.
-# ⚠️ Registre jumeau de `StatutClassement`, gardé par `test_tableur_palmares.py`.
-LIBELLES_STATUT = {
-    StatutClassement.ABANDON: "Abandon",
-    StatutClassement.DISQUALIFIE: "Disqualifié",
-}
-
-
+# Les statuts de forfait viennent du registre partagé avec le PDF (`infrastructure/libelles.py`) ;
+# « En cours » et « Acquis » sont propres au tableur — le PDF n'affiche rien pour un archer en lice.
 def _statut(ligne: LignePalmares) -> str:
     """Ce que la ligne dit d'elle-même : une place acquise, une attente, ou un statut de forfait."""
     if ligne.statut is not StatutClassement.EN_LICE:

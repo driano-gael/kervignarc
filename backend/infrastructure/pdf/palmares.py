@@ -27,8 +27,8 @@ from domain.classement_clubs import ClassementClubs, classer_clubs
 from domain.palmares import LignePalmares, Palmares, PlacePodium, SectionPalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.libelles import libelle_statut
 from infrastructure.pdf._commun import echapper as _echapper
-from infrastructure.pdf._commun import libelle_statut
 
 _MARGE = 15 * mm
 

@@ -8,8 +8,6 @@ l'infra reste simple).
 
 from __future__ import annotations
 
-from domain.classement import StatutClassement
-
 
 def echapper(texte: str) -> str:
     """Neutralise les caractères spéciaux du mini-HTML des `Paragraph` ReportLab (`&`, `<`, `>`).
@@ -21,16 +19,3 @@ def echapper(texte: str) -> str:
     balisage** : ce n'est pas introduire un pattern, c'est déplacer trois lignes pures.
     """
     return texte.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-def libelle_statut(statut: StatutClassement) -> str:
-    """Libellé imprimé du statut (ADR-0050) — vide pour le cas normal, qui n'a rien à signaler.
-
-    Partagé par le palmarès et le classement de qualification (E09US005) : la même feuille au mur
-    nomme le même archer pareil.
-    """
-    if statut is StatutClassement.ABANDON:
-        return "Abandon"
-    if statut is StatutClassement.DISQUALIFIE:
-        return "Disqualifié"
-    return ""

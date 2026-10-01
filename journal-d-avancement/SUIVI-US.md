@@ -12,7 +12,12 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/09/2026, 16 h 56** · **154 US livrées** · dernière : `E17US005`
+**Dernière mise à jour : 01/10/2026, 20 h 30** · **155 US livrées** · dernière : `E09US005`
+*(**le classement de qualification s'imprime** — PDF une page par catégorie et par départ, CSV et
+Excel à plat. Marqué « provisoire » tant qu'un archer **placé** a des volées à valider ou qu'un
+**barrage** attend (deux arbitrages rendus en revue). Rétrécie : duels et 1→N étaient tenus par le
+palmarès. ⚠️ **Elle clôt le jalon J3 (27/27).** `DETTE-047` élargie d'un 4ᵉ effet.)*
+Précédente : `E17US005`
 *(**Inter est embarquée** : la même police sur chaque tablette, sans réseau ni police installée. Police **variable** — la fiche comptait deux graisses, le front en emploie cinq. `DETTE-043` refermée.)*
 Précédente : `E02US007`
 *(**les inscrits s'importent depuis un fichier** — export Ianseo (`.csv`) ou classeur Résult'Arc
@@ -70,11 +75,11 @@ Avant elle, `E06US009` *(un palmarès par départ, juxtaposés ; `DETTE-045` sol
 Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
 Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée après treize mois)*.
 
-> ⚠️ **146 fiches closes, mais 144 livraisons.** Le total ci-dessus est **écrit à la main** et
+> ⚠️ **155 fiches closes, mais 153 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
 > sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches sont closes sans
 > livraison propre — `E01US016` (absorbée par `E16US006`, 25/08/2026) et `E16US011` (**close par
-> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 142 ferait rougir la CI ; on
+> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 153 ferait rougir la CI ; on
 > note donc la nuance au lieu de la cacher. ⚠️ **Ces trois nombres se réécrivent à chaque US** :
 > l'atlas ne contrôle que le premier, les deux autres dérivent en silence (ils annonçaient encore
 > 137/135/134 à 143 US livrées — corrigé le 19/09/2026).
@@ -396,7 +401,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯 1~~ ✅ | ~~`E17US012`~~ | **Livrée le 26/09/2026** — A04, A08, A12 et A17 en carte-tableau ; **A04** gagne inscrits et cibles, **A17** son bandeau de totaux et l'**ancienneté** de la dette (migration `0057`, nullable : l'existant reste « date inconnue »). Colonnes sans donnée **retirées des planches** (A04 avancement / ce qui reste, A08 état / périmètre / dernière validation, A12 type / rattachement / appareil / signe de vie). ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté. |
 > | ~~🎯~~ ✅ | ~~`E02US007`~~ | **Livrée le 26/09/2026 — choisie hors file par le commanditaire**, qui l'a tirée du « à choisir » (option b) pendant qu'`E17US012` était en vol ailleurs. Import Ianseo / Résult'Arc en **aperçu puis confirmation**, écrit en **une** transaction ; licence **unique dans le tournoi** (une fiche, N inscriptions). ⚠️ **Le blocage QT1 était levé depuis le 18/07/2026** (échantillons versés dans `docs/sources/`, `dc85faa`) : la fiche se disait « bloquée » plus de deux mois après. [ADR-0115](../docs/adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md). |
 > | ~~🔒~~ ✅ | ~~`E17US005`~~ | **Livrée le 26/09/2026 — débloquée par votre arbitrage du jour** : Inter est **embarquée** (fichier officiel `rsms/inter` 4.1, tel quel), donc la même sur chaque tablette, sans réseau et sans police installée — vérifié au navigateur sur un poste qui ne l'a pas. ⚠️ **La fiche se trompait** : « 2 graisses, 400/800 » ; le front en emploie **cinq**, d'où une police **variable** (94 usages en 600/700 seraient sortis en 800). Piège trouvé en route : le serveur sous Windows servait `.woff2` en `text/plain`. `DETTE-043` refermée ; les planches lisent le même fichier. |
-> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : `E09US005` (classement de qualification en PDF), le fil **équipes** (`E13US002`→`E13US004`), le jalon **J4**. |
+> | ~~🎯~~ ✅ | ~~`E09US005`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Le classement de qualification s'exporte (PDF, CSV, Excel) ; **J3 est terminé**. Deux arbitrages rendus en revue (barrage en attente ⇒ provisoire ; seuls les placés comptent). |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : le fil **équipes** (`E13US002`→`E13US004`), le jalon **J4**. |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1190,7 +1196,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**
+## J3 — Placement intégral 1→N + écran de salle — ✅ **terminé (27/27)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -1216,7 +1222,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76quindecies | E05US029 | **Des poules de niveau en une seule étape** | ✅ *(livrée le 21/08/2026 — le tournoi club **en cascade** se compose sans corvée : une phase de poules peut répartir son classement source en **tranches de rangs contiguës** (« rangs 1-6, 7-12, … ») au lieu de les équilibrer au serpent, là où il fallait jusqu'ici écrire **six étapes à la main**. Le mode est un **réglage** de `ReglageDePoules`, pas un `TypePhase` neuf (règle 2). ⚠️ **La fiche annonçait le mauvais remède** sur son 2ᵉ obstacle — porter `rang_premier` **au groupe** — et la vérification dans le code l'a corrigé : il suffit que le **classement de phase se lise groupe par groupe**, chaque poule occupant alors sa tranche. Le remède annoncé aurait fait deux mécanismes pour situer un même archer dans l'espace de rangs (la seconde vérité de `DETTE-034`). D'où le sujet réel : le mode commande **aussi la lecture**, et les deux versants sont indissociables — [ADR-0094](../docs/adr/0094-le-mode-de-composition-d-une-poule-commande-aussi-la-lecture-de-son-classement.md). ⚠️ Trois arbitrages au cadrage : **cascade à resserrement** au périmètre (éprouvée de bout en bout), **groupes du bas** gonflés quand l'effectif ne tombe pas juste, garde-fou « 2ᵉ phase au serpent » en **refus** avec dérogation — son prédicat portant sur la **source**, pas sur le rang dans le déroulé. **Aucune migration** ; `DETTE-054` élargie de deux champs, pas d'une paire. **Insérée ici le 21/08/2026** — née du cadrage d'`E05US026`, elle n'existait que dans la file d'attente)* |
 | 76sexdecies | E05US027 | **La colline jouable** | ✅ *(livrée le 22/08/2026 — **4ᵉ et dernière tranche** du découpage d'`E05US023`, et celle qui vide la file des formats. Le *King of the Hill* / *Ladder* se règle à l'atelier (manches + **portée de défi**, avec la borne que l'effectif autorise affichée en clair), se joue manche après manche au pavé de duel, se route, se classe et s'affiche au public comme sur l'écran de salle — **backend et front dans la même branche**, à la différence du suisse. `DETTE-028` **refermée sur son volet « moteurs de formats sans appelant »** ; ⚠️ **le volet politiques subsiste** (`ScoreAvecHandicap`, `RoutingRepechage`, `classement.py` hors famille `scoring`) et n'a aucune US inscrite — le barrer eût été la sur-promesse type. ⚠️ **Le format n'a pas de bye, il a des archers AU REPOS** : à portée 1, les **deux extrémités** se reposent une manche sur deux quel que soit l'effectif — ce n'est pas le cas limite d'un effectif impair, et l'issue `EN_ATTENTE` (ADR-0087) y est donc le **régime ordinaire**, pas l'exception. ⚠️ **Rien de l'ordre de la colline n'est persisté** : il se rejoue de l'ordre initial et des manches closes (même parti qu'ADR-0090 §5) — le persister aurait donné deux vérités qui divergent à la première correction de score. ⚠️ **Six garde-fous sont tombés et ont été retournés**, dont celui de `DETTE-066` **avant** qu'une ligne de simulation soit touchée ; deux autres se déplacent sur `placement` et **cessent de se déplacer**. ⚠️ **Écart du Ladder tranché** (l'exemple contredit la règle : c'est la règle qui fait foi) et reversé aux **trois** documents de CA. `DETTE-054` (8ᵉ paire), `DETTE-064` (4ᵉ, sur onze tests d'API), `DETTE-065` (7ᵉ copie), `DETTE-031` élargies. **Aucune migration.**)* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
-| 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
+| 78 | E09US005 | Classements PDF | ✅ *(**le classement de qualification exportable** — PDF, CSV, Excel. Rétrécie : duels et 1→N tenus par le palmarès. Une page par catégorie et par départ, rappel répété sur chaque feuille. « Provisoire » tant qu'un archer **placé** a des volées à valider ou qu'un **barrage** attend — deux arbitrages du commanditaire en revue, reversés dans `stories/`. ⚠️ **Le forfait se lit à la maille tournoi** : `DETTE-047` élargie. Clôt J3.)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ✅ *(25/08 — **livrée sous le numéro `E16US006`**, qui l'a absorbée : « un second logo » n'avait pas de sens sans le premier. CA livré en entier, à une réserve nommée près — l'usage de l'accent **secondaire** reste mince, aucune planche ne disant ce qu'il doit peindre)* |
 | 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ✅ *(poste typé cible/écran, pilotage par état lu, suivi superposé — ADR-0064)* |
@@ -1479,7 +1485,7 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
   admin » d'EPIC-17) ne compte **ni au numérateur ni au dénominateur** : c'est du travail livré, pas
   une US. Les lignes à `Seq = —` (US hors séquence, remontées d'une section d'ajouts) sont comptées
   **dans leur section d'origine**, pas dans le jalon — sans quoi la même US serait comptée deux
-  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 26/27 et J4 1/7.
+  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 27/27 et J4 1/7.
   *(J3 corrigé **deux fois** le 16/08/2026, par deux modes de panne différents, tous deux
   trouvés par le recalcul automatique d'`E00US019` et non à l'œil. **1.** Le compteur disait
   `12/15` quand le corps portait 14 ✅ sur 16 lignes — l'en-tête n'avait pas suivi le corps.

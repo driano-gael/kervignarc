@@ -100,6 +100,33 @@ def test_un_depart_inconnu_rend_404(
     assert reponse.status_code == 404, reponse.text
 
 
+def test_le_depart_d_un_autre_tournoi_rend_404(
+    app_classement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_classement) as client:
+        connecter_admin(client)
+        tournoi_id = _preparer(app_classement, client)
+        (depart, *_) = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()
+        autre_id = _creer_tournoi(client)
+
+        reponse = client.get(_chemin(autre_id), params={"depart_id": depart["id"]})
+
+    assert reponse.status_code == 404, reponse.text
+
+
+def test_un_tournoi_sans_creneau_rend_409(
+    app_classement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_classement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        reponse = client.get(_chemin(tournoi_id))
+
+    assert reponse.status_code == 409, reponse.text
+    assert reponse.json()["code"] == "tournoi_sans_depart"
+
+
 def test_un_tournoi_inconnu_rend_404(app_classement: FastAPI) -> None:
     with TestClient(app_classement) as client:
         reponse = client.get(_chemin(9999))

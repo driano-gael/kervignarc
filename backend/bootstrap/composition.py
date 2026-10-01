@@ -1094,6 +1094,8 @@ def create_app(
         categories=categorie_repository,
         clubs=club_repository,
         series=serie_repository,
+        inscriptions=inscription_repository,
+        placements=placement_repository,
         classements=app.state.service_classement,
         generateurs=RegistreDeFormats(
             {

@@ -6,9 +6,10 @@ et juge l'état. Voir `stories/E09-exports.md` pour le CA.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
+from domain.archer import ArcherId
 from domain.categorie import Categorie, CategorieId
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.club import ClubId
@@ -64,18 +65,22 @@ def blocs_par_categorie(
 
 
 def qualification_provisoire(
-    classement: Classement, series: Iterable[Serie], nb_volees: int
+    classement: Classement,
+    series: Iterable[Serie],
+    nb_volees: int,
+    places: Collection[ArcherId],
 ) -> bool:
-    """Un archer **en lice** n'a-t-il pas encore validé toutes les volées du barème ?
+    """Un barrage attend-il, ou un archer **en lice et placé** a-t-il des volées à valider ?
 
-    Même notion de série close que la complétude (`ServiceCompletude._serie_close`), où le
-    forfait clôt la série : ici, il se lit sur le statut de la ligne. Barème non réglé
-    (`nb_volees <= 0`) → provisoire, par `Serie.est_complete`, qui ne déclare rien terminé sans
-    attendu. Un créneau sans archer n'attend rien : il n'est pas provisoire.
+    Barème non réglé (`nb_volees <= 0`) → provisoire, par `Serie.est_complete`. Population des
+    placés, comme l'avancement du créneau. ⚠️ Le forfait, lui, se lit sur le **statut de la ligne**,
+    donc à la maille tournoi : un forfait d'un autre créneau écarte l'archer ici (`DETTE-047`).
     """
+    if classement.egalites_a_departager:
+        return True
     par_archer = {serie.archer_id: serie for serie in series}
     return any(
         (serie := par_archer.get(ligne.archer_id)) is None or not serie.est_complete(nb_volees)
         for ligne in classement.lignes
-        if ligne.statut is StatutClassement.EN_LICE
+        if ligne.statut is StatutClassement.EN_LICE and ligne.archer_id in places
     )
