@@ -65,6 +65,7 @@ vi.mock('../competition/hooks', async (reel) => ({
 vi.mock('../validation-qualif/hooks', async (reel) => ({
   ...(await reel<typeof import('../validation-qualif/hooks')>()),
   useSerieScoreur: () => ({ data: undefined, isSuccess: false, error: null }),
+  useFileScoreur: () => ({ data: [], isSuccess: true, error: null }),
   useValiderSerie: () => MUTATION,
   useAnnulerValidation: () => MUTATION,
   useRefermerCorrection: () => MUTATION,

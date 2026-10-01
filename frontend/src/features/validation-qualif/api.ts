@@ -13,6 +13,29 @@ export function getSerieScoreur(tournoiId: number, archerId: number): Promise<Se
   return fetchJson<Serie>(`/api/v1/saisie/series/${tournoiId}/${archerId}`, undefined, 'scoreur')
 }
 
+// Une ligne de la file du scoreur (E04US019). L'attente est calculée **par le serveur**.
+export interface ArcherEnAttente {
+  archer_id: number
+  nom: string
+  prenom: string
+  position: string
+  attente_secondes: number
+}
+
+export interface CibleEnAttente {
+  cible_index: number
+  attente_secondes: number
+  archers: ArcherEnAttente[]
+}
+
+export function getFileScoreur(tournoiId: number, departId: number): Promise<CibleEnAttente[]> {
+  return fetchJson<CibleEnAttente[]>(
+    `/api/v1/saisie/file/${tournoiId}/${departId}`,
+    undefined,
+    'scoreur',
+  )
+}
+
 export function validerSerie(
   tournoiId: number,
   archerId: number,

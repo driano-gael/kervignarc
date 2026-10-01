@@ -18,6 +18,7 @@ import { departDeSalle } from '../salle/rotation'
 import type { Volee } from '../saisie/api'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { FileDuScoreur } from './FileDuScoreur'
 import type { GesteDuBouton } from './etat'
 import { aValider, avertissementAnnulation, etatVolee, gesteDuBouton } from './etat'
 import {
@@ -63,6 +64,9 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         }}
         etiquette="Départ à valider"
       />
+      {/* DETTE-052 vaut aussi pour la file (E04US019) : elle est lue pour CE créneau, mais la
+          validation qu'ouvre un archer devine toujours le sien. */}
+      <FileDuScoreur tournoiId={tournoiId} departId={departId} onChoisir={setArcherId} />
       <MessageErreur erreur={serie.error ?? valider.error ?? annuler.error ?? refermer.error} />
       {lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer sur ce départ pour l'instant.</p>

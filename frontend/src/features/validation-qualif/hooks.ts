@@ -11,7 +11,30 @@ import type { Serie } from '../saisie/api'
 import { cleSerie } from '../saisie/hooks'
 import { nouvelIdentifiant } from '../saisie/volees'
 import { cleClassement, INTERVALLE_POLL_MS } from '../competition/hooks'
-import { annulerValidation, getSerieScoreur, refermerCorrection, validerSerie } from './api'
+import {
+  annulerValidation,
+  getFileScoreur,
+  getSerieScoreur,
+  refermerCorrection,
+  validerSerie,
+} from './api'
+
+export const cleFileScoreur = (tournoiId: number, departId?: number | null) =>
+  departId === undefined ? ['file-scoreur', tournoiId] : ['file-scoreur', tournoiId, departId]
+
+export function useFileScoreur(tournoiId: number, departId: number | null) {
+  return useQuery({
+    queryKey: cleFileScoreur(tournoiId, departId),
+    queryFn: () => {
+      if (departId === null) throw new Error('Aucun créneau choisi.')
+      return getFileScoreur(tournoiId, departId)
+    },
+    enabled: departId !== null,
+    // Filet du WebSocket (qui invalide tout le cache à chaque écriture) : sans lui, une coupure
+    // du direct figerait la file et l'attente affichée.
+    refetchInterval: INTERVALLE_POLL_MS,
+  })
+}
 
 export function useSerieScoreur(tournoiId: number, archerId: number | null) {
   return useQuery({
@@ -41,6 +64,7 @@ export function useValiderSerie(tournoiId: number) {
     onSuccess: (serie: Serie) => {
       queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id, 'scoreur'), serie)
       void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+      void queryClient.invalidateQueries({ queryKey: cleFileScoreur(tournoiId) })
     },
   })
 }
@@ -53,6 +77,7 @@ export function useRefermerCorrection(tournoiId: number) {
     onSuccess: (serie: Serie) => {
       queryClient.setQueryData(cleSerie(tournoiId, serie.archer_id, 'scoreur'), serie)
       void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+      void queryClient.invalidateQueries({ queryKey: cleFileScoreur(tournoiId) })
     },
   })
 }
