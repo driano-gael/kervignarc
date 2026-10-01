@@ -280,7 +280,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 376,
+   "occurrences": 379,
    "source": "application"
   },
   {
@@ -358,7 +358,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 56,
+   "occurrences": 57,
    "source": "bootstrap"
   },
   {
@@ -777,7 +777,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 361,
+   "occurrences": 364,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -834,7 +834,8 @@ window.ATLAS.carte = {
     "backend/application/suivi_deroule.py",
     "backend/application/supervision.py",
     "backend/application/tableaux_publics.py",
-    "backend/application/tournois.py"
+    "backend/application/tournois.py",
+    "backend/application/verrou_bareme.py"
    ],
    "source": "application"
   },
@@ -890,7 +891,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 56,
+   "occurrences": 57,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -3368,8 +3369,8 @@ window.ATLAS.carte = {
   "aretes_front": 183,
   "enchevetrements": 4,
   "features": 52,
-  "imports": 997,
-  "imports_entre_couches": 843,
+  "imports": 1001,
+  "imports_entre_couches": 847,
   "plus_gros_noeud": 24,
   "ports": 76,
   "ports_hors_domaine": 30,

@@ -26,6 +26,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_depart
 from application.pose_du_tour import DeclencheurPoseDeTour, PoseurDeTour
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
@@ -82,8 +83,9 @@ class ServicePhases:
         # Le **déroulé** : la définition, une fois par tournoi (ADR-0076). Ce service porte
         # donc deux mailles, délibérément — composer au tournoi, faire vivre au départ.
         self._deroules = deroules
-        # E01US011 : sait si une phase a déjà un tir, pour verrouiller son barème (ADR-0117).
-        self._duels = duels
+        # E01US011 : la définition partagée de « déjà tiré » (ADR-0117 §5) ; même règle que la
+        # garde sur l'arme d'une catégorie, construite d'ici sur les dépôts que ce service reçoit.
+        self._verrou = VerrouBaremeDuel(departs, phases, deroules, duels)
         self._pose_de_tour = DeclencheurPoseDeTour()
 
     def brancher_poseur_de_tour(self, poseur: PoseurDeTour) -> None:
@@ -237,7 +239,9 @@ class ServicePhases:
             # E01US011 : passé explicitement, même motif que ses voisins (édition totale).
             bareme_duel=bareme_duel,
         )
-        if modifiee.bareme_duel != etape.bareme_duel and self._a_deja_un_tir(tournoi_id, etape_id):
+        if modifiee.bareme_duel != etape.bareme_duel and self._verrou.etape_tiree(
+            tournoi_id, etape_id
+        ):
             raise BaremeDuelVerrouille(
                 "Des duels de cette phase ont déjà été tirés : son barème ne peut plus changer, "
                 "sans quoi leurs résultats seraient relus autrement."
@@ -324,15 +328,6 @@ class ServicePhases:
                     self._phases.supprimer(phase.id)
         self._deroules.supprimer(cible.id)
         self._deroules.enregistrer_plusieurs(recompactees)
-
-    def _a_deja_un_tir(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> bool:
-        """Une phase de cette étape a-t-elle un tir, **dans n'importe quel créneau** (CA 4) ?"""
-        return any(
-            phase.id is not None and self._duels.numeros_enregistres(phase.id)
-            for depart_id in self._creneaux(tournoi_id)
-            for phase in self._phases.par_depart(depart_id)
-            if phase.etape_id == etape_id
-        )
 
     def _creneaux(self, tournoi_id: TournoiId) -> list[int]:
         """Les identifiants des créneaux du tournoi — là où les avancements se déclinent."""

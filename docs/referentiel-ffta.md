@@ -263,6 +263,8 @@ En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de
 
 **Décision (2026-07-14)** — L'application livre **deux jeux de presets** : *FFTA officiel* et *format club*. L'organisateur choisit à la création ; les deux restent surchargeables (principe directeur du §10).
 
+**Arbitrages du 01/10/2026** (revue d'`E01US011`) — au format club, deux archers **au seuil dans la même manche** (4-4) se départagent au **barrage**, comme le 5-5 FFTA. Le barème « ½ finales / finales à 6 points » ci-dessus n'est **pas encore exprimable** (une phase porte tout le tableau) : `E01US027`, `DETTE-117`.
+
 ### 10.1 Formats propres au club — sans équivalent FFTA
 
 Ces formats **n'existent pas au règlement fédéral**. Leur règle a été **fournie par le club**, et ce

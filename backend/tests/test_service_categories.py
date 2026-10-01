@@ -14,12 +14,29 @@ import datetime
 import pytest
 
 from application.categories import ServiceCategories
-from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
+from application.erreurs import (
+    ArmeDeCategorieVerrouillee,
+    BlasonHorsTournoi,
+    CategorieIntrouvable,
+    TournoiIntrouvable,
+)
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.blason import Blason, BlasonId
 from domain.categorie import SexeCategorie, TrancheAge
+from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
+from domain.duel import BaremeDuel, Duel, ReglageBaremeDuel, SurchargeArme
 from domain.erreurs import LibelleCategorieInvalide
+from domain.participant import GenreParticipant, Participant
+from domain.phase import TypePhase
 from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
-from tests.conftest import FauxCategorieRepository
+from tests.conftest import (
+    FauxCategorieRepository,
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxDuelRepository,
+    FauxPhaseRepository,
+)
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -87,13 +104,26 @@ class FauxBlasonRepository:
         del self._blasons[blason_id]
 
 
+def _verrou_vide() -> VerrouBaremeDuel:
+    """Le verrou d'un monde sans étape ni tir : il ne refuse jamais rien."""
+    departs = FauxDepartRepository()
+    deroules = FauxDerouleRepository()
+    return VerrouBaremeDuel(
+        departs, FauxPhaseRepository(departs, deroules), deroules, FauxDuelRepository()
+    )
+
+
 def _service_avec_tournoi() -> tuple[ServiceCategories, int, FauxBlasonRepository]:
     """Prépare un service avec un tournoi persisté ; renvoie (service, tournoi_id, blasons)."""
     tournois = FauxTournoiRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Trophée", _DATE))
     assert tournoi.id is not None
     blasons = FauxBlasonRepository()
-    return ServiceCategories(tournois, FauxCategorieRepository(), blasons), tournoi.id, blasons
+    return (
+        ServiceCategories(tournois, FauxCategorieRepository(), blasons, _verrou_vide()),
+        tournoi.id,
+        blasons,
+    )
 
 
 def test_creer_persiste_et_rattache_au_tournoi() -> None:
@@ -112,7 +142,7 @@ def test_creer_persiste_et_rattache_au_tournoi() -> None:
 def test_creer_leve_si_tournoi_introuvable() -> None:
     """Créer dans un tournoi inconnu lève `TournoiIntrouvable`."""
     service = ServiceCategories(
-        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository()
+        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository(), _verrou_vide()
     )
     with pytest.raises(TournoiIntrouvable):
         service.creer(404, "Libre")
@@ -237,7 +267,7 @@ def test_precharger_ffta_reutilise_un_blason_personnalise_de_meme_nom() -> None:
 def test_precharger_ffta_leve_si_tournoi_introuvable() -> None:
     """Pré-charger dans un tournoi inconnu lève `TournoiIntrouvable` (rien créé)."""
     service = ServiceCategories(
-        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository()
+        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository(), _verrou_vide()
     )
     with pytest.raises(TournoiIntrouvable):
         service.precharger_ffta(404)
@@ -355,3 +385,83 @@ def test_precharger_ffta_regle_les_u11_a_110() -> None:
     autres = [c for c in creees if TrancheAge.U11 not in c.ages]
     assert u11 and all(c.hauteur_cm == 110 for c in u11)
     assert all(c.hauteur_cm == 130 for c in autres)
+
+
+# --- E01US011 : l'arme d'une catégorie se fige au premier tir d'une phase réglée ---------------
+
+
+class _DecorDuVerrou:
+    """Un tournoi, une catégorie « Arc à poulies », un créneau, une élimination directe."""
+
+    def __init__(self, *, reglee: bool, tiree: bool) -> None:
+        self.tournois = FauxTournoiRepository()
+        tournoi = self.tournois.ajouter(Tournoi.creer("Trophée", _DATE))
+        assert tournoi.id is not None
+        self.tournoi_id = tournoi.id
+        self.departs = FauxDepartRepository()
+        depart = self.departs.ajouter(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.deroules = FauxDerouleRepository()
+        self.phases = FauxPhaseRepository(self.departs, self.deroules)
+        self.duels = FauxDuelRepository()
+        reglage = (
+            ReglageBaremeDuel(
+                BaremeDuel.preset_ffta_classique(),
+                (SurchargeArme("Arc à poulies", BaremeDuel.preset_ffta_poulies()),),
+            )
+            if reglee
+            else None
+        )
+        etape = self.deroules.ajouter(
+            EtapeDeroule(
+                tournoi_id=tournoi.id,
+                ordre=1,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                bareme_duel=reglage,
+            )
+        )
+        phase = self.phases.ajouter(etape.instancier(depart.id))
+        assert phase.id is not None
+        if tiree:
+            duel = Duel.vide(
+                BaremeDuel.preset_ffta_classique(),
+                Participant(GenreParticipant.INDIVIDUEL, 1),
+                Participant(GenreParticipant.INDIVIDUEL, 2),
+            )
+            self.duels.enregistrer(phase.id, 1, duel)
+        self.service = ServiceCategories(
+            self.tournois,
+            FauxCategorieRepository(),
+            FauxBlasonRepository(),
+            VerrouBaremeDuel(self.departs, self.phases, self.deroules, self.duels),
+        )
+        self.categorie = self.service.creer(tournoi.id, "Poulies S1 H", "Arc à poulies")
+        assert self.categorie.id is not None
+
+    def changer_arme(self, arme: str, libelle: str = "Poulies S1 H") -> None:
+        assert self.categorie.id is not None
+        self.service.modifier(self.categorie.id, libelle, arme, hauteur_cm=130)
+
+
+def test_l_arme_d_une_categorie_se_fige_au_premier_tir_d_une_phase_reglee() -> None:
+    """Renommer l'arme détacherait la surcharge : des duels tirés se reliraient autrement."""
+    decor = _DecorDuVerrou(reglee=True, tiree=True)
+
+    with pytest.raises(ArmeDeCategorieVerrouillee):
+        decor.changer_arme("Poulies")
+
+
+def test_l_arme_reste_modifiable_tant_qu_aucun_duel_n_est_tire() -> None:
+    _DecorDuVerrou(reglee=True, tiree=False).changer_arme("Poulies")
+
+
+def test_l_arme_reste_modifiable_si_aucune_phase_n_est_reglee() -> None:
+    """Arbitrage du 01/10/2026 : seul un barème **réglé** dépend du libellé exact."""
+    _DecorDuVerrou(reglee=False, tiree=True).changer_arme("Poulies")
+
+
+def test_le_libelle_reste_modifiable_sur_une_categorie_figee() -> None:
+    """Le verrou porte sur l'arme, et à la casse près : corriger le libellé reste possible."""
+    _DecorDuVerrou(reglee=True, tiree=True).changer_arme(" arc à POULIES ", libelle="Poulies S1")

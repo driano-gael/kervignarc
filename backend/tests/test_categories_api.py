@@ -17,6 +17,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.duel import BaremeDuel, Duel
+from domain.participant import GenreParticipant, Participant
+from infrastructure.db.repositories.moteur import PhaseRepositorySQL
+from infrastructure.db.repositories.tir import DuelRepositorySQL
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 
@@ -439,3 +443,51 @@ def test_creer_requete_invalide_erreur_400(
     corps = reponse.json()
     assert corps["code"] == "requete_invalide"
     assert "details" in corps
+
+
+def test_changer_l_arme_apres_un_tir_d_une_phase_reglee_repond_409(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US011 (arbitrage du 01/10/2026) : le refus du service sort en conflit, code stable."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        creneau = client.post(
+            f"/api/v1/tournois/{tournoi_id}/departs",
+            json={"horaire": "09:00", "tarif_centimes": 800},
+        )
+        assert creneau.status_code == 201, creneau.text
+        categorie = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories",
+            json={"libelle": "Poulies", "arme": "Arc à poulies", "hauteur_cm": 130},
+        )
+        assert categorie.status_code == 201, categorie.text
+        bareme = {"mode": "sets", "nb_manches": 5, "nb_fleches_par_volee": 3}
+        phase = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={
+                "type": "elimination_directe",
+                "bareme_duel": {"par_defaut": {**bareme, "points_pour_gagner": 6}},
+            },
+        )
+        assert phase.status_code == 201, phase.text
+        fabrique = app_categories.state.database.session_factory
+        (avancement,) = PhaseRepositorySQL(fabrique).par_tournoi(tournoi_id)
+        assert avancement.id is not None
+        DuelRepositorySQL(fabrique).enregistrer(
+            avancement.id,
+            1,
+            Duel.vide(
+                BaremeDuel.preset_ffta_classique(),
+                Participant(GenreParticipant.INDIVIDUEL, 1),
+                Participant(GenreParticipant.INDIVIDUEL, 2),
+            ),
+        )
+
+        reponse = client.put(
+            f"/api/v1/categories/{categorie.json()['id']}",
+            json={"libelle": "Poulies", "arme": "Poulies", "hauteur_cm": 130},
+        )
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "arme_de_categorie_verrouillee"

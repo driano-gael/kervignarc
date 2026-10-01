@@ -984,7 +984,7 @@ def test_le_bareme_regle_sur_la_phase_l_emporte_sur_le_defaut_ffta() -> None:
     monde = _Monde()
     monde.inscrire_classe(("10", "10", "10"))
     monde.inscrire_classe(("9", "9", "9"))
-    _regler_le_bareme(monde, ReglageBaremeDuel.preset_club(("Arc Classique",)))
+    _regler_le_bareme(monde, ReglageBaremeDuel(BaremeDuel.preset_club()))
 
     bareme = _bareme_de_la_finale(monde)
 
@@ -1022,7 +1022,7 @@ def test_le_reglage_de_la_phase_atteint_l_ecriture_pas_seulement_la_lecture() ->
     monde = _Monde()
     monde.inscrire_classe(("10", "10", "10"))
     monde.inscrire_classe(("9", "9", "9"))
-    _regler_le_bareme(monde, ReglageBaremeDuel.preset_club(()))
+    _regler_le_bareme(monde, ReglageBaremeDuel(BaremeDuel.preset_club()))
     service = monde.service()
     numero = next(m.numero for m in service.etat_tableau(1, monde.phase_id).duels)
 

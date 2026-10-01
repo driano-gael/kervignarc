@@ -332,8 +332,9 @@ class EtapeDeroule:
     def verifier_instanciable(self) -> None:
         """Lève si cette étape ne pourra pas s'instancier — **à appeler avant d'écrire**.
 
-        ⚠️ **Cinq** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
-        `big_shoot_off`, `suisse` posés sur un type qui ne les lit pas, plus `barrage_jusqu_au`.
+        ⚠️ **Six** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
+        `big_shoot_off`, `suisse`, `bareme_duel` posés sur un type qui ne les lit pas, plus
+        `barrage_jusqu_au`.
         Sans cet appel, une étape invalide **rejoint le déroulé** puis fait tomber chaque lecture
         (E05US022). Une **méthode**, et non un `instancier(...)` dont on jette le résultat : un
         résultat perdu se lit comme du code mort, et un nettoyage le supprimerait sans rougir.

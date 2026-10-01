@@ -54,7 +54,7 @@ from tests.test_service_archers import (
     FauxSerieRepository,
     FauxTournoiRepository,
 )
-from tests.test_service_categories import FauxBlasonRepository
+from tests.test_service_categories import FauxBlasonRepository, _verrou_vide
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -120,7 +120,9 @@ def _atteler() -> Attelage:
         archer_repo,
         FauxInstancesDeGabarit(),
     )
-    service_categories = ServiceCategories(tournoi_repo, categorie_repo, blason_repo)
+    service_categories = ServiceCategories(
+        tournoi_repo, categorie_repo, blason_repo, _verrou_vide()
+    )
     service_departs = ServiceDeparts(
         depart_repo,
         tournoi_repo,

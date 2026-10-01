@@ -8,7 +8,6 @@ le service, le barème étant résolu par un `ResolveurBaremeDuel` injecté (rè
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Protocol
@@ -89,6 +88,10 @@ class BaremeDuel:
     points_pour_gagner: int
 
     def __post_init__(self) -> None:
+        if self.mode is ModeDuel.CUMUL:
+            # Le seuil n'est pas lu au cumul : le ramener à 0 rend l'égalité sémantique, sans quoi
+            # le verrou du barème (ADR-0117 §5) refuserait une édition qui ne change rien.
+            object.__setattr__(self, "points_pour_gagner", 0)
         if self.nb_manches < 1 or self.nb_fleches_par_volee < 1:
             raise BaremeDuelInvalide("Un duel demande au moins une manche d'au moins une flèche.")
         if self.mode is ModeDuel.SETS and not 1 <= self.points_pour_gagner <= 2 * self.nb_manches:
@@ -227,23 +230,34 @@ class Duel:
         return self.barrage.gagnant_designe
 
     def _resultat_sets(self) -> ResultatDuel:
-        """Résultat au système de sets : accumule les points, s'arrête au seuil, barrage si 5-5."""
+        """Résultat au système de sets : accumule les points, s'arrête au seuil, barrage si 5-5.
+
+        ⚠️ **Les deux au seuil dans la même manche** (4-4 au format club, deux manches nulles) se
+        tranchent au **barrage**, comme 5-5 — arbitrage du 01/10/2026 (E01US011, ADR-0117).
+        """
         seuil = self.bareme.points_pour_gagner
         points_haut = points_bas = 0
         for manche in self._manches_ordonnees():
             gain_haut, gain_bas = _points_manche(manche)
             points_haut += gain_haut
             points_bas += gain_bas
+            if points_haut >= seuil and points_bas >= seuil:
+                return self._issue_d_egalite(points_haut, points_bas)
             if points_haut >= seuil:
                 return ResultatDuel(points_haut, points_bas, Cote.HAUT, True, False)
             if points_bas >= seuil:
                 return ResultatDuel(points_haut, points_bas, Cote.BAS, True, False)
         if len(self.manches) < self.bareme.nb_manches:
             return ResultatDuel(points_haut, points_bas, None, False, False)
-        # Toutes les manches jouées, personne au seuil : égalité → barrage (§7).
-        if points_haut != points_bas:  # défensif : ne survient pas aux barèmes FFTA/club
+        # Toutes les manches jouées, personne au seuil. Un seuil réglé au-delà de ce que les
+        # manches permettent d'atteindre fait gagner le **meneur** ; l'égalité va au barrage (§7).
+        if points_haut != points_bas:
             avance = Cote.HAUT if points_haut > points_bas else Cote.BAS
             return ResultatDuel(points_haut, points_bas, avance, True, False)
+        return self._issue_d_egalite(points_haut, points_bas)
+
+    def _issue_d_egalite(self, points_haut: int, points_bas: int) -> ResultatDuel:
+        """Égalité de sets : barrage requis, puis 1 point de set à son vainqueur (§7)."""
         gagnant = self._vainqueur_barrage()
         if gagnant is None:
             return ResultatDuel(points_haut, points_bas, None, False, True)
@@ -294,8 +308,12 @@ class Duel:
             )
         _valider_volee(valeurs_haut, zones_admises, nb_fleches_par_volee)
         _valider_volee(valeurs_bas, zones_admises, nb_fleches_par_volee)
-        if self.manche(numero) is None and self.resultat.termine:
-            raise DuelDejaTranche("Le duel est déjà gagné : pas de manche supplémentaire à saisir.")
+        resultat = self.resultat
+        if self.manche(numero) is None and (resultat.termine or resultat.barrage_requis):
+            raise DuelDejaTranche(
+                "Le duel est déjà gagné, ou à égalité en attente de son barrage : pas de manche "
+                "supplémentaire à saisir."
+            )
         manche = MancheDuel(
             numero=numero,
             volee_haut=Volee(numero=numero, valeurs=valeurs_haut),
@@ -398,15 +416,18 @@ class SurchargeArme:
 class ReglageBaremeDuel:
     """Le barème de duel **réglé sur une phase** : un défaut, des surcharges par arme (E01US011).
 
-    ⚠️ Les surcharges sont **explicites** : rien ne s'y devine sur le libellé. La reconnaissance
-    des poulies ne survit qu'en **pré-remplissage** des presets, que l'organisateur voit et corrige.
-    ADR-0117.
+    ⚠️ Les surcharges sont **explicites** : rien ne s'y devine sur le libellé. Les presets qui les
+    pré-remplissent vivent au front (`shared/phases/baremeDuel.ts`), seul appelant. ADR-0117.
     """
 
     par_defaut: BaremeDuel
     surcharges: tuple[SurchargeArme, ...] = ()
 
     def __post_init__(self) -> None:
+        # Rangées par arme : l'ordre de saisie n'est pas une différence de barème (verrou, §5).
+        object.__setattr__(
+            self, "surcharges", tuple(sorted(self.surcharges, key=lambda s: s.arme.casefold()))
+        )
         vues: set[str] = set()
         for surcharge in self.surcharges:
             cle = surcharge.arme.casefold()
@@ -422,26 +443,6 @@ class ReglageBaremeDuel:
                 if surcharge.designe(arme):
                     return surcharge.bareme
         return self.par_defaut
-
-    @staticmethod
-    def preset_ffta(armes: Iterable[str]) -> ReglageBaremeDuel:
-        """FFTA officiel : sets à 6 points, poulies au cumul pour celles des `armes` qui en sont."""
-        return ReglageBaremeDuel(BaremeDuel.preset_ffta_classique(), _poulies_au_cumul(armes))
-
-    @staticmethod
-    def preset_club(armes: Iterable[str]) -> ReglageBaremeDuel:
-        """Format club : sets à 4 points ; les poulies restent au cumul, règle d'arme (A.7.5.2)."""
-        return ReglageBaremeDuel(BaremeDuel.preset_club(), _poulies_au_cumul(armes))
-
-
-def _poulies_au_cumul(armes: Iterable[str]) -> tuple[SurchargeArme, ...]:
-    """Une surcharge « cumul » par arme à poulies **distincte** (catégories de même arme)."""
-    retenues: dict[str, SurchargeArme] = {}
-    for arme in armes:
-        cle = arme.strip().casefold()
-        if _est_poulies(arme) and cle not in retenues:
-            retenues[cle] = SurchargeArme(arme, BaremeDuel.preset_ffta_poulies())
-    return tuple(retenues.values())
 
 
 def _est_poulies(arme: str | None) -> bool:

@@ -32,7 +32,7 @@ from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import Depart
-from domain.duel import ReglageBaremeDuel
+from domain.duel import BaremeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.erreurs import (
     ArretProgrammeInvalide,
     ConfigurationBigShootOffInvalide,
@@ -870,7 +870,10 @@ def test_le_bareme_de_duel_voyage_avec_le_format(ctx: Contexte) -> None:
     ⚠️ Comme le test du titre ci-dessus, la traversée **persistante** n'est pas prouvée ici : elle
     l'est par `test_phase_repository.py::test_un_format_conserve_le_bareme_de_duel_de_ses_etapes`.
     """
-    club = ReglageBaremeDuel.preset_club(("Arc à poulies",))
+    club = ReglageBaremeDuel(
+        BaremeDuel.preset_club(),
+        (SurchargeArme("Arc à poulies", BaremeDuel.preset_ffta_poulies()),),
+    )
     format_tournoi = ctx.service.creer(
         "Club à 4 points",
         [

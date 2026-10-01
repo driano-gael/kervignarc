@@ -74,48 +74,15 @@ def test_le_libelle_d_une_surcharge_est_normalise() -> None:
     assert SurchargeArme("  Arc nu ", SETS_4).arme == "Arc nu"
 
 
-# --- CA 2 : les deux presets ------------------------------------------------------------------
+# --- Égalité sémantique : le verrou (CA 4) compare des réglages ------------------------------
 
 
-def test_preset_ffta_sets_a_6_et_poulies_au_cumul() -> None:
-    reglage = ReglageBaremeDuel.preset_ffta(("Arc classique", "Arc à poulies", "Arc nu"))
+def test_l_ordre_des_surcharges_ne_change_pas_le_reglage() -> None:
+    """Le même réglage renvoyé dans un autre ordre n'est pas un changement de barème (409)."""
+    poulies = SurchargeArme("Arc à poulies", CUMUL_5x3)
+    nu = SurchargeArme("Arc nu", SETS_4)
 
-    assert reglage.par_defaut == SETS_6
-    assert reglage.pour("Arc à poulies") == CUMUL_5x3
-    assert reglage.pour("Arc classique") == SETS_6
-    assert reglage.pour("Arc nu") == SETS_6
-
-
-def test_preset_club_sets_a_4_et_poulies_au_cumul_aussi() -> None:
-    """Les poulies au cumul sont une règle d'**arme** : le preset club la pose aussi (CA 2)."""
-    reglage = ReglageBaremeDuel.preset_club(("Arc classique", "Compound"))
-
-    assert reglage.par_defaut == SETS_4
-    assert reglage.pour("Compound") == CUMUL_5x3
-    assert reglage.pour("Arc classique") == SETS_4
-
-
-def test_un_preset_ne_surcharge_que_les_armes_a_poulies() -> None:
-    reglage = ReglageBaremeDuel.preset_ffta(("Arc classique", "Arc nu"))
-
-    assert reglage.surcharges == ()
-
-
-def test_un_preset_ne_double_pas_une_arme_repetee() -> None:
-    """Les armes viennent des catégories : deux catégories peuvent partager la même arme."""
-    reglage = ReglageBaremeDuel.preset_ffta(("Arc à poulies", "arc à poulies", "Arc à poulies"))
-
-    assert len(reglage.surcharges) == 1
-
-
-def test_la_surcharge_posee_par_un_preset_reste_modifiable() -> None:
-    """« Modifiables » (CA 2) : un preset est un point de départ, pas une valeur figée."""
-    reglage = ReglageBaremeDuel.preset_ffta(("Arc à poulies",))
-    modifie = ReglageBaremeDuel(
-        par_defaut=reglage.par_defaut, surcharges=(SurchargeArme("Arc à poulies", SETS_4),)
-    )
-
-    assert modifie.pour("Arc à poulies") == SETS_4
+    assert ReglageBaremeDuel(SETS_6, (poulies, nu)) == ReglageBaremeDuel(SETS_6, (nu, poulies))
 
 
 # --- CA 1 : seules les phases de duels portent un barème de duel ------------------------------

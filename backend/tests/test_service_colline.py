@@ -35,7 +35,7 @@ from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.colline import ConfigurationColline
 from domain.depart import Depart
-from domain.duel import ResolveurBaremeDuelFfta
+from domain.duel import BaremeDuel, ReglageBaremeDuel, ResolveurBaremeDuelFfta
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
@@ -747,3 +747,21 @@ def test_une_phase_en_pause_refuse_la_validation_mais_pas_la_rectification() -> 
     )
     with pytest.raises(PhaseEnPause):
         service.valider(monde.tournoi_id, phase_id, 1, "scoreur")
+
+
+def test_le_bareme_de_duel_regle_sur_la_phase_atteint_ses_rencontres() -> None:
+    """E01US011, CA 1 : le réglage de la phase arrive jusqu'au pavé, pas seulement au tableau."""
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ConfigurationColline(nb_manches=3, portee_de_defi=1))
+    phase = monde.phases.par_id(phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(
+        replace(phase, bareme_duel=ReglageBaremeDuel(BaremeDuel.preset_club()))
+    )
+
+    etat = monde.service().etat(monde.tournoi_id, phase_id)
+    rencontres = etat.manches[0].defis
+
+    assert rencontres
+    assert all(r.bareme == BaremeDuel.preset_club() for r in rencontres)

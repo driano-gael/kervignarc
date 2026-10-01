@@ -71,7 +71,9 @@ class FauxTournoiRepository:
         return DescendanceTournoi()
 
 
-def _service(duels: FauxDuelRepository | None = None) -> tuple[ServicePhases, int]:
+def _service(
+    duels: FauxDuelRepository | None = None, departs: FauxDepartRepository | None = None
+) -> tuple[ServicePhases, int]:
     """Le décor de composition — maille **tournoi**. Rend `(service, tournoi_id)`.
 
     ⚠️ **Le créneau porte un identifiant volontairement distinct** (`_DEPART`). Les doublures
@@ -86,7 +88,7 @@ def _service(duels: FauxDuelRepository | None = None) -> tuple[ServicePhases, in
         Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert tournoi.id is not None
-    departs = FauxDepartRepository()
+    departs = departs if departs is not None else FauxDepartRepository()
     depart = departs.ajouter(
         dataclasses.replace(
             Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00"),
@@ -459,8 +461,8 @@ def test_transition_leve_si_phase_hors_du_creneau() -> None:
 
 # --- E01US011 : le barème de duel d'une étape, verrouillé au premier tir ----------------------
 
-_CLUB = ReglageBaremeDuel.preset_club(())
-_FFTA = ReglageBaremeDuel.preset_ffta(())
+_CLUB = ReglageBaremeDuel(BaremeDuel.preset_club())
+_FFTA = ReglageBaremeDuel(BaremeDuel.preset_ffta_classique())
 
 
 def _tirer_un_duel(duels: FauxDuelRepository, phase_id: int) -> None:
@@ -559,8 +561,9 @@ def test_une_etape_deja_tiree_reste_editable_hors_bareme() -> None:
 def test_un_tir_dans_un_autre_depart_verrouille_aussi() -> None:
     """CA 4 « dans n'importe quel départ » : la définition est commune (ADR-0076)."""
     duels = FauxDuelRepository()
-    service, tournoi_id = _service(duels)
-    second = service._departs.ajouter(
+    departs = FauxDepartRepository()
+    service, tournoi_id = _service(duels, departs)
+    second = departs.ajouter(
         Depart.creer(tournoi_id=tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
     )
     assert second.id is not None

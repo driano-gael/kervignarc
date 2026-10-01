@@ -144,6 +144,7 @@ from application.suivi_deroule import (
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.contrat_phase import TypePhase
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
@@ -512,7 +513,11 @@ def create_app(
     # blason par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne
     # dépend que des **ports** repository (pas de l'autre service).
     app.state.service_categories = ServiceCategories(
-        tournoi_repository, categorie_repository, blason_repository
+        tournoi_repository,
+        categorie_repository,
+        blason_repository,
+        # E01US011 : l'arme d'une catégorie se fige au premier tir d'une phase réglée (ADR-0117).
+        VerrouBaremeDuel(depart_repository, phase_repository, deroule_repository, duel_repository),
     )
     app.state.service_blasons = ServiceBlasons(
         tournoi_repository, blason_repository, categorie_repository

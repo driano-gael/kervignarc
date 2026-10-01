@@ -249,8 +249,7 @@ class ServiceSaisieDuels:
 
     def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
         """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
-        tableau, lignes = self._decor(tournoi_id, phase_id)
-        reglage = self._reglage_de(tournoi_id, phase_id)
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         duels = tuple(
             self._etat_du_match(m, phase_id, lignes, tableau.nb_tours, reglage)
             for m in tableau.matchs
@@ -272,13 +271,9 @@ class ServiceSaisieDuels:
 
     def etat_duel(self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int) -> EtatDuel:
         """L'état d'un match précis (câblage, occupants, tir). `MatchIntrouvable` si rang absent."""
-        tableau, lignes = self._decor(tournoi_id, phase_id)
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         return self._etat_du_match(
-            tableau.match(match_numero),
-            phase_id,
-            lignes,
-            tableau.nb_tours,
-            self._reglage_de(tournoi_id, phase_id),
+            tableau.match(match_numero), phase_id, lignes, tableau.nb_tours, reglage
         )
 
     def reconstruire(
@@ -291,7 +286,8 @@ class ServiceSaisieDuels:
         besoin du `Tableau` brut pour dire, par duel à venir, ce qui manque avant de lancer. On ne
         duplique donc pas la reconstruction — une seule source de vérité de la progression.
         """
-        return self._decor(tournoi_id, phase_id)
+        tableau, lignes, _reglage = self._decor(tournoi_id, phase_id)
+        return tableau, lignes
 
     def numeros_avec_tir(self, tournoi_id: TournoiId, phase_id: PhaseId) -> frozenset[int]:
         """Les `match_numero` dont le tir oppose **les duellistes d'aujourd'hui** (validé ou non).
@@ -302,8 +298,7 @@ class ServiceSaisieDuels:
         ré-ensemence l'arbre, et les tirs d'avant deviennent des **vestiges**. Les compter
         verrouillait le seul geste qui répare un plan devenu faux.
         """
-        tableau, lignes = self.reconstruire(tournoi_id, phase_id)
-        reglage = self._reglage_de(tournoi_id, phase_id)
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         enregistres = self._duels.numeros_enregistres(phase_id)
         vivants = set()
         for numero in enregistres & {m.numero for m in tableau.matchs}:
@@ -341,9 +336,8 @@ class ServiceSaisieDuels:
         valeurs_bas: tuple[ZoneScore, ...],
     ) -> EtatDuel:
         """Saisit (ou réédite) une manche d'un match : les deux volées opposées."""
-        tableau, lignes = self._decor(tournoi_id, phase_id)
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        reglage = self._reglage_de(tournoi_id, phase_id)
         bareme = self._bareme_du(reglage, haut, lignes)
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
@@ -367,9 +361,8 @@ class ServiceSaisieDuels:
         gagnant_designe: Cote | None = None,
     ) -> EtatDuel:
         """Saisit le tir de barrage d'un match à égalité (§8.2)."""
-        tableau, lignes = self._decor(tournoi_id, phase_id)
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        reglage = self._reglage_de(tournoi_id, phase_id)
         bareme = self._bareme_du(reglage, haut, lignes)
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
@@ -384,9 +377,8 @@ class ServiceSaisieDuels:
     ) -> EtatDuel:
         """Valide un match **tranché** au nom du scoreur : son vainqueur avancera le tableau."""
         self._refuser_si_en_pause(tournoi_id, phase_id)
-        tableau, lignes = self._decor(tournoi_id, phase_id)
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        reglage = self._reglage_de(tournoi_id, phase_id)
         bareme = self._bareme_du(reglage, haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
@@ -450,7 +442,7 @@ class ServiceSaisieDuels:
         phase_id: PhaseId,
         _chaine: tuple[PhaseId, ...] = (),
         _cache: dict[EtapeDerouleId, ClassementSource | None] | None = None,
-    ) -> tuple[Tableau, dict[int, LigneClassement]]:
+    ) -> tuple[Tableau, dict[int, LigneClassement], ReglageBaremeDuel | None]:
         """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression).
 
         `_chaine` porte les phases déjà en cours de reconstruction dans la descente courante
@@ -513,7 +505,7 @@ class ServiceSaisieDuels:
             profondeur_de(phase, self._registre),
         )
         tableau = self._rejouer(tableau, phase_id, lignes, phase.bareme_duel)
-        return self._appliquer_forfaits(tableau, phase_id), lignes
+        return self._appliquer_forfaits(tableau, phase_id), lignes, phase.bareme_duel
 
     def resolveur_de_classement(
         self,
@@ -642,7 +634,7 @@ class ServiceSaisieDuels:
             )
         # `_decor` ajoute lui-même `phase.id` à la chaîne : lui passer `chaine` **sans** l'ajouter
         # ici évite de l'y voir deux fois (sans effet sur le test d'appartenance, mais trompeur).
-        tableau, lignes = self._decor(tournoi_id, phase.id, chaine, cache)
+        tableau, lignes, _reglage = self._decor(tournoi_id, phase.id, chaine, cache)
         descendante = (*chaine, phase.id)
         # Le rang de tournoi que dispute **ce tableau-ci**, pour que le décalage se cumule chez son
         # aval (ADR-0081) : un tableau des places 33+ doit dire à sa consolante que son rang 1 vaut
@@ -813,11 +805,6 @@ class ServiceSaisieDuels:
         if reglage is not None:
             return reglage.pour(arme)
         return self._resolveur.bareme_pour(arme)
-
-    def _reglage_de(self, tournoi_id: TournoiId, phase_id: PhaseId) -> ReglageBaremeDuel | None:
-        """Le réglage de barème de la phase, lu **une fois par opération**, jamais par match."""
-        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
-        return None if phase is None else phase.bareme_duel
 
     def _arme_du(self, participant: Participant, lignes: dict[int, LigneClassement]) -> str | None:
         """L'arme (texte libre de la catégorie) d'un participant individuel, ou `None`."""

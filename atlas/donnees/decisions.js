@@ -11589,7 +11589,9 @@ window.ATLAS.decisions = {
       "ServicePhases.modifier",
       "_a_deja_un_tir"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_a_deja_un_tir"
+     ],
      "verifiable": true
     },
     {
@@ -11600,7 +11602,9 @@ window.ATLAS.decisions = {
       "_reglage_de",
       "bareme_de"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_reglage_de"
+     ],
      "verifiable": true
     },
     {
@@ -11635,7 +11639,9 @@ window.ATLAS.decisions = {
       "designe",
       "_poulies_au_cumul"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_poulies_au_cumul"
+     ],
      "verifiable": true
     },
     {
