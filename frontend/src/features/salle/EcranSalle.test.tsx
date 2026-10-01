@@ -116,6 +116,7 @@ function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'st
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    bareme_duel: null,
     colline: null,
     decoupage: null,
     ...patch,

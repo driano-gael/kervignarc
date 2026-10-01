@@ -7,7 +7,7 @@
 // l'invariant. Modèle : `features/phases/Phases.tsx`, à trois différences voulues — pas de statut,
 // qualification éditable ici, et **ordres dérivés de la position**.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
@@ -22,7 +22,7 @@ import {
   type TypePhase,
 } from '../../shared/phases/catalogue'
 import type { Etape, FormatTournoi, Source } from '../patrimoine/api'
-import { useCreerFormat, useFormats } from '../patrimoine/hooks'
+import { useCategoriesBibliotheque, useCreerFormat, useFormats } from '../patrimoine/hooks'
 import {
   EFFECTIF_MAX,
   type Anomalie,
@@ -64,6 +64,15 @@ import {
   versDecoupage,
 } from '../../shared/phases/decoupage'
 import { ReglageColline } from '../../shared/phases/ReglageColline'
+import { ReglageBaremeDuel } from '../../shared/phases/ReglageBaremeDuel'
+import {
+  BAREME_DUEL_NON_REGLE,
+  TYPES_A_BAREME_DE_DUEL,
+  armesDistinctes,
+  depuisReglage as depuisReglageBaremeDuel,
+  estValide as baremeDuelValide,
+  versReglage as versReglageBaremeDuel,
+} from '../../shared/phases/baremeDuel'
 import {
   depuisReglage as depuisReglageColline,
   estValide as collineValide,
@@ -709,6 +718,13 @@ export function FormulaireEtape({
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
   // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [colline, setColline] = useState(depuisReglageColline(etape?.colline ?? null))
+  // E01US011 : hors tournoi, ce sont les armes des catégories de **bibliothèque** qui pré-remplissent.
+  const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(etape?.bareme_duel ?? null))
+  const categoriesBibliotheque = useCategoriesBibliotheque()
+  const armes = useMemo(
+    () => armesDistinctes((categoriesBibliotheque.data ?? []).map((categorie) => categorie.arme)),
+    [categoriesBibliotheque.data],
+  )
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
   // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
@@ -738,6 +754,7 @@ export function FormulaireEtape({
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
   const estColline = type === 'colline'
+  const aBaremeDeDuel = TYPES_A_BAREME_DE_DUEL.has(type)
   // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
   // dont le nombre de tours n'est pas déjà porté par sa structure.
   const estQualification = type === 'qualification'
@@ -762,6 +779,7 @@ export function FormulaireEtape({
     (estBigShootOff && !bsoValide(bigShootOff)) ||
     (estSuisse && !suisseValide(suisse)) ||
     (estColline && !collineValide(colline)) ||
+    (aBaremeDeDuel && !baremeDuelValide(baremeDuel)) ||
     (estQualification && !decoupageValide(decoupage)) ||
     // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
     // une liste vide, quoi qu'il reste dans l'état d'édition.
@@ -796,6 +814,7 @@ export function FormulaireEtape({
     // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé en
     // 422. Retyper l'étape l'**efface** donc, au lieu de l'envoyer se faire recaler.
     colline: estColline ? (versReglageColline(colline) ?? null) : null,
+    bareme_duel: aBaremeDeDuel ? (versReglageBaremeDuel(baremeDuel) ?? null) : null,
     // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
     // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
     // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422.
@@ -827,6 +846,7 @@ export function FormulaireEtape({
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
+          setBaremeDuel(BAREME_DUEL_NON_REGLE)
           // E16US002, même raison que ses voisins : sans ce reset, « Tableau des jeunes » se
           // reporterait sur l'étape suivante — et un titre reporté est pire qu'un réglage reporté,
           // puisqu'il **désigne** une phase précise.
@@ -950,6 +970,10 @@ export function FormulaireEtape({
           surChangement={setColline}
           effectif={effectifLu ?? effectifSimule}
         />
+      )}
+
+      {aBaremeDeDuel && (
+        <ReglageBaremeDuel etat={baremeDuel} surChangement={setBaremeDuel} armes={armes} />
       )}
 
       {estQualification && (

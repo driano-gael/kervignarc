@@ -45,6 +45,7 @@ function etape(
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    bareme_duel: null,
     colline: null,
     decoupage: null,
     nb_volees: null,

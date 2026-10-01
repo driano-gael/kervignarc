@@ -72,6 +72,7 @@ function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'st
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    bareme_duel: null,
     colline: null,
     decoupage: null,
     // ⚠️ E05US033 : `arrets` n'est **pas** ici, et c'est voulu — une `Phase` ne les porte pas, le

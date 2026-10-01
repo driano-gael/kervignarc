@@ -66,7 +66,7 @@ window.ATLAS.carte = {
     "feature": "salle"
    },
    {
-    "clientes": 9,
+    "clientes": 10,
     "feature": "categories"
    },
    {
@@ -3365,7 +3365,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 182,
+  "aretes_front": 183,
   "enchevetrements": 4,
   "features": 52,
   "imports": 997,

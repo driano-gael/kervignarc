@@ -5,6 +5,7 @@
 // Aucune de ces adresses de bibliothèque ne porte de `tournoiId` — c'est tout l'objet de l'US, et ce
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
 import type { ArretProgramme } from '../../shared/phases/arrets'
+import type { ReglageBaremeDuel } from '../../shared/phases/baremeDuel'
 
 import { fetchJson } from '../../shared/api/client'
 import type { Profondeur, TypePhase } from '../../shared/phases/catalogue'
@@ -201,6 +202,8 @@ export interface Etape {
   // `ReglageSuisseDTO` depuis E05US026 et le front l'ignorait, si bien que composer un format au
   // suisse envoyait `suisse: null` et laissait l'étape non réglée sans que rien ne le dise.
   colline: ReglageColline | null
+  // Le barème des duels (E01US011) — voyage avec le format (CA 6). `null` = défaut FFTA.
+  bareme_duel: ReglageBaremeDuel | null
   // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
   // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
   // totale que ses voisins.

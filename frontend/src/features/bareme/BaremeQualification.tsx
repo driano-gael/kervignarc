@@ -16,6 +16,8 @@ import {
 
 // Preset FFTA 18 m (référentiel §6.1) : 20 volées de 3 flèches (60 flèches).
 const PRESET_FFTA = { nb_volees: 20, nb_fleches_par_volee: 3 }
+// Format club (E01US011, CA 5) — miroir de `domain/bareme.py::PRESET_CLUB_*`.
+const PRESET_CLUB = { nb_volees: 5, nb_fleches_par_volee: 3 }
 const VALEUR_FLECHE_MAX = 10
 
 export function BaremeQualification({ tournoiId }: { tournoiId: number }) {
@@ -111,9 +113,9 @@ function FormulaireBareme({
   const total = soumissionPossible ? Number(nbVolees) * Number(nbFleches) : null
   const scoreMax = total === null ? null : total * VALEUR_FLECHE_MAX
 
-  const appliquerPreset = () => {
-    setNbVolees(String(PRESET_FFTA.nb_volees))
-    setNbFleches(String(PRESET_FFTA.nb_fleches_par_volee))
+  const appliquerPreset = (preset: typeof PRESET_FFTA) => {
+    setNbVolees(String(preset.nb_volees))
+    setNbFleches(String(preset.nb_fleches_par_volee))
   }
 
   const soumettre = (evenement: React.FormEvent) => {
@@ -162,8 +164,19 @@ function FormulaireBareme({
           <button type="submit" disabled={definir.isPending || !soumissionPossible}>
             {defini ? 'Enregistrer le barème' : 'Enregistrer'}
           </button>
-          <button type="button" className="bouton--discret" onClick={appliquerPreset}>
+          <button
+            type="button"
+            className="bouton--discret"
+            onClick={() => appliquerPreset(PRESET_FFTA)}
+          >
             Preset FFTA 18 m
+          </button>
+          <button
+            type="button"
+            className="bouton--discret"
+            onClick={() => appliquerPreset(PRESET_CLUB)}
+          >
+            Preset format club
           </button>
         </div>
       </form>

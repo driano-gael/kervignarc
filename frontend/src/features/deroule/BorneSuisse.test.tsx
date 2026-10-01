@@ -24,6 +24,7 @@ function poser(effectifSimule: number | null) {
         poules: null,
         big_shoot_off: null,
         suisse: { nb_rondes: 5 },
+        bareme_duel: null,
         colline: null,
         decoupage: null,
         sources: [],

@@ -306,6 +306,7 @@ function FormulaireFormat() {
       poules: null,
       big_shoot_off: null,
       suisse: null,
+      bareme_duel: null,
       colline: null,
       decoupage: null,
       // Une qualification n'a pas de profondeur à régler : elle classe toujours tout le monde.
