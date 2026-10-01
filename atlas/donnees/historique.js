@@ -307,6 +307,17 @@ window.ATLAS.historique = {
  "decision-structurante-adr": [
   {
    "adr": [],
+   "date": "2026-10-01",
+   "motif": "docs(e13us002): dater la phrase « Equipe n'existe pas » dans CLAUDE.md",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "9971ffb508",
+   "us": [
+    "E13US002"
+   ]
+  },
+  {
+   "adr": [],
    "date": "2026-08-15",
    "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
