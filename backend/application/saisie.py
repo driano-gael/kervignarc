@@ -403,6 +403,7 @@ class ServiceSaisie:
             )
             if not lot:
                 continue
+            # DETTE-116 : une lecture par archer en attente — le port n'a pas de lecture en bloc.
             quand = self._series.horodatages(phase.id, archer.id)
             instants = [quand[volee.numero] for volee in lot if volee.numero in quand]
             attente = maintenant - max(instants) if instants else datetime.timedelta(0)
@@ -532,6 +533,9 @@ class ServiceSaisie:
         pas décoratif : sans lui la lecture résout le créneau par `DETTE-052` alors que l'écriture
         le reçoit du poste, si bien que la tablette de l'après-midi relisait la phase du matin.
         """
+        archer = self._archers.par_id(archer_id)
+        if archer is None or archer.tournoi_id != tournoi_id:
+            return None  # un archer d'un autre tournoi n'a pas de feuille **ici** (revue E04US019)
         return self._etat_dans(
             self._phase_qualification_ou_none(tournoi_id, archer_id, contexte, depart_id),
             archer_id,
@@ -827,7 +831,9 @@ class ServiceSaisie:
         phase = self._phase_qualification_ou_none(tournoi_id, archer_id, contexte, depart_id)
         if phase is None:
             raise PhaseQualificationAbsente(
-                "La qualification n'est pas encore configurée pour ce tournoi."
+                "Aucune qualification de ce créneau n'admet cet archer."
+                if depart_id is not None
+                else "La qualification n'est pas encore configurée pour ce tournoi."
             )
         return phase
 

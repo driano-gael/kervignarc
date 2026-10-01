@@ -388,7 +388,8 @@ async def lire_serie(
     Un poste ne lit que dans **son** tournoi (`403 saisie_hors_cible`), un scoreur dans le sien
     (`403 scoreur_hors_tournoi`, E16US019 — il lui faut la feuille pour la valider ou l'annuler).
     Un archer qui n'a rien saisi renvoie une série **vide** (200), pas un 404 : le front affiche un
-    pavé vierge. Lecture.
+    pavé vierge — de même qu'un archer d'un **autre** tournoi. `?depart_id` (hors poste) désigne le
+    créneau, vérifié contre les inscriptions (`404 inscription_introuvable`, E04US019). Lecture.
     """
     service_saisie: ServiceSaisie = request.app.state.service_saisie
     service_postes: ServicePostes = request.app.state.service_postes
@@ -402,13 +403,16 @@ async def lire_serie(
     # alors que la tablette, elle, le sait : un archer inscrit matin **et** après-midi voyait sa
     # volée écrite dans la phase de l'après-midi puis relue dans celle du matin. Un poste sans
     # départ courant n'est pas refusé ici (c'est une lecture) : on retombe sur la résolution admin.
+    # ⚠️ Un poste ne **désigne** pas son créneau : il lit dans son départ courant, comme il écrit.
+    # Lui transmettre aussi `depart_id` désarmait le repli que son écriture garde (revue E04US019).
     contexte: ContexteSaisie | None = None
     if poste is not None:
-        depart_id = service_postes.depart_courant(extraire_jeton_poste(request))
-        if depart_id is not None:
-            contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_id)
+        depart_du_poste = service_postes.depart_courant(extraire_jeton_poste(request))
+        if depart_du_poste is not None:
+            contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_du_poste)
+    depart_designe = depart_id if poste is None else None
     etat = await run_in_threadpool(
-        service_saisie.etat_serie, tournoi_id, archer_id, contexte, depart_id
+        service_saisie.etat_serie, tournoi_id, archer_id, contexte, depart_designe
     )
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
@@ -459,7 +463,11 @@ async def valider_serie(
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
     cle = _cle_idempotence(
-        "validation", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id
+        "validation",
+        requete.identifiant_saisie,
+        requete.tournoi_id,
+        requete.archer_id,
+        requete.depart_id or 0,
     )
 
     def ecrire() -> Serie:
@@ -504,6 +512,7 @@ async def corriger_volee(
     )
 
     def ecrire() -> Serie:
+        # DETTE-052 : aucun écran n'appelle cette route (DETTE-100) ; elle ne porte pas de créneau.
         return service_saisie.corriger_volee(
             requete.tournoi_id,
             requete.archer_id,
@@ -557,6 +566,7 @@ async def annuler_validation(
         requete.tournoi_id,
         requete.archer_id,
         requete.numero,
+        requete.depart_id or 0,
     )
 
     def ecrire() -> Serie:
@@ -599,6 +609,7 @@ async def refermer_correction(
         requete.tournoi_id,
         requete.archer_id,
         requete.numero,
+        requete.depart_id or 0,
     )
 
     def ecrire() -> Serie:

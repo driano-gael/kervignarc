@@ -30,10 +30,15 @@ import {
 
 export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
   const [choixDepart, setChoixDepart] = useState<number | null>(null)
-  const [archerId, setArcherId] = useState<number | null>(null)
+  const [choix, setChoix] = useState<{ archerId: number; departId: number | null } | null>(null)
   const departs = useDeparts(tournoiId)
   const liste = departs.data ?? []
   const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // ⚠️ L'archer choisi l'est **dans un créneau** : si le créneau implicite bascule seul (le matin se
+  // clôt), la feuille se fermerait sur une relecture dans l'après-midi — 404 en pleine file.
+  const archerId = choix !== null && choix.departId === departId ? choix.archerId : null
+  const choisirArcher = (id: number | null) =>
+    setChoix(id === null ? null : { archerId: id, departId })
   const classement = useClassement(tournoiId, departId)
   const serie = useSerieScoreur(tournoiId, archerId, departId)
   const valider = useValiderSerie(tournoiId)
@@ -58,11 +63,11 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         valeur={departId}
         surChangement={(valeur) => {
           setChoixDepart(valeur)
-          setArcherId(null)
+          setChoix(null)
         }}
         etiquette="Départ à valider"
       />
-      <FileDuScoreur tournoiId={tournoiId} departId={departId} onChoisir={setArcherId} />
+      <FileDuScoreur tournoiId={tournoiId} departId={departId} onChoisir={choisirArcher} />
       <MessageErreur erreur={serie.error ?? valider.error ?? annuler.error ?? refermer.error} />
       {lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer sur ce départ pour l'instant.</p>
@@ -72,7 +77,7 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
           <select
             value={archerId ?? ''}
             onChange={(evenement) =>
-              setArcherId(evenement.target.value === '' ? null : Number(evenement.target.value))
+              choisirArcher(evenement.target.value === '' ? null : Number(evenement.target.value))
             }
           >
             <option value="">Choisir un archer…</option>
@@ -142,9 +147,9 @@ function FeuilleAValider({
       <p className="carte__etat">
         Total validé : <strong>{cumul}</strong>
       </p>
-      {/* ⚠️ Le serveur referme une correction **avant** de valider quoi que ce soit d'autre, un
-          lot à la fois : le bouton doit dire lequel des deux gestes il déclenche, sinon il éteint
-          le marqueur « En correction » alors qu'on croyait acter des volées fraîches. */}
+      {/* ⚠️ Le serveur **refuse** de valider tant qu'une correction est ouverte
+          (`CorrectionOuverte`) : le bouton doit dire lequel des deux gestes il déclenche, sinon il
+          éteint « En correction » alors qu'on croyait acter des volées fraîches. */}
       <button type="button" disabled={enCours || !validable} onClick={() => onValider(geste)}>
         {geste.geste === 'refermer'
           ? `Refermer la correction — volée${geste.volees.length > 1 ? 's' : ''} ${geste.volees.join(', ')}`

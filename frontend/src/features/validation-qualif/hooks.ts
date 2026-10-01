@@ -1,10 +1,9 @@
 // Cas d'usage React Query de la surface scoreur de qualification (E16US019).
 //
-// Les deux mutations renvoient la série à jour : on **pose** le résultat dans le cache plutôt que
-// de le réinvalider aussitôt — le serveur vient de rendre l'état autoritaire. Le classement, lui,
-// est invalidé : une revalidation après correction change le total. La clé de série est celle de la
-// feature `saisie`, **importée** et non recopiée (une clé qui diverge n'invalide plus rien, et rien
-// ne rougit).
+// Les trois mutations renvoient la série à jour : on **pose** le résultat dans le cache plutôt que
+// de le réinvalider aussitôt — le serveur vient de rendre l'état autoritaire. Classement et file
+// sont invalidés. La clé de série **étend** celle de la feature `saisie` (le créneau en plus,
+// E04US019) sans la recopier : une clé qui diverge n'invalide plus rien, et rien ne rougit.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Serie } from '../saisie/api'

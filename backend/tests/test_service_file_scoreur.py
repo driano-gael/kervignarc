@@ -14,7 +14,7 @@ import datetime
 
 import pytest
 
-from application.erreurs import InscriptionIntrouvable
+from application.erreurs import InscriptionIntrouvable, PhaseQualificationAbsente
 from application.saisie import ContexteSaisie
 from domain.archer import ArcherId
 from domain.bareme import BaremeQualification
@@ -264,3 +264,51 @@ def test_un_horodatage_dans_le_futur_ne_rend_jamais_une_attente_negative() -> No
     _dater(m, m.archer_id, v1=-2, v2=-1)
     (cible,) = m.service.file_du_scoreur(m.tournoi_id, _DEPART)
     assert cible.attente == datetime.timedelta(0)
+
+
+def test_annuler_puis_refermer_sur_le_creneau_designe_ne_touchent_que_sa_feuille() -> None:
+    """CA « geste » : le créneau voyage avec les trois gestes, pas seulement la validation."""
+    m = Montage()
+    _deux_creneaux(m)
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="RIOU", depart_id=_APRES_MIDI)
+
+    m.service.annuler_validation(m.tournoi_id, m.archer_id, 1, "RIOU", depart_id=_APRES_MIDI)
+
+    etat = m.service.etat_serie(m.tournoi_id, m.archer_id, depart_id=_APRES_MIDI)
+    assert etat is not None
+    volee = etat.serie.volee(1)
+    assert volee is not None and volee.en_correction
+    assert m.service.etat_serie(m.tournoi_id, m.archer_id, depart_id=_DEPART) is None
+
+    m.service.refermer_correction(m.tournoi_id, m.archer_id, 1, "RIOU", depart_id=_APRES_MIDI)
+
+    etat = m.service.etat_serie(m.tournoi_id, m.archer_id, depart_id=_APRES_MIDI)
+    assert etat is not None and all(v.verrouillee for v in etat.serie.volees)
+
+
+def test_un_creneau_designe_sans_qualification_ne_se_replie_jamais_sur_un_autre() -> None:
+    """« Jamais remplacé par un autre » : sans qualification sur ce créneau, refus — pas la feuille
+    de la qualification du tournoi."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, 3, "A")
+    _saisir(m, m.archer_id, 1, 2)
+    sans_qualif = _DEPART + 2
+    m.departs.ajouter(
+        dataclasses.replace(
+            Depart.creer(tournoi_id=1, numero=3, tarif_centimes=800, horaire="18:00"),
+            id=sans_qualif,
+        )
+    )
+    m.placer(m.archer_id, sans_qualif, 4, "A")
+
+    with pytest.raises(PhaseQualificationAbsente):
+        m.service.valider(m.tournoi_id, m.archer_id, scoreur="RIOU", depart_id=sans_qualif)
+    assert m.service.etat_serie(m.tournoi_id, m.archer_id, depart_id=sans_qualif) is None
+
+
+def test_la_feuille_d_un_archer_d_un_autre_tournoi_ne_se_lit_pas() -> None:
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, 3, "A")
+    _saisir(m, m.archer_id, 1, 2)
+    assert m.service.etat_serie(m.tournoi_id, m.archer_id) is not None
+    assert m.service.etat_serie(m.tournoi_id + 1, m.archer_id) is None
