@@ -25,7 +25,7 @@ from domain.archer import Archer, ArcherId, CleIdentite, licences_distinctes, so
 from domain.categorie import CategorieId
 from domain.club import ClubId, cle_nom
 from domain.doublons import PaireDoublon, detecter_doublons
-from domain.equipe import Equipe
+from domain.equipe import Equipe, conflit_de_type
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
@@ -145,11 +145,10 @@ class ServiceArchers:
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> Archer:
         """Fusionne un doublon : le **gagnant** absorbe la descendance du **perdant** (E02US005).
 
-        L'admin **choisit** quelle fiche survit ; la machine ne fusionne jamais d'office
-        (ADR-0015). Le transfert est le contrat du port ; ici on tient les **gardes** :
-        `ArcherIntrouvable`, `FusionImpossible` (même fiche, ou deux tournois différents), et
-        `FusionArchersEngages` si les **deux** ont une série — les fusionner mêlerait des volées et
-        violerait l'unicité.
+        L'admin **choisit** quelle fiche survit (ADR-0015). Le transfert est le contrat du port ;
+        ici on tient les **gardes** : `ArcherIntrouvable`, `FusionImpossible` (même fiche, ou deux
+        tournois), `FusionArchersEngages` si les **deux** ont une série (volées mêlées), et
+        `FusionArchersEnEquipes` si elles sont dans deux équipes distinctes du même type (E13US002).
         """
         gagnant = self._archer_existant(gagnant_id)
         perdant = self._archer_existant(perdant_id)
@@ -241,11 +240,10 @@ class ServiceArchers:
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        La suppression **efface aussi sa série de saisie, son placement et ses inscriptions**
-        (E02US009) — c'est le contrat du port, pas un effet de bord. Lève `ArcherEngage` s'il est
-        placé, a déjà tiré ou est inscrit, sauf `autoriser_suppression_engage=True` : un
-        **signalement**, pas un refus (ADR-0016). ⚠️ **Un abandon ne passe pas par ici** : c'est un
-        forfait tracé (ADR-0050), qui préserve les flèches.
+        Efface aussi sa série, son placement, ses inscriptions (E02US009) et sa place en équipe
+        (E13US002) — contrat du port. Lève `ArcherEngage` s'il est placé, a tiré, est inscrit ou
+        membre d'une équipe, sauf `autoriser_suppression_engage=True` : un **signalement**, pas un
+        refus (ADR-0016). ⚠️ **Un abandon ne passe pas par ici** : c'est un forfait (ADR-0050).
         """
         archer = self._archer_existant(archer_id)
         # DETTE-007 : la confirmation est **aveugle**. Le compte de flèches annoncé par le
@@ -385,7 +383,7 @@ class ServiceArchers:
                 )
 
     def _signaler_engagement(self, archer: Archer, archer_id: ArcherId) -> None:
-        """Lève `ArcherEngage` si l'archer est placé, a déjà tiré **ou est inscrit** (E02US009).
+        """Lève `ArcherEngage` si l'archer est placé, a tiré, est inscrit ou en équipe (E13US002).
 
         « Engagé » s'est élargi : une inscription sur au moins un départ suffit. Le message
         **énumère ce qui sera détruit** plutôt que d'inviter à confirmer — c'est ce qui distingue à
@@ -427,7 +425,7 @@ class ServiceArchers:
         if archer.cible is not None:
             motifs.append(f"un placement sur la cible {archer.cible}")
         if equipes:
-            motifs.append(f"une place de membre {_noms_d_equipes(equipes)}")
+            motifs.append(_place_en_equipes(equipes))
         raise ArcherEngage(
             f"« {archer.prenom} {archer.nom} » a {' et '.join(motifs)}. Le supprimer effacera ces "
             "données définitivement. S'il abandonne en cours d'épreuve, ne le supprimez pas : "
@@ -437,16 +435,17 @@ class ServiceArchers:
 
     def _refuser_fusion_d_equipes(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
         """Refus si les fiches sont dans deux équipes **distinctes** du même type (E13US002)."""
-        du_gagnant = {e.type: e for e in self._equipes.par_archer(gagnant_id)}
-        for equipe in self._equipes.par_archer(perdant_id):
-            autre = du_gagnant.get(equipe.type)
-            if autre is not None and autre.id != equipe.id:
-                raise FusionArchersEnEquipes(
-                    f"Ces deux fiches sont dans deux équipes {equipe.type.value}s différentes "
-                    f"(« {autre.nom} » et « {equipe.nom} ») : la fiche conservée ne peut "
-                    "appartenir qu'à une seule. Retirez l'une des deux de son équipe avant de "
-                    "fusionner."
-                )
+        conflit = conflit_de_type(
+            self._equipes.par_archer(gagnant_id), self._equipes.par_archer(perdant_id)
+        )
+        if conflit is not None:
+            autre, equipe = conflit
+            raise FusionArchersEnEquipes(
+                f"Ces deux fiches sont dans deux équipes {equipe.type.value}s différentes "
+                f"(« {autre.nom} » et « {equipe.nom} ») : la fiche conservée ne peut "
+                "appartenir qu'à une seule. Retirez l'une des deux de son équipe avant de "
+                "fusionner."
+            )
 
     def _feuilles(self, tournoi_id: TournoiId, archer_id: ArcherId) -> list[Serie]:
         """Les feuilles de cet archer dans ce tournoi — **toutes phases confondues**.
@@ -486,8 +485,11 @@ class ServiceArchers:
             )
 
 
-def _noms_d_equipes(equipes: list[Equipe]) -> str:
+def _place_en_equipes(equipes: list[Equipe]) -> str:
     noms = [f"« {e.nom} »" for e in equipes]
     if len(noms) == 1:
-        return f"de l'équipe {noms[0]}"
-    return f"des équipes {', '.join(noms[:-1])} et {noms[-1]}"
+        return f"une place de membre de l'équipe {noms[0]} (il en sera retiré, l'équipe reste)"
+    return (
+        f"une place de membre des équipes {', '.join(noms[:-1])} et {noms[-1]} "
+        "(il en sera retiré, les équipes restent)"
+    )

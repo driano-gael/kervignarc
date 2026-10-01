@@ -278,11 +278,10 @@ def _lieu_normalise(lieu: str | None) -> str | None:
 class DescendanceTournoi:
     """Ce qu'un tournoi emporterait s'il était supprimé — un décompte, pas des entités (ADR-0077).
 
-    ⚠️ **Le critère est « est-ce que ça se ressaisit ? », pas « est-ce de la donnée ? »** — d'où
-    l'entrée des **postes** et des **scoreurs**, dont le code est tiré au hasard : les QR déjà
-    collés sur les buttes ne se retrouvent pas. Restent dehors, nommément : `depart`, `categorie`,
-    `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi` — configuration qui se refait
-    (arbitrage du 19/09/2026 ; `stories/` E01US026, puce « CA — vide »).
+    ⚠️ **Le critère est « est-ce que ça se ressaisit ? »** — d'où les **postes** et **scoreurs**
+    (codes tirés au hasard, QR collés sur les buttes). Restent dehors, nommément : `depart`,
+    `categorie`, `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi` (arbitrage du
+    19/09/2026, E01US026), `equipe` et `membre_equipe` (E13US002 : se recompose, membres comptés).
     """
 
     archers: int = 0

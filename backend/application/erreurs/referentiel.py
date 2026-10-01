@@ -413,6 +413,12 @@ class EquipeIntrouvable(ApplicationError):
     code = "equipe_introuvable"
 
 
+class MembreIntrouvable(ApplicationError):
+    """L'archer ne figure pas dans cette équipe (E13US002) → 404, comme `EquipeIntrouvable`."""
+
+    code = "membre_introuvable"
+
+
 class NomEquipeDejaPris(ApplicationError):
     """Une autre équipe du tournoi porte déjà ce nom, au sens de `cle_nom` (E13US002) → 409."""
 
@@ -420,7 +426,9 @@ class NomEquipeDejaPris(ApplicationError):
 
 
 class ArcherDejaEnEquipe(ApplicationError):
-    """L'archer est déjà membre d'une autre équipe de même type (E13US002, CA 3) → 409."""
+    """L'archer est déjà membre de cette équipe, ou d'une autre de même type (E13US002, CA 3)
+    → 409.
+    """
 
     code = "archer_deja_en_equipe"
 

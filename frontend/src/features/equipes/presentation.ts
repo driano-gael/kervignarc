@@ -4,6 +4,7 @@
 import type { EcartEquipe, Equipe, TypeEquipe } from './api'
 
 // Effectif FFTA par type (`stories/E13-equipes.md`, CA 1) : prérempli, modifiable par l'équipe.
+// Miroir de `EFFECTIF_FFTA` (`backend/domain/equipe.py`).
 export const TYPES_EQUIPE: Record<TypeEquipe, { libelle: string; effectifParDefaut: number }> = {
   standard: { libelle: 'Standard', effectifParDefaut: 3 },
   mixte: { libelle: 'Mixte', effectifParDefaut: 2 },

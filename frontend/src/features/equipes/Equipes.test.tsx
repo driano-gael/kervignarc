@@ -152,6 +152,55 @@ describe('Équipes', () => {
     expect(retirerMembre).toHaveBeenCalledWith(1, 7, 1)
   })
 
+  it('signale l’archer déjà dans une autre équipe du même type', async () => {
+    equipesRendues = [
+      aigles,
+      {
+        ...aigles,
+        id: 8,
+        nom: 'Les Faucons',
+        membres: [{ archer_id: 2, nom: 'Bois', prenom: 'Bruno', categorie: 'Sénior' }],
+      },
+    ]
+    monter()
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Ajouter un membre à l’équipe Les Aigles' }),
+    )
+    const bruno = await screen.findByRole('button', {
+      name: 'Ajouter Bruno Bois à l’équipe Les Aigles',
+    })
+    expect(bruno).toHaveTextContent('Déjà dans « Les Faucons »')
+    const chloe = screen.getByRole('button', { name: 'Ajouter Chloé Corde à l’équipe Les Aigles' })
+    expect(chloe).not.toHaveTextContent('Déjà dans')
+  })
+
+  it('retire une seule fois au double tap : le bouton reste éteint jusqu’à la relecture', async () => {
+    retirerMembre.mockResolvedValue({ ...aigles, membres: [] })
+    monter()
+    const bouton = await screen.findByRole('button', {
+      name: 'Retirer Anne Arc de l’équipe Les Aigles',
+    })
+    // Relecture suspendue : la mutation est finie, la liste pas encore relue.
+    getEquipes.mockReturnValue(new Promise(() => {}))
+    await userEvent.click(bouton)
+    await vi.waitFor(() => expect(getEquipes).toHaveBeenCalledTimes(2))
+    await userEvent.click(bouton)
+    expect(retirerMembre).toHaveBeenCalledTimes(1)
+    expect(bouton).toBeDisabled()
+  })
+
+  it('refuse un effectif au-delà de 99 sans appeler le serveur', async () => {
+    monter()
+    const effectif = await screen.findByRole('spinbutton', { name: 'Effectif attendu' })
+    await userEvent.type(screen.getByRole('textbox', { name: 'Nom de l’équipe' }), 'Géante')
+    await userEvent.clear(effectif)
+    await userEvent.type(effectif, '100')
+    expect(screen.getByText('L’effectif attendu est un nombre entier de 1 à 99.')).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Créer l’équipe' }))
+    await userEvent.type(effectif, '{Enter}')
+    expect(creerEquipe).not.toHaveBeenCalled()
+  })
+
   it('affiche tel quel le message du 409 « une équipe par type »', async () => {
     const message = 'Bruno Bois est déjà dans l’équipe standard « Les Faucons ».'
     ajouterMembre.mockRejectedValue(new ErreurApi(409, 'archer_deja_en_equipe', message))
@@ -191,6 +240,26 @@ describe('Équipes', () => {
     })
     expect(await screen.findByText('Les Faucons')).toBeInTheDocument()
     expect(getEquipes).toHaveBeenCalledTimes(2)
+  })
+
+  it('renommer sans changer de type conserve un effectif personnalisé', async () => {
+    equipesRendues = [{ ...aigles, effectif_attendu: 4 }]
+    modifierEquipe.mockResolvedValue({ ...aigles, nom: 'Les Faucons', effectif_attendu: 4 })
+    monter()
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Modifier l’équipe Les Aigles' }),
+    )
+    const formulaire = within(screen.getByRole('form', { name: 'Modifier l’équipe Les Aigles' }))
+    const nom = formulaire.getByRole('textbox', { name: 'Nom de l’équipe' })
+    await userEvent.clear(nom)
+    await userEvent.type(nom, 'Les Faucons')
+    await userEvent.click(formulaire.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(modifierEquipe).toHaveBeenCalledWith(1, 7, {
+      nom: 'Les Faucons',
+      type: 'standard',
+      effectif_attendu: 4,
+    })
   })
 
   it('supprime une équipe après confirmation, et sa ligne disparaît', async () => {

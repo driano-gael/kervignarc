@@ -17,13 +17,14 @@ from application.erreurs import (
     ArcherDejaEnEquipe,
     ArcherHorsTournoi,
     EquipeIntrouvable,
+    MembreIntrouvable,
     NomEquipeDejaPris,
     TournoiIntrouvable,
 )
 from domain.archer import Archer, ArcherId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
 from domain.equipe import EcartComposition, TypeEquipe
-from domain.erreurs import ArcherDejaMembre, ArcherNonMembre, NomEquipeInvalide
+from domain.erreurs import NomEquipeInvalide
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
@@ -240,20 +241,38 @@ def test_un_archer_inexistant_est_refuse(decor: Decor) -> None:
         decor.service.ajouter_membre(decor.tournoi_id, vue.equipe.id, 999)
 
 
-def test_ajouter_deux_fois_le_meme_archer_est_refuse_par_le_domaine(decor: Decor) -> None:
+def test_ajouter_deux_fois_le_meme_archer_est_un_conflit_qui_le_nomme(decor: Decor) -> None:
     vue = decor.service.creer(decor.tournoi_id, "Les Archers", TypeEquipe.STANDARD, None)
     assert vue.equipe.id is not None
     guillaume = decor.archer("Guillaume")
     decor.service.ajouter_membre(decor.tournoi_id, vue.equipe.id, guillaume)
-    with pytest.raises(ArcherDejaMembre):
+    with pytest.raises(ArcherDejaEnEquipe) as leve:
         decor.service.ajouter_membre(decor.tournoi_id, vue.equipe.id, guillaume)
+    assert "« Guillaume Tell »" in str(leve.value)
+    assert "« Les Archers »" in str(leve.value)
 
 
-def test_retirer_un_non_membre_est_refuse_par_le_domaine(decor: Decor) -> None:
+def test_retirer_un_non_membre_est_introuvable_en_le_nommant(decor: Decor) -> None:
     vue = decor.service.creer(decor.tournoi_id, "Les Archers", TypeEquipe.STANDARD, None)
     assert vue.equipe.id is not None
-    with pytest.raises(ArcherNonMembre):
-        decor.service.retirer_membre(decor.tournoi_id, vue.equipe.id, decor.archer("Walter"))
+    walter = decor.archer("Walter")
+    with pytest.raises(MembreIntrouvable) as leve:
+        decor.service.retirer_membre(decor.tournoi_id, vue.equipe.id, walter)
+    assert str(leve.value) == "« Walter Tell » ne figure pas dans l'équipe « Les Archers »."
+
+
+def test_un_membre_disparu_entre_deux_lectures_est_ignore(decor: Decor) -> None:
+    """`lister` tourne hors writer : un archer supprimé entre deux lectures n'est pas un 500."""
+    vue = decor.service.creer(decor.tournoi_id, "Les Archers", TypeEquipe.STANDARD, None)
+    assert vue.equipe.id is not None
+    guillaume, walter = decor.archer("Guillaume"), decor.archer("Walter")
+    decor.service.ajouter_membre(decor.tournoi_id, vue.equipe.id, guillaume)
+    decor.service.ajouter_membre(decor.tournoi_id, vue.equipe.id, walter)
+    decor.archers.supprimer(walter)  # l'équipe le garde : la suppression a « couru » la lecture
+
+    (lue,) = decor.service.lister(decor.tournoi_id)
+
+    assert [m.archer_id for m in lue.membres] == [guillaume]
 
 
 # --- CA 3 : au plus une équipe par type ---

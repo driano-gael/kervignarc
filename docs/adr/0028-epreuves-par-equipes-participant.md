@@ -52,6 +52,12 @@ ou **équipe mixte** 2 archers H/F). Le nombre et la contrainte de composition s
 configuration** (vocabulaire fermé FFTA en défaut, surchargeable — cohérent avec le principe
 « template » du référentiel §10).
 
+> **Amendé le 01/10/2026 (E13US002, arbitrage du commanditaire en revue)** : seul le **nombre**
+> d'archers est surchargeable, par équipe. La **contrainte** de composition (arme commune, mixité,
+> sexe unique en standard) reste la règle FFTA, fixe — elle est **signalée**, jamais bloquante à la
+> composition, si bien qu'une équipe hors règle s'enregistre en affichant ses écarts. La composition
+> FFTA est au **§6.4** du référentiel (les « §6.3 » de cet ADR datent d'avant sa renumérotation).
+
 **3. Le scoring d'équipe est une politique injectable, pas un cas particulier codé.** Le cumul
 d'équipe et les **volées alternées** (FFTA §7) sont une implémentation de la politique `scoring`
 ([ADR-0004](0004-moteur-de-phases-politiques.md)), résolue par le couple (phase, type de participant).
@@ -92,10 +98,12 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   d'équipe (E13US003), le placement/saisie/classement par équipe (E13US004).
 - **01/10/2026 — décision n°2 réalisée (E13US002).** `Equipe` et `MEMBRE_EQUIPE` existent, avec
   une composition **signalée, pas bloquée** (le refus d'une équipe non conforme est renvoyé à
-  l'engagement dans une phase, E13US004). Trois précisions tranchées au cadrage, qui complètent le
-  point 2 sans le contredire : le sexe et l'arme d'un membre sont lus sur **sa catégorie** ;
-  l'effectif « configurable » est porté **par l'équipe** (défaut FFTA selon le type) ; un archer
-  appartient à **une équipe par type**. Cf. `stories/E13-equipes.md` § E13US002.
+  l'engagement dans une phase, E13US004). Trois précisions tranchées au cadrage : le sexe et l'arme
+  d'un membre sont lus sur **sa catégorie** ; l'effectif « configurable » est porté **par
+  l'équipe** (défaut FFTA selon le type) ; un archer appartient à **une équipe par type**. Et une
+  **restriction** tranchée en revue, qui amende le point 2 (cf. son encart) : seul l'effectif est
+  surchargeable. « Engagé » couvre désormais l'appartenance à une équipe (glossaire) : la
+  conséquence « deux notions d'engagé » s'est résolue en **une** notion élargie. Cf. `stories/E13-equipes.md` § E13US002.
 
 ## Porté dans le code par
 
@@ -123,7 +131,7 @@ Les points 1 et 2 sont livrés ; les points 3 et 4 **n'ont aucun module** :
 | Point de la décision | État |
 |---|---|
 | 1. Le match oppose des participants | ✅ `domain/participant.py` |
-| 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ✅ `domain/equipe.py`, `application/equipes.py` — `E13US002` |
+| 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ✅ tel qu'amendé le 01/10/2026 — `domain/equipe.py`, `application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
 | 3. Le scoring d'équipe est une politique injectable | ⬜ `E13US003` |
 | 4. Placement / saisie / classement clés sur le participant | ⬜ `E13US004` |
 

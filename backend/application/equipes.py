@@ -14,6 +14,7 @@ from application.erreurs import (
     ArcherDejaEnEquipe,
     ArcherHorsTournoi,
     EquipeIntrouvable,
+    MembreIntrouvable,
     NomEquipeDejaPris,
     TournoiIntrouvable,
 )
@@ -26,6 +27,7 @@ from domain.equipe import (
     EquipeId,
     ProfilMembre,
     TypeEquipe,
+    conflit_de_type,
     ecarts_de_composition,
 )
 from domain.ports import ArcherRepository, CategorieRepository, EquipeRepository, TournoiRepository
@@ -108,6 +110,10 @@ class ServiceEquipes:
         archer = self._archers.par_id(archer_id)
         if archer is None or archer.tournoi_id != tournoi_id:
             raise ArcherHorsTournoi(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")
+        if archer_id in equipe.membres:
+            raise ArcherDejaEnEquipe(
+                f"« {archer.prenom} {archer.nom} » figure déjà dans l'équipe « {equipe.nom} »."
+            )
         complete = equipe.ajouter_membre(archer_id)
         self._refuser_autre_equipe_du_type(complete, archer_id)
         return self._vue(self._equipes.enregistrer(complete))
@@ -116,6 +122,10 @@ class ServiceEquipes:
         self, tournoi_id: TournoiId, equipe_id: EquipeId, archer_id: ArcherId
     ) -> EquipeVue:
         equipe = self._equipe_du_tournoi(tournoi_id, equipe_id)
+        if archer_id not in equipe.membres:
+            raise MembreIntrouvable(
+                f"{self._nom_archer(archer_id)} ne figure pas dans l'équipe « {equipe.nom} »."
+            )
         return self._vue(self._equipes.enregistrer(equipe.retirer_membre(archer_id)))
 
     # --- Gardes ---
@@ -140,14 +150,17 @@ class ServiceEquipes:
                 raise NomEquipeDejaPris(f"Une équipe s'appelle déjà « {autre.nom} ».")
 
     def _refuser_autre_equipe_du_type(self, equipe: Equipe, archer_id: ArcherId) -> None:
-        for autre in self._equipes.par_archer(archer_id):
-            if autre.id != equipe.id and autre.type is equipe.type:
-                archer = self._archers.par_id(archer_id)
-                nom = f"« {archer.prenom} {archer.nom} »" if archer else f"L'archer {archer_id}"
-                raise ArcherDejaEnEquipe(
-                    f"{nom} est déjà membre de l'équipe {equipe.type.value} « {autre.nom} » : "
-                    "un archer appartient à une seule équipe de chaque type."
-                )
+        conflit = conflit_de_type([equipe], self._equipes.par_archer(archer_id))
+        if conflit is not None:
+            _, autre = conflit
+            raise ArcherDejaEnEquipe(
+                f"{self._nom_archer(archer_id)} est déjà membre de l'équipe {equipe.type.value} "
+                f"« {autre.nom} » : un archer appartient à une seule équipe de chaque type."
+            )
+
+    def _nom_archer(self, archer_id: ArcherId) -> str:
+        archer = self._archers.par_id(archer_id)
+        return f"« {archer.prenom} {archer.nom} »" if archer else f"L'archer {archer_id}"
 
     # --- Lecture ---
 
@@ -166,8 +179,11 @@ def _vue_de(
     archers: dict[ArcherId | None, Archer],
     categories: dict[CategorieId | None, Categorie],
 ) -> EquipeVue:
-    membres = [(archer_id, archers[archer_id]) for archer_id in equipe.membres]
-    profils = [_profil(categories.get(a.categorie_id)) for _, a in membres]
+    # Un archer supprimé entre les deux lectures de `lister` (hors writer) est ignoré, pas un 500.
+    membres = [
+        (archer_id, archers[archer_id]) for archer_id in equipe.membres if archer_id in archers
+    ]
+    profils = [ProfilMembre.de_categorie(categories.get(a.categorie_id)) for _, a in membres]
     return EquipeVue(
         equipe=equipe,
         membres=tuple(
@@ -175,12 +191,6 @@ def _vue_de(
         ),
         ecarts=ecarts_de_composition(equipe, profils),
     )
-
-
-def _profil(categorie: Categorie | None) -> ProfilMembre:
-    if categorie is None:
-        return ProfilMembre(arme=None, sexe=None)
-    return ProfilMembre(arme=categorie.arme, sexe=categorie.sexe)
 
 
 def _membre_vu(archer_id: ArcherId, archer: Archer, categorie: Categorie | None) -> MembreVu:

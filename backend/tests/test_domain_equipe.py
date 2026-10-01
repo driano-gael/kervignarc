@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import pytest
 
-from domain.categorie import SexeCategorie
+from domain.categorie import Categorie, SexeCategorie
 from domain.equipe import (
     EcartComposition,
     Equipe,
     ProfilMembre,
     TypeEquipe,
+    conflit_de_type,
     ecarts_de_composition,
 )
 from domain.erreurs import (
@@ -240,3 +241,93 @@ def test_les_ecarts_sont_cumules_dans_un_ordre_stable() -> None:
         EcartComposition.ARMES_DIFFERENTES,
         EcartComposition.SEXES_DIFFERENTS,
     )
+
+
+# --- Compléments de revue (01/10/2026) ---------------------------------------------------------
+
+
+def test_standard_de_sexes_differents_et_un_sexe_inconnu() -> None:
+    """CA 4 : la différence établie reste signalée, l'inconnu rend le critère non vérifiable."""
+    profils = [_profil(sexe=H), _profil(sexe=F), _profil(sexe=SexeCategorie.MIXTE)]
+
+    assert set(ecarts_de_composition(_standard(), profils)) == {
+        EcartComposition.SEXES_DIFFERENTS,
+        EcartComposition.SEXE_NON_VERIFIABLE,
+    }
+
+
+def test_une_arme_blanche_est_une_arme_inconnue() -> None:
+    ecarts = ecarts_de_composition(_standard(), [_profil(), _profil(), _profil(arme="   ")])
+
+    assert ecarts == (EcartComposition.ARME_NON_VERIFIABLE,)
+
+
+def test_mixte_a_effectif_configure_ne_signale_que_l_effectif() -> None:
+    """Seul l'effectif est configurable (arbitrage du 01/10/2026) : H, H, F reste mixte."""
+    profils = [_profil(sexe=H), _profil(sexe=H), _profil(sexe=F)]
+    a_quatre = Equipe.creer(1, "M", TypeEquipe.MIXTE, effectif_attendu=4)
+
+    assert ecarts_de_composition(a_quatre, profils) == (EcartComposition.EFFECTIF_INSUFFISANT,)
+    assert ecarts_de_composition(a_quatre.modifier("M", TypeEquipe.MIXTE, 3), profils) == ()
+
+
+def test_l_effectif_attendu_est_borne_a_99() -> None:
+    assert Equipe.creer(1, "A", TypeEquipe.STANDARD, effectif_attendu=99).effectif_attendu == 99
+    with pytest.raises(EffectifEquipeInvalide):
+        Equipe.creer(1, "A", TypeEquipe.STANDARD, effectif_attendu=100)
+    with pytest.raises(EffectifEquipeInvalide):
+        Equipe.creer(1, "A", TypeEquipe.STANDARD, effectif_attendu=2**63)
+
+
+def test_modifier_sans_effectif_ni_changement_de_type_garde_l_effectif_configure() -> None:
+    """Renommer une équipe ne doit pas ramener en douce son effectif au défaut FFTA."""
+    equipe = Equipe.creer(1, "A", TypeEquipe.STANDARD, effectif_attendu=4)
+
+    assert equipe.modifier(nom="B", type=TypeEquipe.STANDARD).effectif_attendu == 4
+
+
+def test_modifier_sans_effectif_avec_changement_de_type_prend_le_defaut_du_nouveau_type() -> None:
+    equipe = Equipe.creer(1, "A", TypeEquipe.STANDARD, effectif_attendu=4)
+
+    assert equipe.modifier(nom="A", type=TypeEquipe.MIXTE).effectif_attendu == 2
+
+
+def _persistee(equipe_id: int, type: TypeEquipe) -> Equipe:
+    return Equipe(tournoi_id=1, nom=f"E{equipe_id}", type=type, effectif_attendu=3, id=equipe_id)
+
+
+def test_conflit_de_type_trouve_deux_equipes_distinctes_du_meme_type() -> None:
+    """CA 3 : au plus une équipe par type."""
+    a = _persistee(1, TypeEquipe.STANDARD)
+    b = _persistee(2, TypeEquipe.STANDARD)
+
+    assert conflit_de_type([a], [_persistee(3, TypeEquipe.MIXTE), b]) == (a, b)
+
+
+def test_conflit_de_type_ignore_la_meme_equipe() -> None:
+    a = _persistee(1, TypeEquipe.STANDARD)
+
+    assert conflit_de_type([a], [a]) is None
+
+
+def test_conflit_de_type_ignore_les_types_differents() -> None:
+    assert (
+        conflit_de_type([_persistee(1, TypeEquipe.STANDARD)], [_persistee(2, TypeEquipe.MIXTE)])
+        is None
+    )
+
+
+def test_conflit_de_type_sans_equipe() -> None:
+    assert conflit_de_type([], []) is None
+    assert conflit_de_type([_persistee(1, TypeEquipe.STANDARD)], []) is None
+
+
+def test_le_profil_d_un_membre_sans_categorie_est_inconnu() -> None:
+    assert ProfilMembre.de_categorie(None) == ProfilMembre(arme=None, sexe=None)
+
+
+def test_le_profil_d_un_membre_est_lu_sur_sa_categorie() -> None:
+    """CA 5 : l'arme et le sexe d'un archer sont ceux de sa catégorie."""
+    categorie = Categorie.creer(1, "Femme arc classique", arme="Classique", sexe=F)
+
+    assert ProfilMembre.de_categorie(categorie) == ProfilMembre(arme="Classique", sexe=F)

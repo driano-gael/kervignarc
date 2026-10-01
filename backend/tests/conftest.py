@@ -255,12 +255,17 @@ class FauxEquipeRepository:
         if equipe.id is None:
             self._sequence += 1
             equipe = dataclasses.replace(equipe, id=self._sequence)
+        else:
+            # Fidèle à l'adapter, qui lève `InfrastructureError` sur une équipe à mettre à jour
+            # absente — même patron que `FauxTournoiRepository.enregistrer`.
+            assert equipe.id in self._equipes, "Équipe à mettre à jour absente."
         assert equipe.id is not None
         self._equipes[equipe.id] = equipe
         return equipe
 
     def supprimer(self, equipe_id: EquipeId) -> None:
-        del self._equipes[equipe_id]
+        # L'adapter supprime par `DELETE … WHERE` : un id absent ne lève pas.
+        self._equipes.pop(equipe_id, None)
 
 
 class FauxCategorieRepository:

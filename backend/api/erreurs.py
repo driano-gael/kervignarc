@@ -41,6 +41,7 @@ from application.erreurs import (
     JalonNonInstruit,
     LogoIntrouvable,
     MancheIntrouvable,
+    MembreIntrouvable,
     NonAuthentifie,
     PhaseIntrouvable,
     PhaseQualificationAbsente,
@@ -113,6 +114,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | PosteIntrouvable
         | ScoreurIntrouvable
         | EquipeIntrouvable
+        | MembreIntrouvable
         | ForfaitIntrouvable
         | BarrageIntrouvable
         | RemboursementIntrouvable

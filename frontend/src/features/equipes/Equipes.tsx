@@ -297,6 +297,9 @@ function ChoixMembre({
   )
 }
 
+// Miroir de `EFFECTIF_MAXIMUM` (`backend/domain/equipe.py`) : le serveur refuse au-delà.
+const EFFECTIF_MAX = 99
+
 // Formulaire partagé création / modification : sans `equipe` il crée, avec il modifie.
 function FormulaireEquipe({
   tournoiId,
@@ -319,8 +322,10 @@ function FormulaireEquipe({
   const mutation = enEdition ? modifier : creer
 
   const effectifNombre = Number(effectif)
-  // Reprend les règles du domaine (CA 1) pour éviter un 422 certain ; le serveur reste l'autorité.
-  const entreeValide = nom.trim() !== '' && Number.isInteger(effectifNombre) && effectifNombre >= 1
+  // Reprend les bornes du serveur (CA 1) pour éviter un 422 certain ; le serveur reste l'autorité.
+  const effectifValide =
+    Number.isInteger(effectifNombre) && effectifNombre >= 1 && effectifNombre <= EFFECTIF_MAX
+  const entreeValide = nom.trim() !== '' && effectifValide
 
   // Changer de type remet l'effectif FFTA du nouveau type : celui de l'ancien n'a plus de sens.
   const changerType = (nouveau: TypeEquipe) => {
@@ -378,11 +383,17 @@ function FormulaireEquipe({
             className="formulaire__champ"
             type="number"
             min={1}
+            max={EFFECTIF_MAX}
             step={1}
             value={effectif}
             onChange={(e) => setEffectif(e.target.value)}
           />
         </label>
+        {effectif.trim() !== '' && !effectifValide && (
+          <p className="carte__etat" role="status">
+            L’effectif attendu est un nombre entier de 1 à {EFFECTIF_MAX}.
+          </p>
+        )}
         <div className="formulaire__actions">
           <button type="submit" disabled={mutation.isPending || !entreeValide}>
             {enEdition ? 'Enregistrer' : 'Créer l’équipe'}

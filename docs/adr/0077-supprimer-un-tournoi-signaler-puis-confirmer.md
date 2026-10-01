@@ -101,7 +101,8 @@ Deux points que cet ADR laissait ouverts, arbitrés par le commanditaire :
 2. **« Vide » se juge sur ce qui ne se ressaisit pas**, pas sur la descendance entière. Un tournoi
    qui porte des créneaux, des catégories et des blasons mais **aucun archer** se supprime sans rien
    demander ; la liste des exclus est **nominative** sur `DescendanceTournoi` (`depart`, `categorie`,
-   `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi`).
+   `blason`, `gabarit_salle`, `deroule_etape`, `identite_tournoi`, et depuis E13US002 `equipe` /
+   `membre_equipe` — une équipe se recompose, et ses membres sont des archers, déjà comptés).
    ⚠️ **Le critère n'est pas « est-ce de la donnée ? » — corrigé en revue.** Une première version
    calibrée sur les seuls mots du commanditaire laissait dehors les **postes**, les **scoreurs** et
    le **journal d'audit** : un tournoi entièrement préparé la veille, QR imprimés et collés, partait

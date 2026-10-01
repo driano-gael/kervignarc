@@ -21,7 +21,7 @@ router = APIRouter(
 
 
 class EquipeRequete(BaseModel):
-    """`effectif_attendu` absent ou nul : le défaut FFTA du type (CA 1)."""
+    """`effectif_attendu` absent ou `null` : le défaut FFTA du type (CA 1) ; 0 est refusé."""
 
     nom: str
     type: TypeEquipe

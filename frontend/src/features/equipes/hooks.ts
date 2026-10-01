@@ -23,6 +23,8 @@ export function useEquipes(tournoiId: number) {
   })
 }
 
+// ⚠️ Renvoyer la promesse : `onSuccess` est attendu, donc `isPending` couvre la relecture de la
+// liste et le bouton reste éteint jusque-là (sinon un double tap rejoue la requête).
 function useInvaliderEquipes(tournoiId: number) {
   const queryClient = useQueryClient()
   return () => queryClient.invalidateQueries({ queryKey: cleEquipes(tournoiId) })

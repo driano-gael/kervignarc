@@ -7,12 +7,13 @@ traverse forcément des états non conformes. `ecarts_de_composition` les décri
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
+from types import MappingProxyType
 
 from domain.archer import ArcherId
-from domain.categorie import SexeCategorie
+from domain.categorie import Categorie, SexeCategorie
 from domain.erreurs import (
     ArcherDejaMembre,
     ArcherNonMembre,
@@ -30,8 +31,13 @@ class TypeEquipe(str, Enum):
     MIXTE = "mixte"
 
 
-EFFECTIF_FFTA: dict[TypeEquipe, int] = {TypeEquipe.STANDARD: 3, TypeEquipe.MIXTE: 2}
+EFFECTIF_FFTA: Mapping[TypeEquipe, int] = MappingProxyType(
+    {TypeEquipe.STANDARD: 3, TypeEquipe.MIXTE: 2}
+)
 """Effectif par défaut d'un type d'équipe — référentiel FFTA §6.4 et §7."""
+
+# Borne de garde, pas une règle FFTA : un entier hors 64 bits faisait un 500 SQLite (OverflowError).
+EFFECTIF_MAXIMUM = 99
 
 
 @dataclass(frozen=True)
@@ -65,7 +71,13 @@ class Equipe:
         )
 
     def modifier(self, nom: str, type: TypeEquipe, effectif_attendu: int | None = None) -> Equipe:
-        """Mêmes règles que `creer` ; `id`, `tournoi_id` et `membres` sont préservés."""
+        """Mêmes règles que `creer` ; `id`, `tournoi_id` et `membres` sont préservés.
+
+        `effectif_attendu` absent : l'effectif **courant** si le type ne change pas, le défaut
+        FFTA du nouveau type sinon.
+        """
+        if effectif_attendu is None and type is self.type:
+            effectif_attendu = self.effectif_attendu
         return replace(
             self,
             nom=_nom_valide(nom),
@@ -106,6 +118,28 @@ class ProfilMembre:
 
     arme: str | None
     sexe: SexeCategorie | None
+
+    @staticmethod
+    def de_categorie(categorie: Categorie | None) -> ProfilMembre:
+        """Sans catégorie résolue, arme et sexe sont inconnus — jamais devinés."""
+        if categorie is None:
+            return ProfilMembre(arme=None, sexe=None)
+        return ProfilMembre(arme=categorie.arme, sexe=categorie.sexe)
+
+
+def conflit_de_type(
+    equipes_a: Sequence[Equipe], equipes_b: Sequence[Equipe]
+) -> tuple[Equipe, Equipe] | None:
+    """La première paire (a, b) de **même type** et d'ids distincts ; `None` sinon (CA 3).
+
+    Un archer appartient à au plus une équipe par type : c'est l'invariant que l'ajout d'un membre,
+    le changement de type et la fusion de deux archers vérifient tous les trois par ici.
+    """
+    for a in equipes_a:
+        for b in equipes_b:
+            if a.type is b.type and a.id != b.id:
+                return a, b
+    return None
 
 
 def ecarts_de_composition(
@@ -166,5 +200,9 @@ def _effectif_valide(type: TypeEquipe, effectif_attendu: int | None) -> int:
     if effectif <= 0:
         raise EffectifEquipeInvalide(
             "L'effectif attendu d'une équipe doit être un entier strictement positif."
+        )
+    if effectif > EFFECTIF_MAXIMUM:
+        raise EffectifEquipeInvalide(
+            f"L'effectif attendu d'une équipe ne peut pas dépasser {EFFECTIF_MAXIMUM} archers."
         )
     return effectif

@@ -166,7 +166,19 @@ def test_les_refus_au_format_d_erreur(client: TestClient) -> None:
     )
     assert (nul.status_code, nul.json()["code"]) == (422, "effectif_equipe_invalide")
     deja = _ajouter(client, tournoi_id, premiere["id"], guillaume)
-    assert (deja.status_code, deja.json()["code"]) == (422, "archer_deja_membre")
+    assert (deja.status_code, deja.json()["code"]) == (409, "archer_deja_en_equipe")
+    trop = client.post(
+        f"/api/v1/tournois/{tournoi_id}/equipes",
+        json={"nom": "Cent", "type": "standard", "effectif_attendu": 100},
+    )
+    assert (trop.status_code, trop.json()["code"]) == (422, "effectif_equipe_invalide")
+    absent = client.delete(
+        f"/api/v1/tournois/{tournoi_id}/equipes/{seconde['id']}/membres/{guillaume}"
+    )
+    assert (absent.status_code, absent.json()["code"]) == (404, "membre_introuvable")
+    assert absent.json()["message"] == (
+        "« Guillaume Tell » ne figure pas dans l'équipe « Les Flèches »."
+    )
     type_inconnu = client.post(
         f"/api/v1/tournois/{tournoi_id}/equipes", json={"nom": "X", "type": "relais"}
     )
