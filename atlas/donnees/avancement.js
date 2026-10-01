@@ -941,7 +941,7 @@ window.ATLAS.avancement = {
    "0074",
    "0104"
   ],
-  "derniere": "E17US005"
+  "derniere": "E04US019"
  },
  "epics": [
   {
@@ -2670,6 +2670,21 @@ window.ATLAS.avancement = {
    "story": "stories/E04-saisie-scores.md",
    "titre": "Afficher la prochaine cible après validation",
    "titre_story": "Afficher la prochaine cible après validation"
+  },
+  {
+   "adr": [],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "04",
+   "epic_titre": "Saisie des scores en temps réel",
+   "etat": "✅",
+   "identifiant": "E04US019",
+   "sections": [
+    "Ajout du 01/10/2026 — ✅ **livrée (1/1)**"
+   ],
+   "story": "stories/E04-saisie-scores.md",
+   "titre": "La file du scoreur (S07)",
+   "titre_story": "La file du scoreur (S07)"
   },
   {
    "adr": [
@@ -4931,8 +4946,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 154,
-  "vivantes": 180
+  "livrees": 155,
+  "vivantes": 181
  },
  "sections": [
   {
@@ -6229,6 +6244,25 @@ window.ATLAS.avancement = {
     }
    ],
    "titre": "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+  },
+  {
+   "calcule": [
+    1,
+    1
+   ],
+   "compteur_ecrit": [
+    1,
+    1
+   ],
+   "lignes": [
+    {
+     "comptee": true,
+     "etat": "✅",
+     "identifiant": "E04US019",
+     "titre": "La file du scoreur (S07)"
+    }
+   ],
+   "titre": "Ajout du 01/10/2026 — ✅ **livrée (1/1)**"
   },
   {
    "calcule": [
