@@ -1131,3 +1131,63 @@ def test_corriger_est_reserve_au_scoreur_et_une_session_admin_n_y_suffit_pas(
         reponse = client.post("/api/v1/saisie/corrections", json=_corps_volee(s, ["9", "9", "9"]))
 
         assert reponse.status_code == 401, reponse.text
+
+
+# --- File du scoreur (E04US019) ---
+
+
+def test_la_file_du_scoreur_porte_la_cible_dont_la_feuille_est_complete(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une feuille complète met sa cible dans la file ; une validation l'en fait sortir."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        url = f"/api/v1/saisie/file/{s.tournoi_id}/{s.depart_id}"
+
+        reponse = client.get(url, headers=entete)
+
+        assert reponse.status_code == 200, reponse.text
+        (cible,) = reponse.json()
+        assert cible["cible_index"] == s.cible_index
+        assert cible["attente_secondes"] >= 0
+        assert [(a["archer_id"], a["nom"], a["position"]) for a in cible["archers"]] == [
+            (s.archer_id, "CIBLE1A", "A")
+        ]
+        _valider(client, s, entete)
+        assert client.get(url, headers=entete).json() == []
+
+
+def test_la_file_du_scoreur_sans_session_scoreur_rend_401(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Réservée au scoreur : la session admin ouverte par `_semer` n'y suffit pas."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+
+        reponse = client.get(f"/api/v1/saisie/file/{s.tournoi_id}/{s.depart_id}")
+
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_la_file_d_un_autre_tournoi_est_refusee_au_scoreur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        autre = TournoiRepositorySQL(app_saisie.state.database.session_factory).ajouter(
+            Tournoi.creer("Extérieur", _DATE)
+        )
+        assert autre.id is not None
+        code_autre = client.post(
+            f"/api/v1/tournois/{autre.id}/scoreurs", json={"nom": "PICARD"}
+        ).json()["code"]
+
+        reponse = client.get(
+            f"/api/v1/saisie/file/{s.tournoi_id}/{s.depart_id}",
+            headers=_connecter_scoreur(client, code_autre),
+        )
+
+        assert reponse.status_code == 403, reponse.text
+        assert reponse.json()["code"] == "scoreur_hors_tournoi"

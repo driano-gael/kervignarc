@@ -27,7 +27,13 @@ from api.dependances import (
 from application.erreurs import DepartCourantNonDefini, SaisieHorsCible, ScoreurHorsTournoi
 from application.forfaits import AUTEUR_ADMIN
 from application.postes import ServicePostes
-from application.saisie import ArcherPositionne, ContexteSaisie, EtatSerie, ServiceSaisie
+from application.saisie import (
+    ArcherPositionne,
+    CibleEnAttente,
+    ContexteSaisie,
+    EtatSerie,
+    ServiceSaisie,
+)
 from domain.blason import ZoneScore
 from domain.depart import Depart
 from domain.poste import Poste
@@ -210,6 +216,42 @@ class SerieReponse(BaseModel):
         return SerieReponse(tournoi_id=tournoi_id, archer_id=archer_id, cumul=0, volees=[])
 
 
+class ArcherEnAttenteReponse(BaseModel):
+    """Un archer dont la feuille attend la validation (E04US019)."""
+
+    archer_id: int
+    nom: str
+    prenom: str
+    position: str
+    attente_secondes: int
+
+
+class CibleEnAttenteReponse(BaseModel):
+    """Une ligne de la file du scoreur. L'attente est **calculée par le serveur** (CA E04US019) :
+    l'horloge d'un téléphone de bénévole n'est pas celle du serveur, sur un réseau sans internet."""
+
+    cible_index: int
+    attente_secondes: int
+    archers: list[ArcherEnAttenteReponse]
+
+    @staticmethod
+    def de_cible(cible: CibleEnAttente) -> CibleEnAttenteReponse:
+        return CibleEnAttenteReponse(
+            cible_index=cible.cible_index,
+            attente_secondes=int(cible.attente.total_seconds()),
+            archers=[
+                ArcherEnAttenteReponse(
+                    archer_id=ligne.archer_id,
+                    nom=ligne.archer.nom,
+                    prenom=ligne.archer.prenom,
+                    position=ligne.position,
+                    attente_secondes=int(ligne.attente.total_seconds()),
+                )
+                for ligne in cible.archers
+            ],
+        )
+
+
 # --- Endpoints ---
 
 
@@ -362,6 +404,24 @@ async def lire_serie(
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
     return SerieReponse.de_etat(etat)
+
+
+@router.get("/file/{tournoi_id}/{depart_id}", response_model=list[CibleEnAttenteReponse])
+async def file_du_scoreur(
+    tournoi_id: int,
+    depart_id: int,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> list[CibleEnAttenteReponse]:
+    """Les cibles du créneau qui attendent une validation, la plus ancienne en tête (E04US019).
+
+    Réservée aux scoreurs **de ce tournoi** (`403 scoreur_hors_tournoi`). Un créneau d'un autre
+    tournoi rend une file vide : seuls les archers du tournoi y entrent. Lecture, hors file.
+    """
+    _exiger_meme_tournoi(scoreur, tournoi_id)
+    service_saisie: ServiceSaisie = request.app.state.service_saisie
+    file = await run_in_threadpool(service_saisie.file_du_scoreur, tournoi_id, depart_id)
+    return [CibleEnAttenteReponse.de_cible(cible) for cible in file]
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:

@@ -21,6 +21,7 @@ from application.erreurs import (
     BlasonIntrouvable,
     CategorieIntrouvable,
     EcritureDeRoleInferieur,
+    PhaseEnPause,
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
@@ -125,6 +126,25 @@ class AvancementCible:
     volee_courante: int
     nb_volees: int
     derniere_saisie: datetime.datetime | None
+
+
+@dataclass(frozen=True)
+class ArcherEnAttente:
+    """Un archer dont la feuille attend la validation, et depuis combien de temps (E04US019)."""
+
+    archer_id: ArcherId
+    archer: Archer
+    position: str
+    attente: datetime.timedelta
+
+
+@dataclass(frozen=True)
+class CibleEnAttente:
+    """Une ligne de la file du scoreur : la cible, son attente **la plus longue**, ses archers."""
+
+    cible_index: int
+    attente: datetime.timedelta
+    archers: tuple[ArcherEnAttente, ...]
 
 
 def _auteur_de_saisie(contexte: ContexteSaisie | None) -> str:
@@ -336,6 +356,66 @@ class ServiceSaisie:
         return AvancementCible(
             volee_courante=volee_courante, nb_volees=nb_volees, derniere_saisie=derniere
         )
+
+    def file_du_scoreur(self, tournoi_id: TournoiId, depart_id: DepartId) -> list[CibleEnAttente]:
+        """Les cibles du créneau qui attendent une validation, la plus ancienne en tête (E04US019).
+
+        « À valider » est `Serie.lot_a_valider` plus la garde de pause : **les deux règles de
+        `valider`**, jamais une troisième. L'attente part de la plus récente volée **du lot**.
+        ⚠️ Séries et archers se lisent en bloc ; les horodatages, faute de lecture en bloc au port,
+        **par archer en attente seulement** — borné par la file, pas par les archers placés.
+        """
+        archers = {a.id: a for a in self._archers.par_tournoi(tournoi_id)}
+        inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
+        resolveur = self._populations.resolveur_de_classement(tournoi_id, depart_id)
+        maintenant = self._horloge.maintenant()
+        feuilles: dict[PhaseId, dict[ArcherId, Serie]] = {}
+        par_cible: dict[int, list[ArcherEnAttente]] = {}
+        for affectation in self._placements.par_depart(depart_id):
+            inscription = inscriptions.get(affectation.inscription_id)
+            archer = archers.get(inscription.archer_id) if inscription is not None else None
+            if archer is None or archer.id is None:
+                continue
+            phase = self._qualification_de_l_archer(tournoi_id, depart_id, archer.id, resolveur)
+            if (
+                phase is None
+                or phase.id is None
+                or phase.bareme is None
+                or phase.validation is None
+            ):
+                continue
+            try:
+                refuser_si_en_pause(phase)
+            except PhaseEnPause:
+                continue
+            if phase.id not in feuilles:
+                feuilles[phase.id] = {s.archer_id: s for s in self._series.par_phase(phase.id)}
+            serie = feuilles[phase.id].get(archer.id)
+            lot = (
+                serie.lot_a_valider(grain=phase.validation, nb_volees_bareme=phase.bareme.nb_volees)
+                if serie is not None
+                else ()
+            )
+            if not lot:
+                continue
+            quand = self._series.horodatages(phase.id, archer.id)
+            instants = [quand[volee.numero] for volee in lot if volee.numero in quand]
+            attente = maintenant - max(instants) if instants else datetime.timedelta(0)
+            par_cible.setdefault(affectation.cible_index, []).append(
+                ArcherEnAttente(
+                    archer.id, archer, affectation.position, max(attente, datetime.timedelta(0))
+                )
+            )
+        file = [
+            CibleEnAttente(
+                cible_index=index,
+                attente=max(ligne.attente for ligne in lignes),
+                archers=tuple(sorted(lignes, key=lambda ligne: ligne.position)),
+            )
+            for index, lignes in par_cible.items()
+        ]
+        file.sort(key=lambda cible: (-cible.attente, cible.cible_index))
+        return file
 
     def avancement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId
