@@ -12,8 +12,14 @@ from __future__ import annotations
 import dataclasses
 import datetime
 
+import pytest
+
+from application.erreurs import InscriptionIntrouvable
+from application.saisie import ContexteSaisie
 from domain.archer import ArcherId
 from domain.bareme import BaremeQualification
+from domain.depart import Depart
+from domain.erreurs import SerieIncomplete
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.phase import Phase, StatutPhase
@@ -185,3 +191,76 @@ def test_au_grain_toutes_les_n_l_attente_part_du_lot_pas_de_la_derniere_volee() 
 
     # Le lot 1-2 est validable depuis la volée 2 ; la volée 3, hors lot, n'y change rien.
     assert cible.attente == _minutes(7)
+
+
+_APRES_MIDI = _DEPART + 1
+
+
+def _deux_creneaux(m: Montage) -> None:
+    """L'archer est inscrit et placé matin (`_DEPART`) et après-midi, cible 3 les deux fois."""
+    m.departs.ajouter(
+        dataclasses.replace(
+            Depart.creer(tournoi_id=1, numero=2, tarif_centimes=800, horaire="14:00"),
+            id=_APRES_MIDI,
+        )
+    )
+    m.phases.ajouter(
+        Phase.qualification(
+            depart_id=_APRES_MIDI,
+            bareme=BaremeQualification.creer(2, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
+    )
+    m.placer(m.archer_id, _DEPART, 3, "A")
+    m.placer(m.archer_id, _APRES_MIDI, 3, "A")
+    poste = ContexteSaisie(cible_index=3, depart_id=_APRES_MIDI)
+    for numero in (1, 2):
+        m.service.saisir_volee(
+            m.tournoi_id,
+            m.archer_id,
+            numero,
+            _v("10", "9", "8"),
+            contexte=poste,
+            role=Role.POSTE_DE_CIBLE,
+        )
+
+
+def test_la_file_et_la_validation_visent_la_meme_feuille_sur_deux_creneaux() -> None:
+    """Le défaut relevé en revue : la ligne de l'après-midi restait en tête, invalidable."""
+    m = Montage()
+    _deux_creneaux(m)
+    assert [c.cible_index for c in m.service.file_du_scoreur(m.tournoi_id, _APRES_MIDI)] == [3]
+    # Sans créneau, le serveur devine le matin (DETTE-052) : feuille vide, rien à valider.
+    with pytest.raises(SerieIncomplete):
+        m.service.valider(m.tournoi_id, m.archer_id, scoreur="RIOU")
+
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="RIOU", depart_id=_APRES_MIDI)
+
+    assert m.service.file_du_scoreur(m.tournoi_id, _APRES_MIDI) == []
+    etat = m.service.etat_serie(m.tournoi_id, m.archer_id, depart_id=_APRES_MIDI)
+    assert etat is not None and all(v.verrouillee for v in etat.serie.volees)
+
+
+def test_un_creneau_ou_l_archer_n_est_pas_inscrit_est_refuse() -> None:
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, 3, "A")
+    _saisir(m, m.archer_id, 1, 2)
+    with pytest.raises(InscriptionIntrouvable):
+        m.service.valider(m.tournoi_id, m.archer_id, scoreur="RIOU", depart_id=_DEPART + 5)
+
+
+def test_une_volee_sans_horodatage_attend_depuis_zero() -> None:
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, 3, "A")
+    _saisir(m, m.archer_id, 1, 2)  # le faux ne date rien tant qu'on ne le force pas
+    (cible,) = m.service.file_du_scoreur(m.tournoi_id, _DEPART)
+    assert cible.attente == datetime.timedelta(0)
+
+
+def test_un_horodatage_dans_le_futur_ne_rend_jamais_une_attente_negative() -> None:
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, 3, "A")
+    _saisir(m, m.archer_id, 1, 2)
+    _dater(m, m.archer_id, v1=-2, v2=-1)
+    (cible,) = m.service.file_du_scoreur(m.tournoi_id, _DEPART)
+    assert cible.attente == datetime.timedelta(0)

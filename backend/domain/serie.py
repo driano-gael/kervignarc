@@ -263,7 +263,8 @@ class Serie:
         est **complète** — sinon `SerieIncomplete`. **Toutes les N volées** : verrouille le
         prochain lot de N non validées ; en fin de barème un **reliquat** de moins de N est validé
         plutôt que laissé ouvert. `RienAValider` si aucun lot ni reliquat n'est disponible.
-        Une **correction en cours** se referme en priorité, hors grain (voir plus bas)."""
+        Refuse (`CorrectionOuverte`) tant qu'une correction est ouverte : on la referme par
+        `refermer_correction`, qui nomme son lot."""
         par = _intervenant_valide(par)
         return self._verrouiller(self._lot_a_valider(grain, nb_volees_bareme), par)
 

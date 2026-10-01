@@ -118,6 +118,8 @@ class ValiderRequete(BaseModel):
     tournoi_id: int
     archer_id: int
     identifiant_saisie: str | None = None
+    depart_id: int | None = None
+    """Le créneau choisi à l'écran (E04US019) ; absent, le serveur le devine (`DETTE-052`)."""
 
 
 class CorrigerRequete(BaseModel):
@@ -140,6 +142,8 @@ class AnnulerValidationRequete(BaseModel):
     archer_id: int
     numero: int = Field(ge=1)
     identifiant_saisie: str | None = None
+    depart_id: int | None = None
+    """Le créneau choisi à l'écran (E04US019) ; absent, le serveur le devine (`DETTE-052`)."""
 
 
 class RefermerCorrectionRequete(BaseModel):
@@ -153,6 +157,8 @@ class RefermerCorrectionRequete(BaseModel):
     archer_id: int
     numero: int = Field(ge=1)
     identifiant_saisie: str | None = None
+    depart_id: int | None = None
+    """Le créneau choisi à l'écran (E04US019) ; absent, le serveur le devine (`DETTE-052`)."""
 
 
 class VoleeReponse(BaseModel):
@@ -375,6 +381,7 @@ async def lire_serie(
     archer_id: int,
     request: Request,
     identite: Annotated[Poste | Scoreur | None, Depends(autoriser_lecture_serie)],
+    depart_id: int | None = None,
 ) -> SerieReponse:
     """L'état de la série d'un archer (volées, verrou, cumul, « quand »). Admin, poste ou scoreur.
 
@@ -400,7 +407,9 @@ async def lire_serie(
         depart_id = service_postes.depart_courant(extraire_jeton_poste(request))
         if depart_id is not None:
             contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_id)
-    etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id, contexte)
+    etat = await run_in_threadpool(
+        service_saisie.etat_serie, tournoi_id, archer_id, contexte, depart_id
+    )
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
     return SerieReponse.de_etat(etat)
@@ -454,9 +463,9 @@ async def valider_serie(
     )
 
     def ecrire() -> Serie:
-        # DETTE-052 : le corps ne porte pas de `depart_id`, donc le service **devine** le créneau —
-        # alors que le scoreur en a choisi un à l'écran (`validation-qualif`).
-        return service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
+        return service_saisie.valider(
+            requete.tournoi_id, requete.archer_id, scoreur.nom, depart_id=requete.depart_id
+        )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
     # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
@@ -551,9 +560,12 @@ async def annuler_validation(
     )
 
     def ecrire() -> Serie:
-        # DETTE-052 : idem — annuler sur la feuille devinée, pas sur le créneau choisi à l'écran.
         return service_saisie.annuler_validation(
-            requete.tournoi_id, requete.archer_id, requete.numero, auteur
+            requete.tournoi_id,
+            requete.archer_id,
+            requete.numero,
+            auteur,
+            depart_id=requete.depart_id,
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
@@ -590,9 +602,12 @@ async def refermer_correction(
     )
 
     def ecrire() -> Serie:
-        # DETTE-052 : comme les routes sœurs, le corps ne porte pas de `depart_id`.
         return service_saisie.refermer_correction(
-            requete.tournoi_id, requete.archer_id, requete.numero, scoreur.nom
+            requete.tournoi_id,
+            requete.archer_id,
+            requete.numero,
+            scoreur.nom,
+            depart_id=requete.depart_id,
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))

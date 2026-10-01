@@ -9,8 +9,18 @@
 import { fetchJson } from '../../shared/api/client'
 import type { Serie } from '../saisie/api'
 
-export function getSerieScoreur(tournoiId: number, archerId: number): Promise<Serie> {
-  return fetchJson<Serie>(`/api/v1/saisie/series/${tournoiId}/${archerId}`, undefined, 'scoreur')
+// `departId` : le créneau choisi à l'écran (E04US019). `null` = le serveur le devine (`DETTE-052`).
+export function getSerieScoreur(
+  tournoiId: number,
+  archerId: number,
+  departId: number | null,
+): Promise<Serie> {
+  const creneau = departId === null ? '' : `?depart_id=${departId}`
+  return fetchJson<Serie>(
+    `/api/v1/saisie/series/${tournoiId}/${archerId}${creneau}`,
+    undefined,
+    'scoreur',
+  )
 }
 
 // Une ligne de la file du scoreur (E04US019). L'attente est calculée **par le serveur**.
@@ -39,6 +49,7 @@ export function getFileScoreur(tournoiId: number, departId: number): Promise<Cib
 export function validerSerie(
   tournoiId: number,
   archerId: number,
+  departId: number | null,
   identifiantSaisie: string,
 ): Promise<Serie> {
   return fetchJson<Serie>(
@@ -48,6 +59,7 @@ export function validerSerie(
       body: JSON.stringify({
         tournoi_id: tournoiId,
         archer_id: archerId,
+        depart_id: departId,
         identifiant_saisie: identifiantSaisie,
       }),
     },
@@ -61,6 +73,7 @@ export function refermerCorrection(
   tournoiId: number,
   archerId: number,
   numero: number,
+  departId: number | null,
   identifiantSaisie: string,
 ): Promise<Serie> {
   return fetchJson<Serie>(
@@ -71,6 +84,7 @@ export function refermerCorrection(
         tournoi_id: tournoiId,
         archer_id: archerId,
         numero,
+        depart_id: departId,
         identifiant_saisie: identifiantSaisie,
       }),
     },
@@ -83,6 +97,7 @@ export function annulerValidation(
   tournoiId: number,
   archerId: number,
   numero: number,
+  departId: number | null,
   identifiantSaisie: string,
 ): Promise<Serie> {
   return fetchJson<Serie>(
@@ -93,6 +108,7 @@ export function annulerValidation(
         tournoi_id: tournoiId,
         archer_id: archerId,
         numero,
+        depart_id: departId,
         identifiant_saisie: identifiantSaisie,
       }),
     },

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import assert_never
 
@@ -21,6 +22,7 @@ from application.erreurs import (
     BlasonIntrouvable,
     CategorieIntrouvable,
     EcritureDeRoleInferieur,
+    InscriptionIntrouvable,
     PhaseEnPause,
     PhaseQualificationAbsente,
     SaisieHorsCible,
@@ -362,12 +364,13 @@ class ServiceSaisie:
 
         « À valider » est `Serie.lot_a_valider` plus la garde de pause : **les deux règles de
         `valider`**, jamais une troisième. L'attente part de la plus récente volée **du lot**.
-        ⚠️ Séries et archers se lisent en bloc ; les horodatages, faute de lecture en bloc au port,
-        **par archer en attente seulement** — borné par la file, pas par les archers placés.
+        ⚠️ Archers, phases et séries se lisent en bloc ; les horodatages **par archer en attente**
+        (`DETTE-116`) — borné par la file, pas par les archers placés.
         """
         archers = {a.id: a for a in self._archers.par_tournoi(tournoi_id)}
         inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
         resolveur = self._populations.resolveur_de_classement(tournoi_id, depart_id)
+        phases_du_creneau = self._phases.par_depart(depart_id)
         maintenant = self._horloge.maintenant()
         feuilles: dict[PhaseId, dict[ArcherId, Serie]] = {}
         par_cible: dict[int, list[ArcherEnAttente]] = {}
@@ -376,7 +379,9 @@ class ServiceSaisie:
             archer = archers.get(inscription.archer_id) if inscription is not None else None
             if archer is None or archer.id is None:
                 continue
-            phase = self._qualification_de_l_archer(tournoi_id, depart_id, archer.id, resolveur)
+            phase = self._qualification_de_l_archer(
+                tournoi_id, depart_id, archer.id, resolveur, phases_du_creneau
+            )
             if (
                 phase is None
                 or phase.id is None
@@ -517,6 +522,7 @@ class ServiceSaisie:
         tournoi_id: TournoiId,
         archer_id: ArcherId,
         contexte: ContexteSaisie | None = None,
+        depart_id: DepartId | None = None,
     ) -> EtatSerie | None:
         """L'état persisté de la série de l'archer (volées + « quand »), ou `None` si rien de saisi.
 
@@ -527,7 +533,8 @@ class ServiceSaisie:
         le reçoit du poste, si bien que la tablette de l'après-midi relisait la phase du matin.
         """
         return self._etat_dans(
-            self._phase_qualification_ou_none(tournoi_id, archer_id, contexte), archer_id
+            self._phase_qualification_ou_none(tournoi_id, archer_id, contexte, depart_id),
+            archer_id,
         )
 
     def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
@@ -620,6 +627,7 @@ class ServiceSaisie:
         archer_id: ArcherId,
         scoreur: str,
         contexte: ContexteSaisie | None = None,
+        depart_id: DepartId | None = None,
     ) -> Serie:
         """Valide la série de l'archer selon le grain de la phase, au nom du `scoreur`.
 
@@ -630,7 +638,7 @@ class ServiceSaisie:
         E04US009 (writer WS) devra la répliquer s'il ouvre un chemin hors HTTP.
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
-        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte, depart_id)
         refuser_si_en_pause(phase)
         assert (
             phase.bareme is not None and phase.validation is not None
@@ -658,6 +666,7 @@ class ServiceSaisie:
         numero: int,
         scoreur: str,
         contexte: ContexteSaisie | None = None,
+        depart_id: DepartId | None = None,
     ) -> Serie:
         """Revalide le lot rouvert qui contient la volée `numero`, au nom du `scoreur`.
 
@@ -667,7 +676,7 @@ class ServiceSaisie:
         le tour.
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
-        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte, depart_id)
         refuser_si_en_pause(phase)
         serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.refermer_correction(numero, par=scoreur)
@@ -739,6 +748,7 @@ class ServiceSaisie:
         numero: int,
         auteur: str,
         contexte: ContexteSaisie | None = None,
+        depart_id: DepartId | None = None,
     ) -> Serie:
         """Rouvre à l'écriture le lot validé avec la volée `numero`, au nom de l'`auteur`.
 
@@ -748,7 +758,7 @@ class ServiceSaisie:
         referment une correction — ressaisie et revalidation — y sont gelés, donc annuler laisserait
         la volée ouverte sans recours. On y répare par `corriger_volee` (E05US033, revue)."""
         self._charger_archer(tournoi_id, archer_id, contexte)
-        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte, depart_id)
         refuser_si_en_pause(phase)
         serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.annuler_validation(numero, par=auteur)
@@ -804,6 +814,7 @@ class ServiceSaisie:
         tournoi_id: TournoiId,
         archer_id: ArcherId,
         contexte: ContexteSaisie | None = None,
+        depart_id: DepartId | None = None,
     ) -> Phase:
         """La qualification **dans laquelle cet archer tire en ce moment**.
 
@@ -813,7 +824,7 @@ class ServiceSaisie:
         bas des inscriptions, `# DETTE-052`), puis la **phase** parmi les qualifications de ce
         créneau. Sur un déroulé à une seule qualification, le comportement est inchangé.
         """
-        phase = self._phase_qualification_ou_none(tournoi_id, archer_id, contexte)
+        phase = self._phase_qualification_ou_none(tournoi_id, archer_id, contexte, depart_id)
         if phase is None:
             raise PhaseQualificationAbsente(
                 "La qualification n'est pas encore configurée pour ce tournoi."
@@ -825,6 +836,7 @@ class ServiceSaisie:
         tournoi_id: TournoiId,
         archer_id: ArcherId,
         contexte: ContexteSaisie | None,
+        depart_id: DepartId | None = None,
     ) -> Phase | None:
         """Comme `_phase_qualification`, mais rend `None` au lieu de lever (chemins de **lecture**).
 
@@ -832,13 +844,15 @@ class ServiceSaisie:
         qu'un tournoi n'a pas encore de qualification : elles rendent « rien de saisi ». L'écriture,
         elle, lève — on ne laisse pas une flèche sans destination.
         """
-        depart_id = self._depart_de_saisie(tournoi_id, archer_id, contexte)
+        resolu = self._depart_de_saisie(tournoi_id, archer_id, contexte, depart_id)
         courante = (
-            self._qualification_de_l_archer(tournoi_id, depart_id, archer_id)
-            if depart_id is not None
+            self._qualification_de_l_archer(tournoi_id, resolu, archer_id)
+            if resolu is not None
             else None
         )
-        if courante is not None:
+        if courante is not None or depart_id is not None:
+            # ⚠️ Un créneau **désigné** ne se replie pas sur la qualification du tournoi : ce serait
+            # valider une autre feuille que celle que l'écran a montrée (E04US019, revue).
             return courante
         # Aucun créneau résolu, ou un créneau sans déroulé : on retombe sur la résolution d'avant
         # l'US plutôt que de refuser la saisie. Sur un tournoi mono-qualification c'est la même
@@ -852,6 +866,7 @@ class ServiceSaisie:
         depart_id: DepartId,
         archer_id: ArcherId,
         resolveur: ResolveurClassement | None = None,
+        phases_du_creneau: Sequence[Phase] | None = None,
     ) -> Phase | None:
         """La qualification de ce créneau **qui admet cet archer**, ou `None` s'il n'y en a aucune.
 
@@ -863,7 +878,11 @@ class ServiceSaisie:
         """
         qualifications = [
             phase
-            for phase in self._phases.par_depart(depart_id)
+            for phase in (
+                phases_du_creneau
+                if phases_du_creneau is not None
+                else self._phases.par_depart(depart_id)
+            )
             if phase.type is TypePhase.QUALIFICATION
         ]
         if len(qualifications) <= 1:
@@ -942,8 +961,10 @@ class ServiceSaisie:
         tournoi_id: TournoiId,
         archer_id: ArcherId,
         contexte: ContexteSaisie | None,
+        depart_id: DepartId | None = None,
     ) -> DepartId | None:
-        """Le créneau où cet archer tire : celui du poste, sinon le premier où il est inscrit.
+        """Le créneau où cet archer tire : celui du poste, ou celui désigné par l'appelant
+        (vérifié contre ses inscriptions), sinon le premier où il est inscrit.
 
         `None` quand l'archer n'a aucune inscription — donnée incohérente, pas un cas nominal : on
         ne casse pas la saisie dessus le jour J. Le départage se fait sur le **plus petit
@@ -953,6 +974,12 @@ class ServiceSaisie:
         """
         if contexte is not None:
             return contexte.depart_id
+        if depart_id is not None:
+            if self._inscriptions.par_archer_et_depart(archer_id, depart_id) is None:
+                raise InscriptionIntrouvable(
+                    f"L'archer {archer_id} n'est pas inscrit sur le créneau {depart_id}."
+                )
+            return depart_id
         candidats = [
             inscription.depart_id
             for inscription in self._inscriptions.par_archer(archer_id)

@@ -15,5 +15,6 @@ préférence, c'est le mécanisme qui débloque la journée »*. Hors de cette l
 arbitrage : valider une cible entière d'un geste, « Refuser », et la répartition des cibles entre
 scoreurs.
 
-⚠️ Un archer inscrit sur **deux créneaux** reste un cas à éviter en recette : la feuille ouverte peut
-encore être celle de son premier créneau (défaut connu, à corriger sur les routes de validation).
+Au passage, un défaut plus ancien est corrigé : pour un archer inscrit **matin et après-midi**,
+l'écran de validation ouvrait toujours la feuille du matin. Il ouvre désormais celle du créneau
+choisi.

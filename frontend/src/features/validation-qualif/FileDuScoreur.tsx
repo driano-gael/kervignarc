@@ -19,8 +19,11 @@ export function FileDuScoreur({
 
   return (
     <div>
+      {/* Le compte n'est dit que s'il est **su** : en chargement ou en erreur, « 0 en attente » se
+          lirait « rien à faire » (revue E04US019). */}
       <h4 className="carte__titre">
-        File d'attente — {cibles.length} cible{cibles.length > 1 ? 's' : ''} en attente
+        File d'attente
+        {file.isSuccess && ` — ${cibles.length} cible${cibles.length > 1 ? 's' : ''} en attente`}
       </h4>
       <MessageErreur erreur={file.error} />
       {file.isSuccess && cibles.length === 0 && (

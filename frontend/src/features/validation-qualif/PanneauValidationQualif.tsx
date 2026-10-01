@@ -35,7 +35,7 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
   const liste = departs.data ?? []
   const departId = creneauRetenu(liste, choixDepart, departDeSalle)
   const classement = useClassement(tournoiId, departId)
-  const serie = useSerieScoreur(tournoiId, archerId)
+  const serie = useSerieScoreur(tournoiId, archerId, departId)
   const valider = useValiderSerie(tournoiId)
   const annuler = useAnnulerValidation(tournoiId)
   const refermer = useRefermerCorrection(tournoiId)
@@ -50,11 +50,9 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         validation annulée rouvre la saisie sur la tablette de la cible ; le score reste au
         classement jusqu'à la ressaisie.
       </p>
-      {/* ⚠️ DETTE-052 — ce sélecteur filtre la **liste d'archers**, et rien d'autre : les trois
-          appels qu'il déclenche ne transportent aucun `depart_id`, donc le serveur **devine** le
-          créneau (le plus petit où l'archer est inscrit). Sur un archer engagé matin et
-          après-midi, on peut donc valider la feuille du matin en ayant choisi l'après-midi. La
-          résorption est serveur — porter le créneau dans les corps de requête. */}
+      {/* Ce créneau voyage avec la lecture et les trois gestes (E04US019) : sans lui le serveur
+          devinait le plus petit créneau de l'archer, et validait le matin en ayant choisi
+          l'après-midi. */}
       <ChoixCreneau
         departs={liste}
         valeur={departId}
@@ -64,8 +62,6 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         }}
         etiquette="Départ à valider"
       />
-      {/* DETTE-052 vaut aussi pour la file (E04US019) : elle est lue pour CE créneau, mais la
-          validation qu'ouvre un archer devine toujours le sien. */}
       <FileDuScoreur tournoiId={tournoiId} departId={departId} onChoisir={setArcherId} />
       <MessageErreur erreur={serie.error ?? valider.error ?? annuler.error ?? refermer.error} />
       {lignes.length === 0 ? (
@@ -99,10 +95,11 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
           // Deux gestes, deux routes : refermer **nomme** son lot, valider ne nomme rien. La
           // décision vit dans `gesteDuBouton` (pure, testée) — pas ici.
           onValider={(geste) => {
-            if (geste.geste === 'refermer') refermer.mutate({ archerId, numero: geste.numero })
-            else valider.mutate(archerId)
+            if (geste.geste === 'refermer')
+              refermer.mutate({ archerId, numero: geste.numero, departId })
+            else valider.mutate({ archerId, departId })
           }}
-          onAnnuler={(numero) => annuler.mutate({ archerId, numero })}
+          onAnnuler={(numero) => annuler.mutate({ archerId, numero, departId })}
         />
       )}
     </section>
