@@ -37,6 +37,7 @@ function poser(etape: Etape = QUALIFICATION) {
   const surValider = vi.fn()
   render(
     <FormulaireEtape
+      armes={[]}
       etape={etape}
       etapesAmont={[]}
       surValider={surValider}

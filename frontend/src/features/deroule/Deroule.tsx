@@ -573,6 +573,12 @@ function EditeurSequence({
   effectifSimule: number | null
 }) {
   const [edition, setEdition] = useState<number | null>(null)
+  // E01US011 : hors tournoi, ce sont les armes des catégories de bibliothèque qui pré-remplissent.
+  const categoriesBibliotheque = useCategoriesBibliotheque()
+  const armes = useMemo(
+    () => armesDistinctes((categoriesBibliotheque.data ?? []).map((categorie) => categorie.arme)),
+    [categoriesBibliotheque.data],
+  )
   return (
     <div className="carte carte--large">
       <h3 className="carte__titre">Composer la séquence</h3>
@@ -611,6 +617,7 @@ function EditeurSequence({
                 }}
                 surAnnuler={() => setEdition(null)}
                 effectifSimule={effectifSimule}
+                armes={armes}
               />
             ) : (
               <div className="phase__ligne">
@@ -673,6 +680,7 @@ function EditeurSequence({
         etapesAmont={etapes}
         surValider={(nouvelle) => surEtapes(ajouterEtape(etapes, nouvelle))}
         effectifSimule={effectifSimule}
+        armes={armes}
       />
     </div>
   )
@@ -687,10 +695,14 @@ export function FormulaireEtape({
   surValider,
   surAnnuler,
   effectifSimule = null,
+  armes,
 }: {
   etape?: Etape
   etapesAmont: Etape[]
   surValider: (etape: Etape) => void
+  // E01US011 : les armes qui pré-remplissent les presets du barème des duels. Reçues, pas
+  // requêtées : ce formulaire se monte aussi seul (ses tests), sans client de requêtes.
+  armes: readonly string[]
   surAnnuler?: () => void
   // L'effectif que l'écran simule, **descendu jusqu'ici** pour la seule fiche de poules : c'est le
   // CA « la répartition obtenue est montrée avant d'être validée » (E05US023). `null` quand l'écran
@@ -718,13 +730,7 @@ export function FormulaireEtape({
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
   // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [colline, setColline] = useState(depuisReglageColline(etape?.colline ?? null))
-  // E01US011 : hors tournoi, ce sont les armes des catégories de **bibliothèque** qui pré-remplissent.
   const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(etape?.bareme_duel ?? null))
-  const categoriesBibliotheque = useCategoriesBibliotheque()
-  const armes = useMemo(
-    () => armesDistinctes((categoriesBibliotheque.data ?? []).map((categorie) => categorie.arme)),
-    [categoriesBibliotheque.data],
-  )
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
   // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))

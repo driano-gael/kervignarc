@@ -16,6 +16,7 @@ import { FormulaireEtape } from './Deroule'
 function poser(effectifSimule: number | null) {
   render(
     <FormulaireEtape
+      armes={[]}
       etape={{
         ordre: 1,
         type: 'suisse',
