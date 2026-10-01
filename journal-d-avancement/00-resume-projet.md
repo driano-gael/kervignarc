@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 26 septembre 2026
+# Résumé du projet — où on en est au 1er octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -290,7 +290,12 @@ ne doit pas réécrire le tournoi 2026 déjà archivé. Détail dans
   modèle —, de les **voir en schéma**, de savoir si le déroulé tient debout, et de le **faire
   tourner** sur des archers fictifs. Détail dans
   [`2026-08-01-19h30-composer-un-deroule.md`](2026-08-01-19h30-composer-un-deroule.md).
-- Le **barème de qualification** et le **grain de validation** d'une phase.
+- Le **barème de qualification** (preset FFTA 18 m ou format club) et le **grain de validation**
+  d'une phase.
+- Le **barème des duels**, **phase par phase** : FFTA (premier à 6 points) ou club (premier à 4), avec
+  des **exceptions par arme** — les poulies au cumul. Il se fige dès qu'un duel de la phase est tiré,
+  pour qu'un résultat validé ne soit jamais relu autrement. Détail dans
+  [`2026-10-01-19h26-bareme-des-duels.md`](2026-10-01-19h26-bareme-des-duels.md).
 - Le **tarif par départ** (le montant d'inscription).
 - L'**import en masse du référentiel des clubs** (une liste collée, un club par ligne, avec un
   compte-rendu de ce qui a été ajouté, de ce qui était déjà connu et des lignes vides).
@@ -614,8 +619,8 @@ Dans l'ordre de valeur prévu par le backlog :
 3. **Le placement intégral 1→N** (le grand format du classeur 120) est **fait** ; l'**écran de salle**
    aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
-4. **Confort et robustesse** : presets de barèmes, déroulé horaire, sauvegarde et restauration
-   (l'import inscript'arc est **fait**, `E02US007`).
+4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration, plusieurs gabarits
+   (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
@@ -625,7 +630,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **154 US livrées** (mergées, revues, CI verte) à la date du 27/09/2026 — la dernière, `E17US005`,
+- **155 US livrées** (mergées, revues, CI verte) à la date du 01/10/2026 — la dernière, `E01US011`,
+  à **surface visible** : chaque phase de duels **choisit son barème** — FFTA ou club, avec des
+  exceptions par arme — et ce barème se fige au premier duel tiré. Juste avant, `E17US005`,
   à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
   sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
   sienne. Juste avant, `E02US007`, qui **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant

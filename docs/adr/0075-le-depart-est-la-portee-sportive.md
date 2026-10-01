@@ -237,7 +237,10 @@ que la même US le **rouvre** (sa *Décision* change d'acteur en duels) ; sa sec
 code par » a donc été écrite dans le même commit. Leçon distincte, donc : la liste des **seize
 retenus** mérite le même balayage que celle des ajouts.
 
-**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : **`0111`**
+**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : **`0117`**
+(E01US011, 01/10/2026 — le barème de duel, politique `scoring` au sens de la règle 2, devient un
+réglage d'étape verrouillé au premier tir ; il **rouvre `0049`** §2 et §4, dont la section « Porté
+dans le code par » a été relue dans le même commit), **`0111`**
 (E06US009, 19/09/2026 — le palmarès rend toutes ses sections en une réponse : la **forme** sous
 laquelle le moteur publie ses résultats, et une capacité fermée — aucun client ne peut demander un
 créneau seul), `0080`, `0081`,
@@ -454,4 +457,5 @@ et non dans `CLAUDE.md`, qui ne porte que le critère.
 ⚠️ **Écrire la section, c'est vérifier dans le code du jour, pas déduire de l'ADR.** Le
 rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'est porté **qu'au quart** — la classe
 `Equipe` n'existe pas — et `ADR-0049` promet dans son titre un barème résolu par « (phase, arme) »
-que le code résout par l'**arme seule**. Ni l'un ni l'autre ne se voyait sans ouvrir les modules.
+que le code résolvait par l'**arme seule** — écart tenu depuis ADR-0117 (01/10/2026). Ni l'un ni
+l'autre ne se voyait sans ouvrir les modules.
