@@ -306,6 +306,19 @@ window.ATLAS.historique = {
  ],
  "decision-structurante-adr": [
   {
+   "adr": [
+    "0117"
+   ],
+   "date": "2026-10-01",
+   "motif": "docs(e01us011): ADR-0117, registres et suivi du barème de duel par phase",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "a1788c1a82",
+   "us": [
+    "E01US011"
+   ]
+  },
+  {
    "adr": [],
    "date": "2026-08-15",
    "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
