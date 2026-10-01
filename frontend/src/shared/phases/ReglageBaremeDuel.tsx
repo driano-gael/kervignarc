@@ -2,11 +2,14 @@
 // un format ». ⚠️ **Aucun état ici** : l'unique source est `etat`, détenu par le parent — même
 // leçon que `ReglageSuisse`. Clé de liste par rang : les champs sont tous contrôlés.
 
+import { useId } from 'react'
+
 import type { EtatBareme, EtatBaremeDuel, ModeDuel } from './baremeDuel'
 import {
   BAREME_DUEL_NON_REGLE,
   FLECHES_MAX,
   MANCHES_MAX,
+  ecartsDArmes,
   estValide,
   presetClub,
   presetFfta,
@@ -64,8 +67,9 @@ function EditeurBareme({
 }
 
 /**
- * `armes` : celles des catégories connues, pour pré-remplir les poulies d'un preset et proposer
- * des libellés. Une liste vide reste valide — l'organisateur saisit l'arme à la main.
+ * `armes` : celles des catégories connues, pour pré-remplir les poulies d'un preset et signaler
+ * les écarts. `null` tant qu'elles ne sont pas chargées : un preset posé à ce moment-là oublierait
+ * les poulies, donc les presets attendent.
  */
 export function ReglageBaremeDuel({
   etat,
@@ -74,8 +78,11 @@ export function ReglageBaremeDuel({
 }: {
   etat: EtatBaremeDuel
   surChangement: (etat: EtatBaremeDuel) => void
-  armes: readonly string[]
+  armes: readonly string[] | null
 }) {
+  const idListe = useId()
+  const presetsPossibles = armes !== null
+  const ecarts = armes === null ? null : ecartsDArmes(etat, armes)
   const changerSurcharge = (
     index: number,
     partiel: Partial<EtatBaremeDuel['surcharges'][number]>,
@@ -93,14 +100,16 @@ export function ReglageBaremeDuel({
         <button
           type="button"
           className="bouton bouton--discret"
-          onClick={() => surChangement(presetFfta(armes))}
+          disabled={!presetsPossibles}
+          onClick={() => surChangement(presetFfta(armes ?? []))}
         >
           Preset FFTA officiel
         </button>
         <button
           type="button"
           className="bouton bouton--discret"
-          onClick={() => surChangement(presetClub(armes))}
+          disabled={!presetsPossibles}
+          onClick={() => surChangement(presetClub(armes ?? []))}
         >
           Preset format club
         </button>
@@ -114,6 +123,9 @@ export function ReglageBaremeDuel({
           </button>
         )}
       </div>
+      {!presetsPossibles && (
+        <p className="carte__aide">Chargement des armes des catégories avant les presets…</p>
+      )}
 
       {!etat.regle ? (
         <p className="carte__aide">
@@ -138,7 +150,7 @@ export function ReglageBaremeDuel({
                 <label className="formulaire__libelle">
                   Arme
                   <input
-                    list="armes-bareme-duel"
+                    list={idListe}
                     value={surcharge.arme}
                     onChange={(e) => changerSurcharge(index, { arme: e.target.value })}
                   />
@@ -164,8 +176,8 @@ export function ReglageBaremeDuel({
               </li>
             ))}
           </ul>
-          <datalist id="armes-bareme-duel">
-            {armes.map((arme) => (
+          <datalist id={idListe}>
+            {(armes ?? []).map((arme) => (
               <option key={arme} value={arme} />
             ))}
           </datalist>
@@ -189,10 +201,22 @@ export function ReglageBaremeDuel({
         ensuite.
       </p>
 
+      {ecarts !== null && ecarts.poulieSansSurcharge.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          Sans barème propre, ces arcs à poulies tireront au barème par défaut, en sets&nbsp;:{' '}
+          {ecarts.poulieSansSurcharge.join(', ')}.
+        </span>
+      )}
+      {ecarts !== null && ecarts.surchargeOrpheline.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          Aucune catégorie ne porte ces armes, leur barème ne s’appliquera à personne&nbsp;:{' '}
+          {ecarts.surchargeOrpheline.join(', ')}.
+        </span>
+      )}
       {!estValide(etat) && (
         <span className="carte__etat carte__etat--alerte" role="status">
-          Complétez le barème&nbsp;: des manches de {MANCHES_MAX} au plus, {FLECHES_MAX} flèches au
-          plus, un seuil atteignable en sets, et une arme nommée une seule fois.
+          Complétez le barème&nbsp;: au plus {MANCHES_MAX} manches de {FLECHES_MAX} flèches au plus,
+          un seuil atteignable en sets, et une arme nommée une seule fois.
         </span>
       )}
     </fieldset>

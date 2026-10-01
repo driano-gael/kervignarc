@@ -576,7 +576,10 @@ function EditeurSequence({
   // E01US011 : hors tournoi, ce sont les armes des catégories de bibliothèque qui pré-remplissent.
   const categoriesBibliotheque = useCategoriesBibliotheque()
   const armes = useMemo(
-    () => armesDistinctes((categoriesBibliotheque.data ?? []).map((categorie) => categorie.arme)),
+    () =>
+      categoriesBibliotheque.data === undefined
+        ? null
+        : armesDistinctes(categoriesBibliotheque.data.map((categorie) => categorie.arme)),
     [categoriesBibliotheque.data],
   )
   return (
@@ -701,8 +704,9 @@ export function FormulaireEtape({
   etapesAmont: Etape[]
   surValider: (etape: Etape) => void
   // E01US011 : les armes qui pré-remplissent les presets du barème des duels. Reçues, pas
-  // requêtées : ce formulaire se monte aussi seul (ses tests), sans client de requêtes.
-  armes: readonly string[]
+  // requêtées : ce formulaire se monte aussi seul (ses tests), sans client de requêtes. `null`
+  // tant qu'elles ne sont pas chargées — la fiche retient alors ses presets.
+  armes: readonly string[] | null
   surAnnuler?: () => void
   // L'effectif que l'écran simule, **descendu jusqu'ici** pour la seule fiche de poules : c'est le
   // CA « la répartition obtenue est montrée avant d'être validée » (E05US023). `null` quand l'écran

@@ -541,8 +541,12 @@ export function FormulairePhase({
   // E01US011, même parti : l'état vit ici. Les armes des catégories pré-remplissent les presets.
   const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(phase?.bareme_duel ?? null))
   const categories = useCategories(tournoiId)
+  // `null` tant que la requête n'a pas réussi : la fiche retient alors ses presets (E01US011).
   const armes = useMemo(
-    () => armesDistinctes((categories.data ?? []).map((categorie) => categorie.arme)),
+    () =>
+      categories.data === undefined
+        ? null
+        : armesDistinctes(categories.data.map((categorie) => categorie.arme)),
     [categories.data],
   )
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le

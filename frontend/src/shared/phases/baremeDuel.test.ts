@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BAREME_DUEL_NON_REGLE,
   armesDistinctes,
+  ecartsDArmes,
   depuisReglage,
   estPoulies,
   estValide,
@@ -103,5 +104,31 @@ describe('armes', () => {
       'Arc classique',
       'Arc nu',
     ])
+  })
+})
+
+describe('écarts entre le réglage et les armes connues (ADR-0117)', () => {
+  it('signale un arc à poulies que nulle surcharge ne couvre', () => {
+    const etat = presetFfta(['Arc classique'])
+    expect(ecartsDArmes(etat, ['Arc classique', 'Compound']).poulieSansSurcharge).toEqual([
+      'Compound',
+    ])
+  })
+
+  it('signale une surcharge dont aucune catégorie ne porte l’arme', () => {
+    const etat = presetFfta(['Arc à poulies'])
+    expect(ecartsDArmes(etat, ['Arc classique']).surchargeOrpheline).toEqual(['Arc à poulies'])
+  })
+
+  it('ne signale rien quand le preset a été posé sur les armes du tournoi', () => {
+    const armes = ['Arc classique', 'Arc à poulies']
+    expect(ecartsDArmes(presetClub(armes), armes)).toEqual({
+      poulieSansSurcharge: [],
+      surchargeOrpheline: [],
+    })
+  })
+
+  it('ne signale rien sur une phase non réglée : le défaut reconnaît les poulies au nom', () => {
+    expect(ecartsDArmes(BAREME_DUEL_NON_REGLE, ['Compound']).poulieSansSurcharge).toEqual([])
   })
 })

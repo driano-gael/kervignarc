@@ -170,6 +170,29 @@ export function presetFfta(armes: readonly string[]): EtatBaremeDuel {
   return preset(SETS_FFTA, armes)
 }
 
+// DETTE-117 — 4 points jusqu'en finale : le §10.1 veut 6 en ½ finales, inexprimable par étape.
 export function presetClub(armes: readonly string[]): EtatBaremeDuel {
   return preset(SETS_CLUB, armes)
+}
+
+export interface EcartsDArmes {
+  /** Armes à poulies du tournoi qu'aucune surcharge ne désigne : elles tireraient en sets. */
+  poulieSansSurcharge: string[]
+  /** Surcharges dont l'arme n'existe dans aucune catégorie connue : elles ne servent à rien. */
+  surchargeOrpheline: string[]
+}
+
+/** Ce que le réglage ne couvre pas, face aux armes connues (ADR-0117, Conséquences). */
+export function ecartsDArmes(etat: EtatBaremeDuel, armes: readonly string[]): EcartsDArmes {
+  if (!etat.regle) return { poulieSansSurcharge: [], surchargeOrpheline: [] }
+  const surchargees = new Set(etat.surcharges.map((s) => cleArme(s.arme)))
+  const connues = new Set(armes.map(cleArme))
+  return {
+    poulieSansSurcharge: armesDistinctes(armes).filter(
+      (arme) => estPoulies(arme) && !surchargees.has(cleArme(arme)),
+    ),
+    surchargeOrpheline: etat.surcharges
+      .map((s) => s.arme.trim())
+      .filter((arme) => arme !== '' && !connues.has(cleArme(arme))),
+  }
 }

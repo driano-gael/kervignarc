@@ -52,14 +52,8 @@ describe('le barème des duels d’une phase', () => {
   it('le preset club part au serveur, poulies au cumul d’après les armes du tournoi', async () => {
     monter()
     const preset = await screen.findByRole('button', { name: 'Preset format club' })
-    await userEvent.click(preset)
-    // Les armes arrivent par une requête : on attend qu'elles soient proposées, puis on rejoue
-    // le preset pour qu'il en tienne compte.
-    await waitFor(() =>
-      expect(
-        document.querySelector('#armes-bareme-duel option[value="Arc à poulies"]'),
-      ).not.toBeNull(),
-    )
+    // Le preset attend les armes (sinon il oublierait les poulies) : un seul clic, une fois actif.
+    await waitFor(() => expect(preset).toBeEnabled())
     await userEvent.click(preset)
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter la phase' }))
 
@@ -73,6 +67,15 @@ describe('le barème des duels d’une phase', () => {
         },
       ],
     })
+  })
+
+  it('les presets attendent les armes des catégories, et le disent', async () => {
+    vi.mocked(getCategories).mockReturnValue(new Promise(() => {}))
+    monter()
+
+    expect(await screen.findByRole('button', { name: 'Preset format club' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Preset FFTA officiel' })).toBeDisabled()
+    expect(screen.getByText(/Chargement des armes/)).toBeInTheDocument()
   })
 
   it('sans réglage, la phase part avec bareme_duel null (défaut du serveur, CA 3)', async () => {
