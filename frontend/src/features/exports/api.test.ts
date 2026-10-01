@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   avecFormat,
   cheminAudit,
+  cheminClassementQualification,
   cheminClubPaiement,
   cheminFeuilleDeMarque,
   cheminPalmares,
@@ -49,6 +50,20 @@ describe('cheminPalmares', () => {
   // mort le jour J, sur la route publique remise aux archers, sans que rien côté serveur ne rougisse.
   it('vise la route généralisée, sans extension dans le chemin', () => {
     expect(cheminPalmares(7)).toBe('/api/v1/tournois/7/palmares/document')
+  })
+})
+
+describe('cheminClassementQualification', () => {
+  it('sans départ, vise tout le tournoi', () => {
+    expect(cheminClassementQualification(7, null)).toBe(
+      '/api/v1/tournois/7/classement-qualification/document',
+    )
+  })
+
+  it('avec un départ, le format se joint après lui', () => {
+    expect(avecFormat(cheminClassementQualification(7, 3), 'csv')).toBe(
+      '/api/v1/tournois/7/classement-qualification/document?depart_id=3&format=csv',
+    )
   })
 })
 

@@ -61,12 +61,34 @@ de* afficher l'accueil des archers et gérer l'administratif.
     bouton front à ce jour — hors périmètre de cette US.
 - **Absorbe** : ex-E09US003, E09US004. **Dépend de** : E09US001, E03US001, E08US002 · **Jalon** : J1
 
-### E09US005 — Classements PDF (par catégorie, intégral 1→N)
-*En tant qu'*organisateur, *je veux* exporter les classements par catégorie et le classement complet,
-*afin de* les diffuser/afficher et publier le résultat final.
-- **CA — par catégorie (ex-005)** : PDF par catégorie (qualif et duels) ; en-tête tournoi ;
-  imprimable.
-- **CA — intégral 1→N (ex-006)** : PDF listant les rangs 1→N ; cohérent avec E06US006.
+### E09US005 — Classement de qualification exportable (PDF, CSV, Excel)
+*En tant qu'*organisateur, *je veux* exporter le classement de qualification par catégorie, *afin
+de* l'afficher au mur — pendant la qualification comme à son terme — et le reprendre au tableur.
+- **CA — par catégorie** : un document du classement de qualification **par départ** (ADR-0075 :
+  deux créneaux ne sont jamais comparés) — tous les départs du tournoi à la suite, ou un seul
+  choisi. Dans chaque départ, **une page par catégorie** ayant au moins un archer engagé, dans
+  l'ordre des catégories du tournoi ; chaque page se lit seule : tournoi, départ, catégorie en
+  tête. Une ligne par archer, dans l'ordre du classement : **rang de catégorie**, rang général,
+  nom, prénom, club, total, nombre de 10, nombre de 9, statut (abandon / disqualifié).
+- **CA — même calcul que l'écran** : rangs, départage, barrages et forfaits sont ceux du
+  classement affiché (E06US001, E06US003, ADR-0050) — le document ne recalcule rien de son côté.
+- **CA — provisoire** : le document s'imprime **à tout moment**. Tant qu'un archer **en lice** du
+  départ n'a pas validé toutes les volées du barème (ou que le barème n'est pas réglé), chaque
+  page de ce départ porte « Classement provisoire ». Un archer forfait (abandon, disqualifié) ne
+  retient pas le départ en provisoire.
+- **CA — formats** : PDF, CSV et Excel, proposés par l'écran « Exports & impressions ». Le tableur
+  rend le classement **à plat** (une ligne par archer, colonnes départ, catégorie et
+  provisoire/définitif), sans pages ni titres dans la grille (ADR-0101 §4).
+- **Notes (arbitrages du 01/10/2026, reversés ici — règle 9)** :
+  - **Rétrécie** : les CA d'origine « duels par catégorie » et « intégral 1→N (ex-006) » sont
+    tenus par le **palmarès** (PDF E06US004, tableur E16US016 : rangs 1→N, rang de catégorie, une
+    section par départ). Reste le classement de **qualification**, qu'aucun export ne couvrait.
+  - **Une page par catégorie**, plutôt qu'un tableau unique par départ : c'est la feuille qu'on
+    affiche au mur, catégorie par catégorie.
+  - **Provisoire autorisé** : utile à l'affichage de la pause ; refuser l'export avant la fin
+    aurait privé l'organisateur du document au moment où on le lui demande.
+  - **Route publique**, comme le classement qu'elle rend (`GET /departs/{id}/classement`) et le
+    document du palmarès : rien n'y est plus confidentiel qu'à l'écran de salle.
 - **Absorbe** : ex-E09US005, E09US006. **Dépend de** : E09US001, E06US001, E06US006 · **Jalon** : J3
 
 ### E09US007 — Déroulé horaire imprimable

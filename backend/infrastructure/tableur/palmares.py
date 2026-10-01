@@ -82,7 +82,7 @@ def _rang(borne_min: int | None, borne_max: int | None) -> str:
 # le document du mur et celui de la presse nomment le même archer pareil (règle 3). « En cours » et
 # « Acquis » sont propres au tableur — le PDF n'affiche rien pour un archer en lice.
 # ⚠️ Registre jumeau de `StatutClassement`, gardé par `test_tableur_palmares.py`.
-_LIBELLES_STATUT = {
+LIBELLES_STATUT = {
     StatutClassement.ABANDON: "Abandon",
     StatutClassement.DISQUALIFIE: "Disqualifié",
 }
@@ -91,7 +91,7 @@ _LIBELLES_STATUT = {
 def _statut(ligne: LignePalmares) -> str:
     """Ce que la ligne dit d'elle-même : une place acquise, une attente, ou un statut de forfait."""
     if ligne.statut is not StatutClassement.EN_LICE:
-        return _LIBELLES_STATUT.get(ligne.statut, ligne.statut.value)
+        return LIBELLES_STATUT.get(ligne.statut, ligne.statut.value)
     if ligne.en_lice:
         return "En cours"
     return "Acquis" if ligne.decerne else ""

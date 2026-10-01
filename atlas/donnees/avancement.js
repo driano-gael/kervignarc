@@ -3664,7 +3664,7 @@ window.ATLAS.avancement = {
    ],
    "story": "stories/E09-exports.md",
    "titre": "Classements PDF",
-   "titre_story": "Classements PDF (par catégorie, intégral 1→N)"
+   "titre_story": "Classement de qualification exportable (PDF, CSV, Excel)"
   },
   {
    "adr": [],

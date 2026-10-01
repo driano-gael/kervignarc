@@ -116,6 +116,7 @@ def construire_catalogue(
     formats_feuille: tuple[FormatExport, ...],
     formats_palmares: tuple[FormatExport, ...],
     formats_audit: tuple[FormatExport, ...],
+    formats_classement: tuple[FormatExport, ...],
 ) -> CatalogueExports:
     """Compose le catalogue des exports de l'écran, à partir des formats **réellement câblés**."""
     return CatalogueExports(
@@ -124,6 +125,9 @@ def construire_catalogue(
             EntreeCatalogueExport(identifiant="club-paiement", formats=formats_listes),
             EntreeCatalogueExport(identifiant="feuille-de-marque", formats=formats_feuille),
             EntreeCatalogueExport(identifiant="palmares", formats=formats_palmares),
+            EntreeCatalogueExport(
+                identifiant="classement-qualification", formats=formats_classement
+            ),
             EntreeCatalogueExport(identifiant="audit", formats=formats_audit),
         )
     )

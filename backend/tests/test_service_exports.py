@@ -197,6 +197,8 @@ def test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne() -> None:
         formats_feuille=(FormatExport.PDF,),
         formats_palmares=(FormatExport.PDF,),
         formats_audit=(FormatExport.PDF,),
+        # E09US005 : un format **propre** à cette entrée, pour qu'un branchement croisé rougisse.
+        formats_classement=(FormatExport.XLSX,),
     )
 
     formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
@@ -207,6 +209,7 @@ def test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne() -> None:
         "feuille-de-marque": (FormatExport.PDF,),
         "palmares": (FormatExport.PDF,),
         "audit": (FormatExport.PDF,),
+        "classement-qualification": (FormatExport.XLSX,),
     }
 
 
@@ -216,6 +219,7 @@ def test_le_catalogue_construit_distingue_les_listes_de_la_feuille_de_marque() -
         formats_feuille=(FormatExport.PDF,),
         formats_palmares=(FormatExport.PDF, FormatExport.CSV),
         formats_audit=(FormatExport.CSV,),
+        formats_classement=(FormatExport.PDF,),
     )
 
     formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
@@ -236,6 +240,7 @@ def test_un_export_peut_n_offrir_aucun_pdf() -> None:
         formats_feuille=(FormatExport.PDF,),
         formats_palmares=(FormatExport.PDF,),
         formats_audit=(FormatExport.CSV, FormatExport.XLSX),
+        formats_classement=(FormatExport.PDF,),
     )
 
     formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}

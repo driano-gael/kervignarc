@@ -16,6 +16,7 @@ from domain.arret_programme import ArretDeCirconstance, FranchissementArret
 from domain.barrage import BarrageDePlaces, BarrageId, TirBarrage
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.classement_imprime import ClassementQualificationImprime
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
@@ -1050,6 +1051,18 @@ class GenerateurPalmares(Protocol):
         revue). ⚠️ **Un document à N sections, jamais un document par créneau** : le choix de
         découpage d'un export est celui du format, pas du classement (`stories/E06US009`).
         """
+        ...
+
+
+class GenerateurClassementQualification(Protocol):
+    """Port de rendu du **classement de qualification** en document (E09US005 ; adapter infra).
+
+    Même parti que `GenerateurPalmares` : le domaine compose, le format n'agit que dans l'adapter
+    (ADR-0101 §4 — le PDF pagine par catégorie, le tableur rend à plat).
+    """
+
+    def classement_qualification(self, document: ClassementQualificationImprime) -> bytes:
+        """Rend le document ; une section sans catégorie est un créneau sans archer engagé."""
         ...
 
 

@@ -407,9 +407,13 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   seul, parce qu'elle se remplit au stylo. Le CSV s'ouvre du premier coup dans un tableur français
   (accents corrects, colonnes séparées, montants additionnables). Détail dans
   [`2026-08-30-18h03-exports-au-format-choisi.md`](2026-08-30-18h03-exports-au-format-choisi.md).
-  *Restent à venir : le classement et le journal d'audit exportables, et le format Excel (`.xlsx`),
-  qui demande votre feu vert sur l'ajout d'une bibliothèque. Le déroulé horaire imprimable reste
-  à faire.*
+  Depuis, le **palmarès** et le **journal d'audit** se sont ajoutés, et le format **Excel** a
+  rejoint le CSV partout où un tableur a un sens.
+- **Le classement de qualification s'imprime** (dernier fait marquant, 01/10) : **une page par
+  catégorie**, départ par départ, à afficher au mur — marquée « provisoire » tant que des volées
+  restent à valider —, et le même classement à plat en CSV ou Excel. Détail dans
+  [`2026-10-01-18h46-classement-de-qualification-a-imprimer.md`](2026-10-01-18h46-classement-de-qualification-a-imprimer.md).
+  *Reste à faire : le déroulé horaire imprimable.*
 
 ### 10. Déployer le jour J — *l'application tient dans un fichier*
 

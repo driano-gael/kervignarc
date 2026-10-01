@@ -18,7 +18,7 @@ from domain.palmares import LignePalmares, Palmares, SectionPalmares
 from domain.podium import ReglagePodiums
 from infrastructure.tableur.audit import _LIBELLES_ACTION, GenerateurJournalAuditTableur
 from infrastructure.tableur.grille import rendre_csv
-from infrastructure.tableur.palmares import _LIBELLES_STATUT, GenerateurPalmaresTableur
+from infrastructure.tableur.palmares import LIBELLES_STATUT, GenerateurPalmaresTableur
 
 
 def _ligne(**surcharges: object) -> LignePalmares:
@@ -236,4 +236,4 @@ def test_chaque_acte_du_domaine_a_son_libelle_a_l_export() -> None:
 
 def test_chaque_statut_de_forfait_a_son_libelle_a_l_export() -> None:
     """`EN_LICE` est à part : il n'a pas de libellé de forfait, il se résout sur l'avancement."""
-    assert set(_LIBELLES_STATUT) == set(StatutClassement) - {StatutClassement.EN_LICE}
+    assert set(LIBELLES_STATUT) == set(StatutClassement) - {StatutClassement.EN_LICE}
