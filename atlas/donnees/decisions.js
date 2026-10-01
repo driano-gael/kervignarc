@@ -11583,15 +11583,22 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/categories.py",
+     "existe": true,
+     "symboles": [
+      "ServiceCategories.modifier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/phases.py",
      "existe": true,
      "symboles": [
       "ServicePhases.modifier",
-      "_a_deja_un_tir"
+      "VerrouBaremeDuel"
      ],
-     "symboles_absents": [
-      "_a_deja_un_tir"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -11599,12 +11606,21 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "_bareme_du",
-      "_reglage_de",
+      "_decor",
       "bareme_de"
      ],
-     "symboles_absents": [
-      "_reglage_de"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/verrou_bareme.py",
+     "existe": true,
+     "symboles": [
+      "VerrouBaremeDuel",
+      "etape_tiree",
+      "un_bareme_regle_est_tire"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -11633,15 +11649,14 @@ window.ATLAS.decisions = {
      "symboles": [
       "ReglageBaremeDuel",
       "pour",
-      "preset_ffta",
-      "preset_club",
       "SurchargeArme",
       "designe",
-      "_poulies_au_cumul"
+      "BaremeDuel.__post_init__",
+      "Duel._resultat_sets",
+      "_issue_d_egalite",
+      "saisir_manche"
      ],
-     "symboles_absents": [
-      "_poulies_au_cumul"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -11674,6 +11689,34 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [],
      "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageBaremeDuel.tsx",
+     "existe": true,
+     "symboles": [
+      "presetFfta",
+      "presetClub",
+      "estPoulies",
+      "ecartsDArmes",
+      "armes",
+      "null"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/baremeDuel.ts",
+     "existe": true,
+     "symboles": [
+      "presetFfta",
+      "presetClub",
+      "estPoulies",
+      "ecartsDArmes",
+      "armes",
+      "null"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -11682,7 +11725,8 @@ window.ATLAS.decisions = {
    "titre": "Le barème de duel est un réglage d'étape, aux surcharges par arme explicites, verrouillé au premier tir",
    "us": [
     "E01US011",
-    "E01US018"
+    "E01US018",
+    "E01US027"
    ]
   }
  ]

@@ -41,11 +41,21 @@ tableau peut faire basculer un vainqueur.
    reste le défaut FFTA. Une étape écrite avant cette US se relit « non réglée » et joue exactement
    ce qu'elle jouait.
 4. **Presets** *FFTA officiel* (sets à 6) et *format club* (sets à 4) : tous deux posent les
-   **poulies au cumul**, règle d'arme et non choix FFTA/club. La reconnaissance par libellé ne
-   survit que là, en **pré-remplissage** visible et corrigeable.
+   **poulies au cumul**, règle d'arme et non choix FFTA/club. Ils vivent **au front**, seul
+   appelant : la reconnaissance par libellé n'y sert qu'au **pré-remplissage**, visible et
+   corrigeable. Ils **attendent** les armes chargées, et la fiche signale un arc à poulies sans
+   surcharge comme une surcharge sans catégorie. Le domaine ne porte que la structure.
 5. **Verrou au premier tir** : changer le barème d'une étape — y compris le retirer ou en poser un
    sur une étape qui n'en avait pas — est **refusé** (`BaremeDuelVerrouille`, 409) dès qu'une
-   phase de cette étape a un tir enregistré, **dans n'importe quel créneau**.
+   phase de cette étape a un tir enregistré, **dans n'importe quel créneau**. L'égalité est
+   **sémantique** : l'ordre des surcharges et le seuil ignoré au cumul n'en font pas partie.
+6. **Égalité au seuil** *(arbitrage du 01/10/2026, revue)* : deux archers au seuil **dans la même
+   manche** — 4-4 au format club — se départagent au **barrage**, comme 5-5 (§7). Au barème FFTA
+   le cas est impossible ; le preset club le rendait atteignable, et le mieux placé gagnait.
+7. **L'arme d'une catégorie se fige** *(arbitrage du 01/10/2026, revue)* : la changer est refusé
+   (`ArmeDeCategorieVerrouillee`, 409) dès qu'une étape **réglée** du tournoi a un tir. Une
+   surcharge désigne l'arme par son libellé exact : la renommer la détacherait — c'était une route
+   parallèle au verrou du §5. Une étape non réglée lit l'arme par inclusion et n'est pas concernée.
 
 ## Alternatives écartées
 
@@ -71,22 +81,33 @@ tableau peut faire basculer un vainqueur.
   reste verrouillée.
 - **−** Il ne ferme pas le cas résiduel d'ADR-0049 « mutation d'arme » : changer la catégorie d'un
   archer en cours de tableau change toujours son barème. Même remède attendu, le gel du classement.
+- **−** Le barème club des ½ finales et finales (6 points, référentiel §10.1) n'est **pas**
+  exprimable : une étape porte tout le tableau. Arbitrage : US dédiée, `E01US027`, `DETTE-117`.
+- **−** Les presets ont un **miroir** de la reconnaissance des poulies au front (`estPoulies`, de
+  `_est_poulies`) : deux règles, gardées chacune par ses tests, sans test qui les confronte.
 - **=** `DETTE-054` n'est **pas** élargie : `ReglageBaremeDuelDTO` est défini une fois dans
   `api/v1/phases.py` et importé par `api/v1/formats.py`.
 
 ## Porté dans le code par
 
-- `backend/domain/duel.py` — `ReglageBaremeDuel` (`pour`, `preset_ffta`, `preset_club`),
-  `SurchargeArme` (`designe`), `_poulies_au_cumul`.
+- `backend/domain/duel.py` — `ReglageBaremeDuel` (`pour`, surcharges rangées) et `SurchargeArme`
+  (`designe`) ; `BaremeDuel.__post_init__` (seuil ramené à 0 au cumul) ; `Duel._resultat_sets` et
+  `_issue_d_egalite` (§6), et la garde de `saisir_manche`.
+- `frontend/src/shared/phases/baremeDuel.ts` — `presetFfta`, `presetClub`, `estPoulies` (§4),
+  `ecartsDArmes` ; rendus par `frontend/src/shared/phases/ReglageBaremeDuel.tsx`, qui retient ses
+  presets tant que `armes` vaut `null`.
+- `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`,
+  `un_bareme_regle_est_tire`), la définition unique de « déjà tiré » des §5 et §7.
+- `backend/application/categories.py` — `ServiceCategories.modifier` (§7).
 - `backend/domain/contrat_phase.py` — `TYPES_A_BAREME_DE_DUEL`, dérivé de `_CONTRATS`.
 - `backend/domain/phase.py` — `Phase.bareme_duel` et sa garde de type dans `__post_init__`.
 - `backend/domain/deroule_etape.py` — `EtapeDeroule.bareme_duel`, recopié par `instancier`.
 - `backend/domain/format_tournoi.py` — `ModelePhase.bareme_duel`, traduit par `pour_tournoi` et
   `d_etape`.
-- `backend/application/saisie_duels.py` — `_bareme_du` (réglage, sinon résolveur) et
-  `_reglage_de`, lu une fois par opération ; `bareme_de` reçoit le réglage de `poules.py`,
-  `suisse.py` et `colline.py`.
-- `backend/application/phases.py` — `ServicePhases.modifier` (verrou) et `_a_deja_un_tir`.
+- `backend/application/saisie_duels.py` — `_bareme_du` (réglage, sinon résolveur) ; le réglage est
+  rendu par `_decor`, qui a déjà la phase ; `bareme_de` le reçoit de `poules.py`, `suisse.py` et
+  `colline.py`.
+- `backend/application/phases.py` — `ServicePhases.modifier` (verrou du §5, via `VerrouBaremeDuel`).
 - `backend/infrastructure/db/repositories/moteur.py` — `_politiques_json` (écriture, deux
   appelants) et `_lire_bareme_duel` (deux lectures).
 - `backend/api/v1/phases.py` — `ReglageBaremeDuelDTO`, importé par `backend/api/v1/formats.py`.

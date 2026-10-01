@@ -320,28 +320,10 @@ window.ATLAS.controles = {
    "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0106"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _a_deja_un_tir dans « backend/application/phases.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0117"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _poulies_au_cumul dans « backend/domain/duel.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0117"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _reglage_de dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0117"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 56
+  "signaux": 53
  }
 };

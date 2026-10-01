@@ -16,7 +16,10 @@
 *(**chaque phase de duels choisit son barème** — FFTA (premier à 6) ou club (premier à 4), avec des
 exceptions **par arme** explicites (les poulies au cumul ne se devinent plus au nom, sauf sur une
 phase non réglée) ; le barème **se fige au premier tir**, faute d'être stocké avec lui ; il voyage
-avec le format. Preset club de qualification. [ADR-0117](../docs/adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md),
+avec le format. Preset club de qualification. **Revue** : 4-4 au club se tranche au **barrage**
+(le mieux placé gagnait sans tirer), l'**arme d'une catégorie se fige** au premier tir d'une phase
+réglée, et le barème club des ½ finales / finales part en `E01US027` (`DETTE-117`) — trois
+arbitrages du commanditaire. [ADR-0117](../docs/adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md),
 amende ADR-0049 §2/§4 ; aucune migration. ⚠️ **La fiche datait d'avant le moteur** : la règle était
 déjà écrite (presets, cumul, barrage 1 flèche, Big Shoot Off jouable) — l'US a livré le **réglage**,
 pas le moteur. ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté.)*
@@ -1234,7 +1237,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 84 | E03US012 | **Poser les cibles des tours suivants** | ✅ *(au-delà du tour 1, les duellistes reçoivent leur cible **sans clic**, dès que leur tour est **entièrement** déterminé — la maille est le tour, jamais le duel, parce que regrouper suppose de connaître tout l'ensemble à poser. ⚠️ **C'est un trou, pas un confort** : `place = match.tour == 1` rendait `pret_a_lancer` toujours faux passé le tour 1, donc feu vert éteint et routage muet pour les quarts, les demies et la finale. ⚠️ **Née d'un cadrage avorté** : `E16US013` (lancement automatique/manuel) n'avait **rien à lancer** ; remise à ⬜ sur arbitrage du commanditaire, qui a choisi de lever le verrou d'abord. ⚠️ **La clé était le blocage** : `(phase_id, inscription_id)` ne peut pas porter deux poses du même archer → migration `0053`, changement de PK, reprise en tour 1 ([ADR-0106](../docs/adr/0106-la-pose-d-une-cible-appartient-a-un-tour.md)). ⚠️ **`batch_alter_table` ne convenait pas** : en mode batch Alembic réfléchit la table et la nouvelle PK s'**ajoute** au lieu de remplacer — la migration paraissait réussir. Table recréée explicitement. ⚠️ **Le moteur n'était pas en cause** : `domain.placement.placer` est générique, sans notion de tour ; c'est l'appelant qui ne lui passait que `paires_du_premier_tour`. ⚠️ **Cinq dépendances retirées** de `ServicePlacementDuels` : il remontait son **propre** arbre à côté de `reconstruire`, seule à rejouer les duels validés — la parité des deux recopies avait déjà lâché une fois (E05US024). ⚠️ **L'acte automatique complète, il ne régénère pas** : sinon la première validation venue écraserait les ajustements au glisser-déposer ; et compléter suffit à **reposer** un tour qu'une correction de score a périmé. Exclus : le tour 1 (geste explicite) et une phase **en pause** (ADR-0091 — on ne prépare pas la butte d'après). ⚠️ **Deux chemins d'écriture branchés, pas un** : la validation **et** le forfait en duel (walkover), qui tranche sans qu'aucun score soit saisi — test de câblage dédié, c'est le mode de panne de `DETTE-028`. ⚠️ **`DETTE-019` résorbée sur son fond** (garde tour-1 en 4 formulations, **2 dans le front**, balayées ensemble : les lever côté serveur seulement aurait laissé l'écran annoncer une limite abolie **sans qu'un test rougisse**) ; **`DETTE-021` élargie** (le défaut vaut désormais à tous les tours, finale comprise). ⚠️ **Le registre attendait `E05US010` depuis six semaines** — livrée et hors sujet, son « 1→N » désignant la profondeur de classement : aucune US ne portait ce travail. ⚠️ **`ADR-0105` était déjà pris** la veille par `E16US015` — d'où `0106` ; collision vue en **tenant** la liste d'ADR-0075. ⚠️ `ADR-0048` **rouvert** et doté de sa section « Porté dans le code par », absente)* |
 | — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07 ; **comptée dans « Ajouts de l'entretien du 18/07 »**, hors décompte de J3)* |
 
-## J4 — Confort, richesse & robustesse — 🟡 **entamé (2/7)**
+## J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -1246,6 +1249,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 89 | ~~E05US016~~ | ~~Routing repêchage (WA)~~ → **absorbée par E05US015** | ⛔ *(le repêchage est une politique `routing`, pas un type de phase — ADR-0062 §1 ; hors décompte)* |
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
 | 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
+| 92 | E01US027 | Barème propre aux ½ finales et finales d'un tableau | ⬜ *(ajoutée le 01/10/2026 à la revue d'E01US011 — format club du référentiel §10.1 ; résorbe `DETTE-117`)* |
 
 ## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (4/10)**
 
@@ -1488,7 +1492,7 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
   admin » d'EPIC-17) ne compte **ni au numérateur ni au dénominateur** : c'est du travail livré, pas
   une US. Les lignes à `Seq = —` (US hors séquence, remontées d'une section d'ajouts) sont comptées
   **dans leur section d'origine**, pas dans le jalon — sans quoi la même US serait comptée deux
-  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 26/27 et J4 2/7.
+  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 26/27 et J4 2/8.
   *(J3 corrigé **deux fois** le 16/08/2026, par deux modes de panne différents, tous deux
   trouvés par le recalcul automatique d'`E00US019` et non à l'œil. **1.** Le compteur disait
   `12/15` quand le corps portait 14 ✅ sur 16 lignes — l'en-tête n'avait pas suivi le corps.
