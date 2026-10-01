@@ -218,6 +218,7 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
         "club-paiement",
         "feuille-de-marque",
         "palmares",
+        "classement-qualification",
         "audit",
     }
     codes = {
@@ -233,6 +234,7 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
         "club-paiement": ["pdf", "csv", "xlsx"],
         "feuille-de-marque": ["pdf"],
         "palmares": ["pdf", "csv", "xlsx"],
+        "classement-qualification": ["pdf", "csv", "xlsx"],
         "audit": ["csv", "xlsx"],
     }
     # ⚠️ ET la même chose lue sur le **câblage réel** : les littéraux ci-dessus disent ce que le
@@ -381,6 +383,7 @@ _CHEMINS_DE_DOCUMENT = {
     "club-paiement": "/api/v1/tournois/{tournoi_id}/listes/club-paiement",
     "feuille-de-marque": "/api/v1/tournois/{tournoi_id}/departs/{depart_id}/feuille-de-marque",
     "palmares": "/api/v1/tournois/{tournoi_id}/palmares/document",
+    "classement-qualification": "/api/v1/tournois/{tournoi_id}/classement-qualification/document",
     "audit": "/api/v1/tournois/{tournoi_id}/audit/document",
 }
 

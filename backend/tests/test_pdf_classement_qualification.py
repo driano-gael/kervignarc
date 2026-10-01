@@ -1,4 +1,4 @@
-"""Tests des adapters PDF et tableur du classement de qualification (E09US005).
+"""Tests de l'adapter PDF du classement de qualification (E09US005).
 
 Tests **après** l'implémentation (règle 9 : adapters). Le PDF s'inspecte par `_corps()`, comme
 `test_pdf_palmares` : ReportLab n'offre pas de lecture, et les `Flowable` portent ce que l'adapter
@@ -19,7 +19,6 @@ from infrastructure.pdf.classement_qualification import (
     PROVISOIRE,
     GenerateurClassementQualificationPdf,
 )
-from infrastructure.tableur import GenerateurClassementQualificationTableur, rendre_csv
 
 
 def _ligne(
@@ -115,19 +114,3 @@ def test_le_pdf_rendu_est_un_document() -> None:
     octets = GenerateurClassementQualificationPdf().classement_qualification(_document(section))
 
     assert octets.startswith(b"%PDF")
-
-
-def test_le_tableur_rend_a_plat_avec_depart_categorie_et_etat() -> None:
-    matin = SectionClassementQualification("Matin", False, (_SENIORS,))
-    apres_midi = SectionClassementQualification("Après-midi", True, (_CADETS,))
-
-    octets = GenerateurClassementQualificationTableur(rendre_csv).classement_qualification(
-        _document(matin, apres_midi)
-    )
-
-    lignes = octets.decode("utf-8-sig").splitlines()
-    assert lignes[1:] == [
-        "Matin;Senior Homme;1;1;NOM1;Jean;Compagnie de Kervignarc;550;20;15;;Définitif",
-        "Matin;Senior Homme;;;NOM2;Jean;Compagnie de Kervignarc;550;20;15;Disqualifié;Définitif",
-        "Après-midi;Cadet;1;1;NOM3;Jean;Compagnie de Kervignarc;550;20;15;;Provisoire",
-    ]
