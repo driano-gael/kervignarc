@@ -4308,6 +4308,7 @@ window.ATLAS.decisions = {
     "E05US034",
     "E05US035",
     "E06US009",
+    "E13US002",
     "E16US002",
     "E16US007",
     "E16US008",
@@ -6396,7 +6397,8 @@ window.ATLAS.decisions = {
     "E00US020",
     "E05US026",
     "E05US028",
-    "E05US030"
+    "E05US030",
+    "E13US002"
    ]
   },
   {
@@ -9971,6 +9973,7 @@ window.ATLAS.decisions = {
     "E06US001",
     "E06US004",
     "E06US009",
+    "E13US002",
     "E16US009",
     "E16US014",
     "E16US017"
