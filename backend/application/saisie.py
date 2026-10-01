@@ -963,14 +963,13 @@ class ServiceSaisie:
         contexte: ContexteSaisie | None,
         depart_id: DepartId | None = None,
     ) -> DepartId | None:
-        """Le créneau où cet archer tire : celui du poste, ou celui désigné par l'appelant
-        (vérifié contre ses inscriptions), sinon le premier où il est inscrit.
+        """Le créneau où cet archer tire : celui du poste, ou celui désigné (vérifié contre ses
+        inscriptions), sinon le premier où il est inscrit.
 
-        `None` quand l'archer n'a aucune inscription — donnée incohérente, pas un cas nominal : on
-        ne casse pas la saisie dessus le jour J. Le départage se fait sur le **plus petit
-        identifiant** de créneau et non son numéro d'affichage : lire ce numéro exigerait un
-        `DepartRepository` entier pour un départage sans enjeu. Ce qui compte est d'être
-        **déterministe** ; le vrai remède est que la route porte le créneau (`# DETTE-052`).
+        `None` sans inscription — donnée incohérente, on ne casse pas la saisie dessus le jour J.
+        La devinette prend le **plus petit identifiant** de créneau, pas son numéro d'affichage :
+        lire ce numéro exigerait un `DepartRepository` pour un départage sans enjeu. Ce qui compte
+        est d'être **déterministe** ; le remède est que la route porte le créneau (`# DETTE-052`).
         """
         if contexte is not None:
             return contexte.depart_id
