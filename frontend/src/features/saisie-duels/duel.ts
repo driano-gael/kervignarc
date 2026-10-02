@@ -81,10 +81,22 @@ export function grouperParTour(
   return groupes
 }
 
+// Un duel tranché, ou à égalité en attente de son barrage (4-4 au club, E01US011), n'accepte plus de
+// manche **neuve** : le serveur la refuse (`DuelDejaTranche`). Les manches saisies restent éditables.
+export function mancheNeuveFermee(duel: Pick<Duel, 'resultat'>): boolean {
+  return duel.resultat?.termine === true || duel.resultat?.barrage_requis === true
+}
+
 // La prochaine manche à saisir : la **plus petite** (1..nbManches) pas encore saisie ; si toutes le
-// sont, on reste sur la **dernière** (l'édition d'une manche déjà saisie passe par le navigateur,
-// tant que le duel n'est pas validé). Jumeau de `volees.prochaineASaisir`.
-export function prochaineMancheASaisir(duel: Pick<Duel, 'manches'>, nbManches: number): number {
+// sont, ou si aucune manche neuve n'est plus permise, on reste sur la **dernière saisie**.
+// Jumeau de `volees.prochaineASaisir`.
+export function prochaineMancheASaisir(
+  duel: Pick<Duel, 'manches' | 'resultat'>,
+  nbManches: number,
+): number {
+  if (mancheNeuveFermee(duel) && duel.manches.length > 0) {
+    return Math.max(...duel.manches.map((m) => m.numero))
+  }
   for (let numero = 1; numero <= nbManches; numero += 1) {
     if (!duel.manches.some((m) => m.numero === numero)) return numero
   }

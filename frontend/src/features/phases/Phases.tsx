@@ -43,6 +43,7 @@ import {
   BAREME_DUEL_NON_REGLE,
   TYPES_A_BAREME_DE_DUEL,
   armesDistinctes,
+  type ArmesConnues,
   depuisReglage as depuisReglageBaremeDuel,
   estValide as baremeDuelValide,
   versReglage as versReglageBaremeDuel,
@@ -542,12 +543,14 @@ export function FormulairePhase({
   const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(phase?.bareme_duel ?? null))
   const categories = useCategories(tournoiId)
   // `null` tant que la requête n'a pas réussi : la fiche retient alors ses presets (E01US011).
-  const armes = useMemo(
+  const armes = useMemo<ArmesConnues>(
     () =>
-      categories.data === undefined
-        ? null
-        : armesDistinctes(categories.data.map((categorie) => categorie.arme)),
-    [categories.data],
+      categories.isError
+        ? 'erreur'
+        : categories.data === undefined
+          ? 'chargement'
+          : armesDistinctes(categories.data.map((categorie) => categorie.arme)),
+    [categories.isError, categories.data],
   )
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
   // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
@@ -858,7 +861,12 @@ export function FormulairePhase({
           />
         )}
         {aBaremeDeDuel && (
-          <ReglageBaremeDuel etat={baremeDuel} surChangement={setBaremeDuel} armes={armes} />
+          <ReglageBaremeDuel
+            etat={baremeDuel}
+            surChangement={setBaremeDuel}
+            armes={armes}
+            sourceArmes="tournoi"
+          />
         )}
         {/* E05US033 — montée **sans condition de type**, à la différence des cinq fiches
             ci-dessus, mais pour une autre raison : sur un type non arrêtable la fiche n'offre aucun

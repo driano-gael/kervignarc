@@ -19,6 +19,7 @@ import {
   libelleMode,
   mancheExistante,
   nouvelIdentifiant,
+  mancheNeuveFermee,
   prochaineMancheASaisir,
   statutDuel,
   type StatutDuel,
@@ -688,6 +689,7 @@ function NavigateurManches({
       {Array.from({ length: nbManches }, (_, i) => {
         const numero = i + 1
         const saisie = duel.manches.some((m) => m.numero === numero)
+        const fermee = !saisie && mancheNeuveFermee(duel)
         const classes = [
           'saisie__nav-volee',
           saisie ? 'saisie__nav-volee--saisie' : '',
@@ -701,6 +703,7 @@ function NavigateurManches({
             type="button"
             className={classes}
             aria-pressed={numero === numeroActif}
+            disabled={fermee}
             onClick={() => onChoisir(numero)}
           >
             {numero}

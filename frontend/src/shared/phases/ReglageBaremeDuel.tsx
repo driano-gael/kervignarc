@@ -10,6 +10,7 @@ import {
   FLECHES_MAX,
   MANCHES_MAX,
   ecartsDArmes,
+  type ArmesConnues,
   estValide,
   presetClub,
   presetFfta,
@@ -68,21 +69,24 @@ function EditeurBareme({
 
 /**
  * `armes` : celles des catégories connues, pour pré-remplir les poulies d'un preset et signaler
- * les écarts. `null` tant qu'elles ne sont pas chargées : un preset posé à ce moment-là oublierait
- * les poulies, donc les presets attendent.
+ * les écarts — ou `'chargement'` / `'erreur'` : un preset posé sans elles oublierait les poulies,
+ * donc les presets attendent. `sourceArmes` dit d'où elles viennent, pour nommer juste un écart.
  */
 export function ReglageBaremeDuel({
   etat,
   surChangement,
   armes,
+  sourceArmes,
 }: {
   etat: EtatBaremeDuel
   surChangement: (etat: EtatBaremeDuel) => void
-  armes: readonly string[] | null
+  armes: ArmesConnues
+  sourceArmes: 'tournoi' | 'bibliotheque'
 }) {
   const idListe = useId()
-  const presetsPossibles = armes !== null
-  const ecarts = armes === null ? null : ecartsDArmes(etat, armes)
+  const connues = typeof armes === 'string' ? null : armes
+  const presetsPossibles = connues !== null
+  const ecarts = connues === null ? null : ecartsDArmes(etat, connues)
   const changerSurcharge = (
     index: number,
     partiel: Partial<EtatBaremeDuel['surcharges'][number]>,
@@ -101,7 +105,7 @@ export function ReglageBaremeDuel({
           type="button"
           className="bouton bouton--discret"
           disabled={!presetsPossibles}
-          onClick={() => surChangement(presetFfta(armes ?? []))}
+          onClick={() => surChangement(presetFfta(connues ?? []))}
         >
           Preset FFTA officiel
         </button>
@@ -109,7 +113,7 @@ export function ReglageBaremeDuel({
           type="button"
           className="bouton bouton--discret"
           disabled={!presetsPossibles}
-          onClick={() => surChangement(presetClub(armes ?? []))}
+          onClick={() => surChangement(presetClub(connues ?? []))}
         >
           Preset format club
         </button>
@@ -123,8 +127,14 @@ export function ReglageBaremeDuel({
           </button>
         )}
       </div>
-      {!presetsPossibles && (
+      {armes === 'chargement' && (
         <p className="carte__aide">Chargement des armes des catégories avant les presets…</p>
+      )}
+      {armes === 'erreur' && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          Armes des catégories indisponibles&nbsp;: presets désactivés. Les barèmes propres se
+          saisissent à la main.
+        </span>
       )}
 
       {!etat.regle ? (
@@ -177,7 +187,7 @@ export function ReglageBaremeDuel({
             ))}
           </ul>
           <datalist id={idListe}>
-            {(armes ?? []).map((arme) => (
+            {(connues ?? []).map((arme) => (
               <option key={arme} value={arme} />
             ))}
           </datalist>
@@ -209,8 +219,10 @@ export function ReglageBaremeDuel({
       )}
       {ecarts !== null && ecarts.surchargeOrpheline.length > 0 && (
         <span className="carte__etat carte__etat--alerte" role="status">
-          Aucune catégorie ne porte ces armes, leur barème ne s’appliquera à personne&nbsp;:{' '}
-          {ecarts.surchargeOrpheline.join(', ')}.
+          {sourceArmes === 'tournoi'
+            ? 'Aucune catégorie du tournoi ne porte ces armes, leur barème ne s’appliquera à personne'
+            : 'Aucune catégorie de la bibliothèque ne porte ces armes : vérifiez qu’elles existeront dans le tournoi'}
+          &nbsp;: {ecarts.surchargeOrpheline.join(', ')}.
         </span>
       )}
       {!estValide(etat) && (

@@ -132,3 +132,11 @@ describe('écarts entre le réglage et les armes connues (ADR-0117)', () => {
     expect(ecartsDArmes(BAREME_DUEL_NON_REGLE, ['Compound']).poulieSansSurcharge).toEqual([])
   })
 })
+
+describe('un défaut au cumul couvre déjà les poulies', () => {
+  it('ne signale aucun arc à poulies sans surcharge', () => {
+    const etat = presetFfta([])
+    const auCumul = { ...etat, par_defaut: { ...etat.par_defaut, mode: 'cumul' as const } }
+    expect(ecartsDArmes(auCumul, ['Compound']).poulieSansSurcharge).toEqual([])
+  })
+})

@@ -78,6 +78,35 @@ describe('le barème des duels d’une phase', () => {
     expect(screen.getByText(/Chargement des armes/)).toBeInTheDocument()
   })
 
+  it('si les armes ne se chargent pas, les presets restent coupés et l’écran le dit', async () => {
+    vi.mocked(getCategories).mockRejectedValue(new Error('réseau'))
+    monter()
+
+    expect(await screen.findByText(/Armes des catégories indisponibles/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Preset FFTA officiel' })).toBeDisabled()
+    expect(screen.queryByText(/Chargement des armes/)).toBeNull()
+  })
+
+  it('signale un arc à poulies sans barème propre, puis une surcharge sans catégorie', async () => {
+    monter()
+    const fiche = await screen.findByRole('group', { name: 'Barème des duels' })
+    const preset = within(fiche).getByRole('button', { name: 'Preset FFTA officiel' })
+    await waitFor(() => expect(preset).toBeEnabled())
+    await userEvent.click(preset)
+    expect(within(fiche).queryByText(/Sans barème propre/)).toBeNull()
+
+    await userEvent.click(
+      within(fiche).getByRole('button', { name: /Retirer la surcharge de l’arme Arc à poulies/ }),
+    )
+    expect(within(fiche).getByText(/Sans barème propre/)).toHaveTextContent('Arc à poulies')
+
+    await userEvent.click(
+      within(fiche).getByRole('button', { name: 'Ajouter une arme au barème propre' }),
+    )
+    await userEvent.type(within(fiche).getByRole('combobox', { name: 'Arme' }), 'Arbalète')
+    expect(within(fiche).getByText(/Aucune catégorie du tournoi/)).toHaveTextContent('Arbalète')
+  })
+
   it('sans réglage, la phase part avec bareme_duel null (défaut du serveur, CA 3)', async () => {
     monter()
     await screen.findByRole('group', { name: 'Barème des duels' })

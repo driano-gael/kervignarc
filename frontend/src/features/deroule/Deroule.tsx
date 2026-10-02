@@ -69,6 +69,7 @@ import {
   BAREME_DUEL_NON_REGLE,
   TYPES_A_BAREME_DE_DUEL,
   armesDistinctes,
+  type ArmesConnues,
   depuisReglage as depuisReglageBaremeDuel,
   estValide as baremeDuelValide,
   versReglage as versReglageBaremeDuel,
@@ -575,12 +576,14 @@ function EditeurSequence({
   const [edition, setEdition] = useState<number | null>(null)
   // E01US011 : hors tournoi, ce sont les armes des catégories de bibliothèque qui pré-remplissent.
   const categoriesBibliotheque = useCategoriesBibliotheque()
-  const armes = useMemo(
+  const armes = useMemo<ArmesConnues>(
     () =>
-      categoriesBibliotheque.data === undefined
-        ? null
-        : armesDistinctes(categoriesBibliotheque.data.map((categorie) => categorie.arme)),
-    [categoriesBibliotheque.data],
+      categoriesBibliotheque.isError
+        ? 'erreur'
+        : categoriesBibliotheque.data === undefined
+          ? 'chargement'
+          : armesDistinctes(categoriesBibliotheque.data.map((categorie) => categorie.arme)),
+    [categoriesBibliotheque.isError, categoriesBibliotheque.data],
   )
   return (
     <div className="carte carte--large">
@@ -704,9 +707,8 @@ export function FormulaireEtape({
   etapesAmont: Etape[]
   surValider: (etape: Etape) => void
   // E01US011 : les armes qui pré-remplissent les presets du barème des duels. Reçues, pas
-  // requêtées : ce formulaire se monte aussi seul (ses tests), sans client de requêtes. `null`
-  // tant qu'elles ne sont pas chargées — la fiche retient alors ses presets.
-  armes: readonly string[] | null
+  // requêtées : ce formulaire se monte aussi seul (ses tests), sans client de requêtes.
+  armes: ArmesConnues
   surAnnuler?: () => void
   // L'effectif que l'écran simule, **descendu jusqu'ici** pour la seule fiche de poules : c'est le
   // CA « la répartition obtenue est montrée avant d'être validée » (E05US023). `null` quand l'écran
@@ -983,7 +985,12 @@ export function FormulaireEtape({
       )}
 
       {aBaremeDeDuel && (
-        <ReglageBaremeDuel etat={baremeDuel} surChangement={setBaremeDuel} armes={armes} />
+        <ReglageBaremeDuel
+          etat={baremeDuel}
+          surChangement={setBaremeDuel}
+          armes={armes}
+          sourceArmes="bibliotheque"
+        />
       )}
 
       {estQualification && (

@@ -141,7 +141,7 @@ export function estValide(etat: EtatBaremeDuel): boolean {
   return versReglage(etat) !== undefined
 }
 
-// Miroir de `domain/duel.py::_est_poulies` — sert **seulement** à pré-remplir un preset (ADR-0117).
+// DETTE-119 — miroir de `domain/duel.py::_est_poulies` (presets, écarts), sans test commun.
 export function estPoulies(arme: string): boolean {
   const normalise = arme.trim().toLocaleLowerCase('fr')
   return normalise.includes('poulie') || normalise.includes('compound')
@@ -183,14 +183,21 @@ export interface EcartsDArmes {
 }
 
 /** Ce que le réglage ne couvre pas, face aux armes connues (ADR-0117, Conséquences). */
+/** Les armes connues, ou pourquoi on ne les connaît pas : on ne pose pas de preset à l'aveugle. */
+export type ArmesConnues = readonly string[] | 'chargement' | 'erreur'
+
 export function ecartsDArmes(etat: EtatBaremeDuel, armes: readonly string[]): EcartsDArmes {
   if (!etat.regle) return { poulieSansSurcharge: [], surchargeOrpheline: [] }
+  // Un défaut déjà au cumul couvre les poulies : il n'y a pas d'écart à signaler.
+  const defautAuCumul = etat.par_defaut.mode === 'cumul'
   const surchargees = new Set(etat.surcharges.map((s) => cleArme(s.arme)))
   const connues = new Set(armes.map(cleArme))
   return {
-    poulieSansSurcharge: armesDistinctes(armes).filter(
-      (arme) => estPoulies(arme) && !surchargees.has(cleArme(arme)),
-    ),
+    poulieSansSurcharge: defautAuCumul
+      ? []
+      : armesDistinctes(armes).filter(
+          (arme) => estPoulies(arme) && !surchargees.has(cleArme(arme)),
+        ),
     surchargeOrpheline: etat.surcharges
       .map((s) => s.arme.trim())
       .filter((arme) => arme !== '' && !connues.has(cleArme(arme))),

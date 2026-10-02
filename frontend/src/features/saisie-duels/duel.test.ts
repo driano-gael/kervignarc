@@ -11,6 +11,7 @@ import {
   libelleTour,
   mancheExistante,
   pointsZone,
+  mancheNeuveFermee,
   prochaineMancheASaisir,
   statutDuel,
   totalVolee,
@@ -94,13 +95,45 @@ describe('grouperParTour', () => {
 
 describe('prochaineMancheASaisir', () => {
   it('la plus petite manche non encore saisie', () => {
-    expect(prochaineMancheASaisir({ manches: [] }, 5)).toBe(1)
-    expect(prochaineMancheASaisir({ manches: [{ numero: 1, haut: [], bas: [] }] }, 5)).toBe(2)
+    expect(prochaineMancheASaisir({ manches: [], resultat: null }, 5)).toBe(1)
+    expect(
+      prochaineMancheASaisir({ manches: [{ numero: 1, haut: [], bas: [] }], resultat: null }, 5),
+    ).toBe(2)
   })
 
   it('reste sur la dernière si toutes sont saisies', () => {
     const manches = [1, 2, 3, 4, 5].map((numero) => ({ numero, haut: [], bas: [] }))
-    expect(prochaineMancheASaisir({ manches }, 5)).toBe(5)
+    expect(prochaineMancheASaisir({ manches, resultat: null }, 5)).toBe(5)
+  })
+
+  // E01US011 : à 4-4 au format club, le barrage est requis — pas une 5ᵉ manche.
+  const quatreManches = [1, 2, 3, 4].map((numero) => ({ numero, haut: [], bas: [] }))
+  const resultat = { points_haut: 4, points_bas: 4, vainqueur: null }
+
+  it('à égalité en attente de barrage, ne propose pas de manche neuve', () => {
+    const duel = {
+      manches: quatreManches,
+      resultat: { ...resultat, termine: false, barrage_requis: true },
+    }
+    expect(mancheNeuveFermee(duel)).toBe(true)
+    expect(prochaineMancheASaisir(duel, 5)).toBe(4)
+  })
+
+  it('un duel tranché avant la dernière manche ne propose pas de manche neuve', () => {
+    const duel = {
+      manches: quatreManches.slice(0, 2),
+      resultat: { ...resultat, termine: true, barrage_requis: false },
+    }
+    expect(prochaineMancheASaisir(duel, 5)).toBe(2)
+  })
+
+  it('un duel en cours propose la manche suivante', () => {
+    const duel = {
+      manches: quatreManches.slice(0, 2),
+      resultat: { ...resultat, termine: false, barrage_requis: false },
+    }
+    expect(mancheNeuveFermee(duel)).toBe(false)
+    expect(prochaineMancheASaisir(duel, 5)).toBe(3)
   })
 })
 
