@@ -628,13 +628,18 @@ Dans l'ordre de valeur prévu par le backlog :
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
-**épreuves par équipes** (nouvel EPIC-13, désormais dans le périmètre MVP), pas encore implémentés.
+**épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
+— standard ou mixte, avec leur conformité affichée —, mais elles ne se **jouent** pas encore
+(scoring, placement et classement par équipe restent à faire).
 
 ---
 
 ## Chiffres repères
 
-- **156 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E09US005`,
+- **157 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E13US002`,
+  à **surface visible** : l'organisateur **compose les équipes** du tournoi sur un écran « Équipes »,
+  qui lui dit pour chacune si elle est conforme (nombre d'archers, même arme, mixité) sans jamais
+  l'empêcher d'enregistrer. Juste avant, `E09US005`,
   à **surface visible** : le **classement de qualification s'imprime**, une page par catégorie à
   afficher au mur, marquée « provisoire » tant que tout n'est pas tiré — et elle **clôt le jalon
   J3**. Juste avant, `E04US019`,

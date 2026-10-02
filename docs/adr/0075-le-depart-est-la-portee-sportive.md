@@ -452,6 +452,6 @@ jour où une US le rouvre. C'est pourquoi elle vit **ici** — dans le registre 
 et non dans `CLAUDE.md`, qui ne porte que le critère.
 
 ⚠️ **Écrire la section, c'est vérifier dans le code du jour, pas déduire de l'ADR.** Le
-rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'est porté **qu'au quart** — la classe
-`Equipe` n'existe pas — et `ADR-0049` promet dans son titre un barème résolu par « (phase, arme) »
+rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'était porté **qu'au quart** — la classe
+`Equipe` n'existait pas avant E13US002 — et `ADR-0049` promet dans son titre un barème résolu par « (phase, arme) »
 que le code résout par l'**arme seule**. Ni l'un ni l'autre ne se voyait sans ouvrir les modules.

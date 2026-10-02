@@ -104,6 +104,7 @@
     ],
     gestion: [
       ['inscriptions', 'Inscriptions'],
+      ['equipes', 'Équipes'],
       ['paiements', 'Paiements'],
       ['exports', 'Exports'],
       ['audit', 'Journal d’audit'],

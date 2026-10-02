@@ -152,7 +152,8 @@ en **une** lecture.
 
 ### 8. La portée *équipe* d'A16 est hors périmètre, et le restera jusqu'à EPIC-13
 
-La classe `Equipe` n'existe pas ([ADR-0028](0028-epreuves-par-equipes-participant.md)). Un membre
+La classe `Equipe` n'existait pas à cette décision ([ADR-0028](0028-epreuves-par-equipes-participant.md)) ;
+E13US002 l'a créée depuis, mais une équipe ne se **joue** pas encore, donc ne se classe pas. Un membre
 d'énumération qui ne peut rien rendre est pire qu'un membre absent : il se règle, et il ne se voit
 pas. Classer les **clubs entre eux** — par opposition aux archers d'un club entre eux — est un
 classement neuf et non un regroupement : il part en `E16US017`, au décompte de médailles.

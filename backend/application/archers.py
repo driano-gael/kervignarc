@@ -13,6 +13,7 @@ from application.erreurs import (
     CategorieHorsTournoi,
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
+    FusionArchersEnEquipes,
     FusionArchersEngages,
     FusionImpossible,
     HomonymeArcher,
@@ -24,11 +25,13 @@ from domain.archer import Archer, ArcherId, CleIdentite, licences_distinctes, so
 from domain.categorie import CategorieId
 from domain.club import ClubId, cle_nom
 from domain.doublons import PaireDoublon, detecter_doublons
+from domain.equipe import Equipe, conflit_de_type
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
     ClubRepository,
     DepartRepository,
+    EquipeRepository,
     Horloge,
     InscriptionRepository,
     ScoreRepository,
@@ -56,6 +59,7 @@ class ServiceArchers:
         series: SerieRepository,
         departs: DepartRepository,
         horloge: Horloge,
+        equipes: EquipeRepository,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
@@ -73,6 +77,8 @@ class ServiceArchers:
         # le service non déterministe en test (règle 9).
         self._departs = departs
         self._horloge = horloge
+        # E13US002 : l'appartenance à une équipe engage l'archer et contraint la fusion (CA 3, 6).
+        self._equipes = equipes
 
     def ajouter(
         self,
@@ -139,11 +145,10 @@ class ServiceArchers:
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> Archer:
         """Fusionne un doublon : le **gagnant** absorbe la descendance du **perdant** (E02US005).
 
-        L'admin **choisit** quelle fiche survit ; la machine ne fusionne jamais d'office
-        (ADR-0015). Le transfert est le contrat du port ; ici on tient les **gardes** :
-        `ArcherIntrouvable`, `FusionImpossible` (même fiche, ou deux tournois différents), et
-        `FusionArchersEngages` si les **deux** ont une série — les fusionner mêlerait des volées et
-        violerait l'unicité.
+        L'admin **choisit** quelle fiche survit (ADR-0015). Le transfert est le contrat du port ;
+        ici on tient les **gardes** : `ArcherIntrouvable`, `FusionImpossible` (même fiche, ou deux
+        tournois), `FusionArchersEngages` si les **deux** ont une série (volées mêlées), et
+        `FusionArchersEnEquipes` si elles sont dans deux équipes distinctes du même type (E13US002).
         """
         gagnant = self._archer_existant(gagnant_id)
         perdant = self._archer_existant(perdant_id)
@@ -166,6 +171,7 @@ class ServiceArchers:
                 f"Ces deux fiches portent deux licences différentes ({gagnant.licence} et "
                 f"{perdant.licence}) : ce sont deux personnes, pas un doublon."
             )
+        self._refuser_fusion_d_equipes(gagnant_id, perdant_id)
         # Le gagnant sans licence hérite de celle de l'absorbé, dans la transaction de l'adapter.
         self._archers.fusionner(gagnant_id, perdant_id)
         return self._archer_existant(gagnant_id)
@@ -234,11 +240,10 @@ class ServiceArchers:
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        La suppression **efface aussi sa série de saisie, son placement et ses inscriptions**
-        (E02US009) — c'est le contrat du port, pas un effet de bord. Lève `ArcherEngage` s'il est
-        placé, a déjà tiré ou est inscrit, sauf `autoriser_suppression_engage=True` : un
-        **signalement**, pas un refus (ADR-0016). ⚠️ **Un abandon ne passe pas par ici** : c'est un
-        forfait tracé (ADR-0050), qui préserve les flèches.
+        Efface aussi sa série, son placement, ses inscriptions (E02US009) et sa place en équipe
+        (E13US002) — contrat du port. Lève `ArcherEngage` s'il est placé, a tiré, est inscrit ou
+        membre d'une équipe, sauf `autoriser_suppression_engage=True` : un **signalement**, pas un
+        refus (ADR-0016). ⚠️ **Un abandon ne passe pas par ici** : c'est un forfait (ADR-0050).
         """
         archer = self._archer_existant(archer_id)
         # DETTE-007 : la confirmation est **aveugle**. Le compte de flèches annoncé par le
@@ -378,7 +383,7 @@ class ServiceArchers:
                 )
 
     def _signaler_engagement(self, archer: Archer, archer_id: ArcherId) -> None:
-        """Lève `ArcherEngage` si l'archer est placé, a déjà tiré **ou est inscrit** (E02US009).
+        """Lève `ArcherEngage` si l'archer est placé, a tiré, est inscrit ou en équipe (E13US002).
 
         « Engagé » s'est élargi : une inscription sur au moins un départ suffit. Le message
         **énumère ce qui sera détruit** plutôt que d'inviter à confirmer — c'est ce qui distingue à
@@ -397,7 +402,8 @@ class ServiceArchers:
         # « un remboursement sera ouvert » sur la foi de `paye` seul envoyait l'admin chercher au
         # registre un poste qui n'existerait pas — une promesse d'action, pas un sur-signalement.
         payees = len(self._remboursements_des_payees(archer, archer_id))
-        if archer.cible is None and fleches == 0 and inscriptions == 0:
+        equipes = self._equipes.par_archer(archer_id)
+        if archer.cible is None and fleches == 0 and inscriptions == 0 and not equipes:
             return
         motifs = []
         if fleches:
@@ -418,12 +424,28 @@ class ServiceArchers:
             motifs.append(detail)
         if archer.cible is not None:
             motifs.append(f"un placement sur la cible {archer.cible}")
+        if equipes:
+            motifs.append(_place_en_equipes(equipes))
         raise ArcherEngage(
             f"« {archer.prenom} {archer.nom} » a {' et '.join(motifs)}. Le supprimer effacera ces "
             "données définitivement. S'il abandonne en cours d'épreuve, ne le supprimez pas : "
             "c'est un forfait, qui conserve ses résultats. Confirmez seulement s'il n'aurait "
             "jamais dû être inscrit."
         )
+
+    def _refuser_fusion_d_equipes(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
+        """Refus si les fiches sont dans deux équipes **distinctes** du même type (E13US002)."""
+        conflit = conflit_de_type(
+            self._equipes.par_archer(gagnant_id), self._equipes.par_archer(perdant_id)
+        )
+        if conflit is not None:
+            autre, equipe = conflit
+            raise FusionArchersEnEquipes(
+                f"Ces deux fiches sont dans deux équipes {equipe.type.value}s différentes "
+                f"(« {autre.nom} » et « {equipe.nom} ») : la fiche conservée ne peut "
+                "appartenir qu'à une seule. Retirez l'une des deux de son équipe avant de "
+                "fusionner."
+            )
 
     def _feuilles(self, tournoi_id: TournoiId, archer_id: ArcherId) -> list[Serie]:
         """Les feuilles de cet archer dans ce tournoi — **toutes phases confondues**.
@@ -461,3 +483,13 @@ class ServiceArchers:
                 "de catégorie emporte ses flèches vers un autre classement ; confirmez s'il "
                 "s'agit bien de corriger une catégorie mal saisie."
             )
+
+
+def _place_en_equipes(equipes: list[Equipe]) -> str:
+    noms = [f"« {e.nom} »" for e in equipes]
+    if len(noms) == 1:
+        return f"une place de membre de l'équipe {noms[0]} (il en sera retiré, l'équipe reste)"
+    return (
+        f"une place de membre des équipes {', '.join(noms[:-1])} et {noms[-1]} "
+        "(il en sera retiré, les équipes restent)"
+    )

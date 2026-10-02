@@ -150,7 +150,7 @@ la denylist ne protégeant que ce qu'on a pensé à y écrire.
 **Ce que ça apporte.** La question « cette décision tient-elle encore ? » reçoit une réponse
 calculée plutôt que devinée : 19 ADR sont affichés « partiellement dépassés ». Les 234 symboles
 promis par les sections « Porté dans le code par » sont confrontés au dépôt — le contrôle retrouve
-le cas dont `CLAUDE.md` avertit, `ADR-0028` promettant une classe `Equipe` qui n'existe pas.
+le cas dont `CLAUDE.md` avertit, `ADR-0028` promettant une classe `Equipe` qui n'existait pas encore (créée depuis par E13US002).
 
 **Ce que ça coûte.** ~350 Ko de généré committé, touché à chaque US qui bouge une source. Une ligne
 de table de relations tous les trois ou quatre ADR. Une casse de parseur à chaque fois qu'un

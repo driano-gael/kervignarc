@@ -38,6 +38,7 @@ from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.ecrans import router as ecrans_router
 from api.v1.ecrans import session_router as ecran_session_router
+from api.v1.equipes import router as equipes_router
 from api.v1.exports import router as exports_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.forfaits import router as forfaits_router
@@ -93,6 +94,7 @@ from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
 from application.ecrans import ServiceEcrans
+from application.equipes import ServiceEquipes
 from application.exports import (
     FormatExport,
     RegistreDeFormats,
@@ -176,6 +178,7 @@ from infrastructure.db import (
     DepartRepositorySQL,
     DerouleEtapeRepositorySQL,
     DuelRepositorySQL,
+    EquipeRepositorySQL,
     ForfaitRepositorySQL,
     FormatTournoiRepositorySQL,
     FranchissementArretRepositorySQL,
@@ -454,6 +457,7 @@ def create_app(
     score_repository = ScoreRepositorySQL(database.session_factory)
     depart_repository = DepartRepositorySQL(database.session_factory)
     scoreur_repository = ScoreurRepositorySQL(database.session_factory)
+    equipe_repository = EquipeRepositorySQL(database.session_factory)
     poste_repository = PosteRepositorySQL(database.session_factory)
     audit_repository = AuditRepositorySQL(database.session_factory)
     # L'inscription co-écrit sa trace de **paiement** (E08US002) dans une seule transaction
@@ -607,6 +611,11 @@ def create_app(
         # désinscription et la suppression de départ.
         depart_repository,
         HorlogeSysteme(),
+        equipe_repository,
+    )
+    # Équipes d'un tournoi (E13US002).
+    app.state.service_equipes = ServiceEquipes(
+        equipe_repository, tournoi_repository, archer_repository, categorie_repository
     )
     # Classement de qualification (E06US001) : lit les **séries** de saisie, plus les catégories
     # pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail flèche par
@@ -1449,6 +1458,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(audit_router)
     app.include_router(scoreurs_router)
+    app.include_router(equipes_router)
     app.include_router(scoreur_session_router)
     app.include_router(postes_router)
     app.include_router(poste_session_router)

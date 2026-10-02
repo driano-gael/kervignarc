@@ -62,6 +62,7 @@ from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
+from domain.equipe import Equipe, EquipeId
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi
 from domain.gabarit_salle import GabaritSalle
@@ -232,6 +233,39 @@ class FauxArcherRepository:
         # E02US007 : le report de licence est un effet **au niveau archer**, observable ici.
         if gagnant.licence is None and perdant.licence is not None:
             self._archers[gagnant_id] = dataclasses.replace(gagnant, licence=perdant.licence)
+
+
+class FauxEquipeRepository:
+    """Repository d'équipes en mémoire conforme au port `EquipeRepository` (E13US002)."""
+
+    def __init__(self) -> None:
+        self._equipes: dict[int, Equipe] = {}
+        self._sequence = 0
+
+    def par_id(self, equipe_id: EquipeId) -> Equipe | None:
+        return self._equipes.get(equipe_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Equipe]:
+        return [e for e in self._equipes.values() if e.tournoi_id == tournoi_id]
+
+    def par_archer(self, archer_id: ArcherId) -> list[Equipe]:
+        return [e for e in self._equipes.values() if archer_id in e.membres]
+
+    def enregistrer(self, equipe: Equipe) -> Equipe:
+        if equipe.id is None:
+            self._sequence += 1
+            equipe = dataclasses.replace(equipe, id=self._sequence)
+        else:
+            # Fidèle à l'adapter, qui lève `InfrastructureError` sur une équipe à mettre à jour
+            # absente — même patron que `FauxTournoiRepository.enregistrer`.
+            assert equipe.id in self._equipes, "Équipe à mettre à jour absente."
+        assert equipe.id is not None
+        self._equipes[equipe.id] = equipe
+        return equipe
+
+    def supprimer(self, equipe_id: EquipeId) -> None:
+        # L'adapter supprime par `DELETE … WHERE` : un id absent ne lève pas.
+        self._equipes.pop(equipe_id, None)
 
 
 class FauxCategorieRepository:

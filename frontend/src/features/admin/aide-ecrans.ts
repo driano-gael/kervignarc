@@ -29,6 +29,7 @@ export type DestinationAdminId =
   | 'clubs'
   | 'scoreurs'
   | 'inscriptions'
+  | 'equipes'
   | 'placement'
   | 'duels'
   | 'paiements'
@@ -107,6 +108,11 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'listes, le placement, le montant dû et, le jour J, la saisie des scores. Les fiches qui se ' +
     'ressemblent sont signalées sur leur ligne : dépliez-en une pour choisir celle à garder — ' +
     'l’autre y est fusionnée (inscriptions et scores repris), puis supprimée.',
+  equipes:
+    'Composez les équipes du tournoi (standard à 3, mixte à 2) en y ajoutant les archers inscrits. ' +
+    'Une équipe incomplète ou mal assortie s’enregistre quand même : la colonne « Conformité » dit ' +
+    'en clair ce qui ne va pas (effectif, armes, mixité). Un archer tient dans une seule équipe de ' +
+    'chaque type.',
   archer:
     'La fiche d’un archer pendant le tournoi : sa catégorie, son club, et où il tire créneau par ' +
     'créneau. On y arrive par la barre de recherche, et l’on peut de là corriger sa fiche ou ' +

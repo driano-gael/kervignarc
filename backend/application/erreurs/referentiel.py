@@ -403,3 +403,49 @@ class TournoiSansPhase(ApplicationError):
     """
 
     code = "tournoi_sans_phase"
+
+
+class EquipeIntrouvable(ApplicationError):
+    """Aucune équipe de cet identifiant **dans ce tournoi** (E13US002) → 404.
+
+    Couvre aussi l'équipe d'un autre tournoi — même parti que `ScoreurIntrouvable`.
+    """
+
+    code = "equipe_introuvable"
+
+
+class MembreIntrouvable(ApplicationError):
+    """L'archer ne figure pas dans cette équipe (E13US002) → 404, comme `EquipeIntrouvable`."""
+
+    code = "membre_introuvable"
+
+
+class NomEquipeDejaPris(ApplicationError):
+    """Une autre équipe du tournoi porte déjà ce nom, au sens de `cle_nom` (E13US002) → 409."""
+
+    code = "nom_equipe_deja_pris"
+
+
+class ArcherDejaEnEquipe(ApplicationError):
+    """L'archer est déjà membre de cette équipe, ou d'une autre de même type (E13US002, CA 3)
+    → 409.
+    """
+
+    code = "archer_deja_en_equipe"
+
+
+class ArcherHorsTournoi(ApplicationError):
+    """Membre d'équipe inexistant ou d'un autre tournoi (E13US002, CA 2) → 409.
+
+    Même parti que `CategorieHorsTournoi` : l'inexistant et l'étranger rendent la même erreur.
+    """
+
+    code = "archer_hors_tournoi"
+
+
+class FusionArchersEnEquipes(ApplicationError):
+    """Fusion refusée : les deux fiches sont dans deux équipes **différentes** du même type
+    (E13US002) → 409. Le survivant ne peut pas appartenir aux deux (CA 3).
+    """
+
+    code = "fusion_archers_en_equipes"
