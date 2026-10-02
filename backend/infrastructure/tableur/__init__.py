@@ -5,11 +5,15 @@ propres modules importent — et il rend désormais deux formats, pas un (ADR-01
 """
 
 from infrastructure.tableur.audit import GenerateurJournalAuditTableur
+from infrastructure.tableur.classement_qualification import (
+    GenerateurClassementQualificationTableur,
+)
 from infrastructure.tableur.grille import rendre_csv, rendre_xlsx
 from infrastructure.tableur.listes_impression import GenerateurListesImpressionTableur
 from infrastructure.tableur.palmares import GenerateurPalmaresTableur
 
 __all__ = [
+    "GenerateurClassementQualificationTableur",
     "GenerateurJournalAuditTableur",
     "GenerateurListesImpressionTableur",
     "GenerateurPalmaresTableur",

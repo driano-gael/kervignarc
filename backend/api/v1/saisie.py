@@ -27,7 +27,13 @@ from api.dependances import (
 from application.erreurs import DepartCourantNonDefini, SaisieHorsCible, ScoreurHorsTournoi
 from application.forfaits import AUTEUR_ADMIN
 from application.postes import ServicePostes
-from application.saisie import ArcherPositionne, ContexteSaisie, EtatSerie, ServiceSaisie
+from application.saisie import (
+    ArcherPositionne,
+    CibleEnAttente,
+    ContexteSaisie,
+    EtatSerie,
+    ServiceSaisie,
+)
 from domain.blason import ZoneScore
 from domain.depart import Depart
 from domain.poste import Poste
@@ -112,6 +118,8 @@ class ValiderRequete(BaseModel):
     tournoi_id: int
     archer_id: int
     identifiant_saisie: str | None = None
+    depart_id: int | None = None
+    """Le créneau choisi à l'écran (E04US019) ; absent, le serveur le devine (`DETTE-052`)."""
 
 
 class CorrigerRequete(BaseModel):
@@ -134,6 +142,8 @@ class AnnulerValidationRequete(BaseModel):
     archer_id: int
     numero: int = Field(ge=1)
     identifiant_saisie: str | None = None
+    depart_id: int | None = None
+    """Le créneau choisi à l'écran (E04US019) ; absent, le serveur le devine (`DETTE-052`)."""
 
 
 class RefermerCorrectionRequete(BaseModel):
@@ -147,6 +157,8 @@ class RefermerCorrectionRequete(BaseModel):
     archer_id: int
     numero: int = Field(ge=1)
     identifiant_saisie: str | None = None
+    depart_id: int | None = None
+    """Le créneau choisi à l'écran (E04US019) ; absent, le serveur le devine (`DETTE-052`)."""
 
 
 class VoleeReponse(BaseModel):
@@ -208,6 +220,42 @@ class SerieReponse(BaseModel):
     def vide(tournoi_id: int, archer_id: int) -> SerieReponse:
         """Série encore vierge (rien de saisi) : un pavé vide pour le front, pas un 404."""
         return SerieReponse(tournoi_id=tournoi_id, archer_id=archer_id, cumul=0, volees=[])
+
+
+class ArcherEnAttenteReponse(BaseModel):
+    """Un archer dont la feuille attend la validation (E04US019)."""
+
+    archer_id: int
+    nom: str
+    prenom: str
+    position: str
+    attente_secondes: int
+
+
+class CibleEnAttenteReponse(BaseModel):
+    """Une ligne de la file du scoreur. L'attente est **calculée par le serveur** (CA E04US019) :
+    l'horloge d'un téléphone de bénévole n'est pas celle du serveur, sur un réseau sans internet."""
+
+    cible_index: int
+    attente_secondes: int
+    archers: list[ArcherEnAttenteReponse]
+
+    @staticmethod
+    def de_cible(cible: CibleEnAttente) -> CibleEnAttenteReponse:
+        return CibleEnAttenteReponse(
+            cible_index=cible.cible_index,
+            attente_secondes=int(cible.attente.total_seconds()),
+            archers=[
+                ArcherEnAttenteReponse(
+                    archer_id=ligne.archer_id,
+                    nom=ligne.archer.nom,
+                    prenom=ligne.archer.prenom,
+                    position=ligne.position,
+                    attente_secondes=int(ligne.attente.total_seconds()),
+                )
+                for ligne in cible.archers
+            ],
+        )
 
 
 # --- Endpoints ---
@@ -333,13 +381,15 @@ async def lire_serie(
     archer_id: int,
     request: Request,
     identite: Annotated[Poste | Scoreur | None, Depends(autoriser_lecture_serie)],
+    depart_id: int | None = None,
 ) -> SerieReponse:
     """L'état de la série d'un archer (volées, verrou, cumul, « quand »). Admin, poste ou scoreur.
 
     Un poste ne lit que dans **son** tournoi (`403 saisie_hors_cible`), un scoreur dans le sien
     (`403 scoreur_hors_tournoi`, E16US019 — il lui faut la feuille pour la valider ou l'annuler).
     Un archer qui n'a rien saisi renvoie une série **vide** (200), pas un 404 : le front affiche un
-    pavé vierge. Lecture.
+    pavé vierge — de même qu'un archer d'un **autre** tournoi. `?depart_id` (hors poste) désigne le
+    créneau, vérifié contre les inscriptions (`404 inscription_introuvable`, E04US019). Lecture.
     """
     service_saisie: ServiceSaisie = request.app.state.service_saisie
     service_postes: ServicePostes = request.app.state.service_postes
@@ -353,15 +403,38 @@ async def lire_serie(
     # alors que la tablette, elle, le sait : un archer inscrit matin **et** après-midi voyait sa
     # volée écrite dans la phase de l'après-midi puis relue dans celle du matin. Un poste sans
     # départ courant n'est pas refusé ici (c'est une lecture) : on retombe sur la résolution admin.
+    # ⚠️ Un poste ne **désigne** pas son créneau : il lit dans son départ courant, comme il écrit.
+    # Lui transmettre aussi `depart_id` désarmait le repli que son écriture garde (revue E04US019).
     contexte: ContexteSaisie | None = None
     if poste is not None:
-        depart_id = service_postes.depart_courant(extraire_jeton_poste(request))
-        if depart_id is not None:
-            contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_id)
-    etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id, contexte)
+        depart_du_poste = service_postes.depart_courant(extraire_jeton_poste(request))
+        if depart_du_poste is not None:
+            contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_du_poste)
+    depart_designe = depart_id if poste is None else None
+    etat = await run_in_threadpool(
+        service_saisie.etat_serie, tournoi_id, archer_id, contexte, depart_designe
+    )
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
     return SerieReponse.de_etat(etat)
+
+
+@router.get("/file/{tournoi_id}/{depart_id}", response_model=list[CibleEnAttenteReponse])
+async def file_du_scoreur(
+    tournoi_id: int,
+    depart_id: int,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> list[CibleEnAttenteReponse]:
+    """Les cibles du créneau qui attendent une validation, la plus ancienne en tête (E04US019).
+
+    Réservée aux scoreurs **de ce tournoi** (`403 scoreur_hors_tournoi`). Un créneau d'un autre
+    tournoi rend une file vide : seuls les archers du tournoi y entrent. Lecture, hors file.
+    """
+    _exiger_meme_tournoi(scoreur, tournoi_id)
+    service_saisie: ServiceSaisie = request.app.state.service_saisie
+    file = await run_in_threadpool(service_saisie.file_du_scoreur, tournoi_id, depart_id)
+    return [CibleEnAttenteReponse.de_cible(cible) for cible in file]
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
@@ -390,13 +463,17 @@ async def valider_serie(
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
     cle = _cle_idempotence(
-        "validation", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id
+        "validation",
+        requete.identifiant_saisie,
+        requete.tournoi_id,
+        requete.archer_id,
+        requete.depart_id or 0,
     )
 
     def ecrire() -> Serie:
-        # DETTE-052 : le corps ne porte pas de `depart_id`, donc le service **devine** le créneau —
-        # alors que le scoreur en a choisi un à l'écran (`validation-qualif`).
-        return service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
+        return service_saisie.valider(
+            requete.tournoi_id, requete.archer_id, scoreur.nom, depart_id=requete.depart_id
+        )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
     # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
@@ -435,6 +512,7 @@ async def corriger_volee(
     )
 
     def ecrire() -> Serie:
+        # DETTE-052 : aucun écran n'appelle cette route (DETTE-100) ; elle ne porte pas de créneau.
         return service_saisie.corriger_volee(
             requete.tournoi_id,
             requete.archer_id,
@@ -488,12 +566,16 @@ async def annuler_validation(
         requete.tournoi_id,
         requete.archer_id,
         requete.numero,
+        requete.depart_id or 0,
     )
 
     def ecrire() -> Serie:
-        # DETTE-052 : idem — annuler sur la feuille devinée, pas sur le créneau choisi à l'écran.
         return service_saisie.annuler_validation(
-            requete.tournoi_id, requete.archer_id, requete.numero, auteur
+            requete.tournoi_id,
+            requete.archer_id,
+            requete.numero,
+            auteur,
+            depart_id=requete.depart_id,
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
@@ -527,12 +609,16 @@ async def refermer_correction(
         requete.tournoi_id,
         requete.archer_id,
         requete.numero,
+        requete.depart_id or 0,
     )
 
     def ecrire() -> Serie:
-        # DETTE-052 : comme les routes sœurs, le corps ne porte pas de `depart_id`.
         return service_saisie.refermer_correction(
-            requete.tournoi_id, requete.archer_id, requete.numero, scoreur.nom
+            requete.tournoi_id,
+            requete.archer_id,
+            requete.numero,
+            scoreur.nom,
+            depart_id=requete.depart_id,
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))

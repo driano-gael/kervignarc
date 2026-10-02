@@ -18,7 +18,8 @@ class TournoiSansDepart(ApplicationError):
     **Un refus, pas un signalement** : un tournoi se joue sur des créneaux, et sans départ il n'y a
     **rien à lancer**. La garde vit sur `vers_pret` ; l'invariant tient ensuite parce qu'on ne peut
     plus retirer le dernier départ d'un tournoi non-brouillon (`DernierDepartNonSupprimable`).
-    Première brique de la garde de complétude de préparation (ADR-0026 §2).
+    Première brique de la garde de complétude de préparation (ADR-0026 §2). Levée aussi en
+    **lecture** (palmarès, classement imprimable E09US005) : aucun classement à rendre.
     """
 
     code = "tournoi_sans_depart"

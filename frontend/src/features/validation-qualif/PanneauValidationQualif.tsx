@@ -18,6 +18,7 @@ import { departDeSalle } from '../salle/rotation'
 import type { Volee } from '../saisie/api'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { FileDuScoreur } from './FileDuScoreur'
 import type { GesteDuBouton } from './etat'
 import { aValider, avertissementAnnulation, etatVolee, gesteDuBouton } from './etat'
 import {
@@ -29,12 +30,17 @@ import {
 
 export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
   const [choixDepart, setChoixDepart] = useState<number | null>(null)
-  const [archerId, setArcherId] = useState<number | null>(null)
+  const [choix, setChoix] = useState<{ archerId: number; departId: number | null } | null>(null)
   const departs = useDeparts(tournoiId)
   const liste = departs.data ?? []
   const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // ⚠️ L'archer choisi l'est **dans un créneau** : si le créneau implicite bascule seul (le matin se
+  // clôt), la feuille se fermerait sur une relecture dans l'après-midi — 404 en pleine file.
+  const archerId = choix !== null && choix.departId === departId ? choix.archerId : null
+  const choisirArcher = (id: number | null) =>
+    setChoix(id === null ? null : { archerId: id, departId })
   const classement = useClassement(tournoiId, departId)
-  const serie = useSerieScoreur(tournoiId, archerId)
+  const serie = useSerieScoreur(tournoiId, archerId, departId)
   const valider = useValiderSerie(tournoiId)
   const annuler = useAnnulerValidation(tournoiId)
   const refermer = useRefermerCorrection(tournoiId)
@@ -49,20 +55,19 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
         validation annulée rouvre la saisie sur la tablette de la cible ; le score reste au
         classement jusqu'à la ressaisie.
       </p>
-      {/* ⚠️ DETTE-052 — ce sélecteur filtre la **liste d'archers**, et rien d'autre : les trois
-          appels qu'il déclenche ne transportent aucun `depart_id`, donc le serveur **devine** le
-          créneau (le plus petit où l'archer est inscrit). Sur un archer engagé matin et
-          après-midi, on peut donc valider la feuille du matin en ayant choisi l'après-midi. La
-          résorption est serveur — porter le créneau dans les corps de requête. */}
+      {/* Ce créneau voyage avec la lecture et les trois gestes (E04US019) : sans lui le serveur
+          devinait le plus petit créneau de l'archer, et validait le matin en ayant choisi
+          l'après-midi. */}
       <ChoixCreneau
         departs={liste}
         valeur={departId}
         surChangement={(valeur) => {
           setChoixDepart(valeur)
-          setArcherId(null)
+          setChoix(null)
         }}
         etiquette="Départ à valider"
       />
+      <FileDuScoreur tournoiId={tournoiId} departId={departId} onChoisir={choisirArcher} />
       <MessageErreur erreur={serie.error ?? valider.error ?? annuler.error ?? refermer.error} />
       {lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer sur ce départ pour l'instant.</p>
@@ -72,7 +77,7 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
           <select
             value={archerId ?? ''}
             onChange={(evenement) =>
-              setArcherId(evenement.target.value === '' ? null : Number(evenement.target.value))
+              choisirArcher(evenement.target.value === '' ? null : Number(evenement.target.value))
             }
           >
             <option value="">Choisir un archer…</option>
@@ -95,10 +100,11 @@ export function PanneauValidationQualif({ tournoiId }: { tournoiId: number }) {
           // Deux gestes, deux routes : refermer **nomme** son lot, valider ne nomme rien. La
           // décision vit dans `gesteDuBouton` (pure, testée) — pas ici.
           onValider={(geste) => {
-            if (geste.geste === 'refermer') refermer.mutate({ archerId, numero: geste.numero })
-            else valider.mutate(archerId)
+            if (geste.geste === 'refermer')
+              refermer.mutate({ archerId, numero: geste.numero, departId })
+            else valider.mutate({ archerId, departId })
           }}
-          onAnnuler={(numero) => annuler.mutate({ archerId, numero })}
+          onAnnuler={(numero) => annuler.mutate({ archerId, numero, departId })}
         />
       )}
     </section>
@@ -141,9 +147,9 @@ function FeuilleAValider({
       <p className="carte__etat">
         Total validé : <strong>{cumul}</strong>
       </p>
-      {/* ⚠️ Le serveur referme une correction **avant** de valider quoi que ce soit d'autre, un
-          lot à la fois : le bouton doit dire lequel des deux gestes il déclenche, sinon il éteint
-          le marqueur « En correction » alors qu'on croyait acter des volées fraîches. */}
+      {/* ⚠️ Le serveur **refuse** de valider tant qu'une correction est ouverte
+          (`CorrectionOuverte`) : le bouton doit dire lequel des deux gestes il déclenche, sinon il
+          éteint « En correction » alors qu'on croyait acter des volées fraîches. */}
       <button type="button" disabled={enCours || !validable} onClick={() => onValider(geste)}>
         {geste.geste === 'refermer'
           ? `Refermer la correction — volée${geste.volees.length > 1 ? 's' : ''} ${geste.volees.join(', ')}`

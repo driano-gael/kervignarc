@@ -10,6 +10,7 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useDeparts } from '../departs/hooks'
 import {
   cheminAudit,
+  cheminClassementQualification,
   cheminClubPaiement,
   cheminFeuilleDeMarque,
   cheminPalmares,
@@ -76,6 +77,7 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
   const [tri, setTri] = useState<TriPlacement>('cible')
   const [departId, setDepartId] = useState<number | null>(null)
   const [departFeuille, setDepartFeuille] = useState<number | null>(null)
+  const [departClassement, setDepartClassement] = useState<number | null>(null)
 
   const listeDeparts = departs.data ?? []
   const suffixePlacement = departId !== null ? `-depart-${departId}` : ''
@@ -152,6 +154,35 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
             }
           >
             <option value="">Choisir un départ…</option>
+            {listeDeparts.map((depart) => (
+              <option key={depart.id} value={depart.id}>
+                Départ {depart.numero}
+              </option>
+            ))}
+          </select>
+        </label>
+      ),
+    },
+    {
+      identifiant: 'classement-qualification',
+      libelle: 'Classement de qualification',
+      description:
+        'Une page par catégorie et par départ, à afficher au mur — marquée « provisoire » tant que des volées restent à valider.',
+      chemin: cheminClassementQualification(tournoiId, departClassement),
+      nomSansExtension: `classement-qualification-${tournoiId}${
+        departClassement !== null ? `-depart-${departClassement}` : ''
+      }`,
+      commandes: (
+        <label className="formulaire__libelle">
+          Départ
+          <select
+            className="formulaire__champ"
+            value={departClassement ?? ''}
+            onChange={(e) =>
+              setDepartClassement(e.target.value === '' ? null : Number(e.target.value))
+            }
+          >
+            <option value="">Tous les départs</option>
             {listeDeparts.map((depart) => (
               <option key={depart.id} value={depart.id}>
                 Départ {depart.numero}

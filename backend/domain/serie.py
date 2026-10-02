@@ -263,8 +263,24 @@ class Serie:
         est **complète** — sinon `SerieIncomplete`. **Toutes les N volées** : verrouille le
         prochain lot de N non validées ; en fin de barème un **reliquat** de moins de N est validé
         plutôt que laissé ouvert. `RienAValider` si aucun lot ni reliquat n'est disponible.
-        Une **correction en cours** se referme en priorité, hors grain (voir plus bas)."""
+        Refuse (`CorrectionOuverte`) tant qu'une correction est ouverte : on la referme par
+        `refermer_correction`, qui nomme son lot."""
         par = _intervenant_valide(par)
+        return self._verrouiller(self._lot_a_valider(grain, nb_volees_bareme), par)
+
+    def lot_a_valider(self, *, grain: GrainValidation, nb_volees_bareme: int) -> tuple[Volee, ...]:
+        """Ce que `valider` verrouillerait maintenant, ou `()` s'il refuserait (E04US019).
+
+        ⚠️ Lit **la même** règle que `valider`, via `_lot_a_valider` : la file du scoreur ne doit
+        jamais proposer une feuille que la validation refuse, ni en cacher une qu'elle accepte.
+        """
+        try:
+            return self._lot_a_valider(grain, nb_volees_bareme)
+        except (CorrectionOuverte, SerieIncomplete, RienAValider):
+            return ()
+
+    def _lot_a_valider(self, grain: GrainValidation, nb_volees_bareme: int) -> tuple[Volee, ...]:
+        """Le lot du prochain acte de validation, ou le refus typé qui l'interdit."""
         a_valider = tuple(v for v in self.volees if not v.verrouillee)
         if any(v.en_correction for v in self.volees):
             # ⚠️ **Un geste qui referme une correction doit NOMMER son lot** : deux rédactions
@@ -295,7 +311,7 @@ class Serie:
             if not a_valider:
                 raise RienAValider("Toutes les volées sont déjà validées.")
             lot = a_valider
-        return self._verrouiller(lot, par)
+        return lot
 
     def refermer_correction(self, numero: int, *, par: str) -> Serie:
         """Revalide **le lot rouvert qui contient la volée `numero`**, au nom de `par`.

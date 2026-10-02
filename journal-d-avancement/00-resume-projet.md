@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 1er octobre 2026
+# Résumé du projet — où on en est au 1ᵉʳ octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -393,6 +393,10 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   qui la ressaisit, avant revalidation. ⚠️ **L'archer ne quitte jamais le classement** pendant cette
   fenêtre : c'est le droit d'écrire qui se rouvre, pas le compte. Détail dans
   [`2026-09-11-19h25-annuler-une-validation.md`](2026-09-11-19h25-annuler-une-validation.md).
+- **Le scoreur a sa file d'attente** (01/10) : en tête de l'écran de validation, les cibles qui
+  attendent sa signature, **la plus ancienne en premier**, avec depuis combien de temps elle attend ;
+  toucher un archer ouvre sa feuille. Il ne fait plus le tour de la salle pour savoir où aller. Détail
+  dans [`2026-10-01-19h08-la-file-du-scoreur.md`](2026-10-01-19h08-la-file-du-scoreur.md).
 
 ### 7. Les documents imprimables — *les premières listes du jour J*
 
@@ -407,9 +411,13 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   seul, parce qu'elle se remplit au stylo. Le CSV s'ouvre du premier coup dans un tableur français
   (accents corrects, colonnes séparées, montants additionnables). Détail dans
   [`2026-08-30-18h03-exports-au-format-choisi.md`](2026-08-30-18h03-exports-au-format-choisi.md).
-  *Restent à venir : le classement et le journal d'audit exportables, et le format Excel (`.xlsx`),
-  qui demande votre feu vert sur l'ajout d'une bibliothèque. Le déroulé horaire imprimable reste
-  à faire.*
+  Depuis, le **palmarès** et le **journal d'audit** se sont ajoutés, et le format **Excel** a
+  rejoint le CSV partout où un tableur a un sens.
+- **Le classement de qualification s'imprime** (dernier fait marquant, 01/10) : **une page par
+  catégorie**, départ par départ, à afficher au mur — marquée « provisoire » tant que des volées
+  restent à valider —, et le même classement à plat en CSV ou Excel. Détail dans
+  [`2026-10-01-18h46-classement-de-qualification-a-imprimer.md`](2026-10-01-18h46-classement-de-qualification-a-imprimer.md).
+  *Reste à faire : le déroulé horaire imprimable.*
 
 ### 10. Déployer le jour J — *l'application tient dans un fichier*
 
@@ -595,7 +603,8 @@ rencontres.*
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé) et les **classements imprimables**. C'est **le dernier reliquat** de J1 :
+   (« c'est moi » mémorisé) — les **classements imprimables** sont faits (01/10). C'est **le dernier
+   reliquat** de J1 :
    le jalon est sinon **terminé**.
    *(Supervision des postes, classement, vues publiques, suivi des paiements, complétude du tournoi,
    recherche d'un archer, **premières listes imprimables** (placement, club & paiement), la **mise en
@@ -627,10 +636,15 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **155 US livrées** (mergées, revues, CI verte) à la date du 01/10/2026 — la dernière, `E13US002`,
+- **157 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E13US002`,
   à **surface visible** : l'organisateur **compose les équipes** du tournoi sur un écran « Équipes »,
   qui lui dit pour chacune si elle est conforme (nombre d'archers, même arme, mixité) sans jamais
-  l'empêcher d'enregistrer. Juste avant, `E17US005`, à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
+  l'empêcher d'enregistrer. Juste avant, `E09US005`,
+  à **surface visible** : le **classement de qualification s'imprime**, une page par catégorie à
+  afficher au mur, marquée « provisoire » tant que tout n'est pas tiré — et elle **clôt le jalon
+  J3**. Juste avant, `E04US019`,
+  à **surface visible** : le scoreur voit **quelles cibles attendent sa validation**, la plus ancienne
+  en tête. Juste avant, `E17US005`, à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
   sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
   sienne. Juste avant, `E02US007`, qui **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
   d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US006` : un
@@ -930,8 +944,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
-  et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : terminé (14/14)**
+  et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » reste, hors
+  décompte du jalon ; les classements imprimables sont faits depuis le 01/10.)* Jalon **J2 (les duels) : terminé (14/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**

@@ -215,6 +215,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce _premiere_qualification dans « backend/application/classements.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0082"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce DecorDeSaisie.VOLEE_COLLECTIVE dans « frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
@@ -336,6 +342,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 55
+  "signaux": 56
  }
 };
