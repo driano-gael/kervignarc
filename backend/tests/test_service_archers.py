@@ -795,7 +795,8 @@ def test_modifier_archer_signale_le_changement_de_categorie_d_un_archer_engage()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None and autre_categorie.id is not None
     m.faire_tirer(archer)
-    with pytest.raises(ChangementCategorieArcherEngage):
+    # E01US011 (DETTE-118) : la confirmation dit aussi que les duels tirés seront relus.
+    with pytest.raises(ChangementCategorieArcherEngage, match="duels déjà tirés seront relus"):
         m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
 
 

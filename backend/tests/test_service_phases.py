@@ -21,9 +21,16 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.phases import ServicePhases
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.depart import Depart
 from domain.deroule_etape import EtapeDeroule
-from domain.duel import BaremeDuel, Duel, ReglageBaremeDuel
+from domain.duel import (
+    BaremeDuel,
+    Duel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+    SurchargeArme,
+)
 from domain.erreurs import EffectifIncompatible, SourceApresPhase, SourceIntrouvable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
@@ -101,9 +108,10 @@ def _service(
     # et rend les phases telles qu'elles ont été posées — les tests de service ne franchiraient
     # jamais la couture d'assemblage, celle-là même qu'ADR-0076 introduit.
     phases = FauxPhaseRepository(departs, deroules)
-    return ServicePhases(
-        tournois, phases, departs, deroules, duels or FauxDuelRepository()
-    ), tournoi.id
+    verrou = VerrouBaremeDuel(
+        departs, phases, deroules, duels or FauxDuelRepository(), ResolveurBaremeDuelFfta()
+    )
+    return ServicePhases(tournois, phases, departs, deroules, verrou), tournoi.id
 
 
 def _service_avec_creneau() -> tuple[ServicePhases, int, int]:
@@ -386,7 +394,15 @@ def test_supprimer_la_qualification_est_refuse() -> None:
     assert depart.id is not None
     phases = FauxPhaseRepository(departs)
     deroules = FauxDerouleRepository()
-    service = ServicePhases(tournois, phases, departs, deroules, FauxDuelRepository())
+    service = ServicePhases(
+        tournois,
+        phases,
+        departs,
+        deroules,
+        VerrouBaremeDuel(
+            departs, phases, deroules, FauxDuelRepository(), ResolveurBaremeDuelFfta()
+        ),
+    )
     poser_phase_factice(
         departs,
         deroules,
@@ -594,3 +610,16 @@ def test_le_decor_de_test_recopie_le_bareme_de_duel() -> None:
 
     assert posee.bareme_duel == _CLUB
     assert deroules.par_tournoi(1)[0].bareme_duel == _CLUB
+
+
+def test_renvoyer_le_meme_bareme_a_la_casse_pres_n_est_pas_un_changement() -> None:
+    """La casse d'une arme ne change pas l'arme (`SurchargeArme.designe`) : pas de faux 409."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    poulies = BaremeDuel.preset_ffta_poulies()
+    reglage = ReglageBaremeDuel(_FFTA.par_defaut, (SurchargeArme("Arc à poulies", poulies),))
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=reglage)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+
+    meme = ReglageBaremeDuel(_FFTA.par_defaut, (SurchargeArme("ARC À POULIES", poulies),))
+    _modifier_bareme(service, tournoi_id, etape, meme)

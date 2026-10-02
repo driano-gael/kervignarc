@@ -472,6 +472,17 @@ def create_app(
     placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
     placement_tableau_repository = PlacementTableauRepositorySQL(database.session_factory)
     duel_repository = DuelRepositorySQL(database.session_factory)
+    # E01US011 (ADR-0117) : **un** résolveur par défaut et **un** verrou, partagés par la saisie des
+    # duels, la composition des phases et l'édition des catégories — juger un changement de barème
+    # avec un autre résolveur que celui qui relit les duels ne garderait rien.
+    resolveur_bareme_duel = ResolveurBaremeDuelFfta()
+    verrou_bareme = VerrouBaremeDuel(
+        depart_repository,
+        phase_repository,
+        deroule_repository,
+        duel_repository,
+        resolveur_bareme_duel,
+    )
     # Plan de poules (E05US023, migration 0045) : « poule → plage de couloirs contigus », jamais
     # « archer → couloir » — le membre au repos change à chaque tour, donc l'archer serait une
     # information *fausse*, pas seulement incomplète (ADR-0083 §3).
@@ -516,8 +527,7 @@ def create_app(
         tournoi_repository,
         categorie_repository,
         blason_repository,
-        # E01US011 : l'arme d'une catégorie se fige au premier tir d'une phase réglée (ADR-0117).
-        VerrouBaremeDuel(depart_repository, phase_repository, deroule_repository, duel_repository),
+        verrou_bareme,
     )
     app.state.service_blasons = ServiceBlasons(
         tournoi_repository, blason_repository, categorie_repository
@@ -578,13 +588,13 @@ def create_app(
     # tournoi et faire vivre leur cycle de vie. Le service vérifie l'existence du tournoi et arbitre
     # les conflits d'état ; la cohérence de la séquence (source, ordres) est une règle du domaine
     # (`SequencePhases`). Même port `phase_repository` que le barème/grain (une table `phase`).
-    # E01US011 : le dépôt de duels sert le verrou du barème au premier tir (ADR-0117).
+    # E01US011 : le verrou partagé décide si le barème d'une étape tirée peut encore changer.
     app.state.service_phases = ServicePhases(
         tournoi_repository,
         phase_repository,
         depart_repository,
         deroule_repository,
-        duel_repository,
+        verrou_bareme,
     )
     # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue
     # nom → implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
@@ -739,7 +749,7 @@ def create_app(
         duel_repository,
         forfait_repository,
         app.state.service_classement,
-        ResolveurBaremeDuelFfta(),
+        resolveur_bareme_duel,
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),

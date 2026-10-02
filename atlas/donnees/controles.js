@@ -320,10 +320,16 @@ window.ATLAS.controles = {
    "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0106"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce un_bareme_regle_est_tire dans « backend/application/verrou_bareme.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0117"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 53
+  "signaux": 54
  }
 };

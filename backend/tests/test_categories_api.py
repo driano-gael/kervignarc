@@ -445,10 +445,10 @@ def test_creer_requete_invalide_erreur_400(
     assert "details" in corps
 
 
-def test_changer_l_arme_apres_un_tir_d_une_phase_reglee_repond_409(
+def test_changer_l_arme_apres_un_tir_quand_le_bareme_change_repond_409(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """E01US011 (arbitrage du 01/10/2026) : le refus du service sort en conflit, code stable."""
+    """E01US011 : « Arc à poulies » → « Arc classique » relirait les duels en sets → 409."""
     with TestClient(app_categories) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
@@ -462,13 +462,8 @@ def test_changer_l_arme_apres_un_tir_d_une_phase_reglee_repond_409(
             json={"libelle": "Poulies", "arme": "Arc à poulies", "hauteur_cm": 130},
         )
         assert categorie.status_code == 201, categorie.text
-        bareme = {"mode": "sets", "nb_manches": 5, "nb_fleches_par_volee": 3}
         phase = client.post(
-            f"/api/v1/tournois/{tournoi_id}/phases",
-            json={
-                "type": "elimination_directe",
-                "bareme_duel": {"par_defaut": {**bareme, "points_pour_gagner": 6}},
-            },
+            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "elimination_directe"}
         )
         assert phase.status_code == 201, phase.text
         fabrique = app_categories.state.database.session_factory
@@ -486,7 +481,7 @@ def test_changer_l_arme_apres_un_tir_d_une_phase_reglee_repond_409(
 
         reponse = client.put(
             f"/api/v1/categories/{categorie.json()['id']}",
-            json={"libelle": "Poulies", "arme": "Poulies", "hauteur_cm": 130},
+            json={"libelle": "Poulies", "arme": "Arc classique", "hauteur_cm": 130},
         )
 
         assert reponse.status_code == 409, reponse.text

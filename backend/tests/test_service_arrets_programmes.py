@@ -37,6 +37,7 @@ import pytest
 
 from application.arrets_programmes import ServiceArretsProgrammes
 from application.erreurs import ArretIntrouvable
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.arret_programme import (
     ArretDeCirconstance,
     ArretProgramme,
@@ -47,6 +48,7 @@ from domain.arret_programme import (
 )
 from domain.bareme import BaremeQualification
 from domain.depart import Depart, DepartId
+from domain.duel import ResolveurBaremeDuelFfta
 from domain.erreurs import ArretProgrammeInvalide
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
@@ -254,7 +256,17 @@ class Decor:
         self.horloge = FauxHorloge()
         self.suivi = FauxSuivi()
         self.service_phases = ServicePhases(
-            self.tournois, self.phases, self.departs, self.deroules, FauxDuelRepository()
+            self.tournois,
+            self.phases,
+            self.departs,
+            self.deroules,
+            VerrouBaremeDuel(
+                self.departs,
+                self.phases,
+                self.deroules,
+                FauxDuelRepository(),
+                ResolveurBaremeDuelFfta(),
+            ),
         )
         self.service = ServiceArretsProgrammes(
             phases=self.phases,

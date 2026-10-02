@@ -11620,7 +11620,9 @@ window.ATLAS.decisions = {
       "etape_tiree",
       "un_bareme_regle_est_tire"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "un_bareme_regle_est_tire"
+     ],
      "verifiable": true
     },
     {

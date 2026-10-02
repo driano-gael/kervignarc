@@ -445,6 +445,24 @@ class ReglageBaremeDuel:
         return self.par_defaut
 
 
+def memes_baremes(a: ReglageBaremeDuel | None, b: ReglageBaremeDuel | None) -> bool:
+    """Deux réglages jouent-ils pareil ? À la casse près des armes, comme `SurchargeArme.designe`.
+
+    C'est l'égalité que le verrou du premier tir doit comparer (ADR-0117 §5) : la structure seule
+    refuserait la ré-édition d'un réglage dont seule la casse d'une arme a bougé.
+    """
+    return _signature(a) == _signature(b)
+
+
+def _signature(
+    reglage: ReglageBaremeDuel | None,
+) -> tuple[BaremeDuel, tuple[tuple[str, BaremeDuel], ...]] | None:
+    if reglage is None:
+        return None
+    return reglage.par_defaut, tuple((s.arme.casefold(), s.bareme) for s in reglage.surcharges)
+
+
+# DETTE-119 — recopiée au front (`shared/phases/baremeDuel.ts::estPoulies`), sans test commun.
 def _est_poulies(arme: str | None) -> bool:
     """Vrai si l'arme désigne l'arc à poulies (cumul, A.7.5.2), par normalisation du texte libre."""
     if arme is None:

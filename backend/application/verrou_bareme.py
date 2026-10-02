@@ -7,7 +7,8 @@ duels validés sous d'autres règles. Une seule définition de « déjà tiré �
 
 from __future__ import annotations
 
-from domain.deroule_etape import EtapeDerouleId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
+from domain.duel import BaremeDuel, ResolveurBaremeDuel
 from domain.ports import DepartRepository, DerouleRepository, DuelRepository, PhaseRepository
 from domain.tournoi import TournoiId
 
@@ -19,11 +20,15 @@ class VerrouBaremeDuel:
         phases: PhaseRepository,
         deroules: DerouleRepository,
         duels: DuelRepository,
+        resolveur: ResolveurBaremeDuel,
     ) -> None:
         self._departs = departs
         self._phases = phases
         self._deroules = deroules
         self._duels = duels
+        # ⚠️ Le **même** défaut que celui de `ServiceSaisieDuels` (composition root) : comparer des
+        # barèmes avec un autre résolveur que celui qui relira les duels ne garderait rien.
+        self._resolveur = resolveur
 
     def etape_tiree(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> bool:
         """Une phase de cette étape a-t-elle un tir, **dans n'importe quel créneau** ?
@@ -38,12 +43,20 @@ class VerrouBaremeDuel:
             if phase.etape_id == etape_id
         )
 
-    def un_bareme_regle_est_tire(self, tournoi_id: TournoiId) -> bool:
-        """Une étape **réglée** du tournoi a-t-elle un tir ? Une étape non réglée lit l'arme par
-        inclusion (« poulie »), un renommage ne la détache pas : arbitrage du 01/10/2026."""
+    def arme_figee(self, tournoi_id: TournoiId, ancienne: str | None, nouvelle: str | None) -> bool:
+        """Passer de `ancienne` à `nouvelle` change-t-il le barème d'une étape déjà tirée ?
+
+        Réglée ou non : sans réglage, le défaut reconnaît les poulies au libellé, et franchir cette
+        frontière relit aussi les duels (arbitrage du 01/10/2026, 2ᵉ passe de revue).
+        """
         return any(
             etape.id is not None
-            and etape.bareme_duel is not None
+            and self._bareme(etape, ancienne) != self._bareme(etape, nouvelle)
             and self.etape_tiree(tournoi_id, etape.id)
             for etape in self._deroules.par_tournoi(tournoi_id)
         )
+
+    def _bareme(self, etape: EtapeDeroule, arme: str | None) -> BaremeDuel:
+        if etape.bareme_duel is not None:
+            return etape.bareme_duel.pour(arme)
+        return self._resolveur.bareme_pour(arme)

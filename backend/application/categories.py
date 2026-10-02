@@ -175,12 +175,12 @@ class ServiceCategories:
         modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
         if (
             categorie.tournoi_id is not None
-            and _cle_arme(modifiee.arme) != _cle_arme(categorie.arme)
-            and self._verrou.un_bareme_regle_est_tire(categorie.tournoi_id)
+            and modifiee.arme != categorie.arme
+            and self._verrou.arme_figee(categorie.tournoi_id, categorie.arme, modifiee.arme)
         ):
             raise ArmeDeCategorieVerrouillee(
-                "Des duels d'une phase au barème réglé ont déjà été tirés : l'arme de cette "
-                "catégorie ne peut plus changer, sans quoi leur barème serait relu autrement."
+                "Des duels déjà tirés se joueraient sous un autre barème avec cette arme : elle ne "
+                "peut plus changer. Le libellé de la catégorie, lui, reste modifiable."
             )
         if categorie.tournoi_id is None:
             # **Deuxième fois** que cette route héritée laisse passer ce que les routes neuves
@@ -252,8 +252,3 @@ class ServiceCategories:
             raise BlasonHorsTournoi(
                 f"Le blason {blason_id} n'appartient pas au tournoi {tournoi_id}."
             )
-
-
-def _cle_arme(arme: str | None) -> str:
-    """Comme `SurchargeArme.designe` : casse et espaces de bord ne changent pas l'arme."""
-    return "" if arme is None else arme.strip().casefold()
