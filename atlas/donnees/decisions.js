@@ -1276,7 +1276,12 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/duel.py",
      "existe": true,
      "symboles": [
-      "Participant"
+      "Participant",
+      "BaremeDuel.nb_fleches_barrage",
+      "_vainqueur_barrage",
+      "saisir_barrage",
+      "presetFftaEquipe",
+      "presetFftaMixte"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1350,6 +1355,19 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [],
      "verifiable": false
+    },
+    {
+     "chemin": "frontend/src/shared/phases/baremeDuel.ts",
+     "existe": true,
+     "symboles": [
+      "BaremeDuel.nb_fleches_barrage",
+      "_vainqueur_barrage",
+      "saisir_barrage",
+      "presetFftaEquipe",
+      "presetFftaMixte"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -2491,7 +2509,8 @@ window.ATLAS.decisions = {
       "Protocol",
       "ResolveurBaremeDuel",
       "ResolveurBaremeDuelFfta",
-      "ReglageBaremeDuel"
+      "ReglageBaremeDuel",
+      "nb_fleches_barrage"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -2502,7 +2521,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "DuelRepositorySQL",
       "_manches_json",
-      "_barrage_json"
+      "_barrage_json",
+      "_fleches_de_barrage"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -2528,7 +2548,8 @@ window.ATLAS.decisions = {
     "E06US006",
     "E10US001",
     "E10US005",
-    "E12US002"
+    "E12US002",
+    "E13US003"
    ]
   },
   {

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
+from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.serie import Serie, Volee
@@ -56,7 +58,7 @@ def _migrer(url: str) -> None:
 class Scenario:
     """Un tournoi à deux archers classés, une phase d'élimination, un scoreur (code)."""
 
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(self, app: FastAPI, reglage: ReglageBaremeDuel | None = None) -> None:
         db: Database = app.state.database
         tournoi = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Salle", _DATE))
         assert tournoi.id is not None
@@ -114,7 +116,8 @@ class Scenario:
             inscriptions.ajouter(Inscription(archer.id, _depart_id))
             self.archers.append(archer.id)
         phase = poser_phase_sql(
-            db.session_factory, Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE)
+            db.session_factory,
+            replace(Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE), bareme_duel=reglage),
         )
         assert phase.id is not None
         self.phase_id = phase.id
@@ -236,8 +239,8 @@ def test_code_de_zone_ou_camp_invalide_refuse(
                 "tournoi_id": scn.tournoi_id,
                 "phase_id": scn.phase_id,
                 "match_numero": 1,
-                "fleche_haut": "10",
-                "fleche_bas": "10",
+                "fleches_haut": ["10"],
+                "fleches_bas": ["10"],
                 "gagnant_designe": "milieu",  # n'est pas une Cote (haut/bas)
             },
             headers=entete,
@@ -270,3 +273,77 @@ def test_scoreur_d_un_autre_tournoi_refuse(
         assert autre.id is not None
         reponse = client.get(f"/api/v1/duels/tableau/{autre.id}/{scn.phase_id}", headers=entete)
         assert reponse.status_code == 403, reponse.text
+
+
+def _egaliser(client: TestClient, scn: Scenario, entete: dict[str, str], nb_manches: int) -> None:
+    for numero in range(1, nb_manches + 1):
+        reponse = client.post(
+            "/api/v1/duels/manches",
+            json=_manche(numero, ("9", "9", "9"), ("9", "9", "9"), scn.phase_id, scn.tournoi_id),
+            headers=entete,
+        )
+        assert reponse.status_code == 200, reponse.text
+
+
+def _barrage(scn: Scenario, haut: list[str], bas: list[str]) -> dict[str, object]:
+    return {
+        "tournoi_id": scn.tournoi_id,
+        "phase_id": scn.phase_id,
+        "match_numero": 1,
+        "fleches_haut": haut,
+        "fleches_bas": bas,
+    }
+
+
+def test_barrage_individuel_a_une_fleche_de_bout_en_bout(
+    app_duels: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US003 CA 2-3 : sans réglage, le barrage reste à une flèche, servie en liste."""
+    with TestClient(app_duels) as client:
+        scn = Scenario(app_duels)
+        entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        _egaliser(client, scn, entete, 5)
+
+        reponse = client.post(
+            "/api/v1/duels/barrages", json=_barrage(scn, ["10"], ["9"]), headers=entete
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        duel = reponse.json()
+        assert duel["nb_fleches_barrage"] == 1
+        assert duel["barrage"]["haut"] == ["10"]
+        assert duel["resultat"]["points_haut"] == 6
+
+
+def test_barrage_d_equipe_a_trois_fleches_relu_depuis_la_base(
+    app_duels: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US003 CA 3, 6 : barème à 3 flèches de barrage — 1 flèche refusée, 3 au total tranchent,
+    et le tir relu par GET garde ses trois flèches (aller-retour JSON de la colonne `barrage`)."""
+    equipe = BaremeDuel(ModeDuel.SETS, 4, 3, 5, nb_fleches_barrage=3)
+    with TestClient(app_duels) as client:
+        scn = Scenario(app_duels, ReglageBaremeDuel(par_defaut=equipe))
+        entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        _egaliser(client, scn, entete, 4)
+
+        refus = client.post(
+            "/api/v1/duels/barrages", json=_barrage(scn, ["10"], ["9"]), headers=entete
+        )
+        assert refus.status_code == 422, refus.text
+        assert refus.json()["code"] == "nombre_fleches_volee_invalide"
+
+        reponse = client.post(
+            "/api/v1/duels/barrages",
+            json=_barrage(scn, ["9", "9", "9"], ["10", "8", "8"]),
+            headers=entete,
+        )
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["resultat"]["points_haut"] == 5  # 4-4 → 5-4 (§7)
+
+        tableau = client.get(
+            f"/api/v1/duels/tableau/{scn.tournoi_id}/{scn.phase_id}", headers=entete
+        ).json()
+        finale = next(d for d in tableau["duels"] if d["numero"] == 1)
+        assert finale["nb_fleches_barrage"] == 3
+        assert finale["barrage"]["haut"] == ["9", "9", "9"]
+        assert finale["barrage"]["bas"] == ["10", "8", "8"]

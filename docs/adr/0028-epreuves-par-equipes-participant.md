@@ -63,6 +63,15 @@ d'équipe et les **volées alternées** (FFTA §7) sont une implémentation de l
 ([ADR-0004](0004-moteur-de-phases-politiques.md)), résolue par le couple (phase, type de participant).
 Aucune branche `if équipe` dans le moteur : une politique de plus.
 
+> **Amendé le 02/10/2026 (E13US003, arbitrage du commanditaire au cadrage)** : le score d'un match
+> d'équipe n'est **pas** porté par la famille `scoring`, qui n'a aucun appelant de production
+> (`DETTE-028`), mais par le **barème de duel** de la phase ([ADR-0117](0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md)),
+> livré entre-temps. La volée d'un camp y est déjà le cumul de ses flèches, quel qu'en soit le
+> tireur ; une phase d'équipes est une phase distincte, donc la dimension « type de participant »
+> n'avait rien à départager. Seul manque comblé : le **barrage à N flèches** (1 par archer, §8.2).
+> Les « volées alternées » sont un ordre de tir (§9), sans effet sur le score. Aucune branche
+> `if équipe` : l'intention du point est tenue, sa lettre non.
+
 **4. Placement, saisie et classement clés sur le participant.** En phase par équipes, le placement
 pose des **équipes** (leurs archers sur des cibles voisines), la saisie enregistre une **volée
 d'équipe**, le classement produit des **rangs d'équipe**. Chaque brique aval (EPIC-03/04/06) apprend à
@@ -73,8 +82,9 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
 
 - **+** La précaution du cadrage **paie** : parce que le moteur était pensé « participants », l'ajout
   est une **réalisation**, pas une refonte — exactement ce que la porte ouverte visait.
-- **+** Les équipes reposent sur l'existant (politique `scoring`, entité enfant du tournoi comme
-  `Depart`/`Scoreur`) sans mécanisme neuf : cohérence du modèle.
+- **+** Les équipes reposent sur l'existant (barème de duel — et non la politique `scoring`, cf.
+  l'amendement du point 3 —, entité enfant du tournoi comme `Depart`/`Scoreur`) sans mécanisme
+  neuf : cohérence du modèle.
 - **−** **Périmètre MVP nettement élargi.** L'abstraction participant touche EPIC-03/04/05/06 ; la
   livraison des équipes est un **programme** (EPIC-13 le coordonne), pas une US. À budgéter comme tel.
 - **−** L'abstraction `Participant` doit être posée **avant** que le moteur de duels (E05US005) ne se
@@ -104,6 +114,9 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   **restriction** tranchée en revue, qui amende le point 2 (cf. son encart) : seul l'effectif est
   surchargeable. « Engagé » couvre désormais l'appartenance à une équipe (glossaire) : la
   conséquence « deux notions d'engagé » s'est résolue en **une** notion élargie. Cf. `stories/E13-equipes.md` § E13US002.
+- **02/10/2026 — décision n°3 réalisée, amendée (E13US003).** Barème d'équipe exprimé par
+  `BaremeDuel` (presets FFTA équipe et mixte au réglage de phase), barrage à `nb_fleches_barrage`
+  flèches par camp. Cf. l'encart du point 3 et `stories/E13-equipes.md` § E13US003.
 
 ## Porté dans le code par
 
@@ -124,19 +137,24 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   `backend/infrastructure/db/repositories/equipes.py` (`EquipeRepositorySQL`) et la migration
   `0059_equipe` persistent `equipe` et `membre_equipe` ; `backend/api/v1/equipes.py` les expose ;
   `frontend/src/features/equipes/` est l'écran d'administration.
+- `backend/domain/duel.py` — `BaremeDuel.nb_fleches_barrage` et `Barrage(fleches_haut,
+  fleches_bas, …)` portent le point 3 tel qu'amendé : `_vainqueur_barrage` compare des **totaux**,
+  `saisir_barrage` exige le compte du barème ; `frontend/src/shared/phases/baremeDuel.ts`
+  (`presetFftaEquipe`, `presetFftaMixte`) pose les barèmes d'équipe FFTA.
 
-🔴 **Cet ADR n'est porté qu'à moitié, et il faut le dire ici plutôt que le laisser croire.**
-Les points 1 et 2 sont livrés ; les points 3 et 4 **n'ont aucun module** :
+🔴 **Cet ADR n'est pas encore porté en entier, et il faut le dire ici plutôt que le laisser croire.**
+Les points 1 à 3 sont livrés ; le point 4 **n'a aucun module** :
 
 | Point de la décision | État |
 |---|---|
 | 1. Le match oppose des participants | ✅ `domain/participant.py` |
 | 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ✅ tel qu'amendé le 01/10/2026 — `domain/equipe.py`, `application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
-| 3. Le scoring d'équipe est une politique injectable | ⬜ `E13US003` |
+| 3. Le scoring d'équipe est une politique injectable | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`domain/duel.py`), pas la famille `scoring`. `E13US003` |
 | 4. Placement / saisie / classement clés sur le participant | ⬜ `E13US004` |
 
 ⚠️ **Une équipe se compose, elle ne se joue pas encore.** Aucun module de production ne construit
 `Participant.equipe(...)` (seuls des tests le font) : moteur, placement, saisie et classement
 ignorent les équipes. Un lecteur qui verrait l'écran « Équipes » livré pourrait conclure qu'une
-épreuve par équipes se déroule — pas avant E13US003/E13US004. C'est le mode de défaillance
+épreuve par équipes se déroule — pas avant E13US004 : E13US003 a rendu le **barème** d'équipe
+exprimable, pas le match lui-même jouable. C'est le mode de défaillance
 d'ADR-0017 (une décision que seule une partie du code porte), et la seule parade est de l'écrire.

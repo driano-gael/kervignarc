@@ -295,8 +295,8 @@ class SaisirBarrageRequete(BaseModel):
     tournoi_id: int
     phase_id: int
     numero: int
-    fleche_haut: ZoneScore
-    fleche_bas: ZoneScore
+    fleches_haut: list[ZoneScore]
+    fleches_bas: list[ZoneScore]
     gagnant_designe: Cote | None = None
     identifiant_saisie: str | None = None
 
@@ -464,8 +464,8 @@ async def saisir_barrage(
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
-    fleche_haut = requete.fleche_haut
-    fleche_bas = requete.fleche_bas
+    fleches_haut = tuple(requete.fleches_haut)
+    fleches_bas = tuple(requete.fleches_bas)
     gagnant = requete.gagnant_designe
     cle = _cle_idempotence(
         "barrage_suisse",
@@ -480,8 +480,8 @@ async def saisir_barrage(
             requete.tournoi_id,
             requete.phase_id,
             requete.numero,
-            fleche_haut,
-            fleche_bas,
+            fleches_haut,
+            fleches_bas,
             gagnant,
         )
 

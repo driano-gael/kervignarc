@@ -10,11 +10,14 @@ d'oracle métier — règle 9).
 from __future__ import annotations
 
 import datetime
+import json
 from pathlib import Path
+
+from sqlalchemy import select
 
 from domain.blason import ZoneScore
 from domain.depart import Depart
-from domain.duel import BaremeDuel, Cote, Duel
+from domain.duel import BaremeDuel, Cote, Duel, ModeDuel
 from domain.participant import Participant
 from domain.phase import Phase, TypePhase
 from domain.tournoi import Tournoi
@@ -24,6 +27,7 @@ from infrastructure.db import (
     DuelRepositorySQL,
     TournoiRepositorySQL,
 )
+from infrastructure.db.models import DuelORM
 from tests.base_migree import preparer_base
 from tests.conftest import poser_phase_sql
 
@@ -109,7 +113,7 @@ def test_aller_retour_avec_barrage(tmp_path: Path) -> None:
         duel = _saisir(duel, 4, ("6", "6", "6"), ("10", "10", "10"))
         duel = _saisir(duel, 5, ("9", "9", "9"), ("9", "9", "9"))
         duel = duel.saisir_barrage(
-            ZoneScore.DIX, ZoneScore.DIX, gagnant_designe=Cote.BAS, zones_admises=ZONES
+            (ZoneScore.DIX,), (ZoneScore.DIX,), gagnant_designe=Cote.BAS, zones_admises=ZONES
         )
         decor.duels.enregistrer(decor.phase_id, 3, duel)
         relu = _charger(decor, 3)
@@ -117,6 +121,46 @@ def test_aller_retour_avec_barrage(tmp_path: Path) -> None:
         assert relu is not None and relu.barrage is not None
         assert relu.barrage.gagnant_designe is Cote.BAS
         assert relu.vainqueur == BAS
+    finally:
+        decor.db.engine.dispose()
+
+
+def test_un_barrage_d_equipe_garde_ses_trois_fleches(tmp_path: Path) -> None:
+    """E13US003 CA 3 : un barrage à plusieurs flèches par camp survit à l'aller-retour."""
+    decor = _Decor(tmp_path)
+    try:
+        equipe = BaremeDuel(ModeDuel.SETS, 1, 3, 2, nb_fleches_barrage=3)
+        duel = _saisir(Duel.vide(equipe, HAUT, BAS), 1, ("9", "9", "9"), ("9", "9", "9"))
+        duel = duel.saisir_barrage(
+            (ZoneScore.DIX, ZoneScore.NEUF, ZoneScore.SIX),
+            (ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.HUIT),
+            zones_admises=ZONES,
+        )
+        decor.duels.enregistrer(decor.phase_id, 3, duel)
+
+        relu = decor.duels.charger(decor.phase_id, 3, bareme=equipe)
+
+        assert relu == duel
+    finally:
+        decor.db.engine.dispose()
+
+
+def test_un_barrage_ecrit_avant_les_listes_de_fleches_se_relit(tmp_path: Path) -> None:
+    """E13US003 : avant l'US, un camp stockait **une** flèche (`"haut": "10"`) — elle se relit."""
+    decor = _Decor(tmp_path)
+    try:
+        bareme = BaremeDuel.preset_ffta_classique()
+        duel = Duel.vide(bareme, HAUT, BAS)
+        for numero in range(1, 6):
+            duel = _saisir(duel, numero, ("9", "9", "9"), ("9", "9", "9"))
+        duel = duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES)
+        decor.duels.enregistrer(decor.phase_id, 3, duel)
+        with decor.db.session_factory() as session:
+            ligne = session.scalars(select(DuelORM).where(DuelORM.phase_id == decor.phase_id)).one()
+            ligne.barrage = json.dumps({"haut": "10", "bas": "9", "gagnant": None})
+            session.commit()
+
+        assert _charger(decor, 3) == duel
     finally:
         decor.db.engine.dispose()
 

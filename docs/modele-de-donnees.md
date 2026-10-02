@@ -546,7 +546,7 @@ imparfait et la migration différée.
 | haut_genre / haut_ref | TEXT / INTEGER | identité du duelliste haut `{genre, ref_id}` (archer en MVP) |
 | bas_genre / bas_ref | TEXT / INTEGER | identité du duelliste bas |
 | manches | TEXT (JSON) | liste des sets : `[{numero, haut:[…zones…], bas:[…]}]` |
-| barrage | TEXT (JSON) | shoot-off, nullable : `{haut, bas, gagnant}` |
+| barrage | TEXT (JSON) | shoot-off, nullable : `{haut, bas, gagnant}`, `haut`/`bas` en **listes** de flèches depuis E13US003 (une chaîne seule avant : relue comme une liste d'une flèche) |
 | validee_par | TEXT | scoreur ; **NULL = non validé** |
 
 > Le **résultat** d'un match du tableau, keyé `(phase_id, match_numero)`, `ON DELETE CASCADE` sur la
@@ -749,9 +749,10 @@ registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
 sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et les réglages
 de `poules`, `big_shoot_off`, `suisse` (E05US026 — `{"suisse": {"rondes": 5}}`), `bareme_duel`
-(E01US011 — `{"bareme_duel": {"defaut": {"mode": "sets", "manches": 5, "fleches": 3, "points": 6},
-"surcharges": [{"arme": "Arc à poulies", "mode": "cumul", …}]}}` ; clé absente = défaut FFTA,
-relecture **stricte**) **et `decoupage`**
+(E01US011 — `{"bareme_duel": {"defaut": {"mode": "sets", "manches": 5, "fleches": 3, "points": 6,
+"barrage": 1}, "surcharges": [{"arme": "Arc à poulies", "mode": "cumul", …}]}}` ; clé absente =
+défaut FFTA, relecture **stricte** — sauf `barrage`, flèches de barrage par camp, ajouté par
+E13US003 : absent, il vaut 1) **et `decoupage`**
 (E05US035 — `{"decoupage": {"tours": 2}}`, le découpage d'une qualification en tours ; clé **omise**
 quand elle n'est pas découpée, si bien qu'une config d'avant l'US et une config non découpée sont le
 **même** document — c'est ce qui rend la livraison sûre sans migration. ⚠️ Relecture **stricte** : un

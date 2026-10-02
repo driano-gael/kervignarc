@@ -607,6 +607,7 @@ def _bareme_duel_json(bareme: BaremeDuel) -> dict[str, object]:
         "manches": bareme.nb_manches,
         "fleches": bareme.nb_fleches_par_volee,
         "points": bareme.points_pour_gagner,
+        "barrage": bareme.nb_fleches_barrage,
     }
 
 
@@ -616,6 +617,8 @@ def _vers_bareme_duel(souffle: Any) -> BaremeDuel:
         nb_manches=int(souffle["manches"]),
         nb_fleches_par_volee=int(souffle["fleches"]),
         points_pour_gagner=int(souffle["points"]),
+        # ⚠️ Seul champ à défaut : les réglages d'avant E13US003 n'en disent rien, et c'était 1.
+        nb_fleches_barrage=int(souffle.get("barrage", 1)),
     )
 
 

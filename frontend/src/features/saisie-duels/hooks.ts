@@ -13,6 +13,7 @@ import {
   type ActeDuelEnFile,
   type FamilleDuel,
   cleSlot,
+  flechesDuBarrage,
   useFileDuelsHorsLigneStore,
 } from '../../shared/stores/fileDuelsHorsLigneStore'
 import { useSessionScoreurStore } from '../../shared/stores/sessionScoreurStore'
@@ -133,6 +134,7 @@ function placeholderDuel(matchNumero: number): Duel {
     nb_manches: null,
     nb_fleches_par_volee: null,
     points_pour_gagner: null,
+    nb_fleches_barrage: null,
     zones: [],
     validee_par: null,
     manches: [],
@@ -410,13 +412,14 @@ function envoyerActe(acte: ActeDuelEnFile): Promise<Duel> {
     )
   }
   if (acte.type === 'barrage') {
+    const fleches = flechesDuBarrage(acte)
     return saisirBarrage(
       {
         tournoi_id: acte.tournoi_id,
         phase_id: acte.phase_id,
         match_numero: acte.match_numero,
-        fleche_haut: acte.fleche_haut,
-        fleche_bas: acte.fleche_bas,
+        fleches_haut: fleches.haut,
+        fleches_bas: fleches.bas,
         gagnant_designe: acte.gagnant_designe,
         identifiant_saisie: acte.identifiant_saisie,
       },
