@@ -87,10 +87,12 @@
 *En tant qu'*administrateur, *je veux* une bibliothèque de gabarits, *afin de* gérer plusieurs salles.
 - **CA** : créer/nommer/lister plusieurs gabarits ; en choisir un par tournoi.
 - **Notes** : *(Cadrage du 02/10/2026.)* **Le CA était livré avant que la fiche ne soit prise.**
-  E01US007 a posé une **bibliothèque** de modèles (`gabarit_salle.tournoi_id` nul, sans limite de
-  nombre — écran `features/gabarits/Gabarits.tsx`, CRUD `/api/v1/gabarits`) ; E01US008 a ajouté le
-  **choix par tournoi** (`SelecteurModele` de `PlanDeSalle.tsx`, `PUT /tournois/{id}/gabarit`, qui
-  copie le modèle et remplace la copie en place). Arbitrage du commanditaire : **close sans code**,
+  E01US007 a posé une **bibliothèque** de gabarits sans limite de nombre (écran
+  `features/gabarits/Gabarits.tsx`, CRUD `/api/v1/gabarits`) ; E01US008 a distingué modèle et copie
+  (`gabarit_salle.tournoi_id` nul = modèle, migration `0010`) et ajouté le **choix par tournoi**
+  (`SelecteurModele` de `PlanDeSalle.tsx`, `PUT /tournois/{id}/gabarit`, qui copie le modèle et
+  remplace la copie en place). Le cas « plusieurs salles » — deux tournois, deux modèles — est
+  testé depuis la revue (`test_gabarit_repository.py`). Arbitrage du commanditaire : **close sans code**,
   hors décompte de J4 — rien n'a été livré sous ce numéro. Une version plus riche (promouvoir le plan
   ajusté d'un tournoi en modèle, comme les autres briques d'ADR-0060) a été proposée et **non
   retenue** ; elle reste à épiquer si le besoin se présente.

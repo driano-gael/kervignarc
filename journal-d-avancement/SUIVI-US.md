@@ -95,10 +95,11 @@ Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée ap
 
 > ⚠️ **158 fiches closes, mais 156 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
-> sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches sont closes sans
+> sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches **✅** sont closes sans
 > livraison propre — `E01US016` (absorbée par `E16US006`, 25/08/2026) et `E16US011` (**close par
-> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 154 ferait rougir la CI ; on
-> note donc la nuance au lieu de la cacher. ⚠️ **Ces trois nombres se réécrivent à chaque US** :
+> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 156 ferait rougir la CI ; on
+> note donc la nuance au lieu de la cacher. Les **⛔ absorbées**, hors décompte, n'entrent dans
+> aucun de ces nombres. ⚠️ **Ces trois nombres se réécrivent à chaque US** :
 > l'atlas ne contrôle que le premier, les deux autres dérivent en silence (ils annonçaient encore
 > 137/135/134 à 143 US livrées — corrigé le 19/09/2026).
 > ⚠️ **Cet encart doit rester APRÈS le paragraphe de résumé, jamais entre lui et la ligne d'annonce** :
@@ -1508,7 +1509,10 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
 - **⛔ US absorbée** : la capacité a été livrée par **une autre US**, celle-ci n'existe donc plus
   comme unité de travail. À distinguer de **caduque** (`E10US004`), où la capacité elle-même n'a
   plus d'objet. Une US absorbée n'est **ni ✅ ni ⬜** : elle est **hors décompte** (voir la règle de
-  comptage ci-dessous). Quatre à ce jour : `E05US016`, `E05US018`, `E05US019`, `E12US004`.
+  comptage ci-dessous). Cinq à ce jour : `E01US012`, `E05US016`, `E05US018`, `E05US019`,
+  `E12US004`. ⚠️ `E01US016` est la **seule** absorbée comptée ✅ (décision du 25/08/2026,
+  antérieure à cette règle, et sa capacité a été livrée **après** la fiche, par l'US qui l'a prise
+  en charge) ; toute absorption nouvelle est ⛔.
 - **`~~barré~~`** : l'identifiant ou le titre est barré quand l'US est **absorbée, caduque ou déjà
   faite** dans une file de priorité — le texte barré est conservé pour que la référence reste
   trouvable, jamais supprimé. Le **glyphe d'état n'est pas barré** (sinon l'état devient illisible).

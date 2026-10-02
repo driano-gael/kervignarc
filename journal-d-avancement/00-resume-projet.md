@@ -858,10 +858,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
   ligne de code** (elles sont ⬜), tandis qu'`E17US003` et `E17US004` ont été livrées sous la
   branche d'`E17US001` (PR #138) et n'apparaissent pas sous leur propre nom.
-  **Quatre US sont *absorbées*** — leur capacité est livrée par une autre, elles ne comptent nulle
+  **Cinq US sont *absorbées*** — leur capacité est livrée par une autre, elles ne comptent nulle
   part : `E12US004` (« tracer un forfait », par `E04US015`, qui livre l'abandon/DSQ en qualif *et*
   en duels — d'où un J2 de 14 et non 15), `E05US016` (par `E05US015`), `E05US018` et `E05US019`
-  (par `E05US010` et `E01US023`). Après les
+  (par `E05US010` et `E01US023`), et `E01US012` (« plusieurs gabarits », par `E01US007`/`E01US008`,
+  close sans code le 02/10/2026 — d'où un J4 de 7 et non 8). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
   réseau LAN + QR E11US008, retour visuel de génération + position A..D E03US011, blason FFTA par
   défaut E01US022), le **lot démo a bouclé EPIC-14** (lisibilité admin : accueil-tableau de bord
