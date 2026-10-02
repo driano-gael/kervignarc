@@ -628,8 +628,10 @@ Dans l'ordre de valeur prévu par le backlog :
 3. **Le placement intégral 1→N** (le grand format du classeur 120) est **fait** ; l'**écran de salle**
    aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
-4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration, plusieurs gabarits
-   (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011`).
+4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration
+   (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ;
+   « plusieurs gabarits » l'était **depuis juillet** — `E01US012` est close sans code, sa
+   bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
