@@ -6,7 +6,13 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
-import { configurerAdmin, connexionAdmin, deconnexionAdmin, getEtatAuth } from './api'
+import {
+  configurerAdmin,
+  connexionAdmin,
+  deconnexionAdmin,
+  getEtatAuth,
+  modifierIdentifiants,
+} from './api'
 
 const CLE_ETAT_AUTH = ['auth', 'etat'] as const
 
@@ -48,4 +54,10 @@ export function useDeconnexionAdmin() {
       queryClient.invalidateQueries({ queryKey: CLE_ETAT_AUTH })
     },
   })
+}
+
+// Le jeton courant reste valide après succès (le serveur ne ferme que les **autres** sessions) :
+// rien à toucher dans le store de session.
+export function useModifierIdentifiants() {
+  return useMutation({ mutationFn: modifierIdentifiants })
 }

@@ -16,7 +16,11 @@ from application.erreurs import (
     AccesDejaConfigure,
     AccesNonConfigure,
     IdentifiantsInvalides,
+    MotDePasseActuelIncorrect,
+    NonAuthentifie,
+    NouveauxIdentifiantsInvalides,
 )
+from application.erreurs.base import ApplicationError
 
 
 @dataclass(frozen=True)
@@ -49,9 +53,12 @@ class StoreSessions(Protocol):
     def fermer(self, jeton: str) -> None:
         """Ferme la session (déconnexion) ; sans effet si le jeton est inconnu."""
 
+    def fermer_toutes_sauf(self, jeton: str) -> None:
+        """Ferme toutes les sessions ouvertes, sauf celle du jeton donné."""
+
 
 class ServiceAuth:
-    """Cas d'usage de l'accès admin : configurer, se connecter, se déconnecter, valider."""
+    """Cas d'usage de l'accès admin : configurer, se connecter, modifier, se déconnecter."""
 
     def __init__(self, identifiants: StoreIdentifiantsAdmin, sessions: StoreSessions) -> None:
         self._identifiants = identifiants
@@ -86,6 +93,36 @@ class ServiceAuth:
             raise IdentifiantsInvalides("Identifiant ou mot de passe invalide.")
         return self._sessions.ouvrir()
 
+    def modifier(
+        self,
+        jeton: str | None,
+        mot_de_passe_actuel: str,
+        nouveau_login: str | None,
+        nouveau_mot_de_passe: str | None,
+    ) -> None:
+        """Change le login et/ou le mot de passe (`None` = inchangé), puis ferme les **autres**
+        sessions : la session `jeton` reste ouverte (E10US006).
+
+        Lève `NonAuthentifie`, `AccesNonConfigure`, `MotDePasseActuelIncorrect`, ou
+        `NouveauxIdentifiantsInvalides` si une valeur est mal formée ou si rien ne change.
+        """
+        if jeton is None or not self._sessions.est_valide(jeton):
+            raise NonAuthentifie("Une session administrateur est requise.")
+        actuels = self._identifiants.lire()
+        if actuels is None:
+            raise AccesNonConfigure("Aucun accès administrateur n'est configuré.")
+        if not self._correspond(actuels, actuels.login, mot_de_passe_actuel):
+            raise MotDePasseActuelIncorrect("Le mot de passe actuel est incorrect.")
+        nouveaux = self._valider(
+            actuels.login if nouveau_login is None else nouveau_login,
+            actuels.mot_de_passe if nouveau_mot_de_passe is None else nouveau_mot_de_passe,
+            NouveauxIdentifiantsInvalides,
+        )
+        if nouveaux == actuels:
+            raise NouveauxIdentifiantsInvalides("Les nouveaux identifiants sont identiques.")
+        self._identifiants.ecrire(nouveaux)
+        self._sessions.fermer_toutes_sauf(jeton)
+
     def deconnexion(self, jeton: str) -> None:
         """Ferme la session associée au jeton."""
         self._sessions.fermer(jeton)
@@ -95,17 +132,19 @@ class ServiceAuth:
         return self._sessions.est_valide(jeton)
 
     @staticmethod
-    def _valider(login: str, mot_de_passe: str) -> IdentifiantsAdmin:
+    def _valider(
+        login: str,
+        mot_de_passe: str,
+        erreur: type[ApplicationError] = IdentifiantsInvalides,
+    ) -> IdentifiantsAdmin:
         login_net = login.strip()
         if login_net == "" or mot_de_passe == "":
-            raise IdentifiantsInvalides("Login et mot de passe sont requis.")
+            raise erreur("Login et mot de passe sont requis.")
         # Interdit tout saut de ligne : les identifiants sont ecrits ligne a ligne dans
         # `.env` (`_upsert`) ; une valeur multi-lignes injecterait/ecraserait une autre cle.
         for valeur in (login_net, mot_de_passe):
             if valeur.splitlines() != [valeur]:
-                raise IdentifiantsInvalides(
-                    "Login et mot de passe ne peuvent pas contenir de saut de ligne."
-                )
+                raise erreur("Login et mot de passe ne peuvent pas contenir de saut de ligne.")
         return IdentifiantsAdmin(login=login_net, mot_de_passe=mot_de_passe)
 
     @staticmethod

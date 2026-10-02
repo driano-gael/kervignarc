@@ -48,8 +48,14 @@ export type DestinationAdminId =
   | 'feu-vert'
   | 'archer'
   | 'audit'
+  | 'compte'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
+  compte:
+    'Changez l’identifiant ou le mot de passe de l’accès administrateur. Le mot de passe actuel ' +
+    'est demandé. Après le changement, les autres appareils connectés en administrateur sont ' +
+    'déconnectés ; celui-ci reste connecté. En cas d’oubli, le fichier .env du serveur reste la ' +
+    'porte de secours.',
   audit:
     'Le journal de ce qui a été fait sur ce tournoi : validations, corrections, forfaits, paiements — avec qui, quand, et l’ancienne valeur. C’est la pièce qui règle une contestation ; il se consulte pendant le tournoi, pas seulement après. Pour l’emporter au tableur, passez par « Exports & impressions ».',
   tournoi:

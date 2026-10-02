@@ -1,4 +1,4 @@
-"""Tests du service applicatif d'accès admin (E10US002).
+"""Tests du service applicatif d'accès admin (E10US002, E10US006).
 
 Couvre le cycle : non configuré → configurer (ouvre une session) → connexion (bonne/mauvaise) →
 déconnexion. Utilise les adapters réels (store `.env` sur `tmp_path`, store de sessions en
@@ -16,6 +16,9 @@ from application.erreurs import (
     AccesDejaConfigure,
     AccesNonConfigure,
     IdentifiantsInvalides,
+    MotDePasseActuelIncorrect,
+    NonAuthentifie,
+    NouveauxIdentifiantsInvalides,
 )
 from infrastructure.auth import AdminCredentialsStore, SessionStore
 
@@ -120,3 +123,114 @@ def test_configurer_accepte_espace_interne(tmp_path: Path) -> None:
     service = _service(tmp_path)
     jeton = service.configurer("admin", "mot de passe long")
     assert service.session_valide(jeton) is True
+
+
+# --- E10US006 : modifier les identifiants depuis une session admin ---------------------------
+# Tests écrits depuis la puce CA de `stories/E10-acces-roles.md` (E10US006), avant le code.
+
+
+def test_modifier_mot_de_passe_remplace_l_ancien(tmp_path: Path) -> None:
+    """Nouveau mot de passe : l'ancien ne connecte plus, le nouveau oui (`.env` réécrit)."""
+    service = _service(tmp_path)
+    jeton = service.configurer("admin", "secret")
+    service.modifier(jeton, "secret", nouveau_login=None, nouveau_mot_de_passe="neuf")
+    relu = _service(tmp_path)
+    with pytest.raises(IdentifiantsInvalides):
+        relu.connexion("admin", "secret")
+    assert relu.session_valide(relu.connexion("admin", "neuf")) is True
+
+
+def test_modifier_login_seul_garde_le_mot_de_passe(tmp_path: Path) -> None:
+    """Login seul : le mot de passe est conservé, l'ancien login ne connecte plus."""
+    service = _service(tmp_path)
+    jeton = service.configurer("admin", "secret")
+    service.modifier(jeton, "secret", nouveau_login="arbitre", nouveau_mot_de_passe=None)
+    relu = _service(tmp_path)
+    with pytest.raises(IdentifiantsInvalides):
+        relu.connexion("admin", "secret")
+    assert relu.session_valide(relu.connexion("arbitre", "secret")) is True
+
+
+def test_modifier_les_deux_a_la_fois(tmp_path: Path) -> None:
+    """Login et mot de passe changés ensemble."""
+    service = _service(tmp_path)
+    jeton = service.configurer("admin", "secret")
+    service.modifier(jeton, "secret", nouveau_login="arbitre", nouveau_mot_de_passe="neuf")
+    relu = _service(tmp_path)
+    assert relu.session_valide(relu.connexion("arbitre", "neuf")) is True
+
+
+def test_modifier_garde_la_session_courante_et_ferme_les_autres(tmp_path: Path) -> None:
+    """Faire tourner l'accès éjecte les autres sessions ; celle qui a fait le changement reste."""
+    service = _service(tmp_path)
+    courante = service.configurer("admin", "secret")
+    autre_tablette = service.connexion("admin", "secret")
+    service.modifier(courante, "secret", nouveau_login=None, nouveau_mot_de_passe="neuf")
+    assert service.session_valide(courante) is True
+    assert service.session_valide(autre_tablette) is False
+
+
+def test_modifier_mot_de_passe_actuel_faux_refuse_sans_rien_toucher(tmp_path: Path) -> None:
+    """Mot de passe actuel faux : refus dédié, `.env` intact, aucune session fermée."""
+    service = _service(tmp_path)
+    courante = service.configurer("admin", "secret")
+    autre = service.connexion("admin", "secret")
+    with pytest.raises(MotDePasseActuelIncorrect):
+        service.modifier(courante, "faux", nouveau_login=None, nouveau_mot_de_passe="neuf")
+    assert service.session_valide(courante) is True
+    assert service.session_valide(autre) is True
+    assert _service(tmp_path).connexion("admin", "secret")
+
+
+def test_modifier_mot_de_passe_actuel_non_ascii(tmp_path: Path) -> None:
+    """Le mot de passe actuel accentué est comparé en octets (même piège qu'à la connexion)."""
+    service = _service(tmp_path)
+    jeton = service.configurer("délégué", "Décembre-2026")
+    service.modifier(jeton, "Décembre-2026", nouveau_login=None, nouveau_mot_de_passe="Été")
+    assert _service(tmp_path).connexion("délégué", "Été")
+
+
+@pytest.mark.parametrize(
+    "nouveau_login, nouveau_mot_de_passe",
+    [
+        (None, None),  # rien demandé
+        ("admin", None),  # login identique
+        (None, "secret"),  # mot de passe identique
+        ("admin", "secret"),  # les deux identiques
+    ],
+)
+def test_modifier_sans_changement_refuse(
+    tmp_path: Path, nouveau_login: str | None, nouveau_mot_de_passe: str | None
+) -> None:
+    """Une demande qui ne change rien est refusée, et ne ferme aucune autre session."""
+    service = _service(tmp_path)
+    courante = service.configurer("admin", "secret")
+    autre = service.connexion("admin", "secret")
+    with pytest.raises(NouveauxIdentifiantsInvalides):
+        service.modifier(courante, "secret", nouveau_login, nouveau_mot_de_passe)
+    assert service.session_valide(autre) is True
+
+
+@pytest.mark.parametrize(
+    "nouveau_login, nouveau_mot_de_passe",
+    [("", None), ("   ", None), (None, ""), (f"a{chr(10)}b", None), (None, f"a{chr(13)}b")],
+)
+def test_modifier_nouvelles_valeurs_mal_formees_refuse(
+    tmp_path: Path, nouveau_login: str | None, nouveau_mot_de_passe: str | None
+) -> None:
+    """Vide ou saut de ligne : refus dédié (pas `IdentifiantsInvalides`, un 401), `.env` intact."""
+    service = _service(tmp_path)
+    courante = service.configurer("admin", "secret")
+    with pytest.raises(NouveauxIdentifiantsInvalides):
+        service.modifier(courante, "secret", nouveau_login, nouveau_mot_de_passe)
+    assert service.session_valide(courante) is True
+    assert _service(tmp_path).connexion("admin", "secret")
+
+
+def test_modifier_sans_session_valide_refuse(tmp_path: Path) -> None:
+    """Hors session admin valide, rien n'est modifié."""
+    service = _service(tmp_path)
+    service.configurer("admin", "secret")
+    with pytest.raises(NonAuthentifie):
+        service.modifier("jeton-bidon", "secret", nouveau_login=None, nouveau_mot_de_passe="neuf")
+    assert _service(tmp_path).connexion("admin", "secret")

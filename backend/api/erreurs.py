@@ -42,7 +42,9 @@ from application.erreurs import (
     LogoIntrouvable,
     MancheIntrouvable,
     MembreIntrouvable,
+    MotDePasseActuelIncorrect,
     NonAuthentifie,
+    NouveauxIdentifiantsInvalides,
     PhaseIntrouvable,
     PhaseQualificationAbsente,
     PosteIntrouvable,
@@ -92,9 +94,14 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         # 413 : le serveur refuse d'ingérer le corps, indépendamment de ce qu'il contient. Un 422
         # dirait « votre fichier est invalide », ce qui serait faux — il n'a pas été regardé.
         status = 413
-    elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi):
-        # 403 : l'identité est établie (jeton de poste/scoreur valide) mais elle n'autorise pas
-        # **cette** ressource — la cible (poste, E10US007) ou le tournoi (scoreur, E04US002). À
+    elif isinstance(exc, NouveauxIdentifiantsInvalides):
+        # 400 et non 401 : l'admin est authentifié, et un 401 purgerait sa session côté client
+        # (E10US006). Requête impossible en soi, comme le bloc 400 ci-dessus.
+        status = 400
+    elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi | MotDePasseActuelIncorrect):
+        # 403 : l'identité est établie (jeton de poste/scoreur/admin valide) mais elle n'autorise
+        # pas **cette** ressource — la cible (poste, E10US007), le tournoi (scoreur, E04US002) ou
+        # le changement d'identifiants sans le bon mot de passe actuel (admin, E10US006). À
         # distinguer du 401 (aucune session) et du 409 (conflit d'état).
         status = 403
     elif isinstance(

@@ -725,7 +725,7 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 55,
+   "occurrences": 56,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -3353,6 +3353,7 @@ window.ATLAS.carte = {
    "methodes": [
     "est_valide",
     "fermer",
+    "fermer_toutes_sauf",
     "ouvrir"
    ],
    "nom": "StoreSessions",
@@ -3455,7 +3456,7 @@ window.ATLAS.carte = {
   "aretes_front": 187,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1043,
+  "imports": 1044,
   "imports_entre_couches": 878,
   "plus_gros_noeud": 25,
   "ports": 78,
