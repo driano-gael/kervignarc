@@ -118,6 +118,7 @@
       ['gabarits', 'Gabarits (modèles)'],
       ['clubs', 'Clubs'],
       ['jeu-essai', 'Jeu d’essai'],
+      ['compte', 'Compte administrateur'],
     ],
   }
 

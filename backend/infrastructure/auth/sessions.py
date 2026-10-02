@@ -1,8 +1,7 @@
 """Adapter : jetons de session admin en mémoire (E10US002).
 
-Jetons opaques (`secrets.token_urlsafe`) dans un ensemble sous verrou — les accès viennent
-des threads du threadpool. Invalidés au redémarrage du serveur, à la déconnexion, ou au
-changement d'identifiants (sauf la session qui l'a fait).
+Jetons opaques sous verrou (accès depuis le threadpool). Invalidés au redémarrage, à la
+déconnexion, ou au changement d'identifiants (sauf la session qui l'a fait, E10US006).
 
 ⚠️ **Sans expiration**, délibérément (E10US003 a tranché de même pour le scoreur) : un jeton
 doit survivre à la fermeture de l'onglet, le temps d'une journée de tournoi.
