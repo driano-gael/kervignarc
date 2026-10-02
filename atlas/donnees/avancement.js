@@ -78,7 +78,8 @@ window.ATLAS.avancement = {
    "identifiant": "111",
    "introduite_par": [
     "E17US008",
-    "E17US011"
+    "E17US011",
+    "E13US003"
    ],
    "ouverte": true,
    "resorption_us": [
@@ -4210,7 +4211,9 @@ window.ATLAS.avancement = {
     "0028",
     "0049"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "111"
+   ],
    "dettes_resorbees": [],
    "epic": "13",
    "epic_titre": "Épreuves par équipes — abstraction participant",

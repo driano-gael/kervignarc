@@ -164,11 +164,13 @@ def _barrage_json(duel: Duel) -> str | None:
     )
 
 
-def _fleches_de_barrage(brut: Any) -> tuple[ZoneScore, ...]:
+def _fleches_de_barrage(brut: object) -> tuple[ZoneScore, ...]:
     # Avant E13US003 un camp tirait une flèche, stockée seule (`"10"`) : ces lignes se relisent.
     if isinstance(brut, str):
         return (ZoneScore(brut),)
-    return tuple(ZoneScore(v) for v in brut)
+    if isinstance(brut, list):
+        return tuple(ZoneScore(v) for v in brut)
+    raise TypeError("Flèches de barrage ni chaîne ni liste.")
 
 
 def _vers_duel(ligne: DuelORM, *, bareme: BaremeDuel) -> Duel:

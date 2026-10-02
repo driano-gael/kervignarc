@@ -61,12 +61,6 @@ async function tirer(camp: string, zones: string[]) {
     await userEvent.click(within(groupe).getByRole('button', { name: zone }))
 }
 
-function corpsEnvoye(): Record<string, unknown> {
-  const appel = mutate.mock.calls[0]
-  if (appel === undefined) throw new Error('aucun barrage envoyé')
-  return appel[0] as Record<string, unknown>
-}
-
 describe('barrage d’équipe à trois flèches', () => {
   beforeEach(() => mutate.mockClear())
 
@@ -77,11 +71,13 @@ describe('barrage d’équipe à trois flèches', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer le barrage' }))
 
-    expect(corpsEnvoye()).toMatchObject({
-      fleches_haut: ['10', '9', '9'],
-      fleches_bas: ['9', '9', '9'],
-      gagnant_designe: null,
-    })
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fleches_haut: ['10', '9', '9'],
+        fleches_bas: ['9', '9', '9'],
+        gagnant_designe: null,
+      }),
+    )
   })
 
   it('n’accepte pas une quatrième flèche, et « Effacer » retire la dernière', async () => {
@@ -97,7 +93,7 @@ describe('barrage d’équipe à trois flèches', () => {
     await tirer('BRAVO', ['9', '9', '9'])
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer le barrage' }))
 
-    expect(corpsEnvoye()).toMatchObject({ fleches_haut: ['10', '9', 'M'] })
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ fleches_haut: ['10', '9', 'M'] }))
   })
 
   it('à totaux égaux, exige la désignation du plus près du centre', async () => {
@@ -111,7 +107,23 @@ describe('barrage d’équipe à trois flèches', () => {
     await userEvent.click(within(designation).getByRole('button', { name: 'BRAVO' }))
     await userEvent.click(enregistrer)
 
-    expect(corpsEnvoye()).toMatchObject({ gagnant_designe: 'bas' })
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ gagnant_designe: 'bas' }))
+  })
+
+  it('une correction de flèche efface la désignation : elle se redemande', async () => {
+    monter(duelAEgalite(3))
+    await tirer('ALPHA', ['10', '9', '8'])
+    await tirer('BRAVO', ['9', '9', '9'])
+    const designation = screen.getByRole('group', { name: 'Plus près du centre' })
+    await userEvent.click(within(designation).getByRole('button', { name: 'BRAVO' }))
+
+    const alpha = screen.getByRole('group', { name: 'Flèches de barrage de ALPHA' })
+    await userEvent.click(
+      within(alpha).getByRole('button', { name: 'Effacer la dernière flèche de barrage de ALPHA' }),
+    )
+    await tirer('ALPHA', ['8'])
+
+    expect(screen.getByRole('button', { name: 'Enregistrer le barrage' })).toBeDisabled()
   })
 
   it('reste incomplet tant qu’un camp n’a pas ses trois flèches', async () => {
@@ -133,6 +145,8 @@ describe('barrage individuel à une flèche (inchangé)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer le barrage' }))
 
-    expect(corpsEnvoye()).toMatchObject({ fleches_haut: ['8'], fleches_bas: ['9'] })
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ fleches_haut: ['8'], fleches_bas: ['9'] }),
+    )
   })
 })

@@ -885,6 +885,28 @@ def test_le_bareme_de_duel_fait_l_aller_retour_http(
         assert client.get(base).json()[0]["bareme_duel"] is None
 
 
+def test_un_bareme_sans_fleches_de_barrage_en_tire_une(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US003 CA 2 — un client d'avant l'US n'envoie pas `nb_fleches_barrage` : 1 flèche."""
+    ancien = {k: v for k, v in _SETS_4.items() if k != "nb_fleches_barrage"}
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(
+            base,
+            json={
+                "type": "elimination_directe",
+                "bareme_duel": {"par_defaut": ancien, "surcharges": []},
+            },
+        )
+
+        assert creation.status_code == 201, creation.text
+        assert client.get(base).json()[0]["bareme_duel"]["par_defaut"]["nb_fleches_barrage"] == 1
+
+
 def test_un_bareme_de_duel_sur_une_phase_sans_duel_est_refuse(
     app_phases: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

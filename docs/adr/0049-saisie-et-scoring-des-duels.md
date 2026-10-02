@@ -236,7 +236,10 @@ Chaque symbole vérifié dans le code du jour.)*
   dont les duellistes divergent des occupants recalculés (§4).
 - `backend/infrastructure/db/repositories/tir.py` — **les résultats persistés** :
   `DuelRepositorySQL`, avec `_manches_json` / `_barrage_json` ; `_fleches_de_barrage` relit un
-  barrage écrit avant E13US003 (une flèche, pas une liste). Ce sont les **actes** qui sont
+  barrage écrit avant E13US003 (une flèche, pas une liste). Son pendant front est
+  `frontend/src/shared/stores/fileDuelsHorsLigneStore.ts` (`flechesDuBarrage`), qui relit un acte
+  de barrage resté en file hors-ligne sous l'ancienne forme : retirer l'un sans l'autre est un
+  oubli. Ce sont les **actes** qui sont
   stockés ; le verdict, lui, se recalcule (§ Alternatives écartées : « stocker le verdict » a été
   refusé).
 

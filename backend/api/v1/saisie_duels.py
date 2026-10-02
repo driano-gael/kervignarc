@@ -12,7 +12,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_scoreur
@@ -75,10 +75,11 @@ class ResultatReponse(BaseModel):
 class DuelReponse(BaseModel):
     """L'état d'un match : câblage, occupants, pavé (mode/barème/zones), tir et résultat.
 
-    `mode`, `nb_manches`, `nb_fleches_par_volee`, `points_pour_gagner` et `zones` **dimensionnent le
-    pavé** de saisie du front (comme la grille + le barème de qualification, E04US002) : renseignés
-    dès qu'un match est **jouable**, avant tout tir, `None`/vides pour un bye ou des occupants pas
-    encore connus. `zones` vide sur un match jouable = blason indéterminable (pavé indisponible UI).
+    `mode`, `nb_manches`, `nb_fleches_par_volee`, `points_pour_gagner`, `nb_fleches_barrage` et
+    `zones` **dimensionnent le pavé** de saisie du front (comme la grille + le barème de
+    qualification, E04US002) : renseignés dès qu'un match est **jouable**, avant tout tir,
+    `None`/vides pour un bye ou des occupants pas encore connus. `zones` vide sur un match jouable
+    = blason indéterminable (pavé indisponible UI).
     """
 
     numero: int
@@ -210,8 +211,9 @@ class SaisirBarrageRequete(BaseModel):
     tournoi_id: int
     phase_id: int
     match_numero: int
-    fleches_haut: list[ZoneScore]
-    fleches_bas: list[ZoneScore]
+    # Même borne que `BaremeDuelDTO.nb_fleches_barrage` : le domaine exige ensuite le compte exact.
+    fleches_haut: list[ZoneScore] = Field(min_length=1, max_length=12)
+    fleches_bas: list[ZoneScore] = Field(min_length=1, max_length=12)
     gagnant_designe: Cote | None = None
     identifiant_saisie: str | None = None
 

@@ -13,7 +13,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin, exiger_scoreur
@@ -295,8 +295,9 @@ class SaisirBarrageRequete(BaseModel):
     tournoi_id: int
     phase_id: int
     numero: int
-    fleches_haut: list[ZoneScore]
-    fleches_bas: list[ZoneScore]
+    # Même borne que `BaremeDuelDTO.nb_fleches_barrage` : le domaine exige ensuite le compte exact.
+    fleches_haut: list[ZoneScore] = Field(min_length=1, max_length=12)
+    fleches_bas: list[ZoneScore] = Field(min_length=1, max_length=12)
     gagnant_designe: Cote | None = None
     identifiant_saisie: str | None = None
 

@@ -2522,7 +2522,21 @@ window.ATLAS.decisions = {
       "DuelRepositorySQL",
       "_manches_json",
       "_barrage_json",
-      "_fleches_de_barrage"
+      "_fleches_de_barrage",
+      "flechesDuBarrage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/stores/fileDuelsHorsLigneStore.ts",
+     "existe": true,
+     "symboles": [
+      "DuelRepositorySQL",
+      "_manches_json",
+      "_barrage_json",
+      "_fleches_de_barrage",
+      "flechesDuBarrage"
      ],
      "symboles_absents": [],
      "verifiable": true

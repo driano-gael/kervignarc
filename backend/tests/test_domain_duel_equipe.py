@@ -12,7 +12,12 @@ import pytest
 
 from domain.blason import ZoneScore
 from domain.duel import BaremeDuel, Cote, Duel, ModeDuel
-from domain.erreurs import BaremeDuelInvalide, BarrageIndecis, NombreFlechesVoleeInvalide
+from domain.erreurs import (
+    BaremeDuelInvalide,
+    BarrageIndecis,
+    NombreFlechesVoleeInvalide,
+    ValeurHorsBlason,
+)
 from domain.participant import Participant
 
 ZONES = (
@@ -117,6 +122,30 @@ def test_un_barrage_d_equipe_au_mauvais_nombre_de_fleches_est_refuse(
 ) -> None:
     with pytest.raises(NombreFlechesVoleeInvalide):
         _quatre_partout().saisir_barrage(_f(*haut), _f(*bas), zones_admises=ZONES)
+
+
+def test_une_fleche_hors_blason_parmi_trois_est_refusee() -> None:
+    # La fautive est la dernière du camp bas : un contrôle limité à la 1ʳᵉ flèche passerait.
+    with pytest.raises(ValeurHorsBlason):
+        _quatre_partout().saisir_barrage(_f("10", "9", "9"), _f("9", "9", "5"), zones_admises=ZONES)
+
+
+def test_au_cumul_le_barrage_a_trois_fleches_tranche_au_total() -> None:
+    duel = Duel.vide(POULIES_EQUIPE, EQUIPE_A, EQUIPE_B)
+    for numero in range(1, 5):
+        duel = duel.saisir_manche(
+            numero,
+            _f("10", "10", "10", "10", "10", "10"),
+            _f("10", "10", "10", "10", "10", "10"),
+            zones_admises=ZONES,
+            nb_fleches_par_volee=6,
+        )
+    assert duel.resultat.barrage_requis
+
+    duel = duel.saisir_barrage(_f("10", "10", "9"), _f("10", "10", "10"), zones_admises=ZONES)
+
+    assert duel.resultat.termine
+    assert duel.vainqueur == EQUIPE_B
 
 
 def test_le_barrage_va_au_plus_haut_total_meme_sans_la_plus_haute_fleche() -> None:

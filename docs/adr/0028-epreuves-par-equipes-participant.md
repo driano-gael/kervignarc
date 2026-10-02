@@ -70,7 +70,9 @@ Aucune branche `if équipe` dans le moteur : une politique de plus.
 > tireur ; une phase d'équipes est une phase distincte, donc la dimension « type de participant »
 > n'avait rien à départager. Seul manque comblé : le **barrage à N flèches** (1 par archer, §8.2).
 > Les « volées alternées » sont un ordre de tir (§9), sans effet sur le score. Aucune branche
-> `if équipe` : l'intention du point est tenue, sa lettre non.
+> `if équipe` : l'intention du point est tenue, sa lettre non. ⚠️ **Ce qui est perdu** : la
+> résolution **automatique** par type de participant. Une phase d'équipes **non réglée** jouerait
+> le barème individuel (`ResolveurBaremeDuelFfta` ne lit que l'arme) — à trancher par `E13US004`.
 
 **4. Placement, saisie et classement clés sur le participant.** En phase par équipes, le placement
 pose des **équipes** (leurs archers sur des cibles voisines), la saisie enregistre une **volée
@@ -149,7 +151,7 @@ Les points 1 à 3 sont livrés ; le point 4 **n'a aucun module** :
 |---|---|
 | 1. Le match oppose des participants | ✅ `domain/participant.py` |
 | 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ✅ tel qu'amendé le 01/10/2026 — `domain/equipe.py`, `application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
-| 3. Le scoring d'équipe est une politique injectable | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`domain/duel.py`), pas la famille `scoring`. `E13US003` |
+| 3. Score d'équipe sans branche `if équipe` (amendé : barème de duel, pas la famille `scoring`) | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`domain/duel.py`), pas la famille `scoring`. `E13US003` |
 | 4. Placement / saisie / classement clés sur le participant | ⬜ `E13US004` |
 
 ⚠️ **Une équipe se compose, elle ne se joue pas encore.** Aucun module de production ne construit

@@ -751,8 +751,15 @@ function SaisieBarrage({
   // La désignation n'est requise (et proposée) que si les deux camps sont complets **et à égalité
   // de total** — la règle du serveur (§8.2, E13US003).
   const complets = flechesHaut.length === nbFleches && flechesBas.length === nbFleches
+  // DETTE-111 — `totalVolee` recopie la règle zone → points du serveur, et décide ici de la désignation.
   const egales = complets && totalVolee(flechesHaut) === totalVolee(flechesBas)
   const pretAEnvoyer = complets && (!egales || designe !== null)
+
+  // Une désignation vaut pour les flèches qu'elle a vues : toute correction la redemande.
+  const changerFleches = (poser: (valeurs: string[]) => void, valeurs: string[]) => {
+    poser(valeurs)
+    setDesigne(null)
+  }
 
   const enregistrer = () => {
     if (!complets) return
@@ -780,14 +787,14 @@ function SaisieBarrage({
           zones={duel.zones}
           nbFleches={nbFleches}
           valeurs={flechesHaut}
-          onChanger={setFlechesHaut}
+          onChanger={(valeurs) => changerFleches(setFlechesHaut, valeurs)}
         />
         <ChoixFleches
           nom={duel.bas ? duel.bas.nom : 'Bas'}
           zones={duel.zones}
           nbFleches={nbFleches}
           valeurs={flechesBas}
-          onChanger={setFlechesBas}
+          onChanger={(valeurs) => changerFleches(setFlechesBas, valeurs)}
         />
       </div>
 

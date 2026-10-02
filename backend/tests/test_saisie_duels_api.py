@@ -326,6 +326,10 @@ def test_barrage_d_equipe_a_trois_fleches_relu_depuis_la_base(
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
         _egaliser(client, scn, entete, 4)
 
+        trop = client.post(
+            "/api/v1/duels/barrages", json=_barrage(scn, ["10"] * 13, ["9"] * 13), headers=entete
+        )
+        assert trop.status_code == 400, trop.text  # borné à la frontière, avant la file d'écriture
         refus = client.post(
             "/api/v1/duels/barrages", json=_barrage(scn, ["10"], ["9"]), headers=entete
         )

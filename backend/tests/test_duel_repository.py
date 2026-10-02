@@ -13,6 +13,7 @@ import datetime
 import json
 from pathlib import Path
 
+import pytest
 from sqlalchemy import select
 
 from domain.blason import ZoneScore
@@ -28,6 +29,7 @@ from infrastructure.db import (
     TournoiRepositorySQL,
 )
 from infrastructure.db.models import DuelORM
+from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
 from tests.conftest import poser_phase_sql
 
@@ -161,6 +163,26 @@ def test_un_barrage_ecrit_avant_les_listes_de_fleches_se_relit(tmp_path: Path) -
             session.commit()
 
         assert _charger(decor, 3) == duel
+    finally:
+        decor.db.engine.dispose()
+
+
+def test_un_barrage_ni_chaine_ni_liste_est_illisible(tmp_path: Path) -> None:
+    """Un camp de barrage stocké ni en chaîne (avant E13US003) ni en liste : erreur typée."""
+    decor = _Decor(tmp_path)
+    try:
+        duel = Duel.vide(BaremeDuel.preset_ffta_classique(), HAUT, BAS)
+        for numero in range(1, 6):
+            duel = _saisir(duel, numero, ("9", "9", "9"), ("9", "9", "9"))
+        duel = duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES)
+        decor.duels.enregistrer(decor.phase_id, 3, duel)
+        with decor.db.session_factory() as session:
+            ligne = session.scalars(select(DuelORM).where(DuelORM.phase_id == decor.phase_id)).one()
+            ligne.barrage = json.dumps({"haut": {"10": 1}, "bas": ["9"], "gagnant": None})
+            session.commit()
+
+        with pytest.raises(InfrastructureError):
+            _charger(decor, 3)
     finally:
         decor.db.engine.dispose()
 
