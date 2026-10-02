@@ -355,14 +355,13 @@ class Duel:
         zones_admises: tuple[ZoneScore, ...],
         gagnant_designe: Cote | None = None,
     ) -> Duel:
-        """Saisit le tir de barrage (§8.2) — `nb_fleches_barrage` flèches par camp — quand
-        l'égalité l'exige.
+        """Saisit le tir de barrage (§8.2), `nb_fleches_barrage` flèches par camp, à égalité.
 
         Refuse si le barrage n'est pas requis (`BarrageNonRequis`), sur un duel validé
-        (`DuelVerrouille`), une flèche hors blason, ou une égalité sans désignation du plus près du
-        centre (`BarrageIndecis`). ⚠️ Un barrage **déjà saisi** reste **ré-éditable** tant que le
-        duel n'est pas validé : la garde se fonde sur l'égalité des **manches seules**, sans quoi
-        une flèche de barrage erronée forcerait à valider un vainqueur faux.
+        (`DuelVerrouille`), un autre compte de flèches, une flèche hors blason, ou des totaux égaux
+        sans désignation du plus près du centre (`BarrageIndecis`). ⚠️ Un barrage **déjà saisi**
+        reste **ré-éditable** avant validation : la garde lit l'égalité des **manches seules**, sans
+        quoi une flèche de barrage erronée forcerait à valider un vainqueur faux.
         """
         if self.verrouille:
             raise DuelVerrouille("Ce duel est validé : plus aucune saisie n'est possible.")

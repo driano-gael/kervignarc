@@ -843,8 +843,20 @@ def test_un_reglage_pose_sur_le_mauvais_type_est_refuse_sans_rien_persister(
         assert avancement.status_code == 200, avancement.text
 
 
-_SETS_4 = {"mode": "sets", "nb_manches": 5, "nb_fleches_par_volee": 3, "points_pour_gagner": 4}
-_CUMUL = {"mode": "cumul", "nb_manches": 5, "nb_fleches_par_volee": 3, "points_pour_gagner": 0}
+_SETS_4 = {
+    "mode": "sets",
+    "nb_manches": 5,
+    "nb_fleches_par_volee": 3,
+    "points_pour_gagner": 4,
+    "nb_fleches_barrage": 1,
+}
+_CUMUL = {
+    "mode": "cumul",
+    "nb_manches": 5,
+    "nb_fleches_par_volee": 3,
+    "points_pour_gagner": 0,
+    "nb_fleches_barrage": 1,
+}
 _BAREME_CLUB = {
     "par_defaut": _SETS_4,
     "surcharges": [{"arme": "Arc à poulies", "bareme": _CUMUL}],
