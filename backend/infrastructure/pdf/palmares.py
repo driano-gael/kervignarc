@@ -23,11 +23,11 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from domain.classement import StatutClassement
 from domain.classement_clubs import ClassementClubs, classer_clubs
 from domain.palmares import LignePalmares, Palmares, PlacePodium, SectionPalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.libelles import libelle_statut
 from infrastructure.pdf._commun import echapper as _echapper
 
 _MARGE = 15 * mm
@@ -239,7 +239,7 @@ class GenerateurPalmaresPdf:
                 ligne.nom,
                 ligne.prenom,
                 ligne.categorie_libelle,
-                _libelle_statut(ligne.statut),
+                libelle_statut(ligne.statut),
             ]
             for ligne in lignes
         ]
@@ -287,12 +287,3 @@ def _rang(minimum: int | None, maximum: int | None) -> str:
     if minimum is None or maximum is None:
         return "—"
     return str(minimum) if minimum == maximum else f"{minimum}-{maximum}"
-
-
-def _libelle_statut(statut: StatutClassement) -> str:
-    """Libellé imprimé du statut (ADR-0050) — vide pour le cas normal, qui n'a rien à signaler."""
-    if statut is StatutClassement.ABANDON:
-        return "Abandon"
-    if statut is StatutClassement.DISQUALIFIE:
-        return "Disqualifié"
-    return ""

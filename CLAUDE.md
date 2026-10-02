@@ -416,9 +416,9 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   sans dire qui la vérifie ne fait que retirer de la détection.
 
   ⚠️ **Écrire la section, c'est vérifier dans le code du jour, pas déduire de l'ADR.** Le
-  rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'est porté **qu'au quart** — la
-  classe `Equipe` n'existe pas — et `ADR-0049` promet un barème résolu par « (phase, arme) » que le
-  code résolvait par l'**arme seule** jusqu'à ADR-0117. Nommer un module vide reproduit le défaut
+  rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'était porté **qu'au quart** — la
+  classe `Equipe` n'existait pas avant `E13US002` — et `ADR-0049` promet un barème « (phase, arme) »
+  que le code résolvait par l'**arme seule** jusqu'à ADR-0117. Nommer un module vide reproduit le défaut
   d'ADR-0017.
 - <!--regle:redecouper-une-us-trop-grosse--> Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 

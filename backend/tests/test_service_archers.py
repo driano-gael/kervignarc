@@ -24,6 +24,7 @@ from application.erreurs import (
     CategorieHorsTournoi,
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
+    FusionArchersEnEquipes,
     FusionArchersEngages,
     FusionImpossible,
     HomonymeArcher,
@@ -38,6 +39,7 @@ from domain.club import Club
 from domain.depart import Depart
 from domain.doublons import NiveauDoublon
 from domain.entree_audit import EntreeAudit
+from domain.equipe import Equipe, TypeEquipe
 from domain.erreurs import (
     CibleInvalide,
     NomArcherInvalide,
@@ -56,6 +58,7 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxClubRepository,
     FauxDepartRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
@@ -226,6 +229,7 @@ class Montage(NamedTuple):
     tournois: FauxTournoiRepository
     inscriptions: FauxInscriptionRepository
     departs: FauxDepartRepository
+    equipes: FauxEquipeRepository
     tournoi_id: TournoiId
     categorie_id: CategorieId
 
@@ -306,6 +310,7 @@ def _monter() -> Montage:
     categories = FauxCategorieRepository()
     inscriptions = FauxInscriptionRepository()
     departs = FauxDepartRepository()
+    equipes = FauxEquipeRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     departs.ajouter(
@@ -324,6 +329,7 @@ def _monter() -> Montage:
             series,
             departs,
             HorlogeFigee(_INSTANT),
+            equipes,
         ),
         classement=ServiceClassement(
             tournois,
@@ -343,6 +349,7 @@ def _monter() -> Montage:
         tournois=tournois,
         inscriptions=inscriptions,
         departs=departs,
+        equipes=equipes,
         tournoi_id=tournoi.id,
         categorie_id=categorie.id,
     )
@@ -1593,3 +1600,68 @@ def test_modifier_archer_effacer_une_licence_qui_departageait_resignale_l_homony
     fils = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, licence="7654321B")
     with pytest.raises(HomonymeArcher):
         m.archers.modifier(fils.id or 0, "Dupont", "Jean", m.categorie_id, licence=None)
+
+
+# --- E13US002 : l'appartenance à une équipe ---
+
+
+def _en_equipe(m: Montage, nom: str, type: TypeEquipe, *archer_ids: ArcherId) -> Equipe:
+    equipe = Equipe.creer(m.tournoi_id, nom, type)
+    for archer_id in archer_ids:
+        equipe = equipe.ajouter_membre(archer_id)
+    return m.equipes.enregistrer(equipe)
+
+
+def test_un_membre_d_equipe_est_engage_et_le_signalement_nomme_l_equipe() -> None:
+    """CA 6 : un archer membre d'une équipe est engagé ; sa suppression nomme l'équipe."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _en_equipe(m, "Les Archers", TypeEquipe.STANDARD, archer.id)
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "membre de l'équipe « Les Archers »" in leve.value.message
+    assert m.inscrits.par_id(archer.id) is not None
+
+
+def test_le_signalement_enumere_toutes_les_equipes() -> None:
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _en_equipe(m, "Les Archers", TypeEquipe.STANDARD, archer.id)
+    _en_equipe(m, "Le Duo", TypeEquipe.MIXTE, archer.id)
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "membre des équipes « Les Archers » et « Le Duo »" in leve.value.message
+
+
+def test_la_suppression_confirmee_d_un_membre_passe() -> None:
+    """CA 6 : confirmée, la suppression passe ; le retrait de l'équipe est un contrat d'adapter."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _en_equipe(m, "Les Archers", TypeEquipe.STANDARD, archer.id)
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    assert m.inscrits.par_id(archer.id) is None
+
+
+def test_fusionner_deux_fiches_dans_deux_equipes_du_meme_type_est_refuse() -> None:
+    """Le survivant ne peut pas appartenir à deux équipes du même type (CA 3)."""
+    m = _monter()
+    gagnant_id, perdant_id = _doublon(m)
+    _en_equipe(m, "Les Archers", TypeEquipe.STANDARD, gagnant_id)
+    _en_equipe(m, "Les Flèches", TypeEquipe.STANDARD, perdant_id)
+    with pytest.raises(FusionArchersEnEquipes) as leve:
+        m.archers.fusionner(gagnant_id, perdant_id)
+    assert "« Les Archers »" in leve.value.message
+    assert "« Les Flèches »" in leve.value.message
+    assert m.inscrits.par_id(perdant_id) is not None
+
+
+def test_fusionner_deux_fiches_d_une_meme_equipe_ou_de_types_differents_passe() -> None:
+    m = _monter()
+    gagnant_id, perdant_id = _doublon(m)
+    _en_equipe(m, "Les Archers", TypeEquipe.STANDARD, gagnant_id, perdant_id)
+    _en_equipe(m, "Le Duo", TypeEquipe.MIXTE, perdant_id)
+    m.archers.fusionner(gagnant_id, perdant_id)
+    assert m.inscrits.par_id(perdant_id) is None

@@ -109,7 +109,7 @@ problème vient d'un paquet qu'on ne déclare pas soi-même.
 |---|---|---|
 | `@emnapi/core` | `1.11.1` | `npm ci` échouait en CI sur « Missing @emnapi/core/runtime » — un lockfile valide pour `npm install` peut ne pas l'être pour `npm ci`, qui est plus strict. Dépendance optionnelle de binaires par plateforme (rollup/oxide). |
 | `@emnapi/runtime` | `1.11.1` | idem. |
-| `brace-expansion` | `5.0.9` | Advisory **GHSA-rgw5-rvv9-x895** (DoS, sévérité **high**) couvrant `4.0.0 – 5.0.8`. Tiré par `eslint` → `minimatch`. **Dev only** : rien n'en part dans le bundle du jour J. |
+| `brace-expansion` | `5.0.12` | Advisory **GHSA-rgw5-rvv9-x895** (DoS, sévérité **high**) couvrant `4.0.0 – 5.0.8`, puis un nouvel avis **high** couvrant jusqu'à `5.0.11` (constaté le 01/10/2026 : l'épingle à `5.0.9` retenait à nouveau la version vulnérable). Tiré par `eslint` → `minimatch`. **Dev only** : rien n'en part dans le bundle du jour J. |
 | `nanoid` | `^3.3.18` | Advisory **GHSA-2v37-7h3g-55p8** (boucle infinie si `size` vaut zéro, sévérité **high**). ⚠️ **Borne remontée le 15/08/2026** : l'advisory a été **réévalué** pour couvrir `< 3.3.18` alors que l'épingle disait `^3.3.17`, et la CI est passée au rouge sans qu'aucun commit n'y touche — un audit vert n'est vrai qu'à sa date. Tiré par `vite` → `postcss`. **Dev only** : `postcss` ne tourne qu'au *build*, rien n'en part dans le bundle du jour J — et le défaut suppose un générateur personnalisé, que nous n'écrivons pas. Épinglé quand même : `npm audit --audit-level=high` est **bloquant en CI**, il ne distingue pas dev et prod. |
 | `postcss` | `^8.5.23` | Advisory **GHSA-fxqj-rqcc-2cmp** (lecture de `.map` arbitraires via `sourceMappingURL` quand `from` n'est pas défini, sévérité *moderate*) couvrant `<= 8.5.22`. Tiré par `vite`. **Dev only**, même raisonnement. Sévérité sous le seuil de la CI, montée **au passage** de `nanoid` : les deux advisories visent la même chaîne, les traiter séparément aurait fait deux allers-retours. |
 
@@ -186,3 +186,25 @@ reste la CI.
 
 *(Troisième fois que ce lockfile coûte un aller-retour. La **cause** est nommée depuis le 04/08 ; ce
 qui manquait était de savoir que `npm audit fix` tombe dans le même trou que `--package-lock-only`.)*
+
+#### 4ᵉ occurrence, le 01–02/10/2026 — et l'auteur est retombé dans le piège
+
+`pip-audit` et `npm audit` ont rougi **toutes** les PR ouvertes (#197, #198, #199), lockfiles
+inchangés. Trois avis bloquants :
+
+- **`virtualenv` 21.6.0** (Python, transitive de `pre-commit` 4.0.1, huit avis PYSEC). Monté à
+  **21.7.16** — dernière corrective de la mineure, la plus courte qui couvre les avis (corrigés au
+  plus tard en 21.7.13) ; `python-discovery` suit (1.4.4 → 1.6.1, sa propre dépendance).
+  `requirements.txt` est **régénéré** par `pip freeze --exclude-editable` depuis un **venv neuf**
+  (`pip install -r requirements.txt` puis la seule montée visée) : le venv de travail porte des
+  paquets posés à la main par d'autres sessions, qu'un `freeze` aurait embarqués.
+- **`undici`** 7.29.0 → **7.30.0** (via `jsdom`, high) et **`brace-expansion`** → **5.0.12** (high) :
+  ce dernier était **retenu par notre propre épingle** — la leçon « Une épingle doit être relue »,
+  vérifiée une deuxième fois. Les deux avis *moderate* sur `vitest` sont sous le seuil de la CI
+  (`--audit-level=high`) et n'ont pas été traités.
+
+⚠️ **`npm audit fix` a été lancé quand même**, avant relecture de ce fichier : `@emnapi` est tombé de
+11 à 6 mentions, exactement comme en août. Lockfile restauré, puis remède chirurgical (`version`,
+`resolved`, `integrity` — et `engines`, que `brace-expansion` 5.0.12 a changé), 273 paquets
+inchangés, cinq clés d'`overrides` à la bonne version, `npm ci` + audit `high` verts. La consigne
+était juste et écrite : **elle ne sert que lue avant la commande**, pas après.

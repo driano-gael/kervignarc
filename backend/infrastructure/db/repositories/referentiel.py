@@ -53,11 +53,13 @@ from infrastructure.db.models import (
     DerouleEtapeORM,
     DuelORM,
     EntreeAuditORM,
+    EquipeORM,
     ForfaitORM,
     FranchissementArretORM,
     GabaritSalleORM,
     IdentiteVisuelleORM,
     InscriptionORM,
+    MembreEquipeORM,
     PhaseORM,
     PosteORM,
     RemboursementORM,
@@ -107,6 +109,9 @@ def _purger_enfants_directs_du_tournoi(session: Session, tournoi_id: TournoiId) 
     absente s'y lirait comme « rien à faire » plutôt que comme « la base s'en charge ».
     """
     session.execute(delete(DerouleEtapeORM).where(DerouleEtapeORM.tournoi_id == tournoi_id))
+    equipes = select(EquipeORM.id).where(EquipeORM.tournoi_id == tournoi_id)
+    session.execute(delete(MembreEquipeORM).where(MembreEquipeORM.equipe_id.in_(equipes)))
+    session.execute(delete(EquipeORM).where(EquipeORM.tournoi_id == tournoi_id))
     session.execute(delete(ScoreurORM).where(ScoreurORM.tournoi_id == tournoi_id))
     session.execute(delete(PosteORM).where(PosteORM.tournoi_id == tournoi_id))
     session.execute(delete(EntreeAuditORM).where(EntreeAuditORM.tournoi_id == tournoi_id))
@@ -181,12 +186,36 @@ def _purger_descendance_des_archers(session: Session, archer_ids: Sequence[Arche
     (un `session.delete` ORM ne déclencherait pas la cascade de la base).
     """
     session.execute(delete(ScoreORM).where(ScoreORM.archer_id.in_(archer_ids)))
+    # E13US002 CA 6 : l'archer quitte ses équipes, qui subsistent.
+    session.execute(delete(MembreEquipeORM).where(MembreEquipeORM.archer_id.in_(archer_ids)))
     session.execute(delete(InscriptionORM).where(InscriptionORM.archer_id.in_(archer_ids)))
     session.execute(delete(SerieORM).where(SerieORM.archer_id.in_(archer_ids)))
     # `forfait` (E04US015) et `barrage_tir` (E06US003) : FK *enforced*, une ligne orpheline rend
     # l'archer indéracinable (500) — le piège relevé en revue adversariale d'E04US015.
     session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id.in_(archer_ids)))
     _supprimer_barrages_des_archers(session, archer_ids)
+
+
+def _fusionner_equipes(session: Session, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
+    """Le gagnant prend la place du perdant dans ses équipes, au même rang ; s'il y est déjà, le
+    perdant en sort. ⚠️ Le conflit « deux équipes du même type » est refusé **avant**, par le
+    service (`FusionArchersEnEquipes`) : l'adapter ne le revérifie pas.
+    """
+    deja = set(
+        session.scalars(
+            select(MembreEquipeORM.equipe_id).where(MembreEquipeORM.archer_id == gagnant_id)
+        )
+    )
+    session.execute(
+        delete(MembreEquipeORM).where(
+            MembreEquipeORM.archer_id == perdant_id, MembreEquipeORM.equipe_id.in_(deja)
+        )
+    )
+    session.execute(
+        update(MembreEquipeORM)
+        .where(MembreEquipeORM.archer_id == perdant_id)
+        .values(archer_id=gagnant_id)
+    )
 
 
 def _vers_reglage_podiums(ligne: TournoiORM) -> ReglagePodiums:
@@ -778,6 +807,7 @@ class ArcherRepositorySQL:
                 # enforced, donc sans ce report le `DELETE` du perdant échoue et la fusion d'un
                 # doublon devient impossible dès qu'un des deux a barré.
                 _fusionner_barrages(session, gagnant_id, perdant_id)
+                _fusionner_equipes(session, gagnant_id, perdant_id)
                 session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
                 # E02US007 : la licence de l'absorbé passe au gagnant qui n'en a pas — **après** le
                 # DELETE, l'index UNIQUE partiel refusant deux fiches à la même (ADR-0115).

@@ -460,7 +460,7 @@ imparfait et la migration différée.
 > les colonnes ci-dessus restent un **modèle prospectif** (une future US pourrait figer l'arbre). Fidèle
 > à ADR-0048, l'arbre est **recalculé** du classement à la demande ; E04US013 ne persiste que le **tir**
 > d'un match (table `DUEL` ci-dessous), keyé par `(phase_id, match_numero)` — pas de table `MATCH`.
-> L'entité `EQUIPE`/`MEMBRE_EQUIPE` et la composition relèvent d'E13US002.
+> L'entité `EQUIPE`/`MEMBRE_EQUIPE` et la composition sont livrées par E13US002 (section dédiée plus bas).
 
 ### SERIE (E04US002, clé descendue à la phase en E05US025)
 | id | INTEGER | PK |
@@ -872,15 +872,22 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
 
 ---
 
-### ÉQUIPE / MEMBRE_EQUIPE — modèle cible (E13US001, [ADR-0028](adr/0028-epreuves-par-equipes-participant.md))
-> **Non encore matérialisé** (comme la table `CIBLE`). Les épreuves par équipes entrant au MVP (ADR-0028), le modèle s'étendra ainsi :
-> - `EQUIPE` (`id`, `tournoi_id` FK, `nom`) — entité **enfant du tournoi**.
-> - `MEMBRE_EQUIPE` (`equipe_id` FK, `archer_id` FK) — composition ; contrainte **configurable**, défaut FFTA §6.3/§7 (3 archers, ou mixte 2 H/F).
-> - `MATCH` opposera des **participants** (`participant_A/B` = archer **ou** équipe), pas des archers en dur (CDC technique §5). Un tournoi individuel est le cas où chaque participant **est** un archer.
+### ÉQUIPE / MEMBRE_EQUIPE (E13US002, [ADR-0028](adr/0028-epreuves-par-equipes-participant.md))
+> **Matérialisé par E13US002** (migration `0059`).
+> - `EQUIPE` (`id`, `tournoi_id` FK, `nom`, `type` ∈ `standard`|`mixte`, `effectif_attendu`) —
+>   entité **enfant du tournoi** ; `UNIQUE(tournoi_id, nom)`. L'effectif attendu est porté **par
+>   l'équipe** (défaut FFTA §6.4/§7 : 3 en standard, 2 en mixte), pas par un réglage du tournoi.
+> - `MEMBRE_EQUIPE` (`equipe_id` FK, `archer_id` FK, `ordre`) — PK `(equipe_id, archer_id)`. La
+>   règle « **une équipe par type** » n'est **pas** une contrainte SQL (le type vit sur `EQUIPE`) :
+>   elle est tenue par `ServiceEquipes`, sous la file du writer unique.
+> - La **conformité** (effectif, arme, sexe) n'est **pas stockée** : elle se calcule à la lecture
+>   depuis la catégorie des membres, d'où sa mise à jour quand une catégorie change.
+> - `MATCH` oppose des **participants** (`participant_A/B` = archer **ou** équipe), pas des archers en dur (CDC technique §5). Un tournoi individuel est le cas où chaque participant **est** un archer.
 >
-> Entre dans le régime d'[ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) :
-> FK `equipe.tournoi_id`, `membre_equipe.*` **sans `ON DELETE`**, à ajouter à la purge applicative
-> (`TournoiRepositorySQL.supprimer`) **et** à l'inventaire de `test_tournoi_repository.py`.
+> Régime d'[ADR-0077](adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) : FK `equipe.tournoi_id`
+> et `membre_equipe.*` **sans `ON DELETE`**, purgées par `TournoiRepositorySQL.supprimer` et tenues
+> à l'inventaire de `test_tournoi_repository.py`. Supprimer ou fusionner un archer traite ses lignes
+> `membre_equipe` (CA 6 d'E13US002).
 
 ## Enums de référence
 

@@ -95,7 +95,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
-   "message": "et 23 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, colline, competition, departs, duels, en-cours, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "message": "et 24 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, colline, competition, departs, duels, en-cours, equipes, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "archers"
   },
@@ -116,6 +116,12 @@ window.ATLAS.controles = {
    "message": "annonce DEPART dans « backend/infrastructure/db/repositories/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0017"
+  },
+  {
+   "code": "portage-non-verifiable",
+   "message": "annonce Equipe, TypeEquipe, EFFECTIF_FFTA, ecarts_de_composition, ServiceEquipes, EquipeRepositorySQL, equipe, membre_equipe dans « frontend/src/features/equipes/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0028"
   },
   {
    "code": "portage-non-verifiable",
@@ -198,6 +204,12 @@ window.ATLAS.controles = {
   {
    "code": "portage-symbole-absent",
    "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0082"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _premiere_qualification dans « backend/application/classements.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0082"
   },
@@ -330,6 +342,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 54
+  "signaux": 56
  }
 };

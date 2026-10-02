@@ -16,6 +16,7 @@ from domain.arret_programme import ArretDeCirconstance, FranchissementArret
 from domain.barrage import BarrageDePlaces, BarrageId, TirBarrage
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.classement_imprime import ClassementQualificationImprime
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
@@ -23,6 +24,7 @@ from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.ecran import PriseDeControle
 from domain.entree_audit import EntreeAudit, JournalAudit
+from domain.equipe import Equipe, EquipeId
 from domain.feuille_marque import FeuilleDeMarque
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
@@ -833,6 +835,28 @@ class ScoreurRepository(Protocol):
         ...
 
 
+class EquipeRepository(Protocol):
+    """Port de persistance des équipes d'un tournoi et de leurs membres ordonnés (E13US002)."""
+
+    def par_id(self, equipe_id: EquipeId) -> Equipe | None: ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Equipe]:
+        """Ordre non garanti par le port : le service trie."""
+        ...
+
+    def par_archer(self, archer_id: ArcherId) -> list[Equipe]:
+        """Les équipes dont l'archer est membre (liste éventuellement vide)."""
+        ...
+
+    def enregistrer(self, equipe: Equipe) -> Equipe:
+        """Crée l'équipe si `id` vaut `None`, sinon la met à jour — membres et ordre compris."""
+        ...
+
+    def supprimer(self, equipe_id: EquipeId) -> None:
+        """Supprime l'équipe et ses appartenances ; aucun archer n'est touché (CA 7)."""
+        ...
+
+
 class PosteRepository(Protocol):
     """Port de persistance des postes — credential d'un lieu (E04US001, ADR-0029 ; élargi E07US004).
 
@@ -1050,6 +1074,18 @@ class GenerateurPalmares(Protocol):
         revue). ⚠️ **Un document à N sections, jamais un document par créneau** : le choix de
         découpage d'un export est celui du format, pas du classement (`stories/E06US009`).
         """
+        ...
+
+
+class GenerateurClassementQualification(Protocol):
+    """Port de rendu du **classement de qualification** en document (E09US005 ; adapter infra).
+
+    Même parti que `GenerateurPalmares` : le domaine compose, le format n'agit que dans l'adapter
+    (ADR-0101 §4 — le PDF pagine par catégorie, le tableur rend à plat).
+    """
+
+    def classement_qualification(self, document: ClassementQualificationImprime) -> bytes:
+        """Rend le document ; une section sans catégorie est un créneau sans archer engagé."""
         ...
 
 

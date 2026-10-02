@@ -1241,10 +1241,58 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/api/v1/equipes.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/equipes.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/duel.py",
      "existe": true,
      "symboles": [
       "Participant"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/equipe.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1270,6 +1318,38 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [],
      "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/equipes.py",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/equipes/",
+     "existe": true,
+     "symboles": [
+      "Equipe",
+      "TypeEquipe",
+      "EFFECTIF_FFTA",
+      "ecarts_de_composition",
+      "ServiceEquipes",
+      "EquipeRepositorySQL",
+      "equipe",
+      "membre_equipe"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
     }
    ],
    "remplace_par": "",
@@ -4238,6 +4318,7 @@ window.ATLAS.decisions = {
     "E05US034",
     "E05US035",
     "E06US009",
+    "E13US002",
     "E16US002",
     "E16US007",
     "E16US008",
@@ -4505,7 +4586,8 @@ window.ATLAS.decisions = {
     "E01US026",
     "E02US003",
     "E02US009",
-    "E02US010"
+    "E02US010",
+    "E13US002"
    ]
   },
   {
@@ -5205,7 +5287,9 @@ window.ATLAS.decisions = {
       "pour_phase",
       "_premiere_qualification"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_premiere_qualification"
+     ],
      "verifiable": true
     },
     {
@@ -6326,7 +6410,8 @@ window.ATLAS.decisions = {
     "E00US020",
     "E05US026",
     "E05US028",
-    "E05US030"
+    "E05US030",
+    "E13US002"
    ]
   },
   {
@@ -9901,6 +9986,7 @@ window.ATLAS.decisions = {
     "E06US001",
     "E06US004",
     "E06US009",
+    "E13US002",
     "E16US009",
     "E16US014",
     "E16US017"
