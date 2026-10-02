@@ -32,6 +32,7 @@ from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import Depart
+from domain.duel import BaremeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.erreurs import (
     ArretProgrammeInvalide,
     ConfigurationBigShootOffInvalide,
@@ -861,3 +862,34 @@ def test_promouvoir_capture_le_titre_des_etapes_et_le_rend_a_lapplication(ctx: C
     assert promu.etapes[0].titre == "Qualification des jeunes"
     # L'autre sens : rejoué sur un tournoi, le format rend son titre.
     assert promu.etapes[0].pour_tournoi(ctx.tournoi_id).titre == "Qualification des jeunes"
+
+
+def test_le_bareme_de_duel_voyage_avec_le_format(ctx: Contexte) -> None:
+    """E01US011, CA 6 — appliquer puis promouvoir restitue le barème de duel de chaque étape.
+
+    ⚠️ Comme le test du titre ci-dessus, la traversée **persistante** n'est pas prouvée ici : elle
+    l'est par `test_phase_repository.py::test_un_format_conserve_le_bareme_de_duel_de_ses_etapes`.
+    """
+    club = ReglageBaremeDuel(
+        BaremeDuel.preset_club(),
+        (SurchargeArme("Arc à poulies", BaremeDuel.preset_ffta_poulies()),),
+    )
+    format_tournoi = ctx.service.creer(
+        "Club à 4 points",
+        [
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(SourceModele(ordre_source=1, rang_debut=1, rang_fin=8),),
+                effectif=8,
+                bareme_duel=club,
+            ),
+        ],
+    )
+
+    etapes = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+    promu = ctx.service.promouvoir(ctx.tournoi_id, "Club à 4 points, repris")
+
+    assert etapes[1].bareme_duel == club
+    assert promu.etapes[1].bareme_duel == club

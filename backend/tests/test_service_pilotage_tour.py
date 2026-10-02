@@ -36,6 +36,7 @@ from application.phases import ServicePhases
 from application.pilotage_tour import ServicePilotageTour
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import ServiceSaisieDuels
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
@@ -237,7 +238,15 @@ class _Monde:
     def cycle_de_vie(self) -> ServicePhases:
         """Le service des transitions de phase, **branché comme au composition root** : c'est lui
         qui rattrape la pose sautée pendant une pause (ADR-0106 §5, 3ᵉ chemin)."""
-        service = ServicePhases(self.tournois, self.phases, self.departs, self.deroules)
+        service = ServicePhases(
+            self.tournois,
+            self.phases,
+            self.departs,
+            self.deroules,
+            VerrouBaremeDuel(
+                self.departs, self.phases, self.deroules, self.duels, ResolveurBaremeDuelFfta()
+            ),
+        )
         service.brancher_poseur_de_tour(self.placement)
         return service
 

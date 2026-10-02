@@ -7,6 +7,9 @@
   E01US011 **corrigée**, arbitrages reversés) ; [`docs/glossaire.md`](../glossaire.md)
   (`duel`, `set`/`manche`, `point de set`, `barrage`/`shoot-off`, `barème de duel`)
 - **Introduit par** : E04US013 (saisie en duels — système de sets, vainqueur, barrage).
+- **Amendé par** : [ADR-0117](0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md)
+  (01/10/2026, E01US011) — §2 : la composante « phase » de la résolution est livrée ; §4 : le barème
+  reste non stocké avec le tir, donc il est **verrouillé** au premier tir.
 - **S'appuie sur** : [ADR-0004](0004-moteur-de-phases-politiques.md) /
   [ADR-0046](0046-config-policies-politiques-nommees-parametrees.md) (politiques `scoring`/`tiebreak`
   injectables, ressignature assumée « un implémenteur, aucun consommateur ») · [ADR-0028](0028-epreuves-par-equipes-participant.md)
@@ -220,7 +223,8 @@ Chaque symbole vérifié dans le code du jour.)*
 - `backend/domain/duel.py` — **le barème** : `BaremeDuel` et ses presets
   (`preset_ffta_classique`, `preset_ffta_poulies`, `preset_club`), résolu derrière le `Protocol`
   `ResolveurBaremeDuel` (`bareme_pour(arme)`), implémenté par `ResolveurBaremeDuelFfta`, injecté au
-  composition root (`bootstrap/composition.py`).
+  composition root (`bootstrap/composition.py`). Depuis ADR-0117, ce n'est plus que le **défaut**
+  d'une phase sans `ReglageBaremeDuel`.
 - `backend/application/saisie_duels.py` — **le tableau reconstruit** : `_decor` revalide les gardes
   puis rejoue l'arbre à chaque lecture (duels validés rejoués), et `_etat_du_match` masque un tir
   dont les duellistes divergent des occupants recalculés (§4).
@@ -229,11 +233,9 @@ Chaque symbole vérifié dans le code du jour.)*
   stockés ; le verdict, lui, se recalcule (§ Alternatives écartées : « stocker le verdict » a été
   refusé).
 
-⚠️ **Écart entre le titre et le code, constaté le 08/08/2026.** Le titre annonce un « barème résolu
-par **(phase, arme)** ». Le code ne résout que par l'**arme** : `_bareme_du` appelle
-`bareme_pour(self._arme_du(...))`, et sa propre docstring dit « résolu par l'**arme** du
-participant ». Il n'existe **aucun** réglage de `BaremeDuel` au niveau de la phase —
-`Phase.bareme` est un `BaremeQualification`, qui « ne concerne que la qualification ». Le champ
-`EtatDuel.bareme` n'est pas un réglage mais le barème **calculé** exposé à la grille front. La
-composante « phase » de la résolution reste donc **à faire** : ne pas la supposer acquise en
-lisant ce titre — c'est le mode de défaillance d'ADR-0017 et d'ADR-0028.
+~~⚠️ **Écart entre le titre et le code, constaté le 08/08/2026.**~~ **Résorbé le 01/10/2026 par
+[ADR-0117](0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md)** :
+`ServiceSaisieDuels._bareme_du` lit désormais le `ReglageBaremeDuel` de la phase
+(`Phase.bareme_duel`, porté par l'étape) et ne retombe sur `bareme_pour(arme)` qu'en son absence.
+Le constat d'origine disait qu'il n'existait « **aucun** réglage de `BaremeDuel` au niveau de la
+phase » ; c'était vrai jusqu'à E01US011.

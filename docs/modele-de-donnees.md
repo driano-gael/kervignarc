@@ -748,7 +748,10 @@ objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implém
 registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
 sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et les réglages
-de `poules`, `big_shoot_off`, `suisse` (E05US026 — `{"suisse": {"rondes": 5}}`) **et `decoupage`**
+de `poules`, `big_shoot_off`, `suisse` (E05US026 — `{"suisse": {"rondes": 5}}`), `bareme_duel`
+(E01US011 — `{"bareme_duel": {"defaut": {"mode": "sets", "manches": 5, "fleches": 3, "points": 6},
+"surcharges": [{"arme": "Arc à poulies", "mode": "cumul", …}]}}` ; clé absente = défaut FFTA,
+relecture **stricte**) **et `decoupage`**
 (E05US035 — `{"decoupage": {"tours": 2}}`, le découpage d'une qualification en tours ; clé **omise**
 quand elle n'est pas découpée, si bien qu'une config d'avant l'US et une config non découpée sont le
 **même** document — c'est ce qui rend la livraison sûre sans migration. ⚠️ Relecture **stricte** : un
@@ -827,9 +830,11 @@ la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de 
   de marque sont signées « à la fin de la distance, ou de la compétition, **ou du duel** » — la
   validation est un acte **de fin** ; l'article B.6.1.2 (« scores toutes les 2 volées ») porte sur le
   **cumul**, que l'appli calcule seule, pas sur la validation par un tiers.
-- `scoring` est le barème **par défaut** de la phase ; `scoring_par_arme` le **surcharge par division**.
-  Nécessaire dès le format FFTA : au même tour, classique et arc nu tirent en sets quand les poulies
-  tirent au cumul (A.7.5.1 / A.7.5.2) — un barème unique par phase ne peut pas l'exprimer (EF-3.4).
+- `scoring` est le barème de la **qualification**. Le barème des **duels**, avec sa surcharge par
+  arme, n'est **pas** sous `policies` : E01US011 l'a livré à la racine (`bareme_duel` ci-dessous,
+  [ADR-0117](adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md)) —
+  la clé cible `scoring_par_arme` n'a jamais été écrite. Nécessaire dès le format FFTA : au même
+  tour, classique et arc nu tirent en sets quand les poulies tirent au cumul (A.7.5.1 / A.7.5.2).
 - `blason_surcharge` permet à une phase d'imposer un blason par-dessus le blason par défaut de la
   catégorie (`*` = toutes catégories), ex. « toutes les finales sur triples verticaux » (FFTA A.7.6/A.7.7).
   Absent ⇒ on retient le `CATEGORIE.blason_id`.

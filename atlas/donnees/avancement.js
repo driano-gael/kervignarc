@@ -4,6 +4,39 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "119",
+   "introduite_par": [
+    "E01US011"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "118",
+   "introduite_par": [
+    "E01US011",
+    "E04US013"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E01US017",
+    "E12US002"
+   ],
+   "severite": "majeur"
+  },
+  {
+   "identifiant": "117",
+   "introduite_par": [
+    "E01US011"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E01US027"
+   ],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "116",
    "introduite_par": [
     "E04US019"
@@ -517,7 +550,8 @@ window.ATLAS.avancement = {
     "E05US027",
     "E05US033",
     "E05US035",
-    "E05US029"
+    "E05US029",
+    "E01US011"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -634,7 +668,8 @@ window.ATLAS.avancement = {
    "identifiant": "080",
    "introduite_par": [
     "E01US024",
-    "E16US002"
+    "E16US002",
+    "E01US011"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -828,6 +863,7 @@ window.ATLAS.avancement = {
     "E05US028",
     "E05US026",
     "E05US027",
+    "E01US011",
     "E05US033"
    ],
    "ouverte": true,
@@ -946,6 +982,8 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0117",
+   "0049",
    "0115",
    "0014",
    "0114",
@@ -953,7 +991,7 @@ window.ATLAS.avancement = {
    "0074",
    "0104"
   ],
-  "derniere": "E13US002"
+  "derniere": "E01US011"
  },
  "epics": [
   {
@@ -1843,16 +1881,25 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0049"
+    "0049",
+    "0075",
+    "0117"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "054",
+    "064",
+    "080",
+    "117",
+    "118",
+    "119"
+   ],
    "dettes_resorbees": [],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1867,7 +1914,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Gérer plusieurs gabarits",
@@ -1957,10 +2004,13 @@ window.ATLAS.avancement = {
     "0029",
     "0049",
     "0052",
-    "0056"
+    "0056",
+    "0117"
    ],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "118"
+   ],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
    "etat": "✅",
@@ -1976,7 +2026,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0027",
-    "0049"
+    "0049",
+    "0117"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -2174,6 +2225,25 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0117"
+   ],
+   "dettes_introduites": [],
+   "dettes_resorbees": [
+    "117"
+   ],
+   "epic": "01",
+   "epic_titre": "Configuration du tournoi",
+   "etat": "⬜",
+   "identifiant": "E01US027",
+   "sections": [
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
+   ],
+   "story": "stories/E01-configuration.md",
+   "titre": "Barème propre aux ½ finales et finales d'un tableau",
+   "titre_story": "Un barème propre aux ½ finales et finales d'un tableau"
+  },
+  {
+   "adr": [
     "0013",
     "0014",
     "0018",
@@ -2316,7 +2386,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2494,7 +2564,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2621,7 +2691,8 @@ window.ATLAS.avancement = {
     "0083"
    ],
    "dettes_introduites": [
-    "020"
+    "020",
+    "118"
    ],
    "dettes_resorbees": [],
    "epic": "04",
@@ -2837,7 +2908,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3706,7 +3777,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3844,7 +3915,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -3916,7 +3987,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -3965,14 +4036,17 @@ window.ATLAS.avancement = {
     "0049",
     "0056",
     "0065",
-    "0067"
+    "0067",
+    "0117"
    ],
    "dettes_introduites": [
     "017",
     "019",
     "021"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "118"
+   ],
    "epic": "12",
    "epic_titre": "Pilotage du jour J — supervision, complétude, bascule de tour",
    "etat": "✅",
@@ -4968,8 +5042,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 157,
-  "vivantes": 181
+  "livrees": 158,
+  "vivantes": 182
  },
  "sections": [
   {
@@ -5653,12 +5727,12 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    1,
-    7
+    2,
+    8
    ],
    "compteur_ecrit": [
-    1,
-    7
+    2,
+    8
    ],
    "lignes": [
     {
@@ -5669,7 +5743,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E01US011",
      "titre": "Presets de barèmes multi-phases"
     },
@@ -5708,9 +5782,15 @@ window.ATLAS.avancement = {
      "etat": "⬜",
      "identifiant": "E10US006",
      "titre": "Modifier le mot de passe admin"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E01US027",
+     "titre": "Barème propre aux ½ finales et finales d'un tableau"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (1/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**"
   },
   {
    "calcule": [

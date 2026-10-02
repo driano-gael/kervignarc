@@ -97,6 +97,26 @@ class DuelDesynchronise(ApplicationError):
     code = "duel_desynchronise"
 
 
+class BaremeDuelVerrouille(ApplicationError):
+    """Changer le barème de duel d'une étape dont une phase a déjà un tir (E01US011) → 409.
+
+    Le barème n'est pas stocké avec le tir (ADR-0049 §4) : le changer ferait relire des duels
+    validés sous un autre barème, et basculer un vainqueur en silence. ADR-0117.
+    """
+
+    code = "bareme_duel_verrouille"
+
+
+class ArmeDeCategorieVerrouillee(ApplicationError):
+    """Changer l'arme d'une catégorie quand une étape réglée du tournoi a un tir (E01US011) → 409.
+
+    Une surcharge de barème désigne l'arme par son libellé exact (ADR-0117 §1) : la renommer la
+    détacherait, et des duels déjà validés se reliraient sous un autre barème.
+    """
+
+    code = "arme_de_categorie_verrouillee"
+
+
 class EcritureDeRoleInferieur(ApplicationError):
     """Un rôle **inférieur** à celui qui a déjà écrit la volée tente de l'écraser (E16US020) → 409.
 

@@ -2404,7 +2404,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0117"
+   ],
    "date": "2026-07-27",
    "date_brute": "2026-07-27",
    "extrait": "### 1. Un agrégat de domaine Duel distinct, réutilisant Volee/ZoneScore Le scoring d'un duel est un nouvel agrégat pur domain/duel.py, pas une extension de Serie : - MancheDuel(numero, volee_haut: Volee, volee_bas: Volee) — une manche (un « set ») oppose deux volées ; on réutilise Volee/ZoneScore (.points) sans les dupliquer. - Duel(bareme, participant_haut, participant_bas, manches, barrage) — racine d'agrégat immuable (comme Serie/Tableau) : saisir_manche(...), saisir_barrage(...) renvoient un nouveau Duel. La configuration (barème, zones admises du blason) est passée aux opérations par le service, jamais dupliquée dans l'agrégat — patron d'ADR-0027/Serie. - Le résultat (ResultatDuel : […]",
@@ -2416,6 +2418,12 @@ window.ATLAS.decisions = {
      "libelle": "Introduit par",
      "sens": "sortant",
      "type": "us"
+    },
+    {
+     "cible": "0117",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
     },
     {
      "cible": "0004",
@@ -2482,7 +2490,8 @@ window.ATLAS.decisions = {
       "preset_club",
       "Protocol",
       "ResolveurBaremeDuel",
-      "ResolveurBaremeDuelFfta"
+      "ResolveurBaremeDuelFfta",
+      "ReglageBaremeDuel"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4298,6 +4307,7 @@ window.ATLAS.decisions = {
     "E00US027",
     "E00US028",
     "E00US030",
+    "E01US011",
     "E01US025",
     "E01US026",
     "E03US012",
@@ -11616,6 +11626,220 @@ window.ATLAS.decisions = {
    "us": [
     "E17US001",
     "E17US005"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-10-01",
+   "date_brute": "2026-10-01",
+   "extrait": "1. ReglageBaremeDuel (domain/duel.py) : un barème par défaut et des surcharges par arme. L'arme se compare sans casse ni espaces de bord, jamais par inclusion (« Poulies » ne désigne pas « Arc à poulies »). Deux surcharges pour la même arme sont refusées. 2. Porté par l'étape (EtapeDeroule.bareme_duel), donc par le tournoi et non par le créneau (ADR-0076). Il voyage avec le format (ModelePhase.bareme_duel) et se range à la racine du JSON config, sans migration. Seuls les types de TYPES_A_BAREME_DE_DUEL l'acceptent — ensemble dérivé du contrat de phase (joué par un service, décor en duels) : élimination directe, poules, suisse, colline. 3. Résolution : le réglage de la phase s'il existe, […]",
+   "fichier": "docs/adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md",
+   "identifiant": "0117",
+   "liens": [
+    {
+     "cible": "E01US011",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0049",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [
+      "ReglageBaremeDuelDTO"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "ReglageBaremeDuelDTO"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/archers.py",
+     "existe": true,
+     "symboles": [
+      "_signaler_changement_categorie"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/categories.py",
+     "existe": true,
+     "symboles": [
+      "ServiceCategories.modifier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "ServicePhases.modifier",
+      "VerrouBaremeDuel"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "_bareme_du",
+      "_decor",
+      "bareme_de"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/verrou_bareme.py",
+     "existe": true,
+     "symboles": [
+      "VerrouBaremeDuel",
+      "etape_tiree",
+      "arme_figee",
+      "ResolveurBaremeDuel",
+      "ServicePhases",
+      "ServiceCategories"
+     ],
+     "symboles_absents": [
+      "ServicePhases",
+      "ServiceCategories"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/contrat_phase.py",
+     "existe": true,
+     "symboles": [
+      "TYPES_A_BAREME_DE_DUEL",
+      "_CONTRATS"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.bareme_duel",
+      "instancier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/duel.py",
+     "existe": true,
+     "symboles": [
+      "ReglageBaremeDuel",
+      "pour",
+      "SurchargeArme",
+      "designe",
+      "BaremeDuel.__post_init__",
+      "Duel._resultat_sets",
+      "_issue_d_egalite",
+      "saisir_manche",
+      "memes_baremes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.bareme_duel",
+      "pour_tournoi",
+      "d_etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "Phase.bareme_duel",
+      "__post_init__"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_politiques_json",
+      "_lire_bareme_duel"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie-duels/duel.ts",
+     "existe": true,
+     "symboles": [
+      "mancheNeuveFermee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageBaremeDuel.tsx",
+     "existe": true,
+     "symboles": [
+      "presetFfta",
+      "presetClub",
+      "estPoulies",
+      "ecartsDArmes",
+      "armes",
+      "null"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/baremeDuel.ts",
+     "existe": true,
+     "symboles": [
+      "presetFfta",
+      "presetClub",
+      "estPoulies",
+      "ecartsDArmes",
+      "armes",
+      "null"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le barème de duel est un réglage d'étape, aux surcharges par arme explicites, verrouillé au premier tir",
+   "us": [
+    "E01US011",
+    "E01US017",
+    "E01US018",
+    "E01US027",
+    "E12US002"
    ]
   }
  ]

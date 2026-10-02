@@ -31,7 +31,7 @@ from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
-from domain.duel import ResolveurBaremeDuelFfta
+from domain.duel import BaremeDuel, ReglageBaremeDuel, ResolveurBaremeDuelFfta
 from domain.erreurs import DuelIncomplet
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
@@ -877,3 +877,21 @@ def test_rectifier_une_manche_pendant_la_pause_reste_possible() -> None:
     )
 
     assert rencontre.duel is not None
+
+
+def test_le_bareme_de_duel_regle_sur_la_phase_atteint_ses_rencontres() -> None:
+    """E01US011, CA 1 : le réglage de la phase arrive jusqu'au pavé, pas seulement au tableau."""
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ConfigurationSuisse(nb_rondes=3))
+    phase = monde.phases.par_id(phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(
+        replace(phase, bareme_duel=ReglageBaremeDuel(BaremeDuel.preset_club()))
+    )
+
+    etat = monde.service().etat(monde.tournoi_id, phase_id)
+    rencontres = etat.rondes[0].rencontres
+
+    assert rencontres
+    assert all(r.bareme == BaremeDuel.preset_club() for r in rencontres)

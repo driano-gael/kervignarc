@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from application.erreurs import (
+    ArmeDeCategorieVerrouillee,
     BlasonHorsTournoi,
     BlasonIntrouvable,
     BriqueHorsBibliotheque,
@@ -17,6 +18,7 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from application.referentiel_ffta import blasons_salle_18m, categories_salle_18m
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.blason import Blason, BlasonId
 from domain.categorie import (
     HAUTEUR_CENTRE_DEFAUT,
@@ -38,10 +40,12 @@ class ServiceCategories:
         tournois: TournoiRepository,
         categories: CategorieRepository,
         blasons: BlasonRepository,
+        verrou: VerrouBaremeDuel,
     ) -> None:
         self._tournois = tournois
         self._categories = categories
         self._blasons = blasons
+        self._verrou = verrou
 
     def creer(
         self,
@@ -169,6 +173,15 @@ class ServiceCategories:
         else:
             self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
         modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
+        if (
+            categorie.tournoi_id is not None
+            and modifiee.arme != categorie.arme
+            and self._verrou.arme_figee(categorie.tournoi_id, categorie.arme, modifiee.arme)
+        ):
+            raise ArmeDeCategorieVerrouillee(
+                "Des duels déjà tirés se joueraient sous un autre barème avec cette arme : elle ne "
+                "peut plus changer. Le libellé de la catégorie, lui, reste modifiable."
+            )
         if categorie.tournoi_id is None:
             # **Deuxième fois** que cette route héritée laisse passer ce que les routes neuves
             # refusent. L'unicité posée à la création (`NomBriqueDejaPris`) était contournable par

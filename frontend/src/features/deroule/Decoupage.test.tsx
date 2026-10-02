@@ -23,6 +23,7 @@ const QUALIFICATION: Etape = {
   poules: null,
   big_shoot_off: null,
   suisse: null,
+  bareme_duel: null,
   colline: null,
   decoupage: null,
   sources: [],
@@ -36,6 +37,7 @@ function poser(etape: Etape = QUALIFICATION) {
   const surValider = vi.fn()
   render(
     <FormulaireEtape
+      armes={[]}
       etape={etape}
       etapesAmont={[]}
       surValider={surValider}

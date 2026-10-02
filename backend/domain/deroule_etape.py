@@ -21,6 +21,7 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline, portee_maximale
 from domain.depart import DepartId
+from domain.duel import ReglageBaremeDuel
 from domain.erreurs import (
     ConfigurationBigShootOffInvalide,
     ConfigurationCollineInvalide,
@@ -129,6 +130,13 @@ class EtapeDeroule:
     C'est le sens d'ADR-0076 — deux créneaux libres de diverger sur leurs pauses seraient la
     divergence silencieuse qu'il a fermée. Ce qui **avance** (l'arrêt a-t-il coupé, l'admin
     l'a-t-il relevé) n'est pas ici : c'est un `FranchissementArret`, propre au créneau.
+    """
+
+    bareme_duel: ReglageBaremeDuel | None = None
+    """Le barème des duels de cette étape (E01US011) — même régime que ses voisins (ADR-0076).
+
+    `None` = le défaut injecté, le comportement d'avant l'US. Verrouillé au premier tir, dans
+    n'importe quel créneau : cf. `Phase.bareme_duel` et ADR-0117.
     """
 
     titre: str | None = None
@@ -317,14 +325,15 @@ class EtapeDeroule:
             suisse=self.suisse,
             colline=self.colline,
             decoupage=self.decoupage,
+            bareme_duel=self.bareme_duel,
             statut=StatutPhase.A_VENIR,
         )
 
     def verifier_instanciable(self) -> None:
         """Lève si cette étape ne pourra pas s'instancier — **à appeler avant d'écrire**.
 
-        ⚠️ **Cinq** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
-        `big_shoot_off`, `suisse` posés sur un type qui ne les lit pas, plus `barrage_jusqu_au`.
+        ⚠️ **Six** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
+        `big_shoot_off`, `suisse`, `bareme_duel` sur un type qui ne les lit pas, `barrage_jusqu_au`.
         Sans cet appel, une étape invalide **rejoint le déroulé** puis fait tomber chaque lecture
         (E05US022). Une **méthode**, et non un `instancier(...)` dont on jette le résultat : un
         résultat perdu se lit comme du code mort, et un nettoyage le supprimerait sans rougir.

@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from api.v1.phases import EtapeReponse
+from api.v1.phases import EtapeReponse, ReglageBaremeDuelDTO
 from application.formats import ServiceFormats
 from application.simulation_format import (
     EFFECTIF_MAX,
@@ -383,6 +383,9 @@ class EtapeDTO(BaseModel):
     colline: ReglageCollineDTO | None = None
     """Le réglage d'une étape de **colline** (E05US027) — `null` = non réglée."""
 
+    bareme_duel: ReglageBaremeDuelDTO | None = None
+    """Le barème des duels (E01US011) — `null` = défaut FFTA. **Le même DTO** que `phases.py`."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -438,6 +441,7 @@ class EtapeDTO(BaseModel):
             decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
             titre=self.titre,
+            bareme_duel=(None if self.bareme_duel is None else self.bareme_duel.vers_agregat()),
         )
 
     @staticmethod
@@ -478,6 +482,11 @@ class EtapeDTO(BaseModel):
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             titre=etape.titre,
+            bareme_duel=(
+                None
+                if etape.bareme_duel is None
+                else ReglageBaremeDuelDTO.de_agregat(etape.bareme_duel)
+            ),
         )
 
 

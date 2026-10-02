@@ -36,7 +36,7 @@ from domain.classement import LigneClassement
 from domain.classement_de_poules import classement_de_poules
 from domain.classement_de_tableau import ClassementSource
 from domain.contrat_phase import TypePhase
-from domain.duel import BaremeDuel, Cote, Duel, ModeDuel
+from domain.duel import BaremeDuel, Cote, Duel, ModeDuel, ReglageBaremeDuel
 from domain.erreurs import BarrageRequisAvantQualification, MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId
@@ -327,6 +327,7 @@ class ServicePoules:
                         numero,
                         rencontre,
                         phase_id,
+                        phase.bareme_duel,
                         lignes,
                         blocs.get(poule.numero),
                         position,
@@ -737,6 +738,7 @@ class ServicePoules:
         numero: int,
         rencontre: RencontrePoule,
         phase_id: PhaseId,
+        reglage: ReglageBaremeDuel | None,
         lignes: dict[int, LigneClassement],
         bloc: BlocDeCouloirs | None,
         position_dans_le_tour: int,
@@ -748,7 +750,7 @@ class ServicePoules:
         ordinaire, et le même archer ne peut pas tirer en sets d'un côté et en cumul de l'autre.
         """
         a, b = rencontre.a, rencontre.b
-        bareme = self._saisie_duels.bareme_de(a, lignes)
+        bareme = self._saisie_duels.bareme_de(reglage, a, lignes)
         charge = self._duels.charger(phase_id, numero, bareme=bareme)
         # ⚠️ **L'ancrage d'ADR-0049 §4.** Un tir dont les duellistes enregistrés divergent des
         # adversaires recalculés est **masqué**, jamais ré-attribué : la rencontre s'affiche non

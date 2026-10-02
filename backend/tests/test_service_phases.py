@@ -13,6 +13,7 @@ import datetime
 import pytest
 
 from application.erreurs import (
+    BaremeDuelVerrouille,
     PhaseIntrouvable,
     PhaseSourceReferencee,
     ReordonnancementPhasesInvalide,
@@ -20,13 +21,24 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.phases import ServicePhases
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
+from domain.duel import (
+    BaremeDuel,
+    Duel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+    SurchargeArme,
+)
 from domain.erreurs import EffectifIncompatible, SourceApresPhase, SourceIntrouvable
+from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
+    FauxDuelRepository,
     FauxPhaseRepository,
     poser_phase_factice,
 )
@@ -66,7 +78,9 @@ class FauxTournoiRepository:
         return DescendanceTournoi()
 
 
-def _service() -> tuple[ServicePhases, int]:
+def _service(
+    duels: FauxDuelRepository | None = None, departs: FauxDepartRepository | None = None
+) -> tuple[ServicePhases, int]:
     """Le décor de composition — maille **tournoi**. Rend `(service, tournoi_id)`.
 
     ⚠️ **Le créneau porte un identifiant volontairement distinct** (`_DEPART`). Les doublures
@@ -81,7 +95,7 @@ def _service() -> tuple[ServicePhases, int]:
         Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert tournoi.id is not None
-    departs = FauxDepartRepository()
+    departs = departs if departs is not None else FauxDepartRepository()
     depart = departs.ajouter(
         dataclasses.replace(
             Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00"),
@@ -94,7 +108,10 @@ def _service() -> tuple[ServicePhases, int]:
     # et rend les phases telles qu'elles ont été posées — les tests de service ne franchiraient
     # jamais la couture d'assemblage, celle-là même qu'ADR-0076 introduit.
     phases = FauxPhaseRepository(departs, deroules)
-    return ServicePhases(tournois, phases, departs, deroules), tournoi.id
+    verrou = VerrouBaremeDuel(
+        departs, phases, deroules, duels or FauxDuelRepository(), ResolveurBaremeDuelFfta()
+    )
+    return ServicePhases(tournois, phases, departs, deroules, verrou), tournoi.id
 
 
 def _service_avec_creneau() -> tuple[ServicePhases, int, int]:
@@ -377,7 +394,15 @@ def test_supprimer_la_qualification_est_refuse() -> None:
     assert depart.id is not None
     phases = FauxPhaseRepository(departs)
     deroules = FauxDerouleRepository()
-    service = ServicePhases(tournois, phases, departs, deroules)
+    service = ServicePhases(
+        tournois,
+        phases,
+        departs,
+        deroules,
+        VerrouBaremeDuel(
+            departs, phases, deroules, FauxDuelRepository(), ResolveurBaremeDuelFfta()
+        ),
+    )
     poser_phase_factice(
         departs,
         deroules,
@@ -448,3 +473,153 @@ def test_transition_leve_si_phase_hors_du_creneau() -> None:
     service, _, depart_id = _service_avec_creneau()
     with pytest.raises(PhaseIntrouvable):
         service.demarrer(depart_id, 999)
+
+
+# --- E01US011 : le barème de duel d'une étape, verrouillé au premier tir ----------------------
+
+_CLUB = ReglageBaremeDuel(BaremeDuel.preset_club())
+_FFTA = ReglageBaremeDuel(BaremeDuel.preset_ffta_classique())
+
+
+def _tirer_un_duel(duels: FauxDuelRepository, phase_id: int) -> None:
+    """Enregistre un tir — le contenu importe peu, seule son existence verrouille (CA 4)."""
+    duel = Duel.vide(
+        BaremeDuel.preset_ffta_classique(),
+        Participant(GenreParticipant.INDIVIDUEL, 1),
+        Participant(GenreParticipant.INDIVIDUEL, 2),
+    )
+    duels.enregistrer(phase_id, 1, duel)
+
+
+def _modifier_bareme(
+    service: ServicePhases, tournoi_id: int, etape: EtapeDeroule, reglage: ReglageBaremeDuel | None
+) -> EtapeDeroule:
+    assert etape.id is not None
+    return service.modifier(
+        tournoi_id, etape.id, etape.type, etape.sources, etape.effectif, bareme_duel=reglage
+    )
+
+
+def test_ajouter_une_etape_de_duels_avec_son_bareme() -> None:
+    service, tournoi_id = _service()
+
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_CLUB)
+
+    assert service.lister(tournoi_id)[0].bareme_duel == _CLUB
+    assert service.avancement(_DEPART)[0].bareme_duel == _CLUB
+    assert etape.bareme_duel == _CLUB
+
+
+def test_le_bareme_d_une_etape_sans_tir_se_modifie() -> None:
+    service, tournoi_id = _service()
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_FFTA)
+
+    modifiee = _modifier_bareme(service, tournoi_id, etape, _CLUB)
+
+    assert modifiee.bareme_duel == _CLUB
+
+
+def test_le_bareme_d_une_etape_deja_tiree_est_verrouille() -> None:
+    """CA 4 : changer le barème réinterpréterait des duels déjà tirés — refus visible."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_FFTA)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+
+    with pytest.raises(BaremeDuelVerrouille):
+        _modifier_bareme(service, tournoi_id, etape, _CLUB)
+    assert service.lister(tournoi_id)[0].bareme_duel == _FFTA
+
+
+def test_retirer_le_bareme_d_une_etape_deja_tiree_est_aussi_refuse() -> None:
+    """Retirer le réglage ramène au défaut FFTA : c'est un changement de barème comme un autre."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_CLUB)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+
+    with pytest.raises(BaremeDuelVerrouille):
+        _modifier_bareme(service, tournoi_id, etape, None)
+
+
+def test_poser_un_bareme_sur_une_etape_deja_tiree_sans_reglage_est_refuse() -> None:
+    """L'absence de réglage est déjà un barème (le défaut FFTA, CA 3) : il est tiré, donc figé."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+
+    with pytest.raises(BaremeDuelVerrouille):
+        _modifier_bareme(service, tournoi_id, etape, _CLUB)
+
+
+def test_une_etape_deja_tiree_reste_editable_hors_bareme() -> None:
+    """Le verrou porte sur le barème seul : le titre d'une phase en cours se corrige encore."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_CLUB)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+    assert etape.id is not None
+
+    modifiee = service.modifier(
+        tournoi_id,
+        etape.id,
+        etape.type,
+        etape.sources,
+        etape.effectif,
+        bareme_duel=_CLUB,
+        titre="Tableau principal",
+    )
+
+    assert modifiee.titre == "Tableau principal"
+
+
+def test_un_tir_dans_un_autre_depart_verrouille_aussi() -> None:
+    """CA 4 « dans n'importe quel départ » : la définition est commune (ADR-0076)."""
+    duels = FauxDuelRepository()
+    departs = FauxDepartRepository()
+    service, tournoi_id = _service(duels, departs)
+    second = departs.ajouter(
+        Depart.creer(tournoi_id=tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+    )
+    assert second.id is not None
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_FFTA)
+    _tirer_un_duel(duels, _phase_du_creneau(service, second.id))
+
+    with pytest.raises(BaremeDuelVerrouille):
+        _modifier_bareme(service, tournoi_id, etape, _CLUB)
+
+
+def test_le_decor_de_test_recopie_le_bareme_de_duel() -> None:
+    """`DETTE-064` : le décor recopie les réglages un à un — celui-ci compris."""
+    departs = FauxDepartRepository()
+    depart = departs.ajouter(
+        Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    deroules = FauxDerouleRepository()
+    phases = FauxPhaseRepository(departs, deroules)
+    posee = poser_phase_factice(
+        departs,
+        deroules,
+        phases,
+        dataclasses.replace(
+            Phase.creer(depart.id, 1, TypePhase.ELIMINATION_DIRECTE), bareme_duel=_CLUB
+        ),
+    )
+
+    assert posee.bareme_duel == _CLUB
+    assert deroules.par_tournoi(1)[0].bareme_duel == _CLUB
+
+
+def test_renvoyer_le_meme_bareme_a_la_casse_pres_n_est_pas_un_changement() -> None:
+    """La casse d'une arme ne change pas l'arme (`SurchargeArme.designe`) : pas de faux 409."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    poulies = BaremeDuel.preset_ffta_poulies()
+    reglage = ReglageBaremeDuel(_FFTA.par_defaut, (SurchargeArme("Arc à poulies", poulies),))
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=reglage)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+
+    meme = ReglageBaremeDuel(_FFTA.par_defaut, (SurchargeArme("ARC À POULIES", poulies),))
+    _modifier_bareme(service, tournoi_id, etape, meme)

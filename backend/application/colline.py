@@ -47,7 +47,7 @@ from domain.colline import (
     defis_de_la_manche,
     portee_maximale,
 )
-from domain.duel import BaremeDuel, Cote, Duel
+from domain.duel import BaremeDuel, Cote, Duel, ReglageBaremeDuel
 from domain.participant import Participant
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.placement_par_bloc import (
@@ -353,7 +353,7 @@ class ServiceColline:
         # entier, il n'y a pas de groupes à distinguer. Le numéro 1 est celui que `placer_les_blocs`
         # attribue.
         bloc = next(iter(self._placements.par_phase(phase_id)), None)
-        manches, ordre = self._rejouer(phase_id, tireurs, jouable, lignes, bloc)
+        manches, ordre = self._rejouer(phase_id, phase.bareme_duel, tireurs, jouable, lignes, bloc)
         return EtatColline(
             phase_id=phase_id,
             nb_manches=configuration.nb_manches,
@@ -375,6 +375,7 @@ class ServiceColline:
     def _rejouer(
         self,
         phase_id: PhaseId,
+        reglage: ReglageBaremeDuel | None,
         tireurs: list[Participant],
         configuration: ConfigurationColline,
         lignes: dict[int, LigneClassement],
@@ -402,7 +403,16 @@ class ServiceColline:
             # bloc.
             for position, defi_domaine in enumerate(defis_domaine):
                 numero += 1
-                defi = self._defi(numero, index + 1, defi_domaine, phase_id, lignes, bloc, position)
+                defi = self._defi(
+                    numero,
+                    index + 1,
+                    defi_domaine,
+                    phase_id,
+                    reglage,
+                    lignes,
+                    bloc,
+                    position,
+                )
                 defis.append(defi)
                 engages.add(defi_domaine.defie.ref_id)
                 engages.add(defi_domaine.challenger.ref_id)
@@ -434,6 +444,7 @@ class ServiceColline:
         manche: int,
         defi: DefiColline,
         phase_id: PhaseId,
+        reglage: ReglageBaremeDuel | None,
         lignes: dict[int, LigneClassement],
         bloc: BlocDeCouloirs | None,
         position: int,
@@ -446,7 +457,7 @@ class ServiceColline:
         """
         haut = defi.defie
         bas = defi.challenger
-        bareme = self._saisie_duels.bareme_de(haut, lignes)
+        bareme = self._saisie_duels.bareme_de(reglage, haut, lignes)
         charge = self._duels.charger(phase_id, numero, bareme=bareme)
         # ⚠️ **L'ancrage d'ADR-0049 §4.** Un tir dont les duellistes enregistrés divergent des
         # adversaires recalculés est **masqué**, jamais ré-attribué : le défi s'affiche non tiré

@@ -30,6 +30,7 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
+from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.entree_audit import EntreeAudit
 from domain.erreurs import DomainError
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
@@ -116,6 +117,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         big_shoot_off = _lire_reglage_big_shoot_off(config)
         suisse = _lire_reglage_suisse(config)
         colline = _lire_reglage_colline(config)
+        bareme_duel = _lire_bareme_duel(config)
         decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
         titre = _lire_titre(config)
@@ -146,6 +148,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             decoupage=decoupage,
             arrets=arrets,
             titre=titre,
+            bareme_duel=bareme_duel,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -299,6 +302,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             decoupage=etape.decoupage,
             arrets=etape.arrets,
             titre=etape.titre,
+            bareme_duel=etape.bareme_duel,
         )
     )
 
@@ -318,6 +322,7 @@ def _politiques_json(
     decoupage: DecoupageEnTours | None,
     arrets: tuple[ArretProgramme, ...],
     titre: str | None,
+    bareme_duel: ReglageBaremeDuel | None,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
 ) -> dict[str, object]:
@@ -467,6 +472,16 @@ def _politiques_json(
         # absente disent la même chose ici (« pas de titre »), à la différence de `validation`
         # où la présence à `null` porte un sens.
         config["titre"] = titre
+    if bareme_duel is not None:
+        # E01US011 : racine du `config`, comme ses voisins — aucune migration, une étape écrite
+        # avant se relit « non réglée », donc au défaut injecté (ADR-0117).
+        config["bareme_duel"] = {
+            "defaut": _bareme_duel_json(bareme_duel.par_defaut),
+            "surcharges": [
+                {"arme": surcharge.arme, **_bareme_duel_json(surcharge.bareme)}
+                for surcharge in bareme_duel.surcharges
+            ],
+        }
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -584,6 +599,43 @@ def _lire_reglage_colline(config: Any) -> ConfigurationColline | None:
         # d'incohérent. Même raisonnement que le nombre de rondes absent d'un suisse.
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return ConfigurationColline(nb_manches=int(manches), portee_de_defi=int(portee))
+
+
+def _bareme_duel_json(bareme: BaremeDuel) -> dict[str, object]:
+    return {
+        "mode": bareme.mode.value,
+        "manches": bareme.nb_manches,
+        "fleches": bareme.nb_fleches_par_volee,
+        "points": bareme.points_pour_gagner,
+    }
+
+
+def _vers_bareme_duel(souffle: Any) -> BaremeDuel:
+    return BaremeDuel(
+        ModeDuel(souffle["mode"]),
+        nb_manches=int(souffle["manches"]),
+        nb_fleches_par_volee=int(souffle["fleches"]),
+        points_pour_gagner=int(souffle["points"]),
+    )
+
+
+def _lire_bareme_duel(config: Any) -> ReglageBaremeDuel | None:
+    """Le barème de duel d'une étape (E01US011), lu **à la racine** du `config`.
+
+    Absence = non réglé, le défaut injecté. ⚠️ **Un document incomplet fait échouer la relecture**
+    (`KeyError` → `InfrastructureError` chez l'appelant) : deviner un seuil de points jouerait un
+    autre tournoi que celui composé.
+    """
+    souffle = config.get("bareme_duel")
+    if souffle is None:
+        return None
+    return ReglageBaremeDuel(
+        par_defaut=_vers_bareme_duel(souffle["defaut"]),
+        surcharges=tuple(
+            SurchargeArme(str(brute["arme"]), _vers_bareme_duel(brute))
+            for brute in souffle["surcharges"]
+        ),
+    )
 
 
 def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
@@ -798,6 +850,8 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         # remonter un format anonyme l'année suivante. `_politiques_json` a **deux**
                         # appelants ; en câbler un seul est le mode de panne de ce fichier.
                         titre=etape.titre,
+                        # E01US011 : câblé ici ET sur `_config_etape` — cf. le commentaire du titre.
+                        bareme_duel=etape.bareme_duel,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -891,6 +945,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         decoupage=_lire_decoupage(brute),
         arrets=_lire_arrets(brute),
         titre=_lire_titre(brute),
+        bareme_duel=_lire_bareme_duel(brute),
     )
 
 

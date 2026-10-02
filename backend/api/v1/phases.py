@@ -28,6 +28,7 @@ from domain.arret_programme import (
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule_etape import EtapeDeroule
+from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.phase import (
     IssueTour,
     NatureSource,
@@ -308,6 +309,72 @@ class ReglageCollineDTO(BaseModel):
         )
 
 
+class BaremeDuelDTO(BaseModel):
+    """Un barème de duel (ADR-0049 §2) : `points_pour_gagner` n'est lu qu'en `sets`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: ModeDuel
+    nb_manches: int = Field(ge=1, le=64)
+    nb_fleches_par_volee: int = Field(ge=1, le=12)
+    points_pour_gagner: int = Field(ge=0, le=128)
+
+    def vers_agregat(self) -> BaremeDuel:
+        return BaremeDuel(
+            self.mode,
+            nb_manches=self.nb_manches,
+            nb_fleches_par_volee=self.nb_fleches_par_volee,
+            points_pour_gagner=self.points_pour_gagner,
+        )
+
+    @staticmethod
+    def de_agregat(bareme: BaremeDuel) -> BaremeDuelDTO:
+        return BaremeDuelDTO(
+            mode=bareme.mode,
+            nb_manches=bareme.nb_manches,
+            nb_fleches_par_volee=bareme.nb_fleches_par_volee,
+            points_pour_gagner=bareme.points_pour_gagner,
+        )
+
+
+class SurchargeArmeDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    arme: str = Field(min_length=1, max_length=80)
+    bareme: BaremeDuelDTO
+
+
+class ReglageBaremeDuelDTO(BaseModel):
+    """Le barème de duel d'une étape (E01US011, ADR-0117) — défaut et surcharges par arme.
+
+    ⚠️ **Défini une seule fois**, importé par `api/v1/formats.py` : ce n'est pas une 9ᵉ paire de
+    `DETTE-054`. Les invariants (doublon d'arme, seuil atteignable) vivent dans le domaine (422).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    par_defaut: BaremeDuelDTO
+    surcharges: list[SurchargeArmeDTO] = Field(default_factory=list, max_length=32)
+
+    def vers_agregat(self) -> ReglageBaremeDuel:
+        return ReglageBaremeDuel(
+            par_defaut=self.par_defaut.vers_agregat(),
+            surcharges=tuple(
+                SurchargeArme(s.arme, s.bareme.vers_agregat()) for s in self.surcharges
+            ),
+        )
+
+    @staticmethod
+    def de_agregat(reglage: ReglageBaremeDuel) -> ReglageBaremeDuelDTO:
+        return ReglageBaremeDuelDTO(
+            par_defaut=BaremeDuelDTO.de_agregat(reglage.par_defaut),
+            surcharges=[
+                SurchargeArmeDTO(arme=s.arme, bareme=BaremeDuelDTO.de_agregat(s.bareme))
+                for s in reglage.surcharges
+            ],
+        )
+
+
 class ArretProgrammeDTO(BaseModel):
     """Une **pause programmée** : après quel tour la salle s'arrête (E05US033, ADR-0091).
 
@@ -413,6 +480,13 @@ class ConfigPhaseRequete(BaseModel):
     métier sur la longueur. Ce qu'il faut borner est l'**entrée** — même garde que `sources` (16).
     """
 
+    bareme_duel: ReglageBaremeDuelDTO | None = None
+    """Le barème des duels de l'étape (E01US011) — `null` = défaut FFTA, poulies reconnues.
+
+    Même régime d'édition **totale** : omettre le champ au `PUT` efface le réglage. Posé sur un type
+    sans duel → 422 ; changé alors qu'un duel de l'étape est tiré → 409 `bareme_duel_verrouille`.
+    """
+
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
 
@@ -466,6 +540,9 @@ class PhaseReponse(BaseModel):
     Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
     Posé sur un type qui n'est pas `colline`, il lève `ConfigurationCollineInvalide` (422)."""
 
+    bareme_duel: ReglageBaremeDuelDTO | None = None
+    """Le barème des duels de l'étape (E01US011) — `null` = défaut FFTA."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -501,6 +578,11 @@ class PhaseReponse(BaseModel):
             decoupage=(
                 None if phase.decoupage is None else DecoupageDTO.de_agregat(phase.decoupage)
             ),
+            bareme_duel=(
+                None
+                if phase.bareme_duel is None
+                else ReglageBaremeDuelDTO.de_agregat(phase.bareme_duel)
+            ),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -530,6 +612,9 @@ class EtapeReponse(BaseModel):
 
     Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
     Posé sur un type qui n'est pas `colline`, il lève `ConfigurationCollineInvalide` (422)."""
+
+    bareme_duel: ReglageBaremeDuelDTO | None = None
+    """Le barème des duels de l'étape (E01US011) — `null` = défaut FFTA."""
 
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
@@ -586,6 +671,11 @@ class EtapeReponse(BaseModel):
             ),
             decoupage=(
                 None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
+            ),
+            bareme_duel=(
+                None
+                if etape.bareme_duel is None
+                else ReglageBaremeDuelDTO.de_agregat(etape.bareme_duel)
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             titre=etape.titre,
@@ -646,6 +736,9 @@ async def ajouter_phase(
                 None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
                 titre=requete.titre,
+                bareme_duel=(
+                    None if requete.bareme_duel is None else requete.bareme_duel.vers_agregat()
+                ),
             )
         )
     )
@@ -681,6 +774,9 @@ async def modifier_phase(
                 None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
                 titre=requete.titre,
+                bareme_duel=(
+                    None if requete.bareme_duel is None else requete.bareme_duel.vers_agregat()
+                ),
             )
         )
     )

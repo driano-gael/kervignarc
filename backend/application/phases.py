@@ -15,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from application.erreurs import (
+    BaremeDuelVerrouille,
     DepartIntrouvable,
     PhaseIntrouvable,
     PhaseQualificationNonSupprimable,
@@ -25,6 +26,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_depart
 from application.pose_du_tour import DeclencheurPoseDeTour, PoseurDeTour
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
@@ -35,6 +37,7 @@ from domain.deroule_etape import (
     EtapeDerouleId,
     vues_du_deroule,
 )
+from domain.duel import ReglageBaremeDuel, memes_baremes
 from domain.phase import (
     Phase,
     PhaseId,
@@ -66,6 +69,7 @@ class ServicePhases:
         phases: PhaseRepository,
         departs: DepartRepository,
         deroules: DerouleRepository,
+        verrou: VerrouBaremeDuel,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -78,6 +82,8 @@ class ServicePhases:
         # Le **déroulé** : la définition, une fois par tournoi (ADR-0076). Ce service porte
         # donc deux mailles, délibérément — composer au tournoi, faire vivre au départ.
         self._deroules = deroules
+        # E01US011 : « déjà tiré » (ADR-0117 §5), la même instance que la garde d'arme.
+        self._verrou = verrou
         self._pose_de_tour = DeclencheurPoseDeTour()
 
     def brancher_poseur_de_tour(self, poseur: PoseurDeTour) -> None:
@@ -128,6 +134,7 @@ class ServicePhases:
         decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
         titre: str | None = None,
+        bareme_duel: ReglageBaremeDuel | None = None,
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
@@ -162,6 +169,7 @@ class ServicePhases:
             decoupage=decoupage,
             arrets=arrets,
             titre=titre,
+            bareme_duel=bareme_duel,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence(vues_du_deroule([*existantes, nouvelle]))
@@ -190,6 +198,7 @@ class ServicePhases:
         decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
         titre: str | None = None,
+        bareme_duel: ReglageBaremeDuel | None = None,
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape — édition **totale** de sa config.
 
@@ -225,7 +234,16 @@ class ServicePhases:
             # l'écran : le champ vidé reviendrait rempli au rechargement.
             titre=titre,
             arrets=arrets,
+            # E01US011 : passé explicitement, même motif que ses voisins (édition totale).
+            bareme_duel=bareme_duel,
         )
+        if not memes_baremes(modifiee.bareme_duel, etape.bareme_duel) and self._verrou.etape_tiree(
+            tournoi_id, etape_id
+        ):
+            raise BaremeDuelVerrouille(
+                "Des duels de cette phase ont déjà été tirés : son barème ne peut plus changer, "
+                "sans quoi leurs résultats seraient relus autrement."
+            )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
         verifier_sequence(vues_du_deroule([*autres, modifiee]))
         # ⚠️ **Avant l'écriture** (E05US022) : `vues_du_deroule` ne porte ni `profondeur`,

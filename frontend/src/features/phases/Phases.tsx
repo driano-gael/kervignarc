@@ -38,6 +38,17 @@ import {
 import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
 import { depuisDecoupage, versDecoupage } from '../../shared/phases/decoupage'
 import { ReglageColline } from '../../shared/phases/ReglageColline'
+import { ReglageBaremeDuel } from '../../shared/phases/ReglageBaremeDuel'
+import {
+  BAREME_DUEL_NON_REGLE,
+  TYPES_A_BAREME_DE_DUEL,
+  armesDistinctes,
+  type ArmesConnues,
+  depuisReglage as depuisReglageBaremeDuel,
+  estValide as baremeDuelValide,
+  versReglage as versReglageBaremeDuel,
+} from '../../shared/phases/baremeDuel'
+import { useCategories } from '../categories/hooks'
 import {
   depuisReglage as depuisReglageColline,
   estValide as collineValide,
@@ -528,6 +539,19 @@ export function FormulairePhase({
   const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
   // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [colline, setColline] = useState(depuisReglageColline(phase?.colline ?? null))
+  // E01US011, même parti : l'état vit ici. Les armes des catégories pré-remplissent les presets.
+  const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(phase?.bareme_duel ?? null))
+  const categories = useCategories(tournoiId)
+  // `null` tant que la requête n'a pas réussi : la fiche retient alors ses presets (E01US011).
+  const armes = useMemo<ArmesConnues>(
+    () =>
+      categories.isError
+        ? 'erreur'
+        : categories.data === undefined
+          ? 'chargement'
+          : armesDistinctes(categories.data.map((categorie) => categorie.arme)),
+    [categories.isError, categories.data],
+  )
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
   // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
   // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
@@ -619,6 +643,7 @@ export function FormulairePhase({
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
   const estColline = type === 'colline'
+  const aBaremeDeDuel = TYPES_A_BAREME_DE_DUEL.has(type)
   // E05US035 : le découpage en tours n'existe que pour la qualification. E05US033 :
   // `TYPES_ARRETABLES` (miroir de la table de même nom côté domaine, ADR-0093) dit quels types
   // annoncent leurs tours, donc où une pause peut se poser. ⚠️ **Pour une qualification,
@@ -637,6 +662,7 @@ export function FormulairePhase({
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
     !(estSuisse && !suisseValide(suisse)) &&
     !(estColline && !collineValide(colline)) &&
+    !(aBaremeDeDuel && !baremeDuelValide(baremeDuel)) &&
     // ⚠️ **La borne d'effectif est OPPOSABLE, donc elle doit désactiver le bouton** (correctif de
     // 2ᵉ passe). `collineValide` ne juge que les bornes absolues du réglage (1..64) ; la borne qui
     // dépend de l'effectif déclaré, elle, est celle que `EtapeDeroule._verifier_portee_de_defi`
@@ -683,6 +709,8 @@ export function FormulairePhase({
       // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé
       // en 422 `configuration_colline_invalide`. Retyper la phase l'**efface** donc.
       colline: estColline ? (versReglageColline(colline) ?? null) : null,
+      // E01US011, même garde : porté par un type sans duel, le serveur refuserait en 422.
+      bareme_duel: aBaremeDeDuel ? (versReglageBaremeDuel(baremeDuel) ?? null) : null,
       // Retyper la phase **efface** l'arrêt (E05US033) et le découpage (E05US035), comme les
       // quatre autres réglages : portés par un autre type, ils seraient refusés en 422 et le `PUT`
       // étant total, c'est l'enregistrement entier qui échouerait. ⚠️ **Perte de planning
@@ -720,6 +748,7 @@ export function FormulairePhase({
           // raisonnement ci-dessus — un Ladder portée 4 sur 8 manches se serait reporté en silence
           // sur la phase suivante, alors que c'est un choix de format, pas une préférence.
           setColline(depuisReglageColline(null))
+          setBaremeDuel(BAREME_DUEL_NON_REGLE)
           setArrets(ARRETS_PAR_DEFAUT)
           setAvecSource(false)
           setEtapeSource('')
@@ -831,6 +860,14 @@ export function FormulairePhase({
             }
           />
         )}
+        {aBaremeDeDuel && (
+          <ReglageBaremeDuel
+            etat={baremeDuel}
+            surChangement={setBaremeDuel}
+            armes={armes}
+            sourceArmes="tournoi"
+          />
+        )}
         {/* E05US033 — montée **sans condition de type**, à la différence des cinq fiches
             ci-dessus, mais pour une autre raison : sur un type non arrêtable la fiche n'offre aucun
             champ et **dit pourquoi**. La cacher laisserait chercher un réglage vu sur la phase
@@ -927,6 +964,7 @@ function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
     big_shoot_off: phase.big_shoot_off,
     suisse: phase.suisse,
     colline: phase.colline,
+    bareme_duel: phase.bareme_duel,
     decoupage: phase.decoupage,
     arrets: phase.arrets,
     titre: phase.titre,

@@ -357,3 +357,65 @@ def test_manche_expose_ses_deux_volees() -> None:
     assert isinstance(manche.volee_haut, Volee)
     assert manche.volee_haut.points == 27
     assert manche.volee_bas.points == 19
+
+
+# --- E01US011 : égalité au seuil dans la même manche (arbitrage du 01/10/2026) -----------------
+
+
+def _duel_club() -> Duel:
+    """Format club : sets, 5 manches de 3, premier à **4** — le seul preset où 4-4 survient."""
+    return Duel.vide(BaremeDuel.preset_club(), HAUT, BAS)
+
+
+def _mener_a_quatre_partout(duel: Duel) -> Duel:
+    """2-0, 0-2, 1-1, 1-1 : les deux archers atteignent 4 dans la même manche."""
+    duel = _saisir(duel, 1, ("10", "10", "10"), ("9", "9", "9"))
+    duel = _saisir(duel, 2, ("9", "9", "9"), ("10", "10", "10"))
+    duel = _saisir(duel, 3, ("9", "9", "9"), ("9", "9", "9"))
+    return _saisir(duel, 4, ("9", "9", "9"), ("9", "9", "9"))
+
+
+def test_egalite_au_seuil_dans_la_meme_manche_declenche_le_barrage() -> None:
+    """Le mieux placé ne gagne pas sans tirer : 4-4 au club se tranche au barrage, comme 5-5."""
+    resultat = _mener_a_quatre_partout(_duel_club()).resultat
+
+    assert (resultat.points_haut, resultat.points_bas) == (4, 4)
+    assert resultat.vainqueur is None
+    assert not resultat.termine
+    assert resultat.barrage_requis
+
+
+def test_egalite_au_seuil_refuse_une_manche_de_plus() -> None:
+    """Le barrage est requis : une 5ᵉ manche ne départagerait pas selon la règle arbitrée."""
+    duel = _mener_a_quatre_partout(_duel_club())
+
+    with pytest.raises(DuelDejaTranche):
+        _saisir(duel, 5, ("10", "10", "10"), ("9", "9", "9"))
+
+
+def test_egalite_au_seuil_se_tranche_au_barrage_avec_un_point() -> None:
+    duel = _mener_a_quatre_partout(_duel_club()).saisir_barrage(
+        ZoneScore.HUIT, ZoneScore.DIX, zones_admises=ZONES
+    )
+
+    resultat = duel.resultat
+    assert resultat.vainqueur is Cote.BAS
+    assert (resultat.points_haut, resultat.points_bas) == (4, 5)
+    assert resultat.termine
+
+
+def test_seuil_hors_d_atteinte_le_meneur_l_emporte_a_la_derniere_manche() -> None:
+    """Seuil légal mais hors d'atteinte en 3 manches : 4-2, le meneur gagne."""
+    duel = Duel.vide(BaremeDuel(ModeDuel.SETS, 3, 3, 6), HAUT, BAS)
+    duel = _saisir(duel, 1, ("10", "10", "10"), ("9", "9", "9"))
+    duel = _saisir(duel, 2, ("10", "10", "10"), ("9", "9", "9"))
+    duel = _saisir(duel, 3, ("9", "9", "9"), ("10", "10", "10"))
+
+    resultat = duel.resultat
+    assert (resultat.points_haut, resultat.points_bas, resultat.vainqueur) == (4, 2, Cote.HAUT)
+    assert resultat.termine
+
+
+def test_au_cumul_le_seuil_ignore_est_ramene_a_zero() -> None:
+    """Le seuil n'est pas lu au cumul : deux barèmes qui jouent pareil sont égaux (verrou, 409)."""
+    assert BaremeDuel(ModeDuel.CUMUL, 5, 3, 7) == BaremeDuel.preset_ffta_poulies()

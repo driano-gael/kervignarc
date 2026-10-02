@@ -9,6 +9,7 @@ import type { ArretProgramme } from '../../shared/phases/arrets'
 import type { Decoupage } from '../../shared/phases/decoupage'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
 import type { ReglageColline } from '../../shared/phases/colline'
+import type { ReglageBaremeDuel } from '../../shared/phases/baremeDuel'
 import type { Profondeur } from '../patrimoine/api'
 
 // Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé
@@ -73,6 +74,8 @@ export interface EtapeDeroule {
   // les trois ci-dessus. ⚠️ **Deux champs pour un seul réglage** : la portée distingue le King of
   // the Hill (1) du Ladder (2+), deux formats du référentiel §10.1 que la règle 2 range en un seul.
   colline: ReglageColline | null
+  // Le barème des duels (E01US011, ADR-0117) — `null` = défaut FFTA du serveur.
+  bareme_duel: ReglageBaremeDuel | null
   // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
   // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
   // totale que ses voisins.
@@ -135,6 +138,8 @@ export interface ConfigPhase {
   suisse?: ReglageSuisse | null
   // Même règle d'édition totale : omis, le réglage de la colline est **effacé** côté serveur.
   colline?: ReglageColline | null
+  // Même règle : omis, le barème des duels est **effacé** (retour au défaut FFTA).
+  bareme_duel?: ReglageBaremeDuel | null
   // Même règle d'édition totale : omis, le découpage de la qualification est **effacé** côté
   // serveur. C'est ce qui permet de retyper une qualification découpée sans se faire refuser
   // l'édition — le serveur lève sinon `DecoupageEnToursInvalide` sur un réglage devenu fantôme.

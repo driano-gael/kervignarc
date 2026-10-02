@@ -64,11 +64,11 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 11,
-    "feature": "salle"
+    "feature": "categories"
    },
    {
-    "clientes": 10,
-    "feature": "categories"
+    "clientes": 11,
+    "feature": "salle"
    },
    {
     "clientes": 8,
@@ -285,7 +285,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 389,
+   "occurrences": 394,
    "source": "application"
   },
   {
@@ -309,7 +309,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 114,
+   "occurrences": 115,
    "source": "infrastructure"
   },
   {
@@ -333,7 +333,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 101,
+   "occurrences": 102,
    "source": "api"
   },
   {
@@ -363,7 +363,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 58,
+   "occurrences": 59,
    "source": "bootstrap"
   },
   {
@@ -568,7 +568,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 97,
+   "occurrences": 98,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -790,7 +790,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 374,
+   "occurrences": 379,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -849,7 +849,8 @@ window.ATLAS.carte = {
     "backend/application/suivi_deroule.py",
     "backend/application/supervision.py",
     "backend/application/tableaux_publics.py",
-    "backend/application/tournois.py"
+    "backend/application/tournois.py",
+    "backend/application/verrou_bareme.py"
    ],
    "source": "application"
   },
@@ -905,7 +906,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 58,
+   "occurrences": 59,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1139,7 +1140,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 62,
+   "occurrences": 63,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/equipes.py",
@@ -3451,11 +3452,11 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 186,
+  "aretes_front": 187,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1035,
-  "imports_entre_couches": 870,
+  "imports": 1043,
+  "imports_entre_couches": 878,
   "plus_gros_noeud": 25,
   "ports": 78,
   "ports_hors_domaine": 30,

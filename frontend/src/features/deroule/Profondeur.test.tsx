@@ -20,6 +20,7 @@ function poser(type: 'elimination_directe' | 'poules' | 'placement' = 'eliminati
   const surValider = vi.fn()
   render(
     <FormulaireEtape
+      armes={[]}
       etape={{
         ordre: 1,
         type,
@@ -28,6 +29,7 @@ function poser(type: 'elimination_directe' | 'poules' | 'placement' = 'eliminati
         poules: null,
         big_shoot_off: null,
         suisse: null,
+        bareme_duel: null,
         colline: null,
         decoupage: null,
         sources: [],
@@ -166,7 +168,7 @@ describe('profondeur de classement', () => {
     // « classement intégral » se reportait sur la phase suivante — deux tableaux de 120 partant à
     // ~616 duels non demandés. Le correctif avait été appliqué à l'écran jumeau seulement.
     const surValider = vi.fn()
-    render(<FormulaireEtape etapesAmont={[]} surValider={surValider} />)
+    render(<FormulaireEtape armes={[]} etapesAmont={[]} surValider={surValider} />)
 
     await userEvent.selectOptions(screen.getByLabelText(/Type de phase/), 'elimination_directe')
     await userEvent.selectOptions(screen.getByLabelText(CHOIX), 'integral')

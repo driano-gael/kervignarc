@@ -963,6 +963,8 @@ def poser_phase_factice(
                 # élargie d'autant ; remède inchangé : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 colline=phase.colline,
+                # E01US011 : câblé du premier coup — 5ᵉ réglage, `DETTE-064`.
+                bareme_duel=phase.bareme_duel,
                 # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
                 # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
                 # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
@@ -1052,6 +1054,8 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
             # élargie d'autant ; remède inchangé : une fabrique unique du domaine
             # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
             colline=phase.colline,
+            # E01US011 : câblé du premier coup — 5ᵉ réglage, `DETTE-064`.
+            bareme_duel=phase.bareme_duel,
             # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
             # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
             # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un

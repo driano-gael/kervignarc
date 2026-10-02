@@ -16,6 +16,7 @@ import { FormulaireEtape } from './Deroule'
 function poser(effectifSimule: number | null) {
   render(
     <FormulaireEtape
+      armes={[]}
       etape={{
         ordre: 1,
         type: 'suisse',
@@ -24,6 +25,7 @@ function poser(effectifSimule: number | null) {
         poules: null,
         big_shoot_off: null,
         suisse: { nb_rondes: 5 },
+        bareme_duel: null,
         colline: null,
         decoupage: null,
         sources: [],

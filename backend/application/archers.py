@@ -477,11 +477,14 @@ class ServiceArchers:
 
         # « A déjà tiré » = au moins une volée **validée** : ce sont les flèches **qui comptent**
         # qui basculeraient. Une volée non validée n'est dans aucun classement, rien ne bascule.
+        # DETTE-118 — ses duels déjà tirés se relisent sous le barème de la nouvelle arme : on le
+        # dit, on ne le refuse pas (arbitrage du 01/10/2026). Remède : le gel du classement.
         if self._fleches_validees(edite.tournoi_id, archer_id) > 0:
             raise ChangementCategorieArcherEngage(
                 f"« {edite.prenom} {edite.nom} » a déjà tiré dans sa catégorie actuelle. Changer "
-                "de catégorie emporte ses flèches vers un autre classement ; confirmez s'il "
-                "s'agit bien de corriger une catégorie mal saisie."
+                "de catégorie emporte ses flèches vers un autre classement, et ses duels déjà "
+                "tirés seront relus sous le barème de sa nouvelle arme ; confirmez s'il s'agit "
+                "bien de corriger une catégorie mal saisie."
             )
 
 

@@ -17,6 +17,10 @@ from domain.erreurs import NombreFlechesParVoleeInvalide, NombreVoleesInvalide
 PRESET_FFTA_18M_NB_VOLEES = 20
 PRESET_FFTA_18M_NB_FLECHES_PAR_VOLEE = 3
 
+# Preset « format club » (CA d'E01US009, référentiel §10.1) : 15 flèches en 5 volées de 3.
+PRESET_CLUB_NB_VOLEES = 5
+PRESET_CLUB_NB_FLECHES_PAR_VOLEE = 3
+
 # Valeur maximale d'une flèche (le « 10 ») : sert à dériver le score maximum d'un barème.
 VALEUR_FLECHE_MAX = 10
 
@@ -48,6 +52,11 @@ class BaremeQualification:
         return BaremeQualification.creer(
             PRESET_FFTA_18M_NB_VOLEES, PRESET_FFTA_18M_NB_FLECHES_PAR_VOLEE
         )
+
+    @staticmethod
+    def preset_club() -> BaremeQualification:
+        """Le format club : 5 volées de 3 flèches (15 flèches, référentiel §10.1)."""
+        return BaremeQualification.creer(PRESET_CLUB_NB_VOLEES, PRESET_CLUB_NB_FLECHES_PAR_VOLEE)
 
     @property
     def nb_fleches_total(self) -> int:

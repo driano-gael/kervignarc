@@ -14,12 +14,35 @@ import datetime
 import pytest
 
 from application.categories import ServiceCategories
-from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
+from application.erreurs import (
+    ArmeDeCategorieVerrouillee,
+    BlasonHorsTournoi,
+    CategorieIntrouvable,
+    TournoiIntrouvable,
+)
+from application.verrou_bareme import VerrouBaremeDuel
 from domain.blason import Blason, BlasonId
 from domain.categorie import SexeCategorie, TrancheAge
+from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
+from domain.duel import (
+    BaremeDuel,
+    Duel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+    SurchargeArme,
+)
 from domain.erreurs import LibelleCategorieInvalide
+from domain.participant import GenreParticipant, Participant
+from domain.phase import TypePhase
 from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
-from tests.conftest import FauxCategorieRepository
+from tests.conftest import (
+    FauxCategorieRepository,
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxDuelRepository,
+    FauxPhaseRepository,
+)
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -87,13 +110,30 @@ class FauxBlasonRepository:
         del self._blasons[blason_id]
 
 
+def _verrou_vide() -> VerrouBaremeDuel:
+    """Le verrou d'un monde sans étape ni tir : il ne refuse jamais rien."""
+    departs = FauxDepartRepository()
+    deroules = FauxDerouleRepository()
+    return VerrouBaremeDuel(
+        departs,
+        FauxPhaseRepository(departs, deroules),
+        deroules,
+        FauxDuelRepository(),
+        ResolveurBaremeDuelFfta(),
+    )
+
+
 def _service_avec_tournoi() -> tuple[ServiceCategories, int, FauxBlasonRepository]:
     """Prépare un service avec un tournoi persisté ; renvoie (service, tournoi_id, blasons)."""
     tournois = FauxTournoiRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Trophée", _DATE))
     assert tournoi.id is not None
     blasons = FauxBlasonRepository()
-    return ServiceCategories(tournois, FauxCategorieRepository(), blasons), tournoi.id, blasons
+    return (
+        ServiceCategories(tournois, FauxCategorieRepository(), blasons, _verrou_vide()),
+        tournoi.id,
+        blasons,
+    )
 
 
 def test_creer_persiste_et_rattache_au_tournoi() -> None:
@@ -112,7 +152,7 @@ def test_creer_persiste_et_rattache_au_tournoi() -> None:
 def test_creer_leve_si_tournoi_introuvable() -> None:
     """Créer dans un tournoi inconnu lève `TournoiIntrouvable`."""
     service = ServiceCategories(
-        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository()
+        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository(), _verrou_vide()
     )
     with pytest.raises(TournoiIntrouvable):
         service.creer(404, "Libre")
@@ -237,7 +277,7 @@ def test_precharger_ffta_reutilise_un_blason_personnalise_de_meme_nom() -> None:
 def test_precharger_ffta_leve_si_tournoi_introuvable() -> None:
     """Pré-charger dans un tournoi inconnu lève `TournoiIntrouvable` (rien créé)."""
     service = ServiceCategories(
-        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository()
+        FauxTournoiRepository(), FauxCategorieRepository(), FauxBlasonRepository(), _verrou_vide()
     )
     with pytest.raises(TournoiIntrouvable):
         service.precharger_ffta(404)
@@ -355,3 +395,136 @@ def test_precharger_ffta_regle_les_u11_a_110() -> None:
     autres = [c for c in creees if TrancheAge.U11 not in c.ages]
     assert u11 and all(c.hauteur_cm == 110 for c in u11)
     assert all(c.hauteur_cm == 130 for c in autres)
+
+
+# --- E01US011 : l'arme d'une catégorie se fige si la changer change un barème déjà tiré --------
+# Arbitrage du 01/10/2026, reposé en 2ᵉ passe de revue sur une prémisse corrigée : le critère est
+# le **barème résolu**, sur toute étape tirée, réglée ou non.
+
+_REGLAGE_FFTA_POULIES = ReglageBaremeDuel(
+    BaremeDuel.preset_ffta_classique(),
+    (SurchargeArme("Arc à poulies", BaremeDuel.preset_ffta_poulies()),),
+)
+
+
+class _DecorDuVerrou:
+    """Un tournoi à deux créneaux, une catégorie, et les étapes qu'on lui donne."""
+
+    def __init__(self, arme: str | None = "Arc à poulies") -> None:
+        self.tournois = FauxTournoiRepository()
+        tournoi = self.tournois.ajouter(Tournoi.creer("Trophée", _DATE))
+        assert tournoi.id is not None
+        self.tournoi_id = tournoi.id
+        self.departs = FauxDepartRepository()
+        self.creneaux: list[int] = []
+        for numero in (1, 2):
+            depart = self.departs.ajouter(
+                Depart.creer(
+                    tournoi_id=tournoi.id, numero=numero, tarif_centimes=800, horaire="09:00"
+                )
+            )
+            assert depart.id is not None
+            self.creneaux.append(depart.id)
+        self.deroules = FauxDerouleRepository()
+        self.phases = FauxPhaseRepository(self.departs, self.deroules)
+        self.duels = FauxDuelRepository()
+        self.service = ServiceCategories(
+            self.tournois,
+            FauxCategorieRepository(),
+            FauxBlasonRepository(),
+            VerrouBaremeDuel(
+                self.departs, self.phases, self.deroules, self.duels, ResolveurBaremeDuelFfta()
+            ),
+        )
+        self.categorie = self.service.creer(tournoi.id, "Poulies S1 H", arme)
+        self._ordre = 0
+
+    def etape(
+        self, reglage: ReglageBaremeDuel | None, *, tiree_dans: int | None = None
+    ) -> _DecorDuVerrou:
+        """Une élimination directe, instanciée dans les deux créneaux, tirée dans l'un d'eux."""
+        self._ordre += 1
+        etape = self.deroules.ajouter(
+            EtapeDeroule(
+                tournoi_id=self.tournoi_id,
+                ordre=self._ordre,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                bareme_duel=reglage,
+            )
+        )
+        for index, depart_id in enumerate(self.creneaux):
+            phase = self.phases.ajouter(etape.instancier(depart_id))
+            assert phase.id is not None
+            if tiree_dans == index:
+                duel = Duel.vide(
+                    BaremeDuel.preset_ffta_classique(),
+                    Participant(GenreParticipant.INDIVIDUEL, 1),
+                    Participant(GenreParticipant.INDIVIDUEL, 2),
+                )
+                self.duels.enregistrer(phase.id, 1, duel)
+        return self
+
+    def changer_arme(self, arme: str | None, libelle: str = "Poulies S1 H") -> None:
+        assert self.categorie.id is not None
+        self.service.modifier(self.categorie.id, libelle, arme, hauteur_cm=130)
+
+
+def test_detacher_une_surcharge_reglee_apres_un_tir_est_refuse() -> None:
+    """« Arc à poulies » → « Poulies » détache la surcharge exacte : cumul → sets."""
+    decor = _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES, tiree_dans=0)
+
+    with pytest.raises(ArmeDeCategorieVerrouillee):
+        decor.changer_arme("Poulies")
+
+
+def test_franchir_la_frontiere_des_poulies_sur_une_etape_non_reglee_est_refuse() -> None:
+    """La prémisse corrigée : sans réglage, le défaut FFTA passe aussi du cumul aux sets."""
+    decor = _DecorDuVerrou().etape(None, tiree_dans=0)
+
+    with pytest.raises(ArmeDeCategorieVerrouillee):
+        decor.changer_arme("Arc classique")
+
+
+def test_un_renommage_qui_garde_le_bareme_reste_permis() -> None:
+    """Sans réglage, « Arc à poulies » → « Poulies » reste au cumul : aucun duel ne se relit."""
+    _DecorDuVerrou().etape(None, tiree_dans=0).changer_arme("Poulies")
+
+
+def test_corriger_une_coquille_sans_effet_sur_le_bareme_reste_permis() -> None:
+    """Seules les poulies sont surchargées : « Arc clasique » et « Arc classique » tirent pareil."""
+    decor = _DecorDuVerrou(arme="Arc clasique").etape(_REGLAGE_FFTA_POULIES, tiree_dans=0)
+
+    decor.changer_arme("Arc classique")
+
+
+def test_l_arme_reste_modifiable_tant_qu_aucun_duel_n_est_tire() -> None:
+    _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES).changer_arme("Poulies")
+
+
+def test_un_tir_dans_un_autre_creneau_fige_aussi_l_arme() -> None:
+    """La définition est commune aux créneaux (ADR-0076) : le tir du second compte."""
+    decor = _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES, tiree_dans=1)
+
+    with pytest.raises(ArmeDeCategorieVerrouillee):
+        decor.changer_arme("Poulies")
+
+
+def test_il_faut_que_la_meme_etape_soit_tiree_et_sensible_au_changement() -> None:
+    """Étape réglée non tirée + étape non réglée tirée : le renommage ne relit rien."""
+    decor = _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES).etape(None, tiree_dans=0)
+
+    decor.changer_arme("Poulies")
+
+
+def test_vider_l_arme_apres_un_tir_est_refuse() -> None:
+    """Sans arme, l'archer tombe au défaut de la phase : sets au lieu du cumul."""
+    decor = _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES, tiree_dans=0)
+
+    with pytest.raises(ArmeDeCategorieVerrouillee):
+        decor.changer_arme(None)
+
+
+def test_le_libelle_reste_modifiable_sur_une_categorie_figee() -> None:
+    decor = _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES, tiree_dans=0)
+
+    decor.changer_arme("Arc à poulies", libelle="Poulies S1")
