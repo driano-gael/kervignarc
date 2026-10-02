@@ -17,8 +17,8 @@
 exceptions **par arme** explicites (les poulies au cumul ne se devinent plus au nom, sauf sur une
 phase non réglée) ; le barème **se fige au premier tir**, faute d'être stocké avec lui ; il voyage
 avec le format. Preset club de qualification. **Revue** : 4-4 au club se tranche au **barrage**
-(le mieux placé gagnait sans tirer), l'**arme d'une catégorie se fige** au premier tir d'une phase
-réglée, et le barème club des ½ finales / finales part en `E01US027` (`DETTE-117`) — trois
+(le mieux placé gagnait sans tirer), l'**arme d'une catégorie se fige** quand la changer changerait
+un barème déjà tiré (réglé ou non — la 1ʳᵉ passe exemptait à tort le non-réglé), et le barème club des ½ finales / finales part en `E01US027` (`DETTE-117`) — trois
 arbitrages du commanditaire. [ADR-0117](../docs/adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md),
 amende ADR-0049 §2/§4 ; aucune migration. ⚠️ **La fiche datait d'avant le moteur** : la règle était
 déjà écrite (presets, cumul, barrage 1 flèche, Big Shoot Off jouable) — l'US a livré le **réglage**,

@@ -51,11 +51,12 @@ tableau peut faire basculer un vainqueur.
    **sémantique** : l'ordre des surcharges et le seuil ignoré au cumul n'en font pas partie.
 6. **Égalité au seuil** *(arbitrage du 01/10/2026, revue)* : deux archers au seuil **dans la même
    manche** — 4-4 au format club — se départagent au **barrage**, comme 5-5 (§7). Au barème FFTA
-   le cas est impossible ; le preset club le rendait atteignable, et le mieux placé gagnait.
-7. **L'arme d'une catégorie se fige** *(arbitrage du 01/10/2026, revue)* : la changer est refusé
-   (`ArmeDeCategorieVerrouillee`, 409) dès qu'une étape **réglée** du tournoi a un tir. Une
-   surcharge désigne l'arme par son libellé exact : la renommer la détacherait — c'était une route
-   parallèle au verrou du §5. Une étape non réglée lit l'arme par inclusion et n'est pas concernée.
+   le cas est impossible ; le preset club le rendait atteignable, et le mieux placé gagnait. Un
+   seuil hors d'atteinte reste licite : personne au seuil, le meneur gagne (2ᵉ passe).
+7. **L'arme d'une catégorie se fige quand la changer changerait un barème tiré** *(arbitrage
+   reposé en 2ᵉ passe)* : refus (`ArmeDeCategorieVerrouillee`, 409) dès que, pour une étape **déjà
+   tirée — réglée ou non** —, l'ancienne et la nouvelle arme ne résolvent pas le même barème. La 1ʳᵉ
+   rédaction exemptait les étapes non réglées : faux, le défaut bascule sets/cumul au libellé.
 
 ## Alternatives écartées
 
@@ -79,12 +80,13 @@ tableau peut faire basculer un vainqueur.
 - **−** Le verrou est **conservateur** : il compte tout tir enregistré, y compris un vestige que la
   règle de désynchronisation d'ADR-0049 §4 masque déjà. Une étape dont le seul tir est un vestige
   reste verrouillée.
-- **−** Il ne ferme pas le cas résiduel d'ADR-0049 « mutation d'arme » : changer la catégorie d'un
-  archer en cours de tableau change toujours son barème. Même remède attendu, le gel du classement.
+- **−** Il ne ferme pas la route jumelle : **déplacer un archer** vers une catégorie d'une autre
+  arme après son duel relit ses duels. Arbitrage : pas de refus, le message de confirmation le dit ;
+  `DETTE-118`, remède attendu le gel du classement (E01US017/E12US002).
 - **−** Le barème club des ½ finales et finales (6 points, référentiel §10.1) n'est **pas**
   exprimable : une étape porte tout le tableau. Arbitrage : US dédiée, `E01US027`, `DETTE-117`.
 - **−** Les presets ont un **miroir** de la reconnaissance des poulies au front (`estPoulies`, de
-  `_est_poulies`) : deux règles, gardées chacune par ses tests, sans test qui les confronte.
+  `_est_poulies`), dont dépendent aussi les avertissements d'écart : `DETTE-119`.
 - **=** `DETTE-054` n'est **pas** élargie : `ReglageBaremeDuelDTO` est défini une fois dans
   `api/v1/phases.py` et importé par `api/v1/formats.py`.
 
@@ -96,9 +98,13 @@ tableau peut faire basculer un vainqueur.
 - `frontend/src/shared/phases/baremeDuel.ts` — `presetFfta`, `presetClub`, `estPoulies` (§4),
   `ecartsDArmes` ; rendus par `frontend/src/shared/phases/ReglageBaremeDuel.tsx`, qui retient ses
   presets tant que `armes` vaut `null`.
-- `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`,
-  `un_bareme_regle_est_tire`), la définition unique de « déjà tiré » des §5 et §7.
+- `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`, `arme_figee`), qui
+  résout avec le **même** `ResolveurBaremeDuel` que la saisie ; une instance, câblée dans
+  `bootstrap/composition.py`, partagée par `ServicePhases` et `ServiceCategories`.
 - `backend/application/categories.py` — `ServiceCategories.modifier` (§7).
+- `backend/domain/duel.py` — `memes_baremes`, l'égalité à la casse près que compare le §5.
+- `frontend/src/features/saisie-duels/duel.ts` — `mancheNeuveFermee` (§6 : pas de 5ᵉ manche).
+- `backend/application/archers.py` — message de `_signaler_changement_categorie` (`DETTE-118`).
 - `backend/domain/contrat_phase.py` — `TYPES_A_BAREME_DE_DUEL`, dérivé de `_CONTRATS`.
 - `backend/domain/phase.py` — `Phase.bareme_duel` et sa garde de type dans `__post_init__`.
 - `backend/domain/deroule_etape.py` — `EtapeDeroule.bareme_duel`, recopié par `instancier`.

@@ -323,7 +323,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce un_bareme_regle_est_tire dans « backend/application/verrou_bareme.py » — introuvable(s) dans le fichier.",
+   "message": "annonce ServicePhases, ServiceCategories dans « backend/application/verrou_bareme.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0117"
   }

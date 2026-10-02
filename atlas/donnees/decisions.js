@@ -11583,6 +11583,15 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/archers.py",
+     "existe": true,
+     "symboles": [
+      "_signaler_changement_categorie"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/categories.py",
      "existe": true,
      "symboles": [
@@ -11618,10 +11627,14 @@ window.ATLAS.decisions = {
      "symboles": [
       "VerrouBaremeDuel",
       "etape_tiree",
-      "un_bareme_regle_est_tire"
+      "arme_figee",
+      "ResolveurBaremeDuel",
+      "ServicePhases",
+      "ServiceCategories"
      ],
      "symboles_absents": [
-      "un_bareme_regle_est_tire"
+      "ServicePhases",
+      "ServiceCategories"
      ],
      "verifiable": true
     },
@@ -11656,7 +11669,8 @@ window.ATLAS.decisions = {
       "BaremeDuel.__post_init__",
       "Duel._resultat_sets",
       "_issue_d_egalite",
-      "saisir_manche"
+      "saisir_manche",
+      "memes_baremes"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11688,6 +11702,15 @@ window.ATLAS.decisions = {
      "symboles": [
       "_politiques_json",
       "_lire_bareme_duel"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie-duels/duel.ts",
+     "existe": true,
+     "symboles": [
+      "mancheNeuveFermee"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11727,8 +11750,10 @@ window.ATLAS.decisions = {
    "titre": "Le barème de duel est un réglage d'étape, aux surcharges par arme explicites, verrouillé au premier tir",
    "us": [
     "E01US011",
+    "E01US017",
     "E01US018",
-    "E01US027"
+    "E01US027",
+    "E12US002"
    ]
   }
  ]

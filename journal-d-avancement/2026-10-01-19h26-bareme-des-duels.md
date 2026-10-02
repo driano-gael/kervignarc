@@ -23,8 +23,9 @@ Le barème de qualification gagne aussi un bouton **format club** (5 volées de 
   les duels déjà validés sous d'autres règles, et un vainqueur pourrait basculer sans que personne
   ne le voie. L'application refuse donc, avec un message qui dit pourquoi.
 - Un format enregistré emporte son barème : l'année suivante, il se réapplique tel quel.
-- Pour la même raison, l'**arme d'une catégorie** ne se renomme plus une fois qu'un duel d'une phase
-  réglée a été tiré.
+- Pour la même raison, l'**arme d'une catégorie** ne se renomme plus quand cela changerait le
+  barème de duels déjà tirés ; une coquille sans effet se corrige toujours. Déplacer un archer dans
+  une autre arme reste possible, mais le message prévient que ses duels seront relus.
 - Au format club, deux archers à **4-4** dans la même manche ne se départagent plus au classement :
   ils tirent un **barrage**, comme à 5-5 au barème fédéral.
 - Pas encore possible : les ½ finales et finales du club **à 6 points** dans un tableau à 4. Une US

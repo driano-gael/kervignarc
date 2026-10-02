@@ -4,6 +4,28 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "119",
+   "introduite_par": [
+    "E01US011"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "118",
+   "introduite_par": [
+    "E01US011",
+    "E04US013"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E01US017",
+    "E12US002"
+   ],
+   "severite": "majeur"
+  },
+  {
    "identifiant": "117",
    "introduite_par": [
     "E01US011"
@@ -1855,7 +1877,9 @@ window.ATLAS.avancement = {
     "054",
     "064",
     "080",
-    "117"
+    "117",
+    "118",
+    "119"
    ],
    "dettes_resorbees": [],
    "epic": "01",
@@ -1968,10 +1992,13 @@ window.ATLAS.avancement = {
     "0029",
     "0049",
     "0052",
-    "0056"
+    "0056",
+    "0117"
    ],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "118"
+   ],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
    "etat": "✅",
@@ -2652,7 +2679,8 @@ window.ATLAS.avancement = {
     "0083"
    ],
    "dettes_introduites": [
-    "020"
+    "020",
+    "118"
    ],
    "dettes_resorbees": [],
    "epic": "04",
@@ -3977,14 +4005,17 @@ window.ATLAS.avancement = {
     "0049",
     "0056",
     "0065",
-    "0067"
+    "0067",
+    "0117"
    ],
    "dettes_introduites": [
     "017",
     "019",
     "021"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "118"
+   ],
    "epic": "12",
    "epic_titre": "Pilotage du jour J — supervision, complétude, bascule de tour",
    "etat": "✅",
