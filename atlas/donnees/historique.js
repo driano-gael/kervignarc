@@ -306,6 +306,28 @@ window.ATLAS.historique = {
  ],
  "decision-structurante-adr": [
   {
+   "adr": [],
+   "date": "2026-10-02",
+   "motif": "Merge origin/main dans feat/e01us011-baremes-de-duel (cascade #201, #198, #197, #199)",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "36afffa744",
+   "us": [
+    "E01US011"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-10-01",
+   "motif": "docs(e13us002): dater la phrase « Equipe n'existe pas » dans CLAUDE.md",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "9971ffb508",
+   "us": [
+    "E13US002"
+   ]
+  },
+  {
    "adr": [
     "0117"
    ],
