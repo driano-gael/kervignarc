@@ -7,14 +7,17 @@ mémoire) pour un test proche de l'intégration, sans DB.
 
 from __future__ import annotations
 
+import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from application.auth import ServiceAuth
+from application.auth import IdentifiantsAdmin, ServiceAuth
 from application.erreurs import (
     AccesDejaConfigure,
     AccesNonConfigure,
+    ApplicationError,
     IdentifiantsInvalides,
     MotDePasseActuelIncorrect,
     NonAuthentifie,
@@ -195,6 +198,7 @@ def test_modifier_mot_de_passe_actuel_non_ascii(tmp_path: Path) -> None:
     [
         (None, None),  # rien demandé
         ("admin", None),  # login identique
+        ("  admin  ", None),  # identique une fois les espaces de bord retirés
         (None, "secret"),  # mot de passe identique
         ("admin", "secret"),  # les deux identiques
     ],
@@ -218,7 +222,7 @@ def test_modifier_sans_changement_refuse(
 def test_modifier_nouvelles_valeurs_mal_formees_refuse(
     tmp_path: Path, nouveau_login: str | None, nouveau_mot_de_passe: str | None
 ) -> None:
-    """Vide ou saut de ligne : refus dédié (pas `IdentifiantsInvalides`, un 401), `.env` intact."""
+    """Vide ou saut de ligne : refus dédié (pas le 401 de connexion), `.env` intact."""
     service = _service(tmp_path)
     courante = service.configurer("admin", "secret")
     with pytest.raises(NouveauxIdentifiantsInvalides):
@@ -234,3 +238,105 @@ def test_modifier_sans_session_valide_refuse(tmp_path: Path) -> None:
     with pytest.raises(NonAuthentifie):
         service.modifier("jeton-bidon", "secret", nouveau_login=None, nouveau_mot_de_passe="neuf")
     assert _service(tmp_path).connexion("admin", "secret")
+
+
+# --- Entrelacements (revue d'E10US006) : la rotation est atomique face aux autres cas d'usage.
+
+
+class _LectureSuspendue:
+    """Store d'identifiants dont la **prochaine** lecture s'arrête jusqu'à `relacher`."""
+
+    def __init__(self, reel: AdminCredentialsStore) -> None:
+        self._reel = reel
+        self.armee = False
+        self.entree = threading.Event()
+        self.relacher = threading.Event()
+
+    def lire(self) -> IdentifiantsAdmin | None:
+        if self.armee:
+            self.armee = False
+            self.entree.set()
+            self.relacher.wait(timeout=5)
+        return self._reel.lire()
+
+    def ecrire(self, identifiants: IdentifiantsAdmin) -> None:
+        self._reel.ecrire(identifiants)
+
+
+def _entrelacer(
+    store: _LectureSuspendue, premier: Callable[[], object], second: Callable[[], object]
+) -> list[object]:
+    """`premier` s'arrête dans sa lecture ; `second` part pendant ce temps, puis on relâche."""
+    resultats: list[object] = [None, None]
+
+    def lancer(i: int, appel: Callable[[], object]) -> None:
+        try:
+            resultats[i] = appel()
+        except ApplicationError as exc:
+            resultats[i] = exc
+
+    store.armee = True
+    t1 = threading.Thread(target=lancer, args=(0, premier))
+    t1.start()
+    assert store.entree.wait(timeout=5)
+    t2 = threading.Thread(target=lancer, args=(1, second))
+    t2.start()
+    t2.join(timeout=0.5)  # sans sérialisation, `second` a le temps de finir ici
+    store.relacher.set()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+    return resultats
+
+
+def test_connexion_avec_l_ancien_secret_ne_survit_pas_a_une_rotation_concurrente(
+    tmp_path: Path,
+) -> None:
+    """CA : faire tourner l'accès éjecte qui détenait l'ancien secret — même en pleine connexion."""
+    store = _LectureSuspendue(AdminCredentialsStore(tmp_path / ".env"))
+    service = ServiceAuth(store, SessionStore())
+    admin = service.configurer("admin", "secret")
+    intrus, _ = _entrelacer(
+        store,
+        lambda: service.connexion("admin", "secret"),
+        lambda: service.modifier(admin, "secret", None, "neuf"),
+    )
+    assert isinstance(intrus, str)
+    assert service.session_valide(intrus) is False
+    assert service.session_valide(admin) is True
+
+
+def test_deux_rotations_concurrentes_une_seule_gagne(tmp_path: Path) -> None:
+    """La seconde rotation voit le nouveau secret : refusée, sans écraser la première."""
+    store = _LectureSuspendue(AdminCredentialsStore(tmp_path / ".env"))
+    service = ServiceAuth(store, SessionStore())
+    a = service.configurer("admin", "secret")
+    b = service.connexion("admin", "secret")
+    resultat_a, resultat_b = _entrelacer(
+        store,
+        lambda: service.modifier(a, "secret", None, "pour-a"),
+        lambda: service.modifier(b, "secret", None, "pour-b"),
+    )
+    assert resultat_a is None
+    assert isinstance(resultat_b, NonAuthentifie | MotDePasseActuelIncorrect)
+    assert service.session_valide(a) is True
+    assert ServiceAuth(AdminCredentialsStore(tmp_path / ".env"), SessionStore()).connexion(
+        "admin", "pour-a"
+    )
+
+
+def test_modifier_login_enregistre_sans_espaces_de_bord(tmp_path: Path) -> None:
+    """Le nouvel identifiant est nettoyé comme à la définition : `arbitre`, pas `  arbitre  `."""
+    service = _service(tmp_path)
+    jeton = service.configurer("admin", "secret")
+    service.modifier(jeton, "secret", nouveau_login="  arbitre  ", nouveau_mot_de_passe=None)
+    assert _service(tmp_path).connexion("arbitre", "secret")
+
+
+def test_fermer_toutes_sauf_ne_ressuscite_pas_un_jeton_deja_ferme() -> None:
+    """Adapter : l'intersection garde au plus `jeton`, et jamais un jeton fermé entre-temps."""
+    sessions = SessionStore()
+    a, b = sessions.ouvrir(), sessions.ouvrir()
+    sessions.fermer(a)
+    sessions.fermer_toutes_sauf(a)
+    assert sessions.est_valide(a) is False
+    assert sessions.est_valide(b) is False

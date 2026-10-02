@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe('CA E10US006 — modifier les identifiants', () => {
   it('envoie le mot de passe actuel et seulement les champs remplis, puis confirme', async () => {
-    const fetch = vi.fn(async () => new Response(null, { status: 204 }))
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetch)
     render(<CompteAdmin />, { wrapper: enveloppe() })
 
@@ -36,10 +36,13 @@ describe('CA E10US006 — modifier les identifiants', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     expect(await screen.findByRole('status')).toHaveTextContent(/autres appareils/)
-    const [chemin, options] = fetch.mock.calls[0] as unknown as [string, RequestInit]
+    // Une nouvelle saisie efface le succès précédent : il ne parle plus de ce qui est tapé.
+    saisir('Mot de passe actuel', 'n')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    const [chemin, options = {}] = fetch.mock.lastCall ?? []
     expect(chemin).toBe('/api/v1/auth/identifiants')
     expect(options.method).toBe('PATCH')
-    expect(JSON.parse(options.body as string)).toEqual({
+    expect(JSON.parse(String(options.body))).toEqual({
       mot_de_passe_actuel: 'ancien',
       nouveau_mot_de_passe: 'neuf',
     })
@@ -82,9 +85,16 @@ describe('CA E10US006 — modifier les identifiants', () => {
     saisir('Mot de passe actuel', 'ancien')
     expect(bouton).toBeEnabled()
 
+    // Confirmation encore vide : bouton bloqué, mais pas d'alerte avant que l'admin y arrive.
     saisir('Nouveau mot de passe (vide = inchangé)', 'neuf')
     expect(bouton).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    saisir('Confirmer le nouveau mot de passe', 'autre')
+    expect(bouton).toBeDisabled()
     expect(screen.getByRole('alert')).toHaveTextContent(/ne correspondent pas/)
+
+    saisir('Confirmer le nouveau mot de passe', '')
 
     saisir('Nouvel identifiant (vide = inchangé)', '')
     saisir('Nouveau mot de passe (vide = inchangé)', '')

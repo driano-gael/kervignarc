@@ -9,6 +9,7 @@ définit l'accès, ensuite il se connecte.
 from __future__ import annotations
 
 import hmac
+import threading
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -63,6 +64,9 @@ class ServiceAuth:
     def __init__(self, identifiants: StoreIdentifiantsAdmin, sessions: StoreSessions) -> None:
         self._identifiants = identifiants
         self._sessions = sessions
+        # ⚠️ Tient la séquence « lire le secret → ouvrir/écrire/fermer » d'un seul tenant : sans
+        # lui, une connexion à l'ancien secret survit à une rotation concurrente (E10US006).
+        self._verrou = threading.Lock()
 
     def est_configure(self) -> bool:
         """Vrai si un accès administrateur a déjà été défini."""
@@ -74,11 +78,12 @@ class ServiceAuth:
         Lève `AccesDejaConfigure` si un accès existe déjà (la modification passe par un autre
         cas d'usage, E10US006), `IdentifiantsInvalides` si login/mot de passe sont vides.
         """
-        if self._identifiants.lire() is not None:
-            raise AccesDejaConfigure("L'accès administrateur est déjà configuré.")
-        identifiants = self._valider(login, mot_de_passe)
-        self._identifiants.ecrire(identifiants)
-        return self._sessions.ouvrir()
+        with self._verrou:
+            if self._identifiants.lire() is not None:
+                raise AccesDejaConfigure("L'accès administrateur est déjà configuré.")
+            identifiants = self._valider(login, mot_de_passe)
+            self._identifiants.ecrire(identifiants)
+            return self._sessions.ouvrir()
 
     def connexion(self, login: str, mot_de_passe: str) -> str:
         """Vérifie les identifiants et ouvre une session (jeton).
@@ -86,12 +91,13 @@ class ServiceAuth:
         Lève `AccesNonConfigure` si aucun accès n'est défini, `IdentifiantsInvalides` si le
         couple login/mot de passe ne correspond pas.
         """
-        actuels = self._identifiants.lire()
-        if actuels is None:
-            raise AccesNonConfigure("Aucun accès administrateur n'est configuré.")
-        if not self._correspond(actuels, login, mot_de_passe):
-            raise IdentifiantsInvalides("Identifiant ou mot de passe invalide.")
-        return self._sessions.ouvrir()
+        with self._verrou:
+            actuels = self._identifiants.lire()
+            if actuels is None:
+                raise AccesNonConfigure("Aucun accès administrateur n'est configuré.")
+            if not self._correspond(actuels, login, mot_de_passe):
+                raise IdentifiantsInvalides("Identifiant ou mot de passe invalide.")
+            return self._sessions.ouvrir()
 
     def modifier(
         self,
@@ -106,22 +112,23 @@ class ServiceAuth:
         Lève `NonAuthentifie`, `AccesNonConfigure`, `MotDePasseActuelIncorrect`, ou
         `NouveauxIdentifiantsInvalides` si une valeur est mal formée ou si rien ne change.
         """
-        if jeton is None or not self._sessions.est_valide(jeton):
-            raise NonAuthentifie("Une session administrateur est requise.")
-        actuels = self._identifiants.lire()
-        if actuels is None:
-            raise AccesNonConfigure("Aucun accès administrateur n'est configuré.")
-        if not self._correspond(actuels, actuels.login, mot_de_passe_actuel):
-            raise MotDePasseActuelIncorrect("Le mot de passe actuel est incorrect.")
-        nouveaux = self._valider(
-            actuels.login if nouveau_login is None else nouveau_login,
-            actuels.mot_de_passe if nouveau_mot_de_passe is None else nouveau_mot_de_passe,
-            NouveauxIdentifiantsInvalides,
-        )
-        if nouveaux == actuels:
-            raise NouveauxIdentifiantsInvalides("Les nouveaux identifiants sont identiques.")
-        self._identifiants.ecrire(nouveaux)
-        self._sessions.fermer_toutes_sauf(jeton)
+        with self._verrou:
+            if jeton is None or not self._sessions.est_valide(jeton):
+                raise NonAuthentifie("Une session administrateur est requise.")
+            actuels = self._identifiants.lire()
+            if actuels is None:
+                raise AccesNonConfigure("Aucun accès administrateur n'est configuré.")
+            if not self._correspond(actuels, actuels.login, mot_de_passe_actuel):
+                raise MotDePasseActuelIncorrect("Le mot de passe actuel est incorrect.")
+            nouveaux = self._valider(
+                actuels.login if nouveau_login is None else nouveau_login,
+                actuels.mot_de_passe if nouveau_mot_de_passe is None else nouveau_mot_de_passe,
+                NouveauxIdentifiantsInvalides,
+            )
+            if nouveaux == actuels:
+                raise NouveauxIdentifiantsInvalides("Les nouveaux identifiants sont identiques.")
+            self._identifiants.ecrire(nouveaux)
+            self._sessions.fermer_toutes_sauf(jeton)
 
     def deconnexion(self, jeton: str) -> None:
         """Ferme la session associée au jeton."""

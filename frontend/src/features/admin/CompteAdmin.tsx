@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { ChampConnexion } from './ConnexionAdmin'
 import { useModifierIdentifiants } from './hooks'
 
 export function CompteAdmin() {
@@ -15,6 +16,12 @@ export function CompteAdmin() {
   const rienDemande = login.trim() === '' && motDePasse === ''
   const discordance = motDePasse !== confirmation
   const incomplet = actuel === '' || rienDemande
+
+  // Une nouvelle saisie rend caduc le dernier succès ou refus affiché.
+  const saisir = (setter: (valeur: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!modifier.isIdle) modifier.reset()
+    setter(e.target.value)
+  }
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -41,41 +48,41 @@ export function CompteAdmin() {
       <h2 className="carte__entete">Compte administrateur</h2>
       <div className="connexion__corps">
         <form onSubmit={soumettre}>
-          <Champ libelle="Mot de passe actuel">
+          <ChampConnexion libelle="Mot de passe actuel">
             <input
               className="formulaire__champ"
               type="password"
               value={actuel}
-              onChange={(e) => setActuel(e.target.value)}
+              onChange={saisir(setActuel)}
               autoComplete="current-password"
             />
-          </Champ>
-          <Champ libelle="Nouvel identifiant (vide = inchangé)">
+          </ChampConnexion>
+          <ChampConnexion libelle="Nouvel identifiant (vide = inchangé)">
             <input
               className="formulaire__champ"
               value={login}
-              onChange={(e) => setLogin(e.target.value)}
+              onChange={saisir(setLogin)}
               autoComplete="username"
             />
-          </Champ>
-          <Champ libelle="Nouveau mot de passe (vide = inchangé)">
+          </ChampConnexion>
+          <ChampConnexion libelle="Nouveau mot de passe (vide = inchangé)">
             <input
               className="formulaire__champ"
               type="password"
               value={motDePasse}
-              onChange={(e) => setMotDePasse(e.target.value)}
+              onChange={saisir(setMotDePasse)}
               autoComplete="new-password"
             />
-          </Champ>
-          <Champ libelle="Confirmer le nouveau mot de passe">
+          </ChampConnexion>
+          <ChampConnexion libelle="Confirmer le nouveau mot de passe">
             <input
               className="formulaire__champ"
               type="password"
               value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
+              onChange={saisir(setConfirmation)}
               autoComplete="new-password"
             />
-          </Champ>
+          </ChampConnexion>
           <button
             type="submit"
             className="connexion__envoi"
@@ -84,7 +91,7 @@ export function CompteAdmin() {
             Enregistrer
           </button>
         </form>
-        {discordance && (
+        {confirmation !== '' && discordance && (
           <p className="carte__etat carte__etat--erreur" role="alert">
             Les deux nouveaux mots de passe ne correspondent pas.
           </p>
@@ -98,15 +105,5 @@ export function CompteAdmin() {
         <MessageErreur erreur={modifier.error} />
       </div>
     </section>
-  )
-}
-
-// Même étiquetage que l'écran de connexion (libellé visible enveloppant, E17US003).
-function Champ({ libelle, children }: { libelle: string; children: React.ReactNode }) {
-  return (
-    <label className="connexion__champ">
-      <span className="connexion__etiquette">{libelle}</span>
-      {children}
-    </label>
   )
 }

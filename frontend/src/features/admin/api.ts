@@ -52,8 +52,8 @@ export interface ModificationIdentifiants {
 }
 
 export function modifierIdentifiants(modification: ModificationIdentifiants): Promise<void> {
-  // Portée `'admin'` : le serveur exige la session. Ses refus sont des 403/400, jamais des 401 —
-  // un 401 purgerait la session admin dans `fetchJson`.
+  // Portée `'admin'` : le serveur exige la session. Ses refus **métier** sont des 403/400 (un 401
+  // purgerait la session dans `fetchJson`) ; seul un jeton périmé rend 401, et purge à raison.
   return fetchJson<void>('/api/v1/auth/identifiants', {
     method: 'PATCH',
     body: JSON.stringify(modification),
