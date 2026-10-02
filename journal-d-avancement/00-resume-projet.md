@@ -393,6 +393,10 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   qui la ressaisit, avant revalidation. ⚠️ **L'archer ne quitte jamais le classement** pendant cette
   fenêtre : c'est le droit d'écrire qui se rouvre, pas le compte. Détail dans
   [`2026-09-11-19h25-annuler-une-validation.md`](2026-09-11-19h25-annuler-une-validation.md).
+- **Le scoreur a sa file d'attente** (01/10) : en tête de l'écran de validation, les cibles qui
+  attendent sa signature, **la plus ancienne en premier**, avec depuis combien de temps elle attend ;
+  toucher un archer ouvre sa feuille. Il ne fait plus le tour de la salle pour savoir où aller. Détail
+  dans [`2026-10-01-19h08-la-file-du-scoreur.md`](2026-10-01-19h08-la-file-du-scoreur.md).
 
 ### 7. Les documents imprimables — *les premières listes du jour J*
 
@@ -630,10 +634,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **155 US livrées** (mergées, revues, CI verte) à la date du 01/10/2026 — la dernière, `E09US005`,
+- **156 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E09US005`,
   à **surface visible** : le **classement de qualification s'imprime**, une page par catégorie à
   afficher au mur, marquée « provisoire » tant que tout n'est pas tiré — et elle **clôt le jalon
-  J3**. Juste avant, `E17US005`, à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
+  J3**. Juste avant, `E04US019`,
+  à **surface visible** : le scoreur voit **quelles cibles attendent sa validation**, la plus ancienne
+  en tête. Juste avant, `E17US005`, à **surface visible** : l'application affiche **sa** police, Inter, sur **chaque** tablette, même
   sans internet et sans que la police y soit installée — jusqu'ici, chaque appareil prenait la
   sienne. Juste avant, `E02US007`, qui **importe une liste d'inscrits** depuis Ianseo ou Résult'Arc, avec un aperçu ligne à ligne avant
   d'enregistrer, et fait entrer le **n° de licence** dans la fiche. Juste avant, `E17US006` : un

@@ -71,3 +71,12 @@ export function lotARefermer(serie: Serie): number[] {
     .filter((volee) => (volee.lot_validation ?? 0) === plusAncien)
     .map((volee) => volee.numero)
 }
+
+// L'attente d'une ligne de la file (E04US019), au format de la planche S07 : « 35 s », « 4 min 20 ».
+export function libelleAttente(secondes: number): string {
+  const total = Math.max(0, Math.floor(secondes))
+  if (total < 60) return `${total} s`
+  const minutes = Math.floor(total / 60)
+  if (minutes < 60) return `${minutes} min ${String(total % 60).padStart(2, '0')}`
+  return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`
+}

@@ -12,14 +12,19 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 01/10/2026, 20 h 30** · **155 US livrées** · dernière : `E09US005`
+**Dernière mise à jour : 02/10/2026, 19 h 37** · **156 US livrées** · dernière : `E09US005`
 *(**le classement de qualification s'imprime** — PDF une page par catégorie et par départ, CSV et
 Excel à plat. Marqué « provisoire » tant qu'un archer **placé** a des volées à valider ou qu'un
 **barrage** attend (deux arbitrages rendus en revue). Rétrécie : duels et 1→N étaient tenus par le
 palmarès. ⚠️ **Elle clôt le jalon J3 (27/27).** `DETTE-047` élargie d'un 4ᵉ effet.)*
-Précédente : `E17US005`
-*(**Inter est embarquée** : la même police sur chaque tablette, sans réseau ni police installée. Police **variable** — la fiche comptait deux graisses, le front en emploie cinq. `DETTE-043` refermée.)*
-Précédente : `E02US007`
+Précédente : `E04US019`
+*(**le scoreur a sa file** — planche `S07`, variante A : en tête du panneau de validation, les cibles qui
+attendent, **la plus ancienne en premier**, « attend depuis 4 min 20 » calculé par le serveur ; toucher un
+archer ouvre sa feuille. « À valider » est **la règle même de la validation**, extraite du domaine, pas
+une copie. Corrigé en revue : la validation ouvre **la feuille du créneau choisi** — jusqu'ici le
+serveur devinait le premier créneau de l'archer (`DETTE-052` rétrécie, surface scoreur fermée))*
+Avant elle, `E17US005` *(**Inter est embarquée** : la même police sur chaque tablette, sans réseau ni police installée. Police **variable** — la fiche comptait deux graisses, le front en emploie cinq. `DETTE-043` refermée.)*
+Avant elle, `E02US007`
 *(**les inscrits s'importent depuis un fichier** — export Ianseo (`.csv`) ou classeur Résult'Arc
 (`.xls`), reconnus au contenu. Un **aperçu** dit ligne à ligne ce qui sera créé, refusé (avec le
 motif) ou tranché par l'admin (homonymes à cocher) ; **« Importer »** écrit tout le fichier **en une
@@ -60,7 +65,7 @@ le **05/08** en écrans pleins. **4 planches sur 9** ne proposent plus la varian
 `S01` les lettres sont **inversées** — le code en citait une (« variante B »), corrigée. La variante
 retenue se lit donc **par l'intention**, jamais par la lettre — [**ADR-0113**](../docs/adr/0113-un-arbitrage-se-lit-par-l-intention-pas-par-la-lettre.md), qui amende la réserve 2 d'ADR-0074. `S04`, `S05`, `S08` n'ont **plus
 d'étalon** : hors résorption, le tour 2 des questionnaires est demandé au commanditaire.
-⚠️ **`S07 · file du scoreur` n'a aucun écran ni endpoint** — US non livrée, pas écart de fidélité ; le
+✅ *(portée par `E04US019` le 01/10/2026)* ⚠️ **`S07 · file du scoreur` n'avait aucun écran ni endpoint** — US non livrée, pas écart de fidélité ; le
 tri d'`E16US011` l'avait rangée « rien à faire » en lisant son ✅ comme un constat alors que « on peut
 coder ça » est un feu vert. La critique de `S05` est dans le même cas : **sans porteur**.
 ⚠️ **L'écart 🔴 restant part en `E17US011`, pour une raison de périmètre** : mettre les flèches dans
@@ -75,11 +80,11 @@ Avant elle, `E06US009` *(un palmarès par départ, juxtaposés ; `DETTE-045` sol
 Avant elle, `E00US031` *(la porte mécanique en deux étages — détail dans sa ligne du tableau)*.
 Précédente : `E01US026` *(supprimer un tournoi peuplé, `DETTE-001` soldée après treize mois)*.
 
-> ⚠️ **155 fiches closes, mais 153 livraisons.** Le total ci-dessus est **écrit à la main** et
+> ⚠️ **156 fiches closes, mais 154 livraisons.** Le total ci-dessus est **écrit à la main** et
 > **contrôlé** par l'atlas contre le nombre de fiches ✅ distinctes (`total-annonce-divergent`,
 > sévérité **bloquante**) : il compte des **fiches**, pas des branches. Deux fiches sont closes sans
 > livraison propre — `E01US016` (absorbée par `E16US006`, 25/08/2026) et `E16US011` (**close par
-> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 153 ferait rougir la CI ; on
+> découpage** le 10/09/2026, remplacée par quatre US filles). Y forcer 154 ferait rougir la CI ; on
 > note donc la nuance au lieu de la cacher. ⚠️ **Ces trois nombres se réécrivent à chaque US** :
 > l'atlas ne contrôle que le premier, les deux autres dérivent en silence (ils annonçaient encore
 > 137/135/134 à 143 US livrées — corrigé le 19/09/2026).
@@ -401,12 +406,13 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯 1~~ ✅ | ~~`E17US012`~~ | **Livrée le 26/09/2026** — A04, A08, A12 et A17 en carte-tableau ; **A04** gagne inscrits et cibles, **A17** son bandeau de totaux et l'**ancienneté** de la dette (migration `0057`, nullable : l'existant reste « date inconnue »). Colonnes sans donnée **retirées des planches** (A04 avancement / ce qui reste, A08 état / périmètre / dernière validation, A12 type / rattachement / appareil / signe de vie). ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté. |
 > | ~~🎯~~ ✅ | ~~`E02US007`~~ | **Livrée le 26/09/2026 — choisie hors file par le commanditaire**, qui l'a tirée du « à choisir » (option b) pendant qu'`E17US012` était en vol ailleurs. Import Ianseo / Résult'Arc en **aperçu puis confirmation**, écrit en **une** transaction ; licence **unique dans le tournoi** (une fiche, N inscriptions). ⚠️ **Le blocage QT1 était levé depuis le 18/07/2026** (échantillons versés dans `docs/sources/`, `dc85faa`) : la fiche se disait « bloquée » plus de deux mois après. [ADR-0115](../docs/adr/0115-l-import-des-inscrits-est-un-plan-pur-ecrit-en-une-transaction.md). |
 > | ~~🔒~~ ✅ | ~~`E17US005`~~ | **Livrée le 26/09/2026 — débloquée par votre arbitrage du jour** : Inter est **embarquée** (fichier officiel `rsms/inter` 4.1, tel quel), donc la même sur chaque tablette, sans réseau et sans police installée — vérifié au navigateur sur un poste qui ne l'a pas. ⚠️ **La fiche se trompait** : « 2 graisses, 400/800 » ; le front en emploie **cinq**, d'où une police **variable** (94 usages en 600/700 seraient sortis en 800). Piège trouvé en route : le serveur sous Windows servait `.woff2` en `text/plain`. `DETTE-043` refermée ; les planches lisent le même fichier. |
+> | ~~🎯~~ ✅ | ~~`E04US019`~~ | **Livrée le 01/10/2026** — la **file du scoreur** (`S07`), choisie par le commanditaire parmi les besoins sans porteur et rangée sous **EPIC-04**. Périmètre « la file + la validation existante » : ni variante B, ni périmètre de cibles par scoreur (aucun n'existe). Corrigé en revue : le créneau voyage avec la validation (`DETTE-052` rétrécie), `DETTE-116` ouverte. ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté et d'API. |
 > | ~~🎯~~ ✅ | ~~`E09US005`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Le classement de qualification s'exporte (PDF, CSV, Excel) ; **J3 est terminé**. Deux arbitrages rendus en revue (barrage en attente ⇒ provisoire ; seuls les placés comptent). |
 > | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : le fil **équipes** (`E13US002`→`E13US004`), le jalon **J4**. |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
-> | 🔒 **en attente de vous** | **`S07` et la critique de `S05`** | **Deux besoins réels, sans porteur ni épic évident** — sortis du relevé d'`E17US008`. **`S07 · file du scoreur`** : l'écran **n'existe pas** (ni front, ni endpoint ; toutes les routes de validation sont par archer), alors que son questionnaire dit « ✅ validé tel quel — **on peut coder ça** ». **Critique de `S05`** : *« trop tassé »*, *« les emplacements de saisie de volée sont trop étroits »*, *« au lieu de 2 colonnes je préférerais sur 2 hauteurs, adapté tablette et téléphone »*. ⚠️ **Ni l'un ni l'autre n'est un écart de fidélité** : `EPIC-17` amène le produit jusqu'aux planches, il ne livre pas de capacité neuve. Ils relèvent d'un épic à désigner — d'où leur place ici plutôt qu'une US inventée sous un épic qui ne les porte pas. *(Inscrits en revue d'`E17US008`, axe adversarial : le journal les disait « maintenant écrites » alors qu'aucune ligne n'existait — l'US rejouait le défaut qu'elle diagnostique.)* |
+> | 🔒 **en attente de vous** | ~~**`S07`**~~ ✅ *(`E04US019`)* et la critique de `S05` | **`S07` est livrée le 01/10/2026 ; reste la critique de `S05`.** *Texte d'origine :* **Deux besoins réels, sans porteur ni épic évident** — sortis du relevé d'`E17US008`. **`S07 · file du scoreur`** : l'écran **n'existe pas** (ni front, ni endpoint ; toutes les routes de validation sont par archer), alors que son questionnaire dit « ✅ validé tel quel — **on peut coder ça** ». **Critique de `S05`** : *« trop tassé »*, *« les emplacements de saisie de volée sont trop étroits »*, *« au lieu de 2 colonnes je préférerais sur 2 hauteurs, adapté tablette et téléphone »*. ⚠️ **Ni l'un ni l'autre n'est un écart de fidélité** : `EPIC-17` amène le produit jusqu'aux planches, il ne livre pas de capacité neuve. Ils relèvent d'un épic à désigner — d'où leur place ici plutôt qu'une US inventée sous un épic qui ne les porte pas. *(Inscrits en revue d'`E17US008`, axe adversarial : le journal les disait « maintenant écrites » alors qu'aucune ligne n'existait — l'US rejouait le défaut qu'elle diagnostique.)* |
 >
 > ---
 >
@@ -1432,6 +1438,16 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US029 | Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §2. Source de pourrissement n° 1 mesurée : deux fiches livrées affirmaient qu'un geste n'existait pas alors qu'il venait d'être livré)* |
 | E00US030 | Un fait, un lieu : la charte des documents | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §1 et §4. **Mesuré** : 13 documents touchés par une US, dont **11** énonçant le même fait. ⚠️ **US structurante** — touche `CLAUDE.md`, et une question revient au commanditaire sur `00-resume-projet.md`, qui est un livrable. À prendre **après** `E00US028` et `E00US029`)* |
 | E00US031 | La porte mécanique en deux étages, et la checklist d'implémentation | hors jalon | ✅ *(née d'un diagnostic des allers-retours implémentation ↔ revue, demandé le 19/09/2026. **Le profilage a démenti l'hypothèse de départ** : les « 40 minutes de porte » n'étaient pas de l'orchestration mais **une passe lancée en parallèle de la revue**, et `metriques-revue.md` le disait déjà — médiane 11-13 min sur 52 passes. [ADR-0110](../docs/adr/0110-la-porte-mecanique-tient-dans-un-script-et-deux-etages.md). Livré : `backend/porte.py` en deux étages — un **étage rapide de ~30 s** qui n'existait pas (2738 tests de domaine, service et l'oracle 120 ; ruff, mypy strict, atlas, typage TS), et l'étage complet. ⚠️ **Parallèle en rapide, séquentiel en complet** : mesuré 68,4 → 46,3 s d'un côté, mais 845 → 905 s de l'autre, `pytest` doublant sous contention sur 4 cœurs. Huit marqueurs pytest posés à la collecte, `--strict-markers`, et **deux garde-fous** — la correspondance `porte.py` ↔ `ci.yml` dans les deux sens, et le gel des 35 modules hors convention. Côté front, `jsdom` n'est plus instancié que pour les tests qui ont un DOM : **224,5 → 150 s (-33 %)**. `docs/checklist-implementation.md` dérive du dépouillement des **152 corps de commit** de correction de revue — 58 affirmations fausses dans un artefact, 42 trous de test, 31 tests placebo. `DETTE-105` : la collecte pytest coûte 7,5 s à chaque invocation)* |
+
+## Ajout du 01/10/2026 — ✅ **livrée (1/1)**
+
+> Besoin **sans porteur** sorti du relevé d'`E17US008` (planche `S07`, validée « on peut coder ça »),
+> choisi par le commanditaire quand la file 🎯 était vide, et rangé sous **EPIC-04** (capacité de
+> saisie, pas un écart de fidélité). Cf. [`stories/E04-saisie-scores.md`](../stories/E04-saisie-scores.md) § E04US019.
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E04US019 | La file du scoreur (S07) | J3 | ✅ |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 

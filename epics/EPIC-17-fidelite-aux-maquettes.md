@@ -196,7 +196,7 @@ tracker, pas ici.
 
 | Planche | Motif |
 |---|---|
-| **S07 · file scoreur** | 🔴 **L'écran n'existe pas** — ni front, ni serveur. Toutes les routes de validation sont **par archer** (`GET /saisie/series/{tournoi}/{archer}`) ; aucune ne rend les cibles en attente, encore moins triées par ancienneté. Comme A05 dans le relevé admin : ce n'est pas un écart de fidélité, c'est une **US non livrée**. ⚠️ **Le tri d'`E16US011` le rangeait parmi les « validés ✅, rien à faire »** — exact sur ses *réponses* (les deux questions ciblées sont restées vides), faux sur son *verdict* : « ✅ validé tel quel — **on peut coder ça** » est un **feu vert**, pas un constat de livraison. Un ✅ sur une planche sans écran veut dire l'inverse de ce que le tri en a conclu |
+| **S07 · file scoreur** | ✅ *Portée depuis par `E04US019` (01/10/2026), hors de cet épic.* Relevé d'origine : 🔴 **L'écran n'existait pas** — ni front, ni serveur. Toutes les routes de validation sont **par archer** (`GET /saisie/series/{tournoi}/{archer}`) ; aucune ne rend les cibles en attente, encore moins triées par ancienneté. Comme A05 dans le relevé admin : ce n'est pas un écart de fidélité, c'est une **US non livrée**. ⚠️ **Le tri d'`E16US011` le rangeait parmi les « validés ✅, rien à faire »** — exact sur ses *réponses* (les deux questions ciblées sont restées vides), faux sur son *verdict* : « ✅ validé tel quel — **on peut coder ça** » est un **feu vert**, pas un constat de livraison. Un ✅ sur une planche sans écran veut dire l'inverse de ce que le tri en a conclu |
 | **S05 · saisie de duel** | 🔴 **Étalon perdu** (tableau ci-dessus). ⚠️ Et sa critique n'a **aucun destinataire** : *« trop tassé »*, *« les emplacements de saisie de volée sont trop étroits »*, *« au lieu de 2 colonnes je préférerais sur 2 hauteurs, adapté tablette et téléphone »* ne sont portés par **aucune US**, ni E16 ni E17 — S05 n'est ni dans les « retours écartés » d'`E16-retours-maquettes.md`, ni dans une US fille d'`E16US011` |
 | **S08 · validation de cible** | 🔴 **Étalon perdu**, et doublement : la variante retenue (« totaux par volée, détail sur demande ») est **contredite par la réponse ciblée de la même feuille** — *« les deux, flèches et total »*. L'écran existe depuis `E16US019` |
 | **S04 · marqueur** | Étalon perdu pour le **parti pris** ; les écarts relevés ci-dessous portent sur ce que la planche **actuelle** montre, et sont donc à prendre comme des propositions, pas comme des manquements mesurés |
@@ -405,7 +405,7 @@ dans le JSX **sans aucune règle CSS** — le sélecteur de luminosité de `S01`
   sous la ligne de flottaison » y est **inchangé, et non mesuré**. Or le questionnaire S02 répond
   « tablette standard **ou téléphone** ». Le commentaire CSS présentait l'empilement comme le cas du
   téléphone, ce qui le faisait passer pour un choix. *(Relevé par l'axe adversarial.)*
-- **`S05`, `S07`, `S08`** : hors périmètre, motifs au tableau plus haut. `S07` n'est pas un écart de
+- **`S05`, `S07`, `S08`** : hors périmètre, motifs au tableau plus haut. *(`S07` livrée depuis par `E04US019`, sous EPIC-04.)* `S07` n'est pas un écart de
   fidélité mais une **US non livrée**.
 
 ### Ce que ce relevé ne dit pas
