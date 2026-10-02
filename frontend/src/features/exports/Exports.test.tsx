@@ -39,6 +39,7 @@ const CATALOGUE = [
   entree('placement', [PDF, CSV]),
   entree('club-paiement', [PDF, CSV]),
   entree('feuille-de-marque', [PDF]),
+  entree('classement-qualification', [PDF, CSV]),
 ]
 
 function monter() {
@@ -125,6 +126,29 @@ describe('commandes propres à un document', () => {
       '/api/v1/tournois/7/departs/3/feuille-de-marque',
       'feuille-de-marque-tournoi-7-depart-3',
       'pdf',
+    )
+  })
+
+  it('sort le classement de qualification de tous les départs, ou du seul départ choisi', async () => {
+    monter()
+
+    const titre = await screen.findByRole('heading', { name: 'Classement de qualification' })
+    const section = titre.closest('section')!
+    await userEvent.click(section.querySelector('button')!)
+    await userEvent.selectOptions(section.querySelector('select')!, '3')
+    await userEvent.click(section.querySelectorAll('button')[1]!)
+
+    expect(telechargerExport).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/tournois/7/classement-qualification/document',
+      'classement-qualification-7',
+      'pdf',
+    )
+    expect(telechargerExport).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/tournois/7/classement-qualification/document?depart_id=3',
+      'classement-qualification-7-depart-3',
+      'csv',
     )
   })
 

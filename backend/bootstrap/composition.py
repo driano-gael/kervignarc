@@ -28,6 +28,7 @@ from api.v1.barrages import router as barrages_router
 from api.v1.big_shoot_off import router as big_shoot_off_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
+from api.v1.classement_imprime import router as classement_imprime_router
 from api.v1.clubs import router as clubs_router
 from api.v1.colline import router as colline_router
 from api.v1.competition import router as competition_router
@@ -84,6 +85,7 @@ from application.barrages import ServiceBarrage
 from application.big_shoot_off import ServiceBigShootOff
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
+from application.classement_imprime import ServiceClassementImprime
 from application.classements import ServiceClassement
 from application.clubs import ServiceClubs
 from application.colline import ServiceColline
@@ -213,6 +215,7 @@ from infrastructure.memory.repositories import (
     InMemoryTournoiRepository,
 )
 from infrastructure.pdf import (
+    GenerateurClassementQualificationPdf,
     GenerateurDocumentsSallePdf,
     GenerateurFeuilleDeMarquePdf,
     GenerateurListesImpressionPdf,
@@ -227,6 +230,7 @@ from infrastructure.postes import (
 from infrastructure.realtime import Broadcaster, DiffusionSimulationBroadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
 from infrastructure.tableur import (
+    GenerateurClassementQualificationTableur,
     GenerateurJournalAuditTableur,
     GenerateurListesImpressionTableur,
     GenerateurPalmaresTableur,
@@ -1082,6 +1086,25 @@ def create_app(
             }
         ),
     )
+    # E09US005 : le classement de qualification imprimable. Il **compose** `service_classement`,
+    # sans recalcul : le document affiché au mur dit ce que dit l'écran.
+    app.state.service_classement_imprime = ServiceClassementImprime(
+        tournois=tournoi_repository,
+        departs=depart_repository,
+        categories=categorie_repository,
+        clubs=club_repository,
+        series=serie_repository,
+        inscriptions=inscription_repository,
+        placements=placement_repository,
+        classements=app.state.service_classement,
+        generateurs=RegistreDeFormats(
+            {
+                FormatExport.PDF: GenerateurClassementQualificationPdf(),
+                FormatExport.CSV: GenerateurClassementQualificationTableur(rendre_csv),
+                FormatExport.XLSX: GenerateurClassementQualificationTableur(rendre_xlsx),
+            }
+        ),
+    )
     # Catalogue d'exports (E16US007, ADR-0101 §3) : ce que l'écran « Exports & impressions »
     # propose. ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici. La composition
     # vit dans `construire_catalogue`, fonction pure, pour rester **testable**.
@@ -1098,11 +1121,15 @@ def create_app(
     )
     formats_palmares: tuple[FormatExport, ...] = app.state.service_palmares.formats_disponibles
     formats_audit: tuple[FormatExport, ...] = app.state.service_export_audit.formats_disponibles
+    formats_classement: tuple[FormatExport, ...] = (
+        app.state.service_classement_imprime.formats_disponibles
+    )
     app.state.catalogue_exports = construire_catalogue(
         formats_listes=formats_listes,
         formats_feuille=formats_feuille,
         formats_palmares=formats_palmares,
         formats_audit=formats_audit,
+        formats_classement=formats_classement,
     )
 
     # --- Pilotage d'un tour (E12US002, ADR-0056) : feu vert + lancement. Compose les services de
@@ -1474,6 +1501,7 @@ def create_app(
     app.include_router(exports_router)
     app.include_router(listes_impression_router)
     app.include_router(palmares_router)
+    app.include_router(classement_imprime_router)
     app.include_router(archive_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement

@@ -91,7 +91,7 @@ class ServiceClassement:
         produisait le classement fusionné. « La » qualification n'existe plus (ADR-0082) — pour un
         second tour, passer par `pour_phase`.
         """
-        return self.pour_phase(depart_id, self._premiere_qualification(depart_id), categorie_id)
+        return self.pour_phase(depart_id, self.premiere_qualification(depart_id), categorie_id)
 
     def pour_phase(
         self,
@@ -148,7 +148,7 @@ class ServiceClassement:
             )
         return classement
 
-    def _premiere_qualification(self, depart_id: DepartId) -> Phase | None:
+    def premiere_qualification(self, depart_id: DepartId) -> Phase | None:
         """La qualification de **plus petit ordre** de ce créneau, ou `None`.
 
         Remplace `PhaseRepository.par_depart_et_type(depart_id, QUALIFICATION)`, dont le contrat

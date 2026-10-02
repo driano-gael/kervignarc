@@ -54,6 +54,12 @@ export function cheminPalmares(tournoiId: number): string {
   return `/api/v1/tournois/${tournoiId}/palmares/document`
 }
 
+// E09US005 : tous les départs à la suite, ou le seul départ choisi (`null` = tous).
+export function cheminClassementQualification(tournoiId: number, departId: number | null): string {
+  const base = `/api/v1/tournois/${tournoiId}/classement-qualification/document`
+  return departId === null ? base : `${base}?depart_id=${departId}`
+}
+
 export function cheminAudit(tournoiId: number): string {
   return `/api/v1/tournois/${tournoiId}/audit/document`
 }

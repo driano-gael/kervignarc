@@ -85,7 +85,7 @@ window.ATLAS.controles = {
    "code": "derniere-us-orpheline",
    "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0115, ADR-0014, ADR-0114, ADR-0113, ADR-0074, ADR-0104, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
    "severite": "signal",
-   "sujet": "E04US019"
+   "sujet": "E09US005"
   },
   {
    "code": "features-enchevetrees",
@@ -204,6 +204,12 @@ window.ATLAS.controles = {
   {
    "code": "portage-symbole-absent",
    "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0082"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _premiere_qualification dans « backend/application/classements.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0082"
   },
@@ -330,6 +336,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 54
+  "signaux": 55
  }
 };

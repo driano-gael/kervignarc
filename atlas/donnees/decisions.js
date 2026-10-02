@@ -5195,7 +5195,9 @@ window.ATLAS.decisions = {
       "pour_phase",
       "_premiere_qualification"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_premiere_qualification"
+     ],
      "verifiable": true
     },
     {
