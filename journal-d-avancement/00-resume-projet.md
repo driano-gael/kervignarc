@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 1ᵉʳ octobre 2026
+# Résumé du projet — où on en est au 2 octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -629,7 +629,8 @@ Dans l'ordre de valeur prévu par le backlog :
    aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
 4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration, plusieurs gabarits
-   (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011`).
+   (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ; et
+   l'accès administrateur **se change depuis l'appli**, `E10US006`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
@@ -641,7 +642,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **158 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E01US011`,
+- **159 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E10US006`,
+  à **surface visible** : l'organisateur **change son identifiant ou son mot de passe** depuis l'écran
+  « Compte administrateur », sans ouvrir le fichier du serveur ; les autres appareils connectés en
+  administrateur sont alors déconnectés. Juste avant, `E01US011`,
   à **surface visible** : chaque phase de duels **choisit son barème** — FFTA ou club, avec des
   exceptions par arme — et ce barème se fige au premier duel tiré. Juste avant, `E13US002`,
   à **surface visible** : l'organisateur **compose les équipes** du tournoi sur un écran « Équipes »,

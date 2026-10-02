@@ -12,7 +12,14 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 02/10/2026, 20 h 12** · **158 US livrées** · dernière : `E01US011`
+**Dernière mise à jour : 02/10/2026, 22 h 58** · **159 US livrées** · dernière : `E10US006`
+*(**l'accès administrateur se change depuis l'appli** — écran « Compte administrateur » (axe
+Atelier), mot de passe actuel exigé ; la session qui change reste ouverte, **toutes les autres sont
+fermées**. Un refus est un 403/400, jamais un 401 : le client purge la session admin sur tout 401,
+une faute de frappe aurait déconnecté. Trois arbitrages au cadrage, reversés dans `stories/`.
+⚠️ **Non vérifiée au navigateur ni à deux appareils** — couverte par les tests de service, d'API et
+d'écran monté.)*
+Précédente : `E01US011`
 *(**chaque phase de duels choisit son barème** — FFTA (premier à 6) ou club (premier à 4), avec des
 exceptions **par arme** explicites (les poulies au cumul ne se devinent plus au nom, sauf sur une
 phase non réglée) ; le barème **se fige au premier tir**, faute d'être stocké avec lui ; il voyage
@@ -23,7 +30,7 @@ arbitrages du commanditaire. [ADR-0117](../docs/adr/0117-le-bareme-de-duel-est-u
 amende ADR-0049 §2/§4 ; aucune migration. ⚠️ **La fiche datait d'avant le moteur** : la règle était
 déjà écrite (presets, cumul, barrage 1 flèche, Big Shoot Off jouable) — l'US a livré le **réglage**,
 pas le moteur. ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran monté.)*
-Précédente : `E13US002`
+Avant elle, `E13US002`
 *(**Les équipes se composent** : un écran « Équipes » où chaque équipe dit si elle est conforme, sans jamais être bloquée. Elles ne se **jouent** pas encore — `E13US003` (scoring d'équipe) est la suite du fil.)*
 Avant elle, `E09US005`
 *(**le classement de qualification s'imprime** — PDF une page par catégorie et par départ, CSV et
@@ -423,7 +430,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E09US005`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Le classement de qualification s'exporte (PDF, CSV, Excel) ; **J3 est terminé**. Deux arbitrages rendus en revue (barrage en attente ⇒ provisoire ; seuls les placés comptent). |
 > | ~~🎯~~ ✅ | ~~`E13US002`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Composer les équipes d'un tournoi : un écran « Équipes » (axe Gestion), une conformité **signalée, jamais bloquante**. Quatre arbitrages au cadrage, reversés dans `stories/` : sexe lu sur la **catégorie**, composition signalée, **une équipe par type**, backend + écran. ⚠️ Le CA d'origine renvoyait à une `DETTE-001` soldée depuis : les tables d'équipe entrent dans la cascade d'`E01US026`. |
 > | ~~🎯~~ ✅ | ~~`E01US011`~~ | **Livrée le 01/10/2026 — choisie dans le « à choisir » (jalon J4)**. Cadrage du jour : barème **par phase**, surcharges **explicites**, **pas** de bibliothèque. ⚠️ Le reliquat réel était un **réglage**, pas un moteur : la règle était écrite depuis E04US013/E05US028. Verrou au premier tir, faute de stocker le barème avec le tir ([ADR-0117](../docs/adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md)). |
-> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US003` scoring d'équipe, puis `E13US004`), le jalon **J4** (`E01US012`, `E03US010`, `E10US006`, `E11US006`, `E01US027` — `E09US007` attend `E03US010`). |
+> | ~~🎯~~ ✅ | ~~`E10US006`~~ | **Livrée le 02/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent** : `E13US003` et `E01US012` réservées par d'autres sessions, `E03US010` écartée sur un doute de recoupement. Arbitrages au cadrage : autres sessions coupées, destination de la coquille, CA sans enrichissement. |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US003` scoring d'équipe, puis `E13US004`), le jalon **J4** (`E01US012`, `E03US010`, `E11US006`, `E01US027` — `E09US007` attend `E03US010`). |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1252,7 +1260,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 84 | E03US012 | **Poser les cibles des tours suivants** | ✅ *(au-delà du tour 1, les duellistes reçoivent leur cible **sans clic**, dès que leur tour est **entièrement** déterminé — la maille est le tour, jamais le duel, parce que regrouper suppose de connaître tout l'ensemble à poser. ⚠️ **C'est un trou, pas un confort** : `place = match.tour == 1` rendait `pret_a_lancer` toujours faux passé le tour 1, donc feu vert éteint et routage muet pour les quarts, les demies et la finale. ⚠️ **Née d'un cadrage avorté** : `E16US013` (lancement automatique/manuel) n'avait **rien à lancer** ; remise à ⬜ sur arbitrage du commanditaire, qui a choisi de lever le verrou d'abord. ⚠️ **La clé était le blocage** : `(phase_id, inscription_id)` ne peut pas porter deux poses du même archer → migration `0053`, changement de PK, reprise en tour 1 ([ADR-0106](../docs/adr/0106-la-pose-d-une-cible-appartient-a-un-tour.md)). ⚠️ **`batch_alter_table` ne convenait pas** : en mode batch Alembic réfléchit la table et la nouvelle PK s'**ajoute** au lieu de remplacer — la migration paraissait réussir. Table recréée explicitement. ⚠️ **Le moteur n'était pas en cause** : `domain.placement.placer` est générique, sans notion de tour ; c'est l'appelant qui ne lui passait que `paires_du_premier_tour`. ⚠️ **Cinq dépendances retirées** de `ServicePlacementDuels` : il remontait son **propre** arbre à côté de `reconstruire`, seule à rejouer les duels validés — la parité des deux recopies avait déjà lâché une fois (E05US024). ⚠️ **L'acte automatique complète, il ne régénère pas** : sinon la première validation venue écraserait les ajustements au glisser-déposer ; et compléter suffit à **reposer** un tour qu'une correction de score a périmé. Exclus : le tour 1 (geste explicite) et une phase **en pause** (ADR-0091 — on ne prépare pas la butte d'après). ⚠️ **Deux chemins d'écriture branchés, pas un** : la validation **et** le forfait en duel (walkover), qui tranche sans qu'aucun score soit saisi — test de câblage dédié, c'est le mode de panne de `DETTE-028`. ⚠️ **`DETTE-019` résorbée sur son fond** (garde tour-1 en 4 formulations, **2 dans le front**, balayées ensemble : les lever côté serveur seulement aurait laissé l'écran annoncer une limite abolie **sans qu'un test rougisse**) ; **`DETTE-021` élargie** (le défaut vaut désormais à tous les tours, finale comprise). ⚠️ **Le registre attendait `E05US010` depuis six semaines** — livrée et hors sujet, son « 1→N » désignant la profondeur de classement : aucune US ne portait ce travail. ⚠️ **`ADR-0105` était déjà pris** la veille par `E16US015` — d'où `0106` ; collision vue en **tenant** la liste d'ADR-0075. ⚠️ `ADR-0048` **rouvert** et doté de sa section « Porté dans le code par », absente)* |
 | — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07 ; **comptée dans « Ajouts de l'entretien du 18/07 »**, hors décompte de J3)* |
 
-## J4 — Confort, richesse & robustesse — 🟡 **entamé (2/8)**
+## J4 — Confort, richesse & robustesse — 🟡 **entamé (3/8)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -1263,7 +1271,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 88 | E09US007 | Déroulé horaire imprimable | ⬜ |
 | 89 | ~~E05US016~~ | ~~Routing repêchage (WA)~~ → **absorbée par E05US015** | ⛔ *(le repêchage est une politique `routing`, pas un type de phase — ADR-0062 §1 ; hors décompte)* |
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
-| 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
+| 91 | E10US006 | Modifier le mot de passe admin | ✅ *(livrée le 02/10/2026 — écran « Compte administrateur », mot de passe actuel exigé, autres sessions admin fermées ; refus en 403/400, jamais 401)* |
 | 92 | E01US027 | Barème propre aux ½ finales et finales d'un tableau | ⬜ *(ajoutée le 01/10/2026 à la revue d'E01US011 — format club du référentiel §10.1 ; résorbe `DETTE-117`)* |
 
 ## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (5/10)**
@@ -1517,7 +1525,7 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
   admin » d'EPIC-17) ne compte **ni au numérateur ni au dénominateur** : c'est du travail livré, pas
   une US. Les lignes à `Seq = —` (US hors séquence, remontées d'une section d'ajouts) sont comptées
   **dans leur section d'origine**, pas dans le jalon — sans quoi la même US serait comptée deux
-  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 27/27 et J4 2/8.
+  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 27/27 et J4 3/8.
   *(J3 corrigé **deux fois** le 16/08/2026, par deux modes de panne différents, tous deux
   trouvés par le recalcul automatique d'`E00US019` et non à l'œil. **1.** Le compteur disait
   `12/15` quand le corps portait 14 ✅ sur 16 lignes — l'en-tête n'avait pas suivi le corps.
