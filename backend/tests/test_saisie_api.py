@@ -1131,3 +1131,209 @@ def test_corriger_est_reserve_au_scoreur_et_une_session_admin_n_y_suffit_pas(
         reponse = client.post("/api/v1/saisie/corrections", json=_corps_volee(s, ["9", "9", "9"]))
 
         assert reponse.status_code == 401, reponse.text
+
+
+# --- File du scoreur (E04US019) ---
+
+
+def test_la_file_du_scoreur_porte_la_cible_dont_la_feuille_est_complete(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une feuille complète met sa cible dans la file ; une validation l'en fait sortir."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        url = f"/api/v1/saisie/file/{s.tournoi_id}/{s.depart_id}"
+
+        reponse = client.get(url, headers=entete)
+
+        assert reponse.status_code == 200, reponse.text
+        (cible,) = reponse.json()
+        assert cible["cible_index"] == s.cible_index
+        # Saisie à l'instant : une heure d'écart signerait un fuseau perdu entre SQLite et l'API.
+        assert 0 <= cible["attente_secondes"] < 60
+        assert [(a["archer_id"], a["nom"], a["position"]) for a in cible["archers"]] == [
+            (s.archer_id, "CIBLE1A", "A")
+        ]
+        _valider(client, s, entete)
+        assert client.get(url, headers=entete).json() == []
+
+
+def test_la_file_du_scoreur_sans_session_scoreur_rend_401(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Réservée au scoreur : la session admin ouverte par `_semer` n'y suffit pas."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+
+        reponse = client.get(f"/api/v1/saisie/file/{s.tournoi_id}/{s.depart_id}")
+
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_la_file_d_un_autre_tournoi_est_refusee_au_scoreur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        autre = TournoiRepositorySQL(app_saisie.state.database.session_factory).ajouter(
+            Tournoi.creer("Extérieur", _DATE)
+        )
+        assert autre.id is not None
+        code_autre = client.post(
+            f"/api/v1/tournois/{autre.id}/scoreurs", json={"nom": "PICARD"}
+        ).json()["code"]
+
+        reponse = client.get(
+            f"/api/v1/saisie/file/{s.tournoi_id}/{s.depart_id}",
+            headers=_connecter_scoreur(client, code_autre),
+        )
+
+        assert reponse.status_code == 403, reponse.text
+        assert reponse.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_la_file_d_un_creneau_d_un_autre_tournoi_est_vide(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le filtre par archers du tournoi tient : aucun nom d'un autre tournoi ne fuit."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        db: Database = app_saisie.state.database
+        autre = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Extérieur", _DATE))
+        assert autre.id is not None
+        depart_autre = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(autre.id, 1, tarif_centimes=1000, horaire="09:00")
+        )
+        assert depart_autre.id is not None
+
+        reponse = client.get(
+            f"/api/v1/saisie/file/{s.tournoi_id}/{depart_autre.id}",
+            headers=_connecter_scoreur(client, s.scoreur_code),
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json() == []
+
+
+def test_valider_sur_un_creneau_ou_l_archer_n_est_pas_inscrit_rend_404(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E04US019 : le créneau désigné par l'écran est vérifié, jamais pris sur parole."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        db: Database = app_saisie.state.database
+        apres_midi = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(s.tournoi_id, 2, tarif_centimes=1000, horaire="14:00")
+        )
+        assert apres_midi.id is not None
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "depart_id": apres_midi.id},
+            headers=_connecter_scoreur(client, s.scoreur_code),
+        )
+
+        assert reponse.status_code == 404, reponse.text
+        assert reponse.json()["code"] == "inscription_introuvable"
+
+
+def test_valider_sur_le_creneau_designe_verrouille_la_feuille(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id, "depart_id": s.depart_id},
+            headers=entete,
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        assert all(v["verrouillee"] for v in reponse.json()["volees"])
+        relue = client.get(
+            f"/api/v1/saisie/series/{s.tournoi_id}/{s.archer_id}",
+            params={"depart_id": s.depart_id},
+            headers=entete,
+        )
+        assert relue.status_code == 200, relue.text
+        assert all(v["verrouillee"] for v in relue.json()["volees"])
+
+
+@pytest.mark.parametrize(
+    ("methode", "url", "corps"),
+    [
+        ("post", "/api/v1/saisie/validations", {}),
+        ("post", "/api/v1/saisie/annulations", {"numero": 1}),
+        ("post", "/api/v1/saisie/refermetures", {"numero": 1}),
+        ("get", "/api/v1/saisie/series/{tournoi}/{archer}", None),
+    ],
+)
+def test_chaque_geste_du_scoreur_transmet_le_creneau_designe(
+    app_saisie: FastAPI,
+    connecter_admin: ConnecterAdmin,
+    methode: str,
+    url: str,
+    corps: dict[str, object] | None,
+) -> None:
+    """E04US019 : un créneau où l'archer n'est pas inscrit est refusé **par chaque route**.
+
+    Une route qui oublierait de transmettre `depart_id` retomberait sur la devinette et ne rendrait
+    pas ce 404 : c'est ce que ce test garde, route par route."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        db: Database = app_saisie.state.database
+        etranger = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(s.tournoi_id, 2, tarif_centimes=1000, horaire="14:00")
+        )
+        assert etranger.id is not None
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        if corps is None:
+            reponse = client.get(
+                url.format(tournoi=s.tournoi_id, archer=s.archer_id),
+                params={"depart_id": etranger.id},
+                headers=entete,
+            )
+        else:
+            reponse = client.post(
+                url,
+                json={
+                    "tournoi_id": s.tournoi_id,
+                    "archer_id": s.archer_id,
+                    "depart_id": etranger.id,
+                    **corps,
+                },
+                headers=entete,
+            )
+
+        assert reponse.status_code == 404, reponse.text
+        assert reponse.json()["code"] == "inscription_introuvable"
+
+
+def test_un_scoreur_ne_lit_pas_la_feuille_d_un_archer_d_un_autre_tournoi(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La garde compare le tournoi de l'URL ; l'archer, lui, doit en être (revue E04US019)."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        db: Database = app_saisie.state.database
+        autre = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Extérieur", _DATE))
+        assert autre.id is not None
+        code_autre = client.post(
+            f"/api/v1/tournois/{autre.id}/scoreurs", json={"nom": "PICARD"}
+        ).json()["code"]
+
+        reponse = client.get(
+            f"/api/v1/saisie/series/{autre.id}/{s.archer_id}",
+            headers=_connecter_scoreur(client, code_autre),
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["volees"] == []

@@ -122,6 +122,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Rang décerné** | `LignePalmares.decerne` | Un rang qu'un **match** a décidé — la seule forme qui vaut une médaille. Ne se déduit **pas** de « rang exact » : un rang de qualification l'est par construction, et la renumérotation en produit un dès qu'un archer est seul de son groupe (le vainqueur d'une demi-finale, avant la finale). |
 | **Rang** | `rang` | Position finale d'un archer. |
 | **Feuille de marque** | — | Document de scores par cible/archer. |
+| **File du scoreur** | `ServiceSaisie.file_du_scoreur`, `CibleEnAttente` | Les **cibles** d'un créneau dont une feuille de qualification est **validable** maintenant (même règle que la validation, `Serie.lot_a_valider`), la plus ancienne en tête ; l'attente est calculée par le serveur (E04US019). ⚠️ Ne pas confondre avec la **file d'écriture** (ADR-0005), concept technique sans rapport. |
 
 ## Rôles
 
