@@ -17,9 +17,10 @@ export function CompteAdmin() {
   const discordance = motDePasse !== confirmation
   const incomplet = actuel === '' || rienDemande
 
-  // Une nouvelle saisie rend caduc le dernier succès ou refus affiché.
+  // Une nouvelle saisie rend caduc le dernier succès ou refus affiché. ⚠️ Jamais pendant l'envoi :
+  // `reset()` détacherait la requête en cours, et un succès réel ne s'afficherait pas.
   const saisir = (setter: (valeur: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!modifier.isIdle) modifier.reset()
+    if (modifier.isSuccess || modifier.isError) modifier.reset()
     setter(e.target.value)
   }
 
@@ -62,7 +63,7 @@ export function CompteAdmin() {
               className="formulaire__champ"
               value={login}
               onChange={saisir(setLogin)}
-              autoComplete="username"
+              autoComplete="off"
             />
           </ChampConnexion>
           <ChampConnexion libelle="Nouveau mot de passe (vide = inchangé)">

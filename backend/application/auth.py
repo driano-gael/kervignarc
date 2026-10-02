@@ -64,13 +64,16 @@ class ServiceAuth:
     def __init__(self, identifiants: StoreIdentifiantsAdmin, sessions: StoreSessions) -> None:
         self._identifiants = identifiants
         self._sessions = sessions
-        # ⚠️ Tient la séquence « lire le secret → ouvrir/écrire/fermer » d'un seul tenant : sans
-        # lui, une connexion à l'ancien secret survit à une rotation concurrente (E10US006).
+        # ⚠️ Tient chaque accès à `.env` et la séquence « lire le secret → ouvrir/écrire/fermer »
+        # d'un seul tenant : sans lui, une connexion à l'ancien secret survit à une rotation
+        # concurrente (E10US006).
         self._verrou = threading.Lock()
 
     def est_configure(self) -> bool:
         """Vrai si un accès administrateur a déjà été défini."""
-        return self._identifiants.lire() is not None
+        # Sous verrou aussi : sous Windows, un `.env` ouvert en lecture fait échouer `os.replace`.
+        with self._verrou:
+            return self._identifiants.lire() is not None
 
     def configurer(self, login: str, mot_de_passe: str) -> str:
         """Définit l'accès admin au 1ᵉʳ usage et ouvre aussitôt une session (jeton).

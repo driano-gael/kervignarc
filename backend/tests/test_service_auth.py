@@ -241,32 +241,56 @@ def test_modifier_sans_session_valide_refuse(tmp_path: Path) -> None:
 
 
 # --- Entrelacements (revue d'E10US006) : la rotation est atomique face aux autres cas d'usage.
+# ⚠️ Chaque test suspend la **dernière** étape de la section critique (après la lecture du
+# secret) : suspendre avant la lecture laisse relire le nouveau secret et masque la course.
 
 
-class _LectureSuspendue:
-    """Store d'identifiants dont la **prochaine** lecture s'arrête jusqu'à `relacher`."""
+class _Suspension:
+    """Point d'arrêt à un coup : le prochain `marquer()` s'arrête jusqu'à `relacher`."""
 
-    def __init__(self, reel: AdminCredentialsStore) -> None:
-        self._reel = reel
+    def __init__(self) -> None:
         self.armee = False
         self.entree = threading.Event()
         self.relacher = threading.Event()
 
-    def lire(self) -> IdentifiantsAdmin | None:
+    def marquer(self) -> None:
         if self.armee:
             self.armee = False
             self.entree.set()
             self.relacher.wait(timeout=5)
-        return self._reel.lire()
+
+
+class _LectureSuspendue:
+    """Store d'identifiants qui s'arrête **après** avoir lu (la valeur lue est déjà capturée)."""
+
+    def __init__(self, reel: AdminCredentialsStore, point: _Suspension) -> None:
+        self._reel, self._point = reel, point
+
+    def lire(self) -> IdentifiantsAdmin | None:
+        valeur = self._reel.lire()
+        self._point.marquer()
+        return valeur
 
     def ecrire(self, identifiants: IdentifiantsAdmin) -> None:
         self._reel.ecrire(identifiants)
 
 
+class _OuvertureSuspendue(SessionStore):
+    """Store de sessions qui s'arrête juste **avant** d'ouvrir la session."""
+
+    def __init__(self, point: _Suspension) -> None:
+        super().__init__()
+        self._point = point
+
+    def ouvrir(self) -> str:
+        self._point.marquer()
+        return super().ouvrir()
+
+
 def _entrelacer(
-    store: _LectureSuspendue, premier: Callable[[], object], second: Callable[[], object]
+    point: _Suspension, premier: Callable[[], object], second: Callable[[], object]
 ) -> list[object]:
-    """`premier` s'arrête dans sa lecture ; `second` part pendant ce temps, puis on relâche."""
+    """`premier` s'arrête à `point` ; `second` part pendant ce temps, puis on relâche."""
     resultats: list[object] = [None, None]
 
     def lancer(i: int, appel: Callable[[], object]) -> None:
@@ -275,14 +299,14 @@ def _entrelacer(
         except ApplicationError as exc:
             resultats[i] = exc
 
-    store.armee = True
+    point.armee = True
     t1 = threading.Thread(target=lancer, args=(0, premier))
     t1.start()
-    assert store.entree.wait(timeout=5)
+    assert point.entree.wait(timeout=5)
     t2 = threading.Thread(target=lancer, args=(1, second))
     t2.start()
     t2.join(timeout=0.5)  # sans sérialisation, `second` a le temps de finir ici
-    store.relacher.set()
+    point.relacher.set()
     t1.join(timeout=5)
     t2.join(timeout=5)
     return resultats
@@ -292,36 +316,60 @@ def test_connexion_avec_l_ancien_secret_ne_survit_pas_a_une_rotation_concurrente
     tmp_path: Path,
 ) -> None:
     """CA : faire tourner l'accès éjecte qui détenait l'ancien secret — même en pleine connexion."""
-    store = _LectureSuspendue(AdminCredentialsStore(tmp_path / ".env"))
-    service = ServiceAuth(store, SessionStore())
+    point = _Suspension()
+    service = ServiceAuth(AdminCredentialsStore(tmp_path / ".env"), _OuvertureSuspendue(point))
     admin = service.configurer("admin", "secret")
     intrus, _ = _entrelacer(
-        store,
+        point,
         lambda: service.connexion("admin", "secret"),
         lambda: service.modifier(admin, "secret", None, "neuf"),
     )
-    assert isinstance(intrus, str)
-    assert service.session_valide(intrus) is False
+    assert not (isinstance(intrus, str) and service.session_valide(intrus))
     assert service.session_valide(admin) is True
 
 
 def test_deux_rotations_concurrentes_une_seule_gagne(tmp_path: Path) -> None:
-    """La seconde rotation voit le nouveau secret : refusée, sans écraser la première."""
-    store = _LectureSuspendue(AdminCredentialsStore(tmp_path / ".env"))
+    """Exactement une rotation aboutit, et le `.env` final porte le secret de la gagnante."""
+    point = _Suspension()
+    store = _LectureSuspendue(AdminCredentialsStore(tmp_path / ".env"), point)
     service = ServiceAuth(store, SessionStore())
     a = service.configurer("admin", "secret")
     b = service.connexion("admin", "secret")
-    resultat_a, resultat_b = _entrelacer(
-        store,
+    resultats = _entrelacer(
+        point,
         lambda: service.modifier(a, "secret", None, "pour-a"),
         lambda: service.modifier(b, "secret", None, "pour-b"),
     )
-    assert resultat_a is None
-    assert isinstance(resultat_b, NonAuthentifie | MotDePasseActuelIncorrect)
-    assert service.session_valide(a) is True
-    assert ServiceAuth(AdminCredentialsStore(tmp_path / ".env"), SessionStore()).connexion(
-        "admin", "pour-a"
-    )
+    gagnantes = [i for i, r in enumerate(resultats) if r is None]
+    assert len(gagnantes) == 1
+    gagnante = gagnantes[0]
+    assert service.session_valide((a, b)[gagnante]) is True
+    relu = ServiceAuth(AdminCredentialsStore(tmp_path / ".env"), SessionStore())
+    assert relu.connexion("admin", ("pour-a", "pour-b")[gagnante])
+
+
+def test_lecture_de_l_etat_et_rotation_ne_se_chevauchent_pas(tmp_path: Path) -> None:
+    """`est_configure` lit `.env` sous le même verrou : la rotation attend la fin de la lecture."""
+    point = _Suspension()
+    store = _LectureSuspendue(AdminCredentialsStore(tmp_path / ".env"), point)
+    service = ServiceAuth(store, SessionStore())
+    admin = service.configurer("admin", "secret")
+    rotation_finie = threading.Event()
+
+    def rotation() -> None:
+        service.modifier(admin, "secret", None, "neuf")
+        rotation_finie.set()
+
+    point.armee = True
+    lecture = threading.Thread(target=service.est_configure)
+    lecture.start()
+    assert point.entree.wait(timeout=5)
+    ecrivain = threading.Thread(target=rotation)
+    ecrivain.start()
+    assert rotation_finie.wait(timeout=0.5) is False  # bloquée tant que la lecture tient `.env`
+    point.relacher.set()
+    lecture.join(timeout=5)
+    assert rotation_finie.wait(timeout=5) is True
 
 
 def test_modifier_login_enregistre_sans_espaces_de_bord(tmp_path: Path) -> None:

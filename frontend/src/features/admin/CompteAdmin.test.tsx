@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { enregistrerJetonAdmin, enregistrerSurNonAutorise } from '../../shared/api/client'
 import { CompteAdmin } from './CompteAdmin'
@@ -95,9 +95,29 @@ describe('CA E10US006 — modifier les identifiants', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/ne correspondent pas/)
 
     saisir('Confirmer le nouveau mot de passe', '')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(bouton).toBeDisabled()
 
     saisir('Nouvel identifiant (vide = inchangé)', '')
     saisir('Nouveau mot de passe (vide = inchangé)', '')
     expect(bouton).toBeDisabled()
+  })
+
+  it('une frappe pendant l’envoi n’escamote pas le succès de la rotation', async () => {
+    let repondre: (reponse: Response) => void = () => {}
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      () => new Promise((resoudre) => (repondre = resoudre)),
+    )
+    vi.stubGlobal('fetch', fetch)
+    render(<CompteAdmin />, { wrapper: enveloppe() })
+
+    saisir('Mot de passe actuel', 'ancien')
+    saisir('Nouvel identifiant (vide = inchangé)', 'arbitre')
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    saisir('Nouvel identifiant (vide = inchangé)', 'arbitre2')
+    repondre(new Response(null, { status: 204 }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/Identifiants modifiés/)
   })
 })
