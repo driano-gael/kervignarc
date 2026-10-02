@@ -285,7 +285,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 394,
+   "occurrences": 395,
    "source": "application"
   },
   {
@@ -333,7 +333,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 102,
+   "occurrences": 104,
    "source": "api"
   },
   {
@@ -568,7 +568,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 98,
+   "occurrences": 100,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -790,7 +790,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 379,
+   "occurrences": 380,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1060,7 +1060,7 @@ window.ATLAS.carte = {
    "cible": "domain/erreurs",
    "couche_cible": "domain",
    "couche_source": "domain",
-   "occurrences": 37,
+   "occurrences": 38,
    "origines": [
     "backend/domain/anomalie.py",
     "backend/domain/archer.py",
@@ -1083,6 +1083,7 @@ window.ATLAS.carte = {
     "backend/domain/format_tournoi.py",
     "backend/domain/gabarit_salle.py",
     "backend/domain/grain_validation.py",
+    "backend/domain/horaire_prevu.py",
     "backend/domain/identite.py",
     "backend/domain/import_inscrits.py",
     "backend/domain/phase.py",
@@ -3455,8 +3456,8 @@ window.ATLAS.carte = {
   "aretes_front": 187,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1043,
-  "imports_entre_couches": 878,
+  "imports": 1047,
+  "imports_entre_couches": 881,
   "plus_gros_noeud": 25,
   "ports": 78,
   "ports_hors_domaine": 30,

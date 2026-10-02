@@ -13,6 +13,7 @@ import {
   changerStatutPhase,
   type ConfigPhase,
   getAvancement,
+  getHorairesPrevus,
   getPhases,
   modifierPhase,
   reordonnerPhases,
@@ -33,6 +34,19 @@ export const clePhases = (tournoiId: number) => ['phases', tournoiId] as const
 // la clé se construit, elle ne s'écrit pas.
 export const RACINE_AVANCEMENT = ['avancement-phases'] as const
 const cleAvancement = (departId: number) => [...RACINE_AVANCEMENT, departId] as const
+
+// ⚠️ **Sous** `clePhases` : les mutations du déroulé l'invalident par préfixe, sans site de plus.
+const cleHoraires = (tournoiId: number) => [...clePhases(tournoiId), 'horaires'] as const
+
+// L'horaire dépend aussi de l'heure des départs, dont les mutations n'invalident pas ce cache : le
+// poll lent (et le remontage) le rattrapent — c'est un prévisionnel, pas un chronomètre.
+export function useHorairesPrevus(tournoiId: number) {
+  return useQuery({
+    queryKey: cleHoraires(tournoiId),
+    queryFn: () => getHorairesPrevus(tournoiId),
+    refetchInterval: 60000,
+  })
+}
 
 export function usePhases(tournoiId: number) {
   return useQuery({

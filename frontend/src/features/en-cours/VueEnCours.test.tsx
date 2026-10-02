@@ -16,7 +16,7 @@ import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
 import type { TypePhase } from '../../shared/phases/catalogue'
 import type { Phase } from '../phases/api'
-import { getAvancement } from '../phases/api'
+import { getAvancement, getHorairesPrevus } from '../phases/api'
 import { VueEnCours } from './VueEnCours'
 
 vi.mock('../departs/api', async (importOriginal) => ({
@@ -26,6 +26,7 @@ vi.mock('../departs/api', async (importOriginal) => ({
 vi.mock('../phases/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../phases/api')>()),
   getAvancement: vi.fn(),
+  getHorairesPrevus: vi.fn(),
 }))
 
 type Temoin = { phaseId?: number; mode?: string; suivis?: number[] }
@@ -92,6 +93,7 @@ function monter(noeud: ReactNode) {
 beforeEach(() => {
   vi.mocked(getDeparts).mockResolvedValue([CRENEAU])
   vi.mocked(getAvancement).mockReset()
+  vi.mocked(getHorairesPrevus).mockResolvedValue([])
 })
 
 describe('VueEnCours — l’aiguillage par format', () => {
@@ -285,5 +287,41 @@ describe('VueEnCours — le fil du déroulé', () => {
     monter(<VueEnCours tournoiId={1} />)
 
     expect(await screen.findByText(/n’est pas encore composé/)).toBeInTheDocument()
+  })
+})
+
+describe('VueEnCours — l’heure de début prévue (E03US010, CA 7)', () => {
+  it('affiche le début prévu de chaque phase de CE créneau, et tait l’inconnu', async () => {
+    vi.mocked(getAvancement).mockResolvedValue([
+      phase({ id: 7, ordre: 1, type: 'qualification', statut: 'terminee' }),
+      phase({ id: 8, ordre: 2, type: 'poules', statut: 'en_cours' }),
+      phase({ id: 9, ordre: 3, type: 'suisse', statut: 'a_venir' }),
+    ])
+    vi.mocked(getHorairesPrevus).mockResolvedValue([
+      {
+        depart_id: 99,
+        numero: 2,
+        horaire: '14:00',
+        etapes: [{ etape_id: 1, ordre: 2, debut: { heure: '16:00', jours_apres: 0 }, fin: null }],
+      },
+      {
+        depart_id: CRENEAU.id,
+        numero: 1,
+        horaire: '09:00',
+        etapes: [
+          { etape_id: 1, ordre: 1, debut: { heure: '09:00', jours_apres: 0 }, fin: null },
+          { etape_id: 2, ordre: 2, debut: { heure: '11:30', jours_apres: 0 }, fin: null },
+          { etape_id: 3, ordre: 3, debut: null, fin: null },
+        ],
+      },
+    ])
+
+    monter(<VueEnCours tournoiId={1} mode="tout" suivis={[]} />)
+
+    expect(await screen.findByText(/début prévu 11:30/)).toBeInTheDocument()
+    const deroule = await screen.findByRole('navigation', { name: 'Déroulé du départ' })
+    expect(deroule).toHaveTextContent('1. Qualification · 09:00')
+    expect(deroule).not.toHaveTextContent('16:00')
+    expect(screen.getByRole('button', { name: /^3\./ })).not.toHaveTextContent(':')
   })
 })

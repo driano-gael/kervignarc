@@ -141,7 +141,7 @@ La solution s'articule autour de 9 modules :
 | EF-4.7 | Chaque archer se voit attribuer **cible + position (A/B/C/D) + départ**. |
 | EF-4.8 | **Placement des duellistes côte à côte** dans la mesure du possible lors des phases de tableau. |
 | EF-4.9 | Produire le **plan de cibles** par phase/tour (qui tire où), à la manière de l'onglet `PLAN DE CIBLE`. |
-| EF-4.10 | Produire un **déroulé horaire** de la journée croisant phases, tours et matchs. *(génération auto vs saisie manuelle — Q ouverte)* |
+| EF-4.10 | Produire un **déroulé horaire** de la journée croisant phases, tours et matchs. *(Q4 fermée : durées saisies, heures calculées, maille phase — ADR-0118)* |
 
 > **Règle de priorité (à confirmer)** — En cas de conflit entre contraintes, hypothèse d'ordre : capacité > catégorie/blason > mixité club.
 
@@ -258,7 +258,7 @@ La solution s'articule autour de 9 modules :
 | Q1 | **Format du fichier d'import** « inscript'arc » | Un exemple XLS + description des colonnes |
 | ~~Q2~~ | ~~**Règles de départage / barrage**~~ | ✅ **Fermée le 14/07/2026** — qualif : plus grand nombre de **10**, puis de **9** (spécifique 18 m). Barrage : **1 flèche au plus haut score**, puis **au plus près du centre** si l'égalité persiste ; les 10/9 ne sont pas recomptés. Cf. [référentiel FFTA §8](docs/referentiel-ffta.md). |
 | Q3 | **Mécanique précise du Lucky Loser** et des tableaux de placement | 2-3 cas réels formalisés (quel tour reverse vers quel tableau) |
-| Q4 | **Génération des horaires** | Auto (durées × tours) ou saisie manuelle par l'organisateur ? |
+| ~~Q4~~ | ~~**Génération des horaires**~~ | ✅ **Fermée le 02/10/2026** — l'organisateur saisit une **durée** par phase (jamais préremplie) ; les **heures se calculent** pour chaque départ, une phase commençant quand ses sources sont finies. Maille **phase**, pas tour ni match. [ADR-0118](docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md), E03US010. |
 | Q5 | **Volumétrie max** | Plafond nb archers / cibles / départs au-delà de 120 |
 | Q6 | **Priorité des contraintes de placement** en cas de conflit (cf. M4) | Ordre de priorité souhaité |
 | Q7 | **Mode de saisie par défaut** sur tablette (scoreur vs archer, cf. H1) | Décision |

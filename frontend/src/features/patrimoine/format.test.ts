@@ -55,6 +55,7 @@ describe('decrireEtape', () => {
   function etape(partiel: Partial<Etape> = {}): Etape {
     return {
       ordre: 1,
+      duree_prevue: null,
       type: 'qualification',
       bareme: null,
       validation: null,

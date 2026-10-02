@@ -28,6 +28,7 @@ from domain.erreurs import (
     ConfigurationSuisseInvalide,
 )
 from domain.grain_validation import GrainValidation
+from domain.horaire_prevu import verifier_duree_prevue
 from domain.phase import (
     Phase,
     SourcePhase,
@@ -149,11 +150,19 @@ class EtapeDeroule:
     *composition*, et `Phase` ne porte que ce dont le moteur a besoin pour avancer.
     """
 
+    duree_prevue: int | None = None
+    """Minutes que l'organisateur prévoit pour cette étape, pauses comprises (E03US010, ADR-0118).
+
+    ⚠️ Une **durée**, jamais une heure : l'heure dépend du créneau (`horaires_prevus`). Absente de
+    `Phase`, comme `titre` — le moteur n'en a pas besoin pour avancer.
+    """
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (`replace()` compris)."""
         object.__setattr__(self, "titre", titre_normalise(self.titre))
+        verifier_duree_prevue(self.duree_prevue)
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
         verifier_decoupage_applicable(self.type, self.bareme, self.decoupage)
         self._verifier_convergence_du_big_shoot_off()

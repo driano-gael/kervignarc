@@ -3,9 +3,9 @@
 // Un seul composant pour deux surfaces (appli publique interactive, écran de salle projeté) : les
 // dessiner séparément les ferait diverger sur la seule chose qui compte, l'appariement affiché.
 // Deux lectures : **« Mon chemin »**, par défaut dès qu'on suit quelqu'un (`D-09`), et **« Arbre
-// complet »**, en liste par tour — l'arbre en vraies branches ne tient pas sur 360 px. ⚠️ **Les
-// horaires prévisionnels ne sont pas livrés** (arbitrage du 04/08/2026) : le domaine n'en porte
-// aucun au grain de la phase, et les inventer serait pire que les taire.
+// complet »**, en liste par tour — l'arbre en vraies branches ne tient pas sur 360 px. L'horaire
+// prévisionnel de P05 (début de chaque phase, rien au grain du tour) s'affiche dans l'onglet
+// « En cours » qui encadre cette vue, pas ici (E03US010, ADR-0118).
 
 import { useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'

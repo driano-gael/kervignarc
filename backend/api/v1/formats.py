@@ -30,6 +30,7 @@ from domain.colline import ConfigurationColline
 from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
+from domain.horaire_prevu import DUREE_PREVUE_MAX
 from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourceModele, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
@@ -405,6 +406,11 @@ class EtapeDTO(BaseModel):
     sont identiques, pas les racines »).
     """
 
+    duree_prevue: int | None = Field(default=None, ge=1, le=DUREE_PREVUE_MAX)
+    """Minutes prévues pour l'étape (E03US010) — même raison de présence que `titre`. ⚠️ **Bornée
+    ici** et non par le domaine : `ModelePhase` n'a aucun invariant (E01US024), et sans cette borne
+    un format invalide s'enregistrerait pour n'échouer qu'à son application."""
+
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
@@ -441,6 +447,7 @@ class EtapeDTO(BaseModel):
             decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
             titre=self.titre,
+            duree_prevue=self.duree_prevue,
             bareme_duel=(None if self.bareme_duel is None else self.bareme_duel.vers_agregat()),
         )
 
@@ -482,6 +489,7 @@ class EtapeDTO(BaseModel):
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             titre=etape.titre,
+            duree_prevue=etape.duree_prevue,
             bareme_duel=(
                 None
                 if etape.bareme_duel is None

@@ -45,6 +45,7 @@ const BASE: EtapeDeroule = {
   nb_volees: null,
   arrets: [],
   titre: null,
+  duree_prevue: null,
 }
 
 // ⚠️ Identités **décalées des rangs** : 101 pour le rang 1, 102 pour le rang 2.

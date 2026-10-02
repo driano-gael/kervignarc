@@ -28,6 +28,9 @@ import {
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
 import { ChampTitre } from '../../shared/phases/ChampTitre'
+import { ChampDureePrevue } from '../../shared/phases/ChampDureePrevue'
+import { depuisDureePrevue, versDureePrevue } from '../../shared/phases/horaires'
+import { GrilleHoraire } from './GrilleHoraire'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
 import {
   ARRETS_PAR_DEFAUT,
@@ -137,6 +140,7 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
           ))}
         </ol>
       )}
+      {liste.length > 0 && <GrilleHoraire tournoiId={tournoiId} etapes={liste} />}
     </section>
   )
 }
@@ -464,6 +468,7 @@ function LignePhase({
                   donc composée de ses réglages propres, réunis au même endroit que ceux des
                   autres types au lieu d'être dispersés dans la barre d'actions. */}
               <ReglageTitre tournoiId={tournoiId} phase={phase} />
+              <ReglageDuree tournoiId={tournoiId} phase={phase} />
               <ReglageBarrage tournoiId={tournoiId} phase={phase} />
               <ReglageDecoupageDePhase tournoiId={tournoiId} phase={phase} />
             </>
@@ -481,6 +486,7 @@ function LignePhase({
                   voir avec la séquence — le refuser aussi rendrait ces phases-là impossibles à
                   nommer, alors que ce sont justement les déroulés les plus fournis. */}
               <ReglageTitre tournoiId={tournoiId} phase={phase} />
+              <ReglageDuree tournoiId={tournoiId} phase={phase} />
               {/* ⚠️ **Message corrigé au passage (E16US002), il était trompeur.** Il disait
                   « éditable depuis l'écran de composition du déroulé » et désignait l'atelier —
                   qui ne travaille sur **aucun tournoi** (ADR-0063) et ne pouvait donc pas éditer
@@ -525,6 +531,7 @@ export function FormulairePhase({
   // ici et dans le formulaire jumeau de « Composer un format ». Les contrôles, eux, sont partagés
   // (`shared/phases/`) : c'est la plomberie autour d'eux qui se recopie.
   const [titre, setTitre] = useState(phase?.titre ?? '')
+  const [duree, setDuree] = useState(depuisDureePrevue(phase?.duree_prevue ?? null))
   const [effectif, setEffectif] = useState(phase?.effectif != null ? String(phase.effectif) : '')
   // **Source unique** du réglage de profondeur (E06US006), détenue ici et non dans le contrôle :
   // celui-ci est monté sous condition, donc une copie interne divergerait au premier aller-retour
@@ -725,6 +732,8 @@ export function FormulairePhase({
       // aux cinq réglages ci-dessus, il n'est **pas** effacé par un retypage : un titre n'appartient
       // à aucun type, et « Tableau des jeunes » reste juste si la phase devient des poules.
       titre: titre.trim() === '' ? null : titre,
+      // E03US010 : comme le titre, n'appartient à aucun type — un retypage ne l'efface pas.
+      duree_prevue: versDureePrevue(duree),
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -733,6 +742,7 @@ export function FormulairePhase({
         onSuccess: () => {
           setEffectif('')
           setTitre('')
+          setDuree('')
           // La profondeur se remet au preset comme les autres champs : « classement intégral »
           // est le réglage le plus coûteux de la journée, il ne doit pas se reporter en silence
           // d'une phase à la suivante.
@@ -772,6 +782,7 @@ export function FormulairePhase({
           libelle="Titre de la phase (facultatif)"
           placeholder={LIBELLE_TYPE[type]}
         />
+        <ChampDureePrevue valeur={duree} surChangement={setDuree} />
         <select
           className="formulaire__champ"
           value={type}
@@ -968,6 +979,7 @@ function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
     decoupage: phase.decoupage,
     arrets: phase.arrets,
     titre: phase.titre,
+    duree_prevue: phase.duree_prevue,
   }
 }
 
@@ -1007,6 +1019,39 @@ function ReglageTitre({ tournoiId, phase }: { tournoiId: number; phase: EtapeDer
       <span className="carte__aide">
         Vide = le type sert de libellé. Utile quand le déroulé porte plusieurs phases du même type.
       </span>
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur`, comme ses voisins. */}
+      {modifier.isError && (
+        <span className="carte__etat carte__etat--erreur" role="alert">
+          {modifier.error.message}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Édite la seule **durée prévue** d'une étape (E03US010) — jumeau de `ReglageTitre`, monté aux
+ * mêmes endroits et pour la même raison : la qualification n'ouvre jamais `FormulairePhase`. */
+function ReglageDuree({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
+  const [valeur, setValeur] = useState(depuisDureePrevue(phase.duree_prevue))
+  const modifier = useModifierPhase(tournoiId)
+
+  return (
+    <div className="phase__reglage">
+      <ChampDureePrevue valeur={valeur} surChangement={setValeur} />
+      <button
+        type="button"
+        className="bouton--discret"
+        disabled={modifier.isPending}
+        aria-label={`Enregistrer la durée prévue de la phase ${phase.ordre}`}
+        onClick={() =>
+          modifier.mutate({
+            phaseId: phase.id,
+            config: { ...configInchangee(phase), duree_prevue: versDureePrevue(valeur) },
+          })
+        }
+      >
+        Enregistrer
+      </button>
       {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur`, comme ses voisins. */}
       {modifier.isError && (
         <span className="carte__etat carte__etat--erreur" role="alert">
