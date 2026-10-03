@@ -4,7 +4,7 @@ Jusqu'ici, les équipes se composaient mais ne se jouaient nulle part. Désormai
 d'**élimination directe** peut opposer des **équipes** au lieu d'archers.
 
 **Ce qui est nouveau pour l'organisateur** : sur la fiche de la phase, un champ « Participants »
-propose « Équipes de trois » ou « Équipes mixtes ». Les équipes complètes et conformes entrent
+propose « Équipes standard » ou « Équipes mixtes ». Les équipes complètes et conformes entrent
 d'elles-mêmes au tableau, rangées par la somme des scores de qualification de leurs membres ; une
 équipe incomplète, ou dont un membre ne tire pas ce départ, n'entre pas, et l'écran des duels dit
 pourquoi — sans bloquer les autres.

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 03/10/2026, 13 h 30** · **162 US livrées** · dernière : `E13US004`
+**Dernière mise à jour : 03/10/2026, 13 h 30** · **163 US livrées** · dernière : `E13US004`
 *(**un tableau d'équipes se joue de bout en bout** — une élimination directe se règle « par
 équipes » (de trois ou mixtes) ; les équipes **conformes** dont tous les membres sont en lice y
 entrent, rangées par la **somme des qualifications** de leurs membres ; les autres sont **écartées
@@ -22,7 +22,15 @@ du CA d'origine, le reliquat part en `E13US005` (autres formats, palmarès, affe
 forfait d'équipe). [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md) ;
 **aucune migration**. `DETTE-120`, `DETTE-121` créées. ⚠️ **Non vérifiée au navigateur** —
 couverte par les tests de service, d'API et d'écran monté.)*
-Précédente : `E03US010`
+Précédente : `E00US016`
+*(**les dernières listes de l'administration passent en tableaux** — catégories, gabarits, clubs et
+départs, une colonne par information, l'état du départ en colonne, « — » pour ce qui manque,
+l'édition depuis la ligne ; et la **taille d'un blason** se choisit en fractions (1, ½, ⅓, ¼,
+Autre…). **Recadrée au cadrage** : le CA du 18/07 voulait une fiche uniforme pour huit entités, mais
+les planches avaient arbitré écran par écran depuis — le commanditaire a retenu le **reliquat**.
+Front seul, aucune migration. ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'écran
+monté.)*
+Avant elle, `E03US010`
 *(**le déroulé horaire de la journée** — l'organisateur donne une **durée prévue** à chaque phase,
 jamais préremplie ; l'application **calcule** début et fin **pour chaque départ**, une phase
 commençant quand ses sources sont finies (l'`ordre` est topologique, deux phases sœurs commencent
@@ -464,6 +472,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E13US003`~~ | **Livrée le 02/10/2026** — le barème d'équipe se règle (presets FFTA **équipe** et **équipe mixte**) et le barrage tire **N flèches par camp**, au plus haut total. **Recadrée au cadrage** sur arbitrage : le **barème de duel** porte le score d'une équipe, pas la politique `scoring` sans appelant (ADR-0028 §3 amendé). Une équipe ne se **joue** pas encore : c'est `E13US004`. |
 > | ~~🎯~~ ✅ | ~~`E10US006`~~ | **Livrée le 02/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent** : `E13US003` et `E01US012` réservées par d'autres sessions, `E03US010` écartée sur un doute de recoupement. Arbitrages au cadrage : autres sessions coupées, destination de la coquille, CA sans enrichissement. |
 > | ~~🎯~~ ✅ | ~~`E03US010`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent.** Cadrage : **durées saisies, heures calculées** par départ (Q4 tranchée), maille **phase**, visible **admin + public** (P05 tranchée, lecture (a)), prévisionnel seul, **sans préremplissage**. ⚠️ Le calcul suit le **graphe des sources**, pas l'`ordre` (ADR-0082) ; un **repêchage** (`issue_de_tour`) a un début inconnu, arbitré en revue. [ADR-0118](../docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md). |
+> | ~~🎯~~ ✅ | ~~`E00US016`~~ | **Livrée le 03/10/2026 — désignée par le commanditaire hors de la file, en mode multi-agent** : les quatre candidates étaient prises (`E13US004`, `E11US006`, `E03US010`) ou recoupaient une réservation (`E01US027` ↔ `E13US004`, même résolveur de barème). **Recadrée au cadrage** : le CA du 18/07 était **périmé**, pas étroit — les planches A04/A06/A08/A09 avaient arbitré ; le **reliquat** est livré (quatre listes en tableaux, taille de blason en fractions). |
 > | ~~🎯~~ ✅ | ~~`E13US004`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir », en mode multi-agent.** Cadrage en cinq arbitrages : **1ʳᵉ tranche** jouable (le tableau à élimination directe), rang d'entrée = **somme des qualifications**, barème non réglé = **preset équipe**, équipe non conforme **écartée et listée** (pas de phase bloquée), top N **différé** (`DETTE-120`). L'engagement est une **dérivation**, pas un geste. [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md). Reliquat : `E13US005`. |
 > | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US005` — les équipes dans les autres formats, au palmarès et sur les écrans publics ; à redécouper), le jalon **J4** (`E11US006`, `E01US027`, et `E09US007`, débloquée par `E03US010`). |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
@@ -1308,7 +1317,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 91 | E10US006 | Modifier le mot de passe admin | ✅ *(livrée le 02/10/2026 — écran « Compte administrateur », mot de passe actuel exigé, autres sessions admin fermées ; refus en 403/400, jamais 401)* |
 | 92 | E01US027 | Barème propre aux ½ finales et finales d'un tableau | ⬜ *(ajoutée le 01/10/2026 à la revue d'E01US011 — format club du référentiel §10.1 ; résorbe `DETTE-117`)* |
 
-## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (8/11)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -1316,9 +1325,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | US | Titre | Jalon | État |
 |---|---|---|---|
 | E00US015 | Coquille de navigation admin | J3 | ✅ |
-| E00US016 | Écrans admin : liste/fiche & référentiels | J3 | ⬜ *(définie en `stories/`, non implémentée)* |
+| E00US016 | Écrans admin : liste/fiche & référentiels | J3 | ✅ *(**recadrée** le 03/10/2026 : le reliquat seul — catégories, gabarits, clubs, départs en tableaux ; taille de blason en fractions. Les autres écrans tenaient déjà la forme arbitrée par leur planche)* |
 | E01US017 | Cycle de vie enrichi (7 statuts) | J1 | ✅ |
-| E01US018 | Vocabulaire de score configurable | J1 | ⬜ *(idem)* |
+| E01US018 | Vocabulaire de score configurable | J1 | ⬜ *(définie en `stories/`, non implémentée)* |
 | E01US019 | Capacité de cible non bornée | J1→J3 | ⬜ *(idem)* |
 | E02US010 | Horaire de départ HH:MM obligatoire | J1 | ✅ |
 | E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
@@ -1580,6 +1589,6 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
 - *« fait en avance »* : US traitée avant son rang de séquence (dépendance ou opportunité).
 - *« définie en `stories/`, non implémentée »* : le fichier de spec existe (créé à l'entretien du
   18/07) mais aucun code n'est livré — ne pas confondre présence en `stories/` et US faite.
-  ⚠️ Piège pour toute vérification automatique : `E00US016`, `E01US018` et `E01US019` ont un commit
+  ⚠️ Piège pour toute vérification automatique : `E01US018` et `E01US019` ont un commit
   `docs(...)` **dans `main`**, donc un `grep` sur `git log` les compte comme livrées. Elles ne le
-  sont pas.
+  sont pas. *(`E00US016` y figurait aussi ; livrée le 03/10/2026.)*
