@@ -1,6 +1,6 @@
 # ADR-0102 — La documentation porte des pointeurs, pas des copies
 
-- **Statut** : Accepté *(la **décision** est prise ; seul le **§3.1** est implémenté, par `E00US028` — cf. § « Porté dans le code par », qui dit le reste au lieu de le laisser croire)*
+- **Statut** : Accepté *(la **décision** est prise ; seuls le **§3.1** (`E00US028`) et l'exception bornée du **§1** (`E17US010`) sont implémentés — cf. § « Porté dans le code par », qui dit le reste au lieu de le laisser croire)*
 - **Date** : 2026-08-30
 - **US** : `E00US028`, `E00US029`, `E00US030`
 - **Décideurs** : Organisateur / Architecte
@@ -12,6 +12,8 @@
     qui rend la vérification possible existe déjà, et il lit déjà les ADR
   - [ADR-0075](0075-le-depart-est-la-portee-sportive.md) — la section « Porté dans le code par »,
     et les quatre fois où elle a nommé un module qui ne portait rien
+- **Amende** : [ADR-0086](0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md) §4 —
+  `portage-symbole-absent` sort du calibrage « heuristique ⇒ signal » (§3.1, `E00US028`)
 
 > ⚠️ **Cet ADR ne figure pas à la liste nominative d'ADR-0075 § « Portée de la règle »**, et c'est
 > volontaire : c'est une **convention documentaire**, au même titre qu'`0099` qui y est déjà inscrit
@@ -109,7 +111,7 @@ La doctrine du projet — *ce qu'une machine prouve ne se relit pas* — vaut au
 documentation. Concrètement, et par ordre de coût croissant :
 
 1. **`portage-symbole-absent` passe de `SIGNAL` à `BLOQUANT`** une fois les 22 constats existants
-   soldés. Un ADR qui nomme un symbole disparu fait alors **rougir la CI**, au lieu d'attendre
+   soldés *(fait le 03/10/2026 par `E00US028` — ils étaient 30)*. Un ADR qui nomme un symbole disparu fait alors **rougir la CI**, au lieu d'attendre
    qu'un relecteur le remarque — ce qui a échoué quatre fois (`0017`, `0028`, `0049`, `0050`).
 2. **Une US ✅ qui a touché `frontend/src/` doit avoir sa fiche** `docs/fonctionnel/<US>.md` : le
    garde-fou de la règle 9-doc cesse d'être un réflexe de revue.
@@ -132,7 +134,7 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
   sont ceux à responsabilité unique : l'ADR (section vérifiée ligne à ligne, aucune sur-promesse),
   le registre de dette, le CA. La cible est la **duplication**, pas la documentation.
 - **Le coût est concentré sur une dette de rattrapage** : 22 ADR annoncent aujourd'hui des symboles
-  absents. Tant qu'ils ne sont pas soldés, `portage-symbole-absent` ne peut pas passer bloquant —
+  absents *(au 30/08/2026 ; soldée par `E00US028`, cf. § Porté)*. Tant qu'ils ne sont pas soldés, `portage-symbole-absent` ne peut pas passer bloquant —
   c'est le patron du **cliquet** déjà employé par `E00US027` (on ne relève pas le seuil, on fait
   descendre le chiffre).
 - ⚠️ **Un risque de cet ADR, à ne pas se cacher** : « un fait, un lieu » rend chaque document plus
@@ -151,6 +153,28 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
   est `test_aucun_symbole_porte_dans_le_code_n_est_absent` (`backend/tests/test_atlas_corpus.py`).
   Les constats soldés étaient **30**, pas 22 : huit étaient nés entre l'ADR et l'US. ⚠️ Le
   contrôle prouve que le symbole **existe**, jamais qu'il **porte** la décision.
+- **§3.1, ce qui le rend opposable** — `backend/atlas/sources/adr.py` (`_entrees`, `_portage`,
+  `_chemins_non_reconnus`, `_symboles_absents`) : une entrée qui cite un fichier de code **sans
+  chemin depuis la racine** n'était contrôlée par rien ; elle lève désormais
+  `portage-chemin-non-reconnu`, bloquant, cliquet à zéro
+  (`test_aucune_entree_de_portage_ne_cite_un_chemin_abrege`, `backend/tests/test_atlas_corpus.py`).
+  Et un test cité dans une entrée ne témoigne **jamais** pour un module de production : il contient
+  le nom par construction (mutation de la revue, axe D).
+
+**La convention de rédaction qu'impose un contrôle bloquant** — elle est ici parce qu'un auteur
+d'ADR ne lit pas la docstring de l'atlas :
+
+- un symbole censé **porter** la décision et introuvable se **corrige** (renommé, déplacé, ou la
+  promesse retirée en le disant) — jamais ne se désarme ;
+- un nom **historique ou hypothétique** (ancien nom, ajout qu'il ne faut pas faire) se cite **sans**
+  accents graves : il n'est pas une promesse ;
+- un chemin ne s'ajoute à une entrée que pour un fichier qui **porte ou garde** la décision, jamais
+  pour situer un symbole voisin : chaque chemin d'une entrée excuse ses frères.
+
+⚠️ **Limites mesurées, pas supposées** (`DETTE-068`) : le contrôle cherche par sous-chaîne,
+commentaires compris ; et un symbole **déplacé** vers un autre module reste « présent » si un
+importeur cité dans la même entrée garde le nom — 481 promesses sont dans ce cas sur l'ensemble du
+registre (491 avant l'US). Un renommage, lui, casse l'import, donc mypy ou tsc.
 
 ⚠️ **Rien à ce jour pour les autres §, et c'est écrit exprès** — à une exception près, ajoutée
 par `E17US010` : l'**exception bornée du §1** (une copie inévitable n'est admise que sous contrôle

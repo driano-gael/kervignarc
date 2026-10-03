@@ -132,6 +132,7 @@ class Decision:
     us: tuple[str, ...]
     extrait: str
     amende_par: tuple[str, ...] = ()
+    portage_non_reconnu: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

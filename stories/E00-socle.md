@@ -266,7 +266,15 @@ ADR promet un module qui ne porte rien.
   cite **sans** accents graves, ou **avec** le chemin du fichier qui le porte. Un constat venait du
   **lecteur** : une liste numérotée sous un tableau se recollait à sa dernière ligne (ADR-0083,
   ADR-0004) — corrigé dans `atlas/sources/adr.py`, effet mesuré : 8 faux symboles retirés, aucun
-  portage perdu.
+  portage perdu (lecteur seul).
+  ⚠️ **La revue a démenti une partie de la 1ʳᵉ livraison** : citer un symbole « avec le chemin du
+  fichier qui le porte » **désarmait** le contrôle — chaque chemin d'une entrée excuse ses frères,
+  et un test ou un importeur contient le nom par construction (prouvé par mutation, axe D). D'où :
+  un test ne témoigne plus pour la production ; une entrée sans chemin depuis la racine lève
+  `portage-chemin-non-reconnu` (bloquant, cliquet à zéro — elle cachait encore un nom mort,
+  ADR-0084) ; la convention est écrite dans ADR-0102 § Porté. Le nom périmé survit dans le texte
+  **daté** de deux décisions (ADR-0080, ADR-0084) : non rouvertes, à dessein. Reste, mesuré :
+  `DETTE-068`.
 - **Dépend de** : E00US018 (atlas) · **Jalon** : hors jalon · **Origine** : revue d'`E16US007`,
   30/08/2026 (majeur de l'axe D) + limite écrite d'`E00US027`
 

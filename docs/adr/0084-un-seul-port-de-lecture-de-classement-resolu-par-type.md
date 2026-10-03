@@ -7,10 +7,11 @@
   celui-ci unifie les **tables** de capacités, celui-ci le **câblage** qui les honore
 - **S'appuie sur** : [ADR-0080](0080-un-prelevement-lit-le-classement-de-sa-phase-source.md)
   (un prélèvement lit le classement de sa phase source) · [ADR-0081](0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
-- **Porté dans le code par** : `application/prelevement.py` (`LecteurClassementDePhase`) ·
-  `application/saisie_duels.py` (`TYPES_DELEGUES`, `ServiceSaisieDuels.brancher_lecteur`,
-  `_classement_de_l_ordre`) · `bootstrap/composition.py` (les branchements tardifs) ·
-  `domain/contrat_phase.py` (`TYPES_CLASSANTS_LUS`, dont `TYPES_DELEGUES` dérive)
+- **Porté dans le code par** : `backend/application/prelevement.py` (`LecteurClassementDePhase`) ·
+  `backend/application/saisie_duels.py` (`TYPES_DELEGUES`, `ServiceSaisieDuels.brancher_lecteur`,
+  `_classement_produit`, renommé par E05US022) · `backend/bootstrap/composition.py` (les
+  branchements tardifs) · `backend/domain/contrat_phase.py` (`TYPES_CLASSANTS_LUS`, dont
+  `TYPES_DELEGUES` dérive)
 
 ## Contexte et problème
 

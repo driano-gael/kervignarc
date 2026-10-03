@@ -84,7 +84,9 @@ def verifier(
                         sujet=sujet,
                         message=(
                             f"annonce {', '.join(portage.symboles_absents)} dans "
-                            f"« {portage.chemin} » — introuvable(s) dans le fichier."
+                            f"« {portage.chemin} » — introuvable(s) dans le fichier. Renommé : "
+                            f"corriger l'ADR ; nom historique : le citer sans accents graves "
+                            f"(ADR-0102 § Porté)."
                         ),
                     )
                 )
@@ -104,6 +106,19 @@ def verifier(
                         ),
                     )
                 )
+
+        for abrege in decision.portage_non_reconnu:
+            trouves.append(
+                Controle(
+                    code="portage-chemin-non-reconnu",
+                    severite=Severite.BLOQUANT,
+                    sujet=sujet,
+                    message=(
+                        f"cite « {abrege} » dans une entrée sans aucun chemin depuis la racine "
+                        f"(backend/…, frontend/…) : ses promesses ne sont contrôlées par rien."
+                    ),
+                )
+            )
 
         for lien in decision.liens:
             if lien.type.value == "us":

@@ -7,9 +7,8 @@ mécaniquement testables et n'étaient couvertes par rien :
 - « les chemins et symboles cités par les sections *Porté dans le code par* sont vérifiés » — le
   lecteur ignorait les sections écrites en **tableau**, soit un tiers des promesses, et la fiche
   affichait « cette décision ne nomme aucun module » sur les ADR les plus rigoureux du dépôt ;
-- « un chemin disparu est **bloquant**, un symbole introuvable est un **signal** » — aucune
-  assertion ne le vérifiait, un `verifier()` n'émettant jamais de bloquant passait au vert
-  (le symbole est passé **bloquant** depuis, E00US028) ;
+- « un chemin disparu est **bloquant** » (un symbole introuvable l'est aussi depuis E00US028) —
+  aucune assertion ne le vérifiait, un `verifier()` n'émettant jamais de bloquant passait au vert ;
 - « la page affiche, pour chaque ADR, ce qui l'a amendé depuis » — le test du graphe restait vert
   **avec les arêtes inversées**.
 
@@ -19,7 +18,10 @@ Un test qui lit le dépôt prouve l'état du jour ; celui-ci prouve la règle.
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
+
+import pytest
 
 from atlas import controles as controles_module
 from atlas.modele import Decision, Lien, Portage, Sens, Severite, Statut, TypeLien
@@ -170,6 +172,50 @@ def test_une_puce_garde_ses_lignes_indentees() -> None:
     assert entrees == ["- `backend/a.py` — `Un` et `Deux`"]
 
 
+@pytest.mark.parametrize("tete", ["1. Hors périmètre", "### Note"])
+def test_une_ligne_de_tete_ferme_la_puce_ouverte(tete: str) -> None:
+    """Le cas d'ADR-0004 : une liste numérotée **après une puce**, non après un tableau."""
+    entrees = adr._entrees(f"\n- `backend/a.py` — `Un`\n{tete}\n   passe par `Deux`.\n")
+
+    assert entrees == ["- `backend/a.py` — `Un`"]
+
+
+def test_une_ligne_vide_ne_ferme_pas_la_puce() -> None:
+    entrees = adr._entrees("\n- `backend/a.py` — `Un`\n\n  et `Deux`\n")
+
+    assert entrees == ["- `backend/a.py` — `Un` et `Deux`"]
+
+
+def test_un_test_cite_a_cote_ne_couvre_pas_un_symbole_retire_du_module(tmp_path: Path) -> None:
+    """La mutation de l'axe D (E00US028) : renommer en production restait invisible."""
+    (tmp_path / "backend" / "tests").mkdir(parents=True)
+    (tmp_path / "backend" / "module.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "backend" / "tests" / "test_module.py").write_text(
+        "def test_garde():\n    garde()\n", encoding="utf-8"
+    )
+    section = (
+        "\n| règle | `backend/module.py` (`garde`) | `test_garde` "
+        "(`backend/tests/test_module.py`) |\n"
+    )
+
+    portages = {
+        p.chemin: p for p in adr._portage(f"## Porté dans le code par\n{section}", [], tmp_path)
+    }
+
+    assert portages["backend/module.py"].symboles_absents == ("garde",)
+    assert portages["backend/tests/test_module.py"].symboles == ("test_garde",)
+    assert portages["backend/tests/test_module.py"].symboles_absents == ()
+
+
+def test_une_entree_sans_chemin_depuis_la_racine_est_reperee() -> None:
+    section = (
+        "## Porté dans le code par\n\n- `application/prelevement.py` — `Lecteur`\n"
+        "- `backend/domain/phase.py` — `Phase`, voisin de `routage.py`\n"
+    )
+
+    assert adr._chemins_non_reconnus(section, []) == ("application/prelevement.py",)
+
+
 # --- CA E00US028 : « un chemin disparu ou un symbole introuvable est bloquant » ----------------
 
 
@@ -199,6 +245,15 @@ def test_un_symbole_introuvable_est_bloquant(tmp_path: Path) -> None:
 
     assert controle.severite is Severite.BLOQUANT
     assert controle.code == "portage-symbole-absent"
+
+
+def test_un_chemin_non_reconnu_est_bloquant(tmp_path: Path) -> None:
+    decision = dataclasses.replace(_decision(), portage_non_reconnu=("application/x.py",))
+
+    (controle,) = controles_module.verifier(tmp_path, (), (decision,))
+
+    assert controle.severite is Severite.BLOQUANT
+    assert controle.code == "portage-chemin-non-reconnu"
 
 
 def test_une_promesse_non_verifiable_se_dit_au_lieu_de_se_taire(tmp_path: Path) -> None:

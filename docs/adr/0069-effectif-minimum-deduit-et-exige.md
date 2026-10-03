@@ -208,7 +208,7 @@ Le message **chiffre** ce qui manque et **nomme la phase et son prélèvement** 
 - `backend/domain/format_tournoi.py` — `FormatTournoi.effectif_minimum_exige` : l'exigence
   remonte au diagnostic du déroulé composé.
 - `backend/application/formats.py` — l'exposition du minimum comme **donnée** du diagnostic (et non
-  comme anomalie : `PrelevementVide`, de `backend/domain/erreurs/moteur.py`, couvrait déjà le cas, l'ajouter signalerait deux fois le même
+  comme anomalie : l'erreur PrelevementVide couvrait déjà le cas, l'ajouter signalerait deux fois le même
   défaut).
 - `backend/application/tournois.py` — le refus au démarrage quand l'effectif inscrit est sous le
   plancher.

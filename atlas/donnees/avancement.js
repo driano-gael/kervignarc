@@ -968,7 +968,9 @@ window.ATLAS.avancement = {
    "identifiant": "068",
    "introduite_par": [],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E00US028"
+   ],
    "severite": "mineur"
   },
   {
@@ -1649,10 +1651,13 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0075",
+    "0086",
     "0102"
    ],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "068"
+   ],
    "epic": "00",
    "epic_titre": "Socle technique & walking skeleton",
    "etat": "✅",
@@ -3023,6 +3028,7 @@ window.ATLAS.avancement = {
     "0080",
     "0081",
     "0082",
+    "0084",
     "0085"
    ],
    "dettes_introduites": [

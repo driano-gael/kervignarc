@@ -81,6 +81,13 @@ def test_aucun_symbole_porte_dans_le_code_n_est_absent(decisions: tuple[Decision
     assert absents == []
 
 
+def test_aucune_entree_de_portage_ne_cite_un_chemin_abrege(decisions: tuple[Decision, ...]) -> None:
+    """Cliquet à zéro : une entrée sans chemin depuis la racine n'est contrôlée par rien."""
+    abreges = [(d.identifiant, d.portage_non_reconnu) for d in decisions if d.portage_non_reconnu]
+
+    assert abreges == []
+
+
 def test_le_controle_de_portage_n_est_pas_creux(decisions: tuple[Decision, ...]) -> None:
     """Un contrôle qui ne vérifie rien passerait au vert sans rien garantir.
 
@@ -175,7 +182,7 @@ def test_aucun_ecart_bloquant_dans_le_depot(
 ) -> None:
     """La porte proprement dite : le dépôt ne doit porter aucun écart de sévérité bloquante.
 
-    Les **signaux** (symbole introuvable, date hors format canonique) ne sont volontairement pas
+    Les **signaux** (date hors format canonique, portage non vérifiable) ne sont volontairement pas
     couverts ici : ils reposent sur de l'heuristique ou sur un choix de forme, et faire rougir la
     CI dessus reviendrait à la faire désactiver — on perdrait alors aussi les contrôles justes.
     """
