@@ -45,12 +45,17 @@ afterEach(() => {
   suppression.mutate.mockClear()
 })
 
+// La ligne dont la 1ʳᵉ cellule porte ce libellé ; échoue en clair si elle n'existe pas.
+const ligneDe = (libelle: string) => {
+  const ligne = within(screen.getByRole('table'))
+    .getAllByRole('row')
+    .find((tr) => within(tr).queryByRole('cell', { name: libelle }) !== null)
+  if (ligne === undefined) throw new Error(`aucune ligne « ${libelle} »`)
+  return ligne
+}
+
 const cellulesDe = (libelle: string) =>
-  within(
-    within(screen.getByRole('table'))
-      .getByRole('cell', { name: libelle })
-      .closest('tr') as HTMLElement,
-  )
+  within(ligneDe(libelle))
     .getAllByRole('cell')
     .map((td) => td.textContent)
 
@@ -97,11 +102,15 @@ describe('Départs — tableau', () => {
     )
     render(<Departs tournoiId={1} />)
 
-    const depart1 = screen.getByRole('cell', { name: 'Départ 1' }).closest('tbody') as HTMLElement
+    // Sous la ligne du départ 1 : son `<tbody>` porte la ligne et ses signalements.
+    const depart1 = ligneDe('Départ 1').parentElement
+    if (depart1 === null) throw new Error('ligne hors de tout tbody')
     const alerte = within(depart1).getByRole('alert')
     expect(alerte).toHaveTextContent('12 archers ont tiré')
     await userEvent.click(
-      within(alerte).getByRole('button', { name: 'Supprimer quand même (session de tir)' }),
+      within(alerte).getByRole('button', {
+        name: 'Supprimer quand même le départ 1 (session de tir)',
+      }),
     )
     expect(suppression.mutate).toHaveBeenCalledWith({ departId: 1, confirmeCycle: true })
   })

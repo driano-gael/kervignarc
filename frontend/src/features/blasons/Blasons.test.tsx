@@ -3,7 +3,7 @@
 
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Blasons } from './Blasons'
 
 const mutation = () => ({ mutate: vi.fn(), isPending: false, error: null })
@@ -55,6 +55,11 @@ const HORS = {
   zones: ['10', 'M'],
   origine: 'utilisateur',
 }
+
+// Remis ici et non en fin de test : une assertion en échec sauterait la remise à zéro.
+afterEach(() => {
+  etat.horsFractions = false
+})
 
 describe('Blasons — liste et panneau latéral', () => {
   it('choisir une ligne ouvre le panneau pré-rempli, et la liste reste à l’écran', async () => {
@@ -137,11 +142,10 @@ describe('Blasons — taille en déroulante de fractions', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Mono maison' }))
 
     await userEvent.selectOptions(champTaille(), 'Autre…')
-    const libre = champLibre()
-    expect(libre).toBeInTheDocument()
+    const libre = screen.getByLabelText('Autre taille du blason (réel de 0 à 1)')
     expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
 
-    await userEvent.type(libre as HTMLElement, '0,6')
+    await userEvent.type(libre, '0,6')
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     expect(modifier).toHaveBeenCalledWith(
       { id: 2, entree: expect.objectContaining({ taille: 0.6 }) },
@@ -156,6 +160,5 @@ describe('Blasons — taille en déroulante de fractions', () => {
 
     expect(champTaille()).toHaveValue('autre')
     expect(champLibre()).toHaveValue('0,75')
-    etat.horsFractions = false
   })
 })

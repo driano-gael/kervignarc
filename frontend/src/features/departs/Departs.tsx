@@ -176,6 +176,7 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
                   type="button"
                   className="bouton--danger"
                   disabled={supprimer.isPending}
+                  aria-label={`Supprimer quand même le ${libelle.toLowerCase()} (session de tir)`}
                   onClick={() => supprimer.mutate({ departId: depart.id, confirmeCycle: true })}
                 >
                   Supprimer quand même (session de tir)
@@ -188,6 +189,7 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
                   type="button"
                   className="bouton--danger"
                   disabled={supprimer.isPending}
+                  aria-label={`Supprimer quand même le ${libelle.toLowerCase()}, avec les inscriptions`}
                   onClick={() =>
                     supprimer.mutate({ departId: depart.id, autoriserSuppressionInscrits: true })
                   }

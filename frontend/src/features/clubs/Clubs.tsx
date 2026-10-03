@@ -1,9 +1,10 @@
 // Référentiel des clubs (E02US001) — réservé à l'admin (monté sous `estAdmin`).
 //
-// Tableau + création + renommage depuis la ligne + suppression à confirmation (E00US016). Le référentiel est **global** : aucun
-// `tournoiId` en entrée, les clubs se réutilisent d'une compétition à l'autre. L'unicité du nom
-// (casse **et accents** repliés) est vérifiée côté serveur : un doublon rend un 409, affiché tel
-// quel — le message du serveur nomme le club déjà présent.
+// Tableau + création + renommage depuis la ligne (E00US016) + suppression à confirmation. Le
+// référentiel est **global** : aucun `tournoiId` en entrée, les clubs se réutilisent d'une
+// compétition à l'autre. L'unicité du nom (casse **et accents** repliés) est vérifiée côté
+// serveur : un doublon rend un 409, affiché tel quel — le message du serveur nomme le club déjà
+// présent.
 
 import { useState } from 'react'
 import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'

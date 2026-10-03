@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Categories } from './Categories'
 
 const mutation = () => ({ mutate: vi.fn(), isPending: false, error: null })
+const { blasons } = vi.hoisted(() => ({ blasons: { lus: true } }))
 
 vi.mock('./hooks', () => ({
   useCategories: () => ({
@@ -39,15 +40,20 @@ vi.mock('./hooks', () => ({
 }))
 
 vi.mock('../blasons/hooks', () => ({
-  useBlasons: () => ({ data: [{ id: 4, nom: 'Trispot 40' }] }),
+  useBlasons: () => ({ data: blasons.lus ? [{ id: 4, nom: 'Trispot 40' }] : undefined }),
 }))
 
+// La ligne dont la 1ʳᵉ cellule porte ce libellé ; échoue en clair si elle n'existe pas.
+const ligneDe = (libelle: string) => {
+  const ligne = within(screen.getByRole('table'))
+    .getAllByRole('row')
+    .find((tr) => within(tr).queryByRole('cell', { name: libelle }) !== null)
+  if (ligne === undefined) throw new Error(`aucune ligne « ${libelle} »`)
+  return ligne
+}
+
 const cellulesDe = (libelle: string) =>
-  within(
-    within(screen.getByRole('table'))
-      .getByRole('cell', { name: libelle })
-      .closest('tr') as HTMLElement,
-  )
+  within(ligneDe(libelle))
     .getAllByRole('cell')
     .map((td) => td.textContent)
 
@@ -82,6 +88,17 @@ describe('Catégories — tableau', () => {
     render(<Categories tournoiId={1} />)
 
     expect(cellulesDe('Découverte').slice(1, 5)).toEqual(['—', '—', '—', '—'])
+  })
+
+  it('ne dit pas « aucun blason » tant que les blasons ne sont pas lus', () => {
+    blasons.lus = false
+    try {
+      render(<Categories tournoiId={1} />)
+      expect(cellulesDe('Senior Homme Classique')[4]).toBe('…')
+      expect(cellulesDe('Découverte')[4]).toBe('—')
+    } finally {
+      blasons.lus = true
+    }
   })
 
   it('« Éditer » remplace la ligne par le formulaire pré-rempli', async () => {

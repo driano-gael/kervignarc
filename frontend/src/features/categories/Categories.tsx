@@ -139,7 +139,8 @@ function LigneCategorie({
         <td>{categorie.arme ?? VIDE}</td>
         <td>{categorie.ages.length > 0 ? categorie.ages.join(', ') : VIDE}</td>
         <td>{categorie.sexe ? LIBELLE_SEXE[categorie.sexe] : VIDE}</td>
-        <td>{nomBlason ?? VIDE}</td>
+        {/* « — » dit « aucun blason » : jamais pendant que la liste des blasons se charge. */}
+        <td>{categorie.blason_id === null ? VIDE : (nomBlason ?? '…')}</td>
         <td>{categorie.hauteur_cm} cm</td>
         <td>
           <span className="categorie__actions">

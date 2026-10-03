@@ -1,9 +1,9 @@
 // Gestion des gabarits de salle (E01US007) — réservée à l'admin (montée sous `estAdmin`).
 //
 // Un gabarit décrit un **plan de cibles réutilisable** (indépendant d'un tournoi). Tableau +
-// création + édition depuis la ligne (E00US016) (nom, nombre de cibles, plafond d'archers par cible) + suppression à
-// confirmation. À la création, le **plafond** (1 à 4, défaut 4) s'applique à toutes les cibles ;
-// l'ajustement cible par cible est livré (E01US008). Les **couloirs de tir** (A/B/C/D) se
+// création + édition depuis la ligne (nom, nombre de cibles, plafond d'archers par cible ;
+// E00US016) + suppression à confirmation. À la création, le **plafond** (1 à 4, défaut 4)
+// s'applique à toutes les cibles ; l'ajustement cible par cible est livré (E01US008). Les **couloirs de tir** (A/B/C/D) se
 // déduisent du plafond côté serveur (champ `position`, cf. glossaire et DETTE-042).
 
 import { useState } from 'react'
