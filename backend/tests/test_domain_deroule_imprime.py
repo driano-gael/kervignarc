@@ -6,6 +6,8 @@ l'implémentation ; les numéros cités sont ceux de ses points.
 
 from __future__ import annotations
 
+import pytest
+
 from domain.bareme import BaremeQualification
 from domain.colline import ConfigurationColline
 from domain.deroule_etape import EtapeDeroule
@@ -126,3 +128,34 @@ def test_une_etape_sans_horaire_calcule_garde_des_heures_inconnues() -> None:
 
 def test_un_deroule_vide_ne_rend_aucune_ligne() -> None:
     assert lignes_du_deroule([], []) == ()
+
+
+# --- Garde : chaque type de phase est classé explicitement -------------------------------------
+
+_ANNONCENT_LEURS_TOURS: frozenset[TypePhase] = frozenset(
+    {TypePhase.QUALIFICATION, TypePhase.SUISSE, TypePhase.COLLINE}
+)
+"""Les types dont le nombre de tours est un **réglage de l'étape** (CA 3). ⚠️ Un type ajouté à
+`TypePhase` fait échouer le test ci-dessous tant qu'il n'est pas rangé ici ou dans le complément
+— le raté de la colline dans `_nb_tours_a_la_composition`, à ne pas rejouer."""
+
+_N_ANNONCENT_RIEN: frozenset[TypePhase] = frozenset(
+    {
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.PLACEMENT,
+        TypePhase.ECHAUFFEMENT,
+        TypePhase.BARRAGE,
+        TypePhase.POULES,
+        TypePhase.BIG_SHOOT_OFF,
+    }
+)
+
+
+def test_chaque_type_de_phase_est_classe() -> None:
+    assert set(TypePhase) == _ANNONCENT_LEURS_TOURS | _N_ANNONCENT_RIEN
+    assert not _ANNONCENT_LEURS_TOURS & _N_ANNONCENT_RIEN
+
+
+@pytest.mark.parametrize("valeur", sorted(t.value for t in _N_ANNONCENT_RIEN))
+def test_un_type_sans_reglage_de_tours_n_annonce_rien(valeur: str) -> None:
+    assert tours_annonces(_etape(TypePhase(valeur))) is None

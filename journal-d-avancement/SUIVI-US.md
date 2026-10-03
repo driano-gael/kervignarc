@@ -15,7 +15,7 @@
 **Dernière mise à jour : 03/10/2026, 15 h 25** · **163 US livrées** · dernière : `E09US007`
 *(**le déroulé horaire s'imprime** — un PDF depuis « Exports & impressions », un bloc par départ,
 une ligne par phase : nom (titre ou type), début et fin prévus **lus sur `E03US010`**, jamais
-recalculés (« à préciser » pour l'inconnu, « J+1 » le lendemain), et les tours **en information**
+recalculés (« à préciser » pour l'inconnu, « (lendemain) » comme à l'écran — arbitré en revue), et les tours **en information**
 quand l'étape les règle (qualification découpée, suisse, colline). Trois arbitrages au cadrage,
 reversés dans `stories/` : maille **phase** (pas d'heure par tour, ADR-0118 inchangé), **un bloc
 par départ** avec filtre facultatif, **PDF seul**. Route publique, comme la lecture qu'elle imprime.

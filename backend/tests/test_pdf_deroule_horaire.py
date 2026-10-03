@@ -60,7 +60,10 @@ def _tables(elements: list[Flowable]) -> list[Table]:
 
 
 def _lignes(table: Table) -> list[list[str]]:
-    return [list(ligne) for ligne in table._cellvalues]
+    """Le texte de chaque cellule — le nom de la phase est un `Paragraph`, lu par son `.text`."""
+    return [
+        [c.text if isinstance(c, Paragraph) else c for c in ligne] for ligne in table._cellvalues
+    ]
 
 
 _DOCUMENT = DerouleImprime(
@@ -95,7 +98,41 @@ def test_une_ligne_par_phase_avec_heures_et_tours() -> None:
         ["Qualification", "09:00", "12:00", "2 tours"],
         ["Tableau des jeunes", "12:00", A_PRECISER, ""],
     ]
-    assert _lignes(soir)[1] == ["Système suisse", "23:00", "01:30 (J+1)", "5 rondes"]
+    assert _lignes(soir)[1] == ["Système suisse", "23:00", "01:30 (lendemain)", "5 rondes"]
+
+
+def test_les_heures_particulieres_s_ecrivent_comme_a_l_ecran() -> None:
+    """Arbitrage du 03/10/2026 : « (lendemain) » puis « (J+n) », comme `decrireHeure` ; seul
+    l'inconnu diverge — « à préciser » au lieu de « — »."""
+    bloc = BlocDeroule(
+        "Départ n°1 — 22:00",
+        (_ligne(1, TypePhase.QUALIFICATION, debut=22 * 60, fin=2 * 24 * 60 + 60),),
+    )
+    document = DerouleImprime(tournoi="Salle 18m", blocs=(bloc,))
+
+    (table,) = _tables(GenerateurDerouleHorairePdf()._corps(document))
+
+    assert _lignes(table)[1][1:3] == ["22:00", "01:00 (J+2)"]
+    assert A_PRECISER == "à préciser"
+
+
+def test_un_titre_long_passe_a_la_ligne_au_lieu_de_recouvrir_l_heure() -> None:
+    """Le DTO admet 80 caractères ; une cellule texte n'en tient qu'environ 45 dans sa colonne."""
+    titre = "Tableau des jeunes & cadets <arc classique> — poussins, benjamins, minimes 2026!"
+    assert len(titre) == 80
+    document = DerouleImprime(
+        tournoi="Salle 18m",
+        blocs=(BlocDeroule("Départ n°1 — 09:00", (_ligne(1, TypePhase.POULES, titre=titre),)),),
+    )
+
+    (table,) = _tables(GenerateurDerouleHorairePdf()._corps(document))
+    cellule = table._cellvalues[1][0]
+
+    assert isinstance(cellule, Paragraph)
+    assert "&amp;" in cellule.text and "&lt;arc classique&gt;" in cellule.text
+    largeur = table._argW[0] - 12  # marges intérieures par défaut de la cellule (6 + 6)
+    cellule.wrap(largeur, 1000)
+    assert len(cellule.blPara.lines) > 1
 
 
 def test_un_bloc_sans_phase_le_dit() -> None:

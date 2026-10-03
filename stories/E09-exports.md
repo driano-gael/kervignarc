@@ -105,7 +105,10 @@ de* l'afficher au mur — pendant la qualification comme à son terme — et le 
   2. **Une ligne par phase**, dans l'ordre du déroulé : son nom (le **titre** de l'étape s'il
      existe, sinon le **type** en clair), son **début** et sa **fin prévus** — les heures calculées
      par E03US010, jamais recalculées. Une heure inconnue (pas de durée saisie, repêchage) s'écrit
-     « à préciser », jamais une heure inventée ; une heure le lendemain porte « J+1 ».
+     « à préciser », jamais une heure inventée ; une heure le lendemain porte « (lendemain) », au-delà
+     « (J+n) » — les marqueurs de l'écran « Phases » (`decrireHeure`), sauf l'inconnu, que l'écran
+     écrit « — » *(arbitrage du 03/10/2026, en revue : un tiret se lit comme une case oubliée sur un
+     papier envoyé aux clubs)*.
   3. **Les tours en information, sans heure par tour** : « 2 tours », « 5 rondes », « 3 manches »
      quand le nombre de tours est un **réglage de l'étape** (qualification découpée, suisse,
      colline) ; **rien** sinon, et rien pour un seul tour.

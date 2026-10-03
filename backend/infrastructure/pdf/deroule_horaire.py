@@ -45,7 +45,11 @@ _ENTETE = ["Phase", "Début", "Fin", "Tours"]
 _LARGEURS = [80 * mm, 30 * mm, 30 * mm, 40 * mm]
 
 A_PRECISER = "à préciser"
-"""Une heure inconnue (durée non saisie, repêchage) ne s'invente pas — CA 2 d'E09US007."""
+"""Une heure inconnue (durée non saisie, repêchage) ne s'invente pas — CA 2 d'E09US007.
+
+⚠️ Seul écart voulu avec `decrireHeure` (`frontend/src/shared/phases/horaires.ts`), qui écrit
+« — » : sur un papier envoyé aux clubs, un tiret se lit comme une case oubliée.
+"""
 
 
 class GenerateurDerouleHorairePdf:
@@ -64,6 +68,7 @@ class GenerateurDerouleHorairePdf:
             spaceAfter=2 * mm,
         )
         self._info = ParagraphStyle("info_deroule", parent=styles["Normal"], fontSize=11)
+        self._cellule = ParagraphStyle("cellule_deroule", parent=styles["Normal"], fontSize=10)
 
     def deroule_horaire(self, document: DerouleImprime) -> bytes:
         """Rend le document en PDF. Enveloppe tout échec en `InfrastructureError`."""
@@ -85,14 +90,25 @@ class GenerateurDerouleHorairePdf:
         entete = Paragraph(echapper(bloc.libelle), self._creneau)
         if not bloc.lignes:
             return [entete, Paragraph("Aucune phase au déroulé.", self._info), Spacer(1, 2 * mm)]
-        # Cellules de `Table` : chaînes **brutes**, jamais échappées (cf. `_commun.echapper`).
         table = Table(
-            [_ENTETE, *(_cellules(ligne) for ligne in bloc.lignes)],
+            [_ENTETE, *(self._cellules(ligne) for ligne in bloc.lignes)],
             colWidths=_LARGEURS,
             repeatRows=1,
         )
         table.setStyle(_STYLE_TABLE)
         return [entete, table]
+
+    def _cellules(self, ligne: LigneDeroule) -> list[str | Paragraph]:
+        # ⚠️ Le nom est un `Paragraph`, donc **échappé** : un titre d'étape va jusqu'à 80
+        # caractères et une cellule texte ne passe pas à la ligne — il recouvrirait l'heure.
+        # Les heures et les tours restent des chaînes brutes (cf. `_commun.echapper`).
+        nom = ligne.titre or LIBELLES_TYPE_PHASE[ligne.type]
+        return [
+            Paragraph(echapper(nom), self._cellule),
+            _heure(ligne.debut),
+            _heure(ligne.fin),
+            ligne.tours or "",
+        ]
 
     def _rendre(self, elements: list[Flowable]) -> bytes:
         tampon = BytesIO()
@@ -109,18 +125,12 @@ class GenerateurDerouleHorairePdf:
         return tampon.getvalue()
 
 
-def _cellules(ligne: LigneDeroule) -> list[str]:
-    return [
-        ligne.titre or LIBELLES_TYPE_PHASE[ligne.type],
-        _heure(ligne.debut),
-        _heure(ligne.fin),
-        ligne.tours or "",
-    ]
-
-
 def _heure(heure: HeurePrevue | None) -> str:
+    """Mêmes marqueurs que `decrireHeure` à l'écran (arbitrage du 03/10/2026), sauf l'inconnu."""
     if heure is None:
         return A_PRECISER
+    if heure.jours_apres == 1:
+        return f"{heure.libelle} (lendemain)"
     if heure.jours_apres:
         return f"{heure.libelle} (J+{heure.jours_apres})"
     return heure.libelle

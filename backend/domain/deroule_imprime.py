@@ -44,6 +44,7 @@ def tours_annonces(etape: EtapeDeroule) -> str | None:
     ⚠️ Un tableau, des poules, un Big Shoot Off comptent leurs tours selon l'effectif — et le
     tableau selon la politique de `seeding` injectée (règle 2) : les imprimer figerait une
     politique en dur. Cf. `stories/E09-exports.md` → E09US007, CA 3.
+    ⚠️ Jumeau de `EtapeDeroule._nb_tours_a_la_composition` : un type ajouté ici s'examine là.
     """
     if etape.type is TypePhase.QUALIFICATION and etape.decoupage is not None:
         return _pluriel(etape.decoupage.nb_tours, "tour")

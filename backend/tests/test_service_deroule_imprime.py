@@ -54,9 +54,15 @@ class _GenerateurEspion:
 
 
 class _Decor:
-    """Un tournoi à deux créneaux (09:00 et 14:00) ; un déroulé qualification → tableau."""
+    """Un tournoi à deux créneaux (09:00 et 14:00) ; un déroulé échauffement (60 min) → tableau
+    (90 min).
 
-    def __init__(self, *, avec_departs: bool = True, avec_deroule: bool = True) -> None:
+    `repechage=True` ajoute une 3ᵉ étape **sans durée** et une 4ᵉ qu'elle alimente.
+    """
+
+    def __init__(
+        self, *, avec_departs: bool = True, avec_deroule: bool = True, repechage: bool = False
+    ) -> None:
         self.tournois = FauxTournoiRepository()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         autre = self.tournois.ajouter(Tournoi.creer("Autre", _DATE))
@@ -87,7 +93,7 @@ class _Decor:
         self.depart_autre_tournoi = autre_depart.id
         deroules = FauxDerouleRepository()
         if avec_deroule:
-            qualif = deroules.ajouter(
+            echauffement = deroules.ajouter(
                 EtapeDeroule(
                     tournoi_id=tournoi.id,
                     ordre=1,
@@ -95,15 +101,29 @@ class _Decor:
                     duree_prevue=60,
                 )
             )
-            assert qualif.id is not None
+            assert echauffement.id is not None
             deroules.ajouter(
                 EtapeDeroule(
                     tournoi_id=tournoi.id,
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
                     titre="Tableau",
-                    sources=(SourcePhase.par_rangs(qualif.id),),
+                    sources=(SourcePhase.par_rangs(echauffement.id),),
                     duree_prevue=90,
+                )
+            )
+        if repechage:
+            sans_duree = deroules.ajouter(
+                EtapeDeroule(tournoi_id=tournoi.id, ordre=3, type=TypePhase.ECHAUFFEMENT)
+            )
+            assert sans_duree.id is not None
+            deroules.ajouter(
+                EtapeDeroule(
+                    tournoi_id=tournoi.id,
+                    ordre=4,
+                    type=TypePhase.ELIMINATION_DIRECTE,
+                    sources=(SourcePhase.par_rangs(sans_duree.id),),
+                    duree_prevue=30,
                 )
             )
         phases_repo = FauxPhaseRepository(self.departs, deroules)
@@ -163,6 +183,19 @@ def test_un_depart_d_un_autre_tournoi_est_introuvable() -> None:
         decor.service.document(decor.tournoi_id, decor.depart_autre_tournoi)
     with pytest.raises(DepartIntrouvable):
         decor.service.document(decor.tournoi_id, 12345)
+
+
+def test_un_debut_inconnu_se_propage_jusqu_au_papier() -> None:
+    """CA 2 : « une heure inconnue s'écrit à préciser, jamais une heure inventée » — une étape
+    nourrie par une phase sans durée a un **début** inconnu, et la ligne le garde."""
+    decor = _Decor(repechage=True)
+
+    matin = decor.service.document(decor.tournoi_id).blocs[0]
+
+    assert [(ligne.ordre, ligne.debut, ligne.fin) for ligne in matin.lignes][2:] == [
+        (3, HeurePrevue(9 * 60), None),
+        (4, None, None),
+    ]
 
 
 # --- Refus et cas vides --------------------------------------------------------------------------

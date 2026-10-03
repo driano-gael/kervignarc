@@ -68,7 +68,8 @@ class ServiceDerouleImprime:
     def _creneaux_retenus(
         self, tournoi_id: TournoiId, depart_id: DepartId | None
     ) -> list[HorairesDuDepart]:
-        creneaux = sorted(self._phases.horaires_prevus(tournoi_id), key=lambda c: c.depart.numero)
+        # L'ordre des départs est celui du port (`DepartRepository.par_tournoi`, par numéro).
+        creneaux = list(self._phases.horaires_prevus(tournoi_id))
         if depart_id is not None:
             retenus = [c for c in creneaux if c.depart.id == depart_id]
             if not retenus:
