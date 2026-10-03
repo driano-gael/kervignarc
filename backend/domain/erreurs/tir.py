@@ -95,8 +95,9 @@ class NombreFlechesVoleeInvalide(DomainError):
     """Le nombre de flèches d'une volée ne correspond pas au barème de la phase (E04US002).
 
     Le barème (E01US009) fixe combien de flèches compte une volée ; une volée d'un autre compte est
-    refusée à la saisie — distinct de `NombreFlechesParVoleeInvalide`, qui protège le **barème**,
-    quand celle-ci protège une **volée saisie** contre ce barème.
+    refusée à la saisie, comme un barrage de duel hors `nb_fleches_barrage` (E13US003) — distinct
+    de `NombreFlechesParVoleeInvalide`, qui protège le **barème**, quand celle-ci protège une
+    **volée saisie** contre ce barème.
     """
 
     code = "nombre_fleches_volee_invalide"

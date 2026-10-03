@@ -16,7 +16,7 @@ oppose des participants, pas des archers). Un tournoi individuel devient le cas 
 ### Inclus
 - **Abstraction participant** : `MATCH.participant_A/B` (archer **ou** équipe) dans le moteur (EPIC-05).
 - **Composition des équipes** : entité `Equipe` du tournoi, membres, contrainte de composition (config, défaut FFTA).
-- **Scoring d'équipe** : politique `scoring` (cumul, volées alternées §7), résolue par (phase, type de participant).
+- **Scoring d'équipe** : porté par le **barème de duel** de la phase (ADR-0117), pas par la politique `scoring` — arbitrage du 02/10/2026, [ADR-0028](../docs/adr/0028-epreuves-par-equipes-participant.md) §3 amendé. La volée d'un camp est le cumul de ses flèches ; le barrage tire **une flèche par archer**.
 - **Placement, saisie, classement** apprenant à traiter un participant-équipe.
 
 ### Exclus
@@ -26,12 +26,12 @@ oppose des participants, pas des archers). Un tournoi individuel devient le cas 
 ## Capacités
 - [ ] Abstraction participant dans le moteur.
 - [ ] CRUD des équipes + règle de composition.
-- [ ] Politique de scoring d'équipe.
+- [x] Barème d'équipe et barrage à N flèches (E13US003) — et non une politique `scoring`.
 - [ ] Placement / saisie / classement par équipe.
 
 ## Critères d'acceptation (epic)
 - Un duel individuel et un duel par équipes sont **deux assemblages du même moteur** (aucune branche `if équipe`).
-- Le scoring d'équipe (cumul, volées alternées) reproduit un cas de référence FFTA §7 (oracle).
+- Le scoring d'équipe reproduit un cas de référence FFTA §7 (oracle : 4-4 en sets → barrage à 3 flèches → 5-4, `test_domain_duel_equipe.py`).
 
 ## Risques
 - **Poser `Participant` trop tard** : si le moteur de duels (E05US005) se fige sur des archers avant l'abstraction, la précaution du cadrage est perdue → refonte. D'où **E13US001 en amont d'E05US005**.

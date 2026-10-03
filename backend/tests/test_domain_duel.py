@@ -181,7 +181,7 @@ def test_egalite_de_sets_declenche_le_barrage() -> None:
 def test_barrage_plus_haut_score_gagne_et_ajoute_un_point() -> None:
     """§8.2 : au barrage, la flèche la plus haute gagne ; §7 : +1 point de set (6-5)."""
     duel = _mener_a_egalite_cinq_partout(_duel_sets())
-    duel = duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES)
+    duel = duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES)
     resultat = duel.resultat
     assert resultat.termine is True
     assert resultat.vainqueur is Cote.HAUT
@@ -193,14 +193,14 @@ def test_barrage_a_egalite_de_fleche_exige_une_designation() -> None:
     """§8.2 : flèches égales → « plus près du centre », que l'appli ne mesure pas : à désigner."""
     duel = _mener_a_egalite_cinq_partout(_duel_sets())
     with pytest.raises(BarrageIndecis):
-        duel.saisir_barrage(ZoneScore.DIX, ZoneScore.DIX, zones_admises=ZONES)
+        duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.DIX,), zones_admises=ZONES)
 
 
 def test_barrage_egalite_de_fleche_tranche_par_designation() -> None:
     """§8.2 : à flèches égales, le scoreur désigne le plus près du centre → vainqueur."""
     duel = _mener_a_egalite_cinq_partout(_duel_sets())
     duel = duel.saisir_barrage(
-        ZoneScore.DIX, ZoneScore.DIX, gagnant_designe=Cote.BAS, zones_admises=ZONES
+        (ZoneScore.DIX,), (ZoneScore.DIX,), gagnant_designe=Cote.BAS, zones_admises=ZONES
     )
     resultat = duel.resultat
     assert resultat.termine is True
@@ -211,25 +211,31 @@ def test_barrage_egalite_de_fleche_tranche_par_designation() -> None:
 def test_barrage_re_editable_tant_que_non_valide() -> None:
     """Un barrage erroné se corrige avant validation (comme une manche) — pas de faux figé."""
     duel = _mener_a_egalite_cinq_partout(_duel_sets())
-    duel = duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES)  # haut gagne
+    duel = duel.saisir_barrage(
+        (ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES
+    )  # haut gagne
     assert duel.resultat.vainqueur is Cote.HAUT
-    duel = duel.saisir_barrage(ZoneScore.NEUF, ZoneScore.DIX, zones_admises=ZONES)  # correction
+    duel = duel.saisir_barrage(
+        (ZoneScore.NEUF,), (ZoneScore.DIX,), zones_admises=ZONES
+    )  # correction
     assert duel.resultat.vainqueur is Cote.BAS
 
 
 def test_barrage_refuse_apres_validation() -> None:
     """Un duel validé est verrouillé : même son barrage ne se réécrit plus (`DuelVerrouille`)."""
     duel = _mener_a_egalite_cinq_partout(_duel_sets())
-    duel = duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES).valider("DURAND")
+    duel = duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES).valider(
+        "DURAND"
+    )
     with pytest.raises(DuelVerrouille):
-        duel.saisir_barrage(ZoneScore.NEUF, ZoneScore.DIX, zones_admises=ZONES)
+        duel.saisir_barrage((ZoneScore.NEUF,), (ZoneScore.DIX,), zones_admises=ZONES)
 
 
 def test_barrage_refuse_si_non_requis() -> None:
     """Pas de barrage tant que le duel n'est pas à égalité de sets."""
     duel = _saisir(_duel_sets(), 1, ("10", "10", "10"), ("9", "9", "9"))
     with pytest.raises(BarrageNonRequis):
-        duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES)
+        duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES)
 
 
 # --- Duel au cumul (arc à poulies, A.7.5.2) -------------------------------------------------
@@ -261,7 +267,7 @@ def test_cumul_egalite_declenche_le_barrage() -> None:
     for numero in range(1, 6):
         duel = _saisir(duel, numero, ("10", "9", "8"), ("9", "9", "9"))  # 27 vs 27 / volée
     assert duel.resultat.barrage_requis is True
-    duel = duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES)
+    duel = duel.saisir_barrage((ZoneScore.DIX,), (ZoneScore.NEUF,), zones_admises=ZONES)
     assert duel.resultat.vainqueur is Cote.HAUT
     assert duel.resultat.termine is True
 
@@ -395,7 +401,7 @@ def test_egalite_au_seuil_refuse_une_manche_de_plus() -> None:
 
 def test_egalite_au_seuil_se_tranche_au_barrage_avec_un_point() -> None:
     duel = _mener_a_quatre_partout(_duel_club()).saisir_barrage(
-        ZoneScore.HUIT, ZoneScore.DIX, zones_admises=ZONES
+        (ZoneScore.HUIT,), (ZoneScore.DIX,), zones_admises=ZONES
     )
 
     resultat = duel.resultat
@@ -406,7 +412,7 @@ def test_egalite_au_seuil_se_tranche_au_barrage_avec_un_point() -> None:
 
 def test_seuil_hors_d_atteinte_le_meneur_l_emporte_a_la_derniere_manche() -> None:
     """Seuil légal mais hors d'atteinte en 3 manches : 4-2, le meneur gagne."""
-    duel = Duel.vide(BaremeDuel(ModeDuel.SETS, 3, 3, 6), HAUT, BAS)
+    duel = Duel.vide(BaremeDuel(ModeDuel.SETS, 3, 3, 6, 1), HAUT, BAS)
     duel = _saisir(duel, 1, ("10", "10", "10"), ("9", "9", "9"))
     duel = _saisir(duel, 2, ("10", "10", "10"), ("9", "9", "9"))
     duel = _saisir(duel, 3, ("9", "9", "9"), ("10", "10", "10"))
@@ -418,4 +424,4 @@ def test_seuil_hors_d_atteinte_le_meneur_l_emporte_a_la_derniere_manche() -> Non
 
 def test_au_cumul_le_seuil_ignore_est_ramene_a_zero() -> None:
     """Le seuil n'est pas lu au cumul : deux barèmes qui jouent pareil sont égaux (verrou, 409)."""
-    assert BaremeDuel(ModeDuel.CUMUL, 5, 3, 7) == BaremeDuel.preset_ffta_poulies()
+    assert BaremeDuel(ModeDuel.CUMUL, 5, 3, 7, 1) == BaremeDuel.preset_ffta_poulies()

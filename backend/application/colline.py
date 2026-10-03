@@ -638,8 +638,8 @@ class ServiceColline:
         tournoi_id: TournoiId,
         phase_id: PhaseId,
         numero: int,
-        fleche_haut: ZoneScore,
-        fleche_bas: ZoneScore,
+        fleches_haut: tuple[ZoneScore, ...],
+        fleches_bas: tuple[ZoneScore, ...],
         gagnant_designe: Cote | None = None,
     ) -> DefiDeLaManche:
         """Saisit le tir de barrage **interne** à un défi nul (§8.2, E04US013).
@@ -654,7 +654,7 @@ class ServiceColline:
             phase_id,
             numero,
             lambda duel, _bareme, zones: duel.saisir_barrage(
-                fleche_haut, fleche_bas, zones_admises=zones, gagnant_designe=gagnant_designe
+                fleches_haut, fleches_bas, zones_admises=zones, gagnant_designe=gagnant_designe
             ),
         )
 

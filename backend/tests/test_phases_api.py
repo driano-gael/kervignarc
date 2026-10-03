@@ -843,8 +843,20 @@ def test_un_reglage_pose_sur_le_mauvais_type_est_refuse_sans_rien_persister(
         assert avancement.status_code == 200, avancement.text
 
 
-_SETS_4 = {"mode": "sets", "nb_manches": 5, "nb_fleches_par_volee": 3, "points_pour_gagner": 4}
-_CUMUL = {"mode": "cumul", "nb_manches": 5, "nb_fleches_par_volee": 3, "points_pour_gagner": 0}
+_SETS_4 = {
+    "mode": "sets",
+    "nb_manches": 5,
+    "nb_fleches_par_volee": 3,
+    "points_pour_gagner": 4,
+    "nb_fleches_barrage": 1,
+}
+_CUMUL = {
+    "mode": "cumul",
+    "nb_manches": 5,
+    "nb_fleches_par_volee": 3,
+    "points_pour_gagner": 0,
+    "nb_fleches_barrage": 1,
+}
 _BAREME_CLUB = {
     "par_defaut": _SETS_4,
     "surcharges": [{"arme": "Arc à poulies", "bareme": _CUMUL}],
@@ -871,6 +883,28 @@ def test_le_bareme_de_duel_fait_l_aller_retour_http(
         )
         assert efface.status_code == 200, efface.text
         assert client.get(base).json()[0]["bareme_duel"] is None
+
+
+def test_un_bareme_sans_fleches_de_barrage_en_tire_une(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US003 CA 2 — un client d'avant l'US n'envoie pas `nb_fleches_barrage` : 1 flèche."""
+    ancien = {k: v for k, v in _SETS_4.items() if k != "nb_fleches_barrage"}
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(
+            base,
+            json={
+                "type": "elimination_directe",
+                "bareme_duel": {"par_defaut": ancien, "surcharges": []},
+            },
+        )
+
+        assert creation.status_code == 201, creation.text
+        assert client.get(base).json()[0]["bareme_duel"]["par_defaut"]["nb_fleches_barrage"] == 1
 
 
 def test_un_bareme_de_duel_sur_une_phase_sans_duel_est_refuse(

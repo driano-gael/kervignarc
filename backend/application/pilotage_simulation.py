@@ -678,8 +678,9 @@ class ServicePilotageSimulation:
             and dernier.duel is not None
             and dernier.duel.resultat.barrage_requis
         ):
+            nb = bareme.nb_fleches_barrage
             session.harnais.saisie_duels.saisir_barrage(
-                tid, phase_id, n, v_haut[0], v_bas[0], gagnant_designe=gagnant
+                tid, phase_id, n, (v_haut[0],) * nb, (v_bas[0],) * nb, gagnant_designe=gagnant
             )
         session.harnais.saisie_duels.valider(tid, phase_id, n, auteur)
         session.duels_joues += 1

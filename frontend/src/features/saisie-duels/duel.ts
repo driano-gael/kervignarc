@@ -156,8 +156,8 @@ export function injecterBarrage(duel: Duel, corps: SaisirBarrage): Duel {
   return {
     ...duel,
     barrage: {
-      haut: corps.fleche_haut,
-      bas: corps.fleche_bas,
+      haut: corps.fleches_haut,
+      bas: corps.fleches_bas,
       gagnant_designe: corps.gagnant_designe,
     },
     en_attente: true,

@@ -13,9 +13,15 @@ from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.erreurs import BaremeDuelInvalide
 from domain.phase import TypePhase
 
-CUMUL_5x3 = BaremeDuel(ModeDuel.CUMUL, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=0)
-SETS_4 = BaremeDuel(ModeDuel.SETS, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=4)
-SETS_6 = BaremeDuel(ModeDuel.SETS, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=6)
+CUMUL_5x3 = BaremeDuel(
+    ModeDuel.CUMUL, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=0, nb_fleches_barrage=1
+)
+SETS_4 = BaremeDuel(
+    ModeDuel.SETS, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=4, nb_fleches_barrage=1
+)
+SETS_6 = BaremeDuel(
+    ModeDuel.SETS, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=6, nb_fleches_barrage=1
+)
 
 
 # --- CA 1 : un défaut et des surcharges par arme explicites -----------------------------------

@@ -13,7 +13,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin, exiger_scoreur
@@ -295,8 +295,9 @@ class SaisirBarrageRequete(BaseModel):
     tournoi_id: int
     phase_id: int
     numero: int
-    fleche_haut: ZoneScore
-    fleche_bas: ZoneScore
+    # Même borne que `BaremeDuelDTO.nb_fleches_barrage` : le domaine exige ensuite le compte exact.
+    fleches_haut: list[ZoneScore] = Field(min_length=1, max_length=12)
+    fleches_bas: list[ZoneScore] = Field(min_length=1, max_length=12)
     gagnant_designe: Cote | None = None
     identifiant_saisie: str | None = None
 
@@ -464,8 +465,8 @@ async def saisir_barrage(
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
-    fleche_haut = requete.fleche_haut
-    fleche_bas = requete.fleche_bas
+    fleches_haut = tuple(requete.fleches_haut)
+    fleches_bas = tuple(requete.fleches_bas)
     gagnant = requete.gagnant_designe
     cle = _cle_idempotence(
         "barrage_suisse",
@@ -480,8 +481,8 @@ async def saisir_barrage(
             requete.tournoi_id,
             requete.phase_id,
             requete.numero,
-            fleche_haut,
-            fleche_bas,
+            fleches_haut,
+            fleches_bas,
             gagnant,
         )
 

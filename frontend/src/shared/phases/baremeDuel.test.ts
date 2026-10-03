@@ -11,17 +11,31 @@ import {
   estValide,
   presetClub,
   presetFfta,
+  presetFftaEquipe,
+  presetFftaMixte,
   versReglage,
   type EtatBaremeDuel,
   type ReglageBaremeDuel,
 } from './baremeDuel'
 
 const CLUB_AVEC_POULIES: ReglageBaremeDuel = {
-  par_defaut: { mode: 'sets', nb_manches: 5, nb_fleches_par_volee: 3, points_pour_gagner: 4 },
+  par_defaut: {
+    mode: 'sets',
+    nb_manches: 5,
+    nb_fleches_par_volee: 3,
+    points_pour_gagner: 4,
+    nb_fleches_barrage: 1,
+  },
   surcharges: [
     {
       arme: 'Arc à poulies',
-      bareme: { mode: 'cumul', nb_manches: 5, nb_fleches_par_volee: 3, points_pour_gagner: 0 },
+      bareme: {
+        mode: 'cumul',
+        nb_manches: 5,
+        nb_fleches_par_volee: 3,
+        points_pour_gagner: 0,
+        nb_fleches_barrage: 1,
+      },
     },
   ],
 }
@@ -60,6 +74,12 @@ describe('versReglage / depuisReglage', () => {
     expect(estValide(doublon)).toBe(false)
   })
 
+  it.each(['0', '', '13', '1.5'])('refuse %j flèche(s) de barrage (E13US003 CA 2)', (barrage) => {
+    const etat = depuisReglage(CLUB_AVEC_POULIES)
+    const faux: EtatBaremeDuel = { ...etat, par_defaut: { ...etat.par_defaut, barrage } }
+    expect(estValide(faux)).toBe(false)
+  })
+
   it('refuse une surcharge sans arme', () => {
     const etat = depuisReglage(CLUB_AVEC_POULIES)
     const vide: EtatBaremeDuel = { ...etat, surcharges: [{ ...etat.surcharges[0]!, arme: '  ' }] }
@@ -89,6 +109,63 @@ describe('presets (CA 2)', () => {
 
   it('sans arme connue, un preset ne pose aucune surcharge', () => {
     expect(versReglage(presetFfta([]))?.surcharges).toEqual([])
+  })
+})
+
+describe('presets FFTA équipe (E13US003 CA 4)', () => {
+  const armes = ['Arc classique', 'Arc à poulies']
+
+  it('équipe : 4 manches de 6 flèches, premier à 5, barrage à 3 — poulies au cumul', () => {
+    expect(versReglage(presetFftaEquipe(armes))).toEqual({
+      par_defaut: {
+        mode: 'sets',
+        nb_manches: 4,
+        nb_fleches_par_volee: 6,
+        points_pour_gagner: 5,
+        nb_fleches_barrage: 3,
+      },
+      surcharges: [
+        {
+          arme: 'Arc à poulies',
+          bareme: {
+            mode: 'cumul',
+            nb_manches: 4,
+            nb_fleches_par_volee: 6,
+            points_pour_gagner: 0,
+            nb_fleches_barrage: 3,
+          },
+        },
+      ],
+    })
+  })
+
+  it('mixte : 4 manches de 4 flèches, premier à 5, barrage à 2 — poulies au cumul', () => {
+    expect(versReglage(presetFftaMixte(armes))).toEqual({
+      par_defaut: {
+        mode: 'sets',
+        nb_manches: 4,
+        nb_fleches_par_volee: 4,
+        points_pour_gagner: 5,
+        nb_fleches_barrage: 2,
+      },
+      surcharges: [
+        {
+          arme: 'Arc à poulies',
+          bareme: {
+            mode: 'cumul',
+            nb_manches: 4,
+            nb_fleches_par_volee: 4,
+            points_pour_gagner: 0,
+            nb_fleches_barrage: 2,
+          },
+        },
+      ],
+    })
+  })
+
+  it('les presets individuels gardent un barrage à une flèche', () => {
+    expect(versReglage(presetFfta(armes))?.par_defaut.nb_fleches_barrage).toBe(1)
+    expect(versReglage(presetClub(armes))?.surcharges[0]?.bareme.nb_fleches_barrage).toBe(1)
   })
 })
 

@@ -614,3 +614,30 @@ def test_un_suisse_non_commence_ne_decerne_aucune_medaille(app_suisse: FastAPI) 
 
     assert reponse.status_code == 200, reponse.text
     assert not any(ligne["decerne"] for ligne in section_unique(reponse.json())["lignes"])
+
+
+def test_le_barrage_se_saisit_en_listes_de_fleches(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US003 CA 3 : le corps porte `fleches_haut`/`fleches_bas` en listes (le barrage d'équipe
+    en tire plusieurs) ; l'ancienne forme à une flèche est refusée à la frontière (400)."""
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        base = {"tournoi_id": scn.tournoi_id, "phase_id": scn.phase_id, "numero": 1}
+
+        ancienne = client.post(
+            "/api/v1/suisse/barrages",
+            json={**base, "fleche_haut": "10", "fleche_bas": "9"},
+            headers=entetes,
+        )
+        nouvelle = client.post(
+            "/api/v1/suisse/barrages",
+            json={**base, "fleches_haut": ["10"], "fleches_bas": ["9"]},
+            headers=entetes,
+        )
+
+    assert ancienne.status_code == 400, ancienne.text
+    # Le corps passe la frontière : c'est le métier qui répond (aucun barrage n'est requis ici).
+    assert nouvelle.status_code == 422, nouvelle.text
+    assert nouvelle.json()["code"] == "barrage_non_requis"
