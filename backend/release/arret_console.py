@@ -47,20 +47,32 @@ def installer(demander_arret: Callable[[], None], arrete: threading.Event) -> ob
 
     Sans référence, le ramasse-miettes libère le rappel ctypes et Windows appelle une adresse morte.
     """
-    if sys.platform != "win32":
+    # ⚠️ `if`/`else` et non un `return` anticipé : mypy écarte une branche gardée par `sys.platform`,
+    # mais signale le code qui suit un `return` conditionnel (`warn_unreachable`, CI sous Linux).
+    if sys.platform == "win32":
+        return _installer_windows(demander_arret, arrete)
+    else:
         return None
+
+
+if sys.platform == "win32":
     import ctypes
     from ctypes import wintypes
 
-    # `HandlerRoutine` rend un BOOL Windows (entier 32 bits), pas un `_Bool` : avec `c_bool`, les
-    # bits hauts du registre de retour sont indéterminés.
-    prototype = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+    def _installer_windows(
+        demander_arret: Callable[[], None], arrete: threading.Event
+    ) -> object | None:
+        # `HandlerRoutine` rend un BOOL Windows (entier 32 bits), pas un `_Bool` : avec `c_bool`,
+        # les bits hauts du registre de retour sont indéterminés.
+        prototype = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
 
-    def _gestionnaire(evenement: int) -> bool:
-        return traiter_evenement(evenement, demander_arret, arrete, DELAI_ARRET_S)
+        def _gestionnaire(evenement: int) -> bool:
+            return traiter_evenement(evenement, demander_arret, arrete, DELAI_ARRET_S)
 
-    rappel = prototype(_gestionnaire)
-    if not ctypes.windll.kernel32.SetConsoleCtrlHandler(rappel, True):
-        _logger.warning("Gestionnaire de console non installé : la croix arrêtera sans drainer.")
-        return None
-    return rappel
+        rappel = prototype(_gestionnaire)
+        if not ctypes.windll.kernel32.SetConsoleCtrlHandler(rappel, True):
+            _logger.warning(
+                "Gestionnaire de console non installé : la croix arrêtera sans drainer."
+            )
+            return None
+        return rappel
