@@ -54,7 +54,7 @@ export type DestinationAdminId =
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   sauvegardes:
     'Les copies de la base prises automatiquement pendant que le serveur tourne. Vérifiez une copie ' +
-    'avant de vous en servir ; restaurer remet tous les tournois dans son état, sans redémarrer. ' +
+    'avant de vous en servir ; restaurer remet tous les tournois dans son état, serveur allumé. ' +
     'L’état actuel est d’abord mis de côté : restaurez cette copie pour annuler. Les tablettes ' +
     'et les scoreurs doivent ensuite se reconnecter.',
   compte:

@@ -25,6 +25,7 @@ MODULES_SANS_FAMILLE: frozenset[str] = frozenset(
         "test_acces_public",
         "test_admin_credentials_store",
         "test_agents_de_revue",
+        "test_arret_console",
         "test_broadcaster",
         "test_catalogue_types_de_phase",
         "test_commentaires_bornes",
@@ -53,12 +54,14 @@ MODULES_SANS_FAMILLE: frozenset[str] = frozenset(
         "test_release_migrate",
         "test_release_reseau",
         "test_release_run",
+        "test_restauration_sqlite",
         "test_sauvegarde",
         "test_simulation_non_pollution",
         "test_spa",
         "test_tableur_classement_qualification",
         "test_tableur_grille",
         "test_tableur_palmares",
+        "test_vider_etat_volatil",
         "test_write_queue",
     }
 )
