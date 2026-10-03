@@ -1161,3 +1161,38 @@ def test_un_format_garde_le_bareme_de_duel_de_ses_etapes(
         assert creation.status_code == 201, creation.text
         (relu,) = client.get("/api/v1/formats").json()
         assert relu["etapes"][0]["bareme_duel"] == bareme_duel
+
+
+def test_la_duree_prevue_survit_a_l_aller_retour_de_bibliotheque(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E03US010, CA 8 — la durée traverse `EtapeDTO` et la persistance d'un format."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        cree = client.post(
+            "/api/v1/formats",
+            json={"nom": "Format minuté", "etapes": [{**_QUALIFICATION, "duree_prevue": 150}]},
+        )
+        assert cree.status_code == 201, cree.text
+        relu = client.get("/api/v1/formats")
+
+    format_relu = next(f for f in relu.json() if f["id"] == cree.json()["id"])
+    assert format_relu["etapes"][0]["duree_prevue"] == 150
+
+
+@pytest.mark.parametrize("duree", [0, 1441])
+def test_un_format_a_duree_hors_bornes_est_refuse_a_l_ecriture(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin, duree: int
+) -> None:
+    """`ModelePhase` n'a aucun invariant (E01US024) : sans la borne du DTO, le format
+    s'enregistrerait et n'échouerait qu'à son application, loin de la saisie fautive. 422 et le
+    même code que côté tournoi : c'est la même règle du domaine."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        refus = client.post(
+            "/api/v1/formats",
+            json={"nom": "Format faux", "etapes": [{**_QUALIFICATION, "duree_prevue": duree}]},
+        )
+
+    assert refus.status_code == 422, refus.text
+    assert refus.json()["code"] == "duree_prevue_invalide"

@@ -121,6 +121,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
         titre = _lire_titre(config)
+        duree_prevue = _lire_duree_prevue(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -149,6 +150,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             arrets=arrets,
             titre=titre,
             bareme_duel=bareme_duel,
+            duree_prevue=duree_prevue,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -303,6 +305,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             arrets=etape.arrets,
             titre=etape.titre,
             bareme_duel=etape.bareme_duel,
+            duree_prevue=etape.duree_prevue,
         )
     )
 
@@ -323,6 +326,7 @@ def _politiques_json(
     arrets: tuple[ArretProgramme, ...],
     titre: str | None,
     bareme_duel: ReglageBaremeDuel | None,
+    duree_prevue: int | None,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
 ) -> dict[str, object]:
@@ -472,6 +476,10 @@ def _politiques_json(
         # absente disent la même chose ici (« pas de titre »), à la différence de `validation`
         # où la présence à `null` porte un sens.
         config["titre"] = titre
+    if duree_prevue is not None:
+        # E03US010 : racine du `config`, même régime que `titre` — aucune migration, une étape
+        # écrite avant se relit « durée inconnue », exactement le sens voulu (ADR-0118).
+        config["duree_prevue"] = duree_prevue
     if bareme_duel is not None:
         # E01US011 : racine du `config`, comme ses voisins — aucune migration, une étape écrite
         # avant se relit « non réglée », donc au défaut injecté (ADR-0117).
@@ -673,6 +681,16 @@ def _lire_titre(config: Any) -> str | None:
     return souffle
 
 
+def _lire_duree_prevue(config: Any) -> int | None:
+    """Relit la durée prévue d'une étape (E03US010) ; absente sur tout document antérieur."""
+    souffle = config.get("duree_prevue")
+    if souffle is None:
+        return None
+    if isinstance(souffle, bool) or not isinstance(souffle, int):
+        raise TypeError("La durée prévue d'une étape doit être un entier.")
+    return int(souffle)
+
+
 def _lire_arrets(config: Any) -> tuple[ArretProgramme, ...]:
     """Les arrêts programmés d'une étape, lus **à la racine** du `config` (E05US033, ADR-0091).
 
@@ -855,6 +873,8 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         titre=etape.titre,
                         # E01US011 : câblé ici ET sur `_config_etape` — cf. le commentaire du titre.
                         bareme_duel=etape.bareme_duel,
+                        # E03US010 : câblé ici ET sur `_config_etape` — cf. le commentaire du titre.
+                        duree_prevue=etape.duree_prevue,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -949,6 +969,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         arrets=_lire_arrets(brute),
         titre=_lire_titre(brute),
         bareme_duel=_lire_bareme_duel(brute),
+        duree_prevue=_lire_duree_prevue(brute),
     )
 
 

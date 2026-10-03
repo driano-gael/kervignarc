@@ -224,6 +224,8 @@ export interface Etape {
   // **entier**, donc éditer un format promu depuis un tournoi titré **effacerait tous ses titres**
   // en silence.
   titre: string | null
+  // E03US010 — même raison de présence que `titre` : l'ignorer l'effacerait à chaque `PUT`.
+  duree_prevue: number | null
 }
 
 export interface FormatTournoi {

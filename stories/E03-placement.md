@@ -182,8 +182,38 @@ voisines, *afin de* faciliter les matchs.
 ### E03US010 — Générer / éditer le déroulé horaire
 *En tant qu'*administrateur, *je veux* un déroulé horaire de la journée, *afin de* cadencer
 l'événement.
-- **CA** : grille horaire par phase/tour ; éditable manuellement (génération auto en option —
-  question ouverte).
+- **CA** *(cadré le 02/10/2026 — arbitrages du commanditaire, cf. Notes)* :
+  1. Chaque **étape du déroulé** peut porter une **durée prévue**, en minutes entières (de 1 à
+     1440), **facultative**. L'admin la saisit dans la fiche de l'étape ; elle n'est **jamais
+     préremplie**. Une durée hors bornes est refusée.
+  2. L'horaire prévu d'une étape se **calcule pour chaque départ**, jamais ne se saisit : une étape
+     **sans source** commence à l'heure du départ ; une étape **avec sources** commence à la fin
+     **la plus tardive** de ses étapes sources. Sa fin = son début + sa durée prévue. Une source
+     « **issue d'un tour** » (les gagnants ou perdants du tour N : repêchage, consolante) rend le
+     début **inconnu** — arbitrage du 03/10/2026 en revue : sa sémantique n'est pas tranchée
+     (`DETTE-033`), et la caler sur la fin du tableau source entier serait deviner.
+  3. **L'inconnu se propage, jamais ne se devine** : une étape sans durée a une fin inconnue, et
+     toute étape qui en dépend (directement ou non) a un début **et** une fin inconnus. Le début
+     d'une étape reste connu même si sa propre durée ne l'est pas.
+  4. Deux étapes alimentées par les mêmes sources commencent **à la même heure** (elles se jouent
+     en même temps, ADR-0082).
+  5. Une heure qui passe minuit reste exacte et se signale comme étant **du lendemain**.
+  6. **Admin** : sous le déroulé, une **grille horaire** — une ligne par étape, une colonne par
+     départ, début et fin prévus dans chaque case ; « — » quand l'horaire est inconnu.
+  7. **Public** : l'onglet « En cours » affiche, pour chaque phase du départ, son **heure de début
+     prévue** — et elle seule (réponse P05 : « seulement pour les départs des différentes phases,
+     les autres sont trop imprévisibles »). Rien n'est affiché quand elle est inconnue.
+  8. La durée prévue **voyage avec le format** (capturer un tournoi en format, appliquer un format).
+  9. **Prévisionnel seul** : aucun calcul d'avance ou de retard sur le réel.
+- **Notes** : arbitrages du **02/10/2026** au cadrage — Q4 du cahier des charges tranchée :
+  **durées saisies → heures calculées** (ni heures tapées à la main, ni heure épinglée) ; maille
+  **phase** (pas de ligne par tour) ; visible **admin + public** (ce qui tranche la question P05
+  laissée ouverte dans `stories/E16`, lecture **(a)**) ; **prévisionnel seul** ; **pas de
+  préremplissage** — le référentiel ne donne que les 2 min de tir, pas la cadence réelle d'une
+  volée, et la constante aurait été inventée. Une **pause programmée** n'a pas de durée (elle est
+  levée par un geste d'admin) : elle est comprise dans la durée de son étape. Le calcul suit le
+  **graphe des sources**, pas l'`ordre` — l'ordre est topologique, pas chronologique (ADR-0082).
+  [ADR-0118](../docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md).
 - **Dépend de** : E05US001 · **Jalon** : J4
 
 ### E03US011 — Placement : retour visuel de génération + position (A..D) visible

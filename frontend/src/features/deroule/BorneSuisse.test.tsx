@@ -34,6 +34,7 @@ function poser(effectifSimule: number | null) {
         // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
         arrets: [],
         titre: null,
+        duree_prevue: null,
       }}
       etapesAmont={[]}
       surValider={vi.fn()}

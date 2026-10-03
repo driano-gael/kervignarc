@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 2 octobre 2026
+# Résumé du projet — où on en est au 3 octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -36,6 +36,8 @@ bien que le feu vert et l'écran de routage restent utiles après le premier tou
 Et la tablette **se rend toute seule** : l'écran « où tire-t-on ensuite ? », qui restait ouvert
 tant que personne n'appuyait sur « Retour », revient de lui-même à la saisie au bout de trois
 minutes — en prévenant, sans compte à rebours — et se rouvre à la main des deux côtés.
+L'organisateur règle la **durée prévue** de chaque phase, et l'application en déduit **l'horaire de
+la journée** pour chaque départ ; le public y lit l'heure de début de chaque phase.
 L'écran de **placement sur les cibles**
 se lit désormais sur toute la largeur d'un PC — une cible
 par ligne, chaque archer avec son club, sa catégorie et son blason, et une réserve qui reste sous la
@@ -541,7 +543,7 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
 désormais livrées : ce paragraphe annonçait leur absence, il n'a plus lieu d'être. Ce qui reste hors
 de portée du public tient à ce que l'application ne planifie pas : il n'y a **pas d'horaire
 prévisionnel** de duel — c'est le lancement d'un tour par l'organisateur qui fait partir les
-rencontres.*
+rencontres. Seul le **début prévu de chaque phase** s'affiche, depuis `E03US010`.*
 
 ### 11. Scorer les duels — *premier écran du chantier duels*
 
@@ -628,8 +630,9 @@ Dans l'ordre de valeur prévu par le backlog :
 3. **Le placement intégral 1→N** (le grand format du classeur 120) est **fait** ; l'**écran de salle**
    aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
-4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration
+4. **Confort et robustesse** : sauvegarde et restauration
    (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ;
+   le déroulé horaire aussi, `E03US010` ;
    « plusieurs gabarits » l'était **depuis juillet** — `E01US012` est close sans code, sa
    bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008` ; et l'accès
    administrateur **se change depuis l'appli**, `E10US006`).
@@ -645,7 +648,10 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **160 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E10US006`,
+- **161 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E03US010`,
+  à **surface visible** : l'organisateur donne une **durée** à chaque phase et l'application en
+  déduit l'**horaire de la journée**, départ par départ ; le public voit l'heure de début de chaque
+  phase. Juste avant, `E10US006`,
   à **surface visible** : l'organisateur **change son identifiant ou son mot de passe** depuis l'écran
   « Compte administrateur », sans ouvrir le fichier du serveur ; les autres appareils connectés en
   administrateur sont alors déconnectés. Juste avant, `E13US003`,

@@ -4,7 +4,7 @@
 // sont des **mutations** qui invalident cette liste (rafraîchissement immédiat, en plus de la
 // diffusion temps réel post-commit côté serveur).
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import {
   creerDepart,
@@ -15,8 +15,17 @@ import {
   supprimerDepart,
 } from './api'
 import { creneauDesDuels, creneauRetenu } from './libelle'
+import { cleHoraires } from '../phases/hooks'
 
 const cleDeparts = (tournoiId: number) => ['departs', tournoiId] as const
+
+// L'heure d'un départ décale toute sa grille horaire (E03US010) : les deux caches tombent ensemble.
+function invaliderLesCreneaux(queryClient: QueryClient, tournoiId: number) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
+    queryClient.invalidateQueries({ queryKey: cleHoraires(tournoiId) }),
+  ])
+}
 
 // `enabled` (défaut `true`) : la recherche de la sidebar admin (E12US006), montée sur tout écran, ne
 // charge les départs que lorsqu'on cherche — les écrans existants ne passent rien et gardent leur
@@ -67,7 +76,7 @@ export function useCreerDepart(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (entree: NouveauDepart) => creerDepart(tournoiId, entree),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
+    onSuccess: () => invaliderLesCreneaux(queryClient, tournoiId),
   })
 }
 
@@ -85,7 +94,7 @@ export function useModifierDepart(tournoiId: number) {
       entree: ModifierDepart
       confirmeCycle?: boolean
     }) => modifierDepart(tournoiId, departId, entree, confirmeCycle),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
+    onSuccess: () => invaliderLesCreneaux(queryClient, tournoiId),
   })
 }
 
@@ -103,6 +112,6 @@ export function useSupprimerDepart(tournoiId: number) {
       autoriserSuppressionInscrits?: boolean
       confirmeCycle?: boolean
     }) => supprimerDepart(tournoiId, departId, autoriserSuppressionInscrits, confirmeCycle),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
+    onSuccess: () => invaliderLesCreneaux(queryClient, tournoiId),
   })
 }
