@@ -41,6 +41,7 @@ MODULES_SANS_FAMILLE: frozenset[str] = frozenset(
         "test_listes_impression_csv",
         "test_listes_impression_reportlab",
         "test_pdf_classement_qualification",
+        "test_pdf_deroule_horaire",
         "test_pdf_palmares",
         "test_porte_couvre_la_ci",
         "test_portee_deux_creneaux",

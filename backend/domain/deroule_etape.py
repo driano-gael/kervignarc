@@ -233,6 +233,8 @@ class EtapeDeroule:
         type ajouté à `TYPES_ARRETABLES`.
         """
 
+        # ⚠️ Jumeau de `deroule_imprime.tours_annonces` (qui compte aussi le suisse, E09US007).
+
         # DETTE-062 : rien n'interdit de changer ce nombre sur une phase **en cours**, et le
         # changer déplace les frontières de tour — une pause non encore atteinte peut devenir
         # immédiatement due, ou passer pour manquée. La recette dit de régler avant de démarrer :

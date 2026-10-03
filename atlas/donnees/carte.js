@@ -289,7 +289,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 395,
+   "occurrences": 399,
    "source": "application"
   },
   {
@@ -313,7 +313,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 116,
+   "occurrences": 119,
    "source": "infrastructure"
   },
   {
@@ -343,7 +343,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 84,
+   "occurrences": 86,
    "source": "api"
   },
   {
@@ -367,7 +367,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 60,
+   "occurrences": 61,
    "source": "bootstrap"
   },
   {
@@ -379,7 +379,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "api",
-   "occurrences": 62,
+   "occurrences": 63,
    "source": "bootstrap"
   }
  ],
@@ -389,7 +389,7 @@ window.ATLAS.carte = {
    "cible": "api",
    "couche_cible": "api",
    "couche_source": "api",
-   "occurrences": 54,
+   "occurrences": 55,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -405,6 +405,7 @@ window.ATLAS.carte = {
     "backend/api/v1/competition.py",
     "backend/api/v1/completude.py",
     "backend/api/v1/departs.py",
+    "backend/api/v1/deroule_imprime.py",
     "backend/api/v1/documents_salle.py",
     "backend/api/v1/ecrans.py",
     "backend/api/v1/equipes.py",
@@ -472,7 +473,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 69,
+   "occurrences": 71,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -489,6 +490,7 @@ window.ATLAS.carte = {
     "backend/api/v1/completude.py",
     "backend/api/v1/departs.py",
     "backend/api/v1/deroule.py",
+    "backend/api/v1/deroule_imprime.py",
     "backend/api/v1/documents_salle.py",
     "backend/api/v1/ecrans.py",
     "backend/api/v1/equipes.py",
@@ -732,7 +734,7 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 57,
+   "occurrences": 58,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -750,6 +752,7 @@ window.ATLAS.carte = {
     "backend/application/colline.py",
     "backend/application/completude.py",
     "backend/application/departs.py",
+    "backend/application/deroule_imprime.py",
     "backend/application/documents_salle.py",
     "backend/application/ecrans.py",
     "backend/application/equipes.py",
@@ -798,7 +801,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 380,
+   "occurrences": 384,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -815,6 +818,7 @@ window.ATLAS.carte = {
     "backend/application/colline.py",
     "backend/application/completude.py",
     "backend/application/departs.py",
+    "backend/application/deroule_imprime.py",
     "backend/application/documents_salle.py",
     "backend/application/ecrans.py",
     "backend/application/equipes.py",
@@ -903,7 +907,7 @@ window.ATLAS.carte = {
    "cible": "api/v1",
    "couche_cible": "api",
    "couche_source": "bootstrap",
-   "occurrences": 57,
+   "occurrences": 58,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -914,7 +918,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 60,
+   "occurrences": 61,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1138,7 +1142,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 1,
+   "occurrences": 2,
    "origines": [
     "backend/infrastructure/libelles.py"
    ],
@@ -1228,9 +1232,10 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 9,
+   "occurrences": 11,
    "origines": [
     "backend/infrastructure/pdf/classement_qualification.py",
+    "backend/infrastructure/pdf/deroule_horaire.py",
     "backend/infrastructure/pdf/documents_salle.py",
     "backend/infrastructure/pdf/feuille_de_marque.py",
     "backend/infrastructure/pdf/listes_impression.py",
@@ -1353,9 +1358,10 @@ window.ATLAS.carte = {
    "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "infrastructure",
-   "occurrences": 7,
+   "occurrences": 9,
    "origines": [
     "backend/infrastructure/pdf/classement_qualification.py",
+    "backend/infrastructure/pdf/deroule_horaire.py",
     "backend/infrastructure/pdf/documents_salle.py",
     "backend/infrastructure/pdf/feuille_de_marque.py",
     "backend/infrastructure/pdf/listes_impression.py",
@@ -2034,6 +2040,22 @@ window.ATLAS.carte = {
     "classement_qualification"
    ],
    "nom": "GenerateurClassementQualification",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/infrastructure/pdf/deroule_horaire.py",
+     "nom": "GenerateurDerouleHorairePdf"
+    }
+   ],
+   "couche": "domain",
+   "fichier": "backend/domain/ports.py",
+   "hors_domaine": false,
+   "methodes": [
+    "deroule_horaire"
+   ],
+   "nom": "GenerateurDerouleHoraire",
    "sans_adapter": false
   },
   {
@@ -3517,10 +3539,10 @@ window.ATLAS.carte = {
   "aretes_front": 189,
   "enchevetrements": 4,
   "features": 54,
-  "imports": 1059,
-  "imports_entre_couches": 888,
+  "imports": 1074,
+  "imports_entre_couches": 899,
   "plus_gros_noeud": 25,
-  "ports": 79,
+  "ports": 80,
   "ports_hors_domaine": 31,
   "ports_sans_adapter": 0,
   "violations": 0

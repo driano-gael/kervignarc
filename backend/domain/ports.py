@@ -20,6 +20,7 @@ from domain.classement_imprime import ClassementQualificationImprime
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
+from domain.deroule_imprime import DerouleImprime
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.ecran import PriseDeControle
@@ -1086,6 +1087,14 @@ class GenerateurClassementQualification(Protocol):
 
     def classement_qualification(self, document: ClassementQualificationImprime) -> bytes:
         """Rend le document ; une section sans catégorie est un créneau sans archer engagé."""
+        ...
+
+
+class GenerateurDerouleHoraire(Protocol):
+    """Port de rendu du **déroulé horaire** en document (E09US007 ; adapter infra, PDF seul)."""
+
+    def deroule_horaire(self, document: DerouleImprime) -> bytes:
+        """Rend le document ; un bloc sans ligne est un créneau dont le déroulé est vide."""
         ...
 
 
