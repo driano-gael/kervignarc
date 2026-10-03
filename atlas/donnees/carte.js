@@ -244,6 +244,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 1,
+    "feature": "sauvegardes"
+   },
+   {
+    "clientes": 1,
     "feature": "scoreurs"
    },
    {
@@ -255,7 +259,7 @@ window.ATLAS.carte = {
     "feature": "validation-qualif"
    }
   ],
-  "features": 53
+  "features": 54
  },
  "matrice": [
   {
@@ -309,13 +313,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 118,
+   "occurrences": 119,
    "source": "infrastructure"
   },
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 1,
+   "occurrences": 2,
    "source": "infrastructure"
   },
   {
@@ -339,13 +343,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 85,
+   "occurrences": 86,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "infrastructure",
-   "occurrences": 46,
+   "occurrences": 47,
    "source": "api"
   },
   {
@@ -363,19 +367,19 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 60,
+   "occurrences": 61,
    "source": "bootstrap"
   },
   {
    "autorise": true,
    "cible": "infrastructure",
-   "occurrences": 14,
+   "occurrences": 15,
    "source": "bootstrap"
   },
   {
    "autorise": true,
    "cible": "api",
-   "occurrences": 62,
+   "occurrences": 63,
    "source": "bootstrap"
   }
  ],
@@ -385,7 +389,7 @@ window.ATLAS.carte = {
    "cible": "api",
    "couche_cible": "api",
    "couche_source": "api",
-   "occurrences": 54,
+   "occurrences": 55,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -430,6 +434,7 @@ window.ATLAS.carte = {
     "backend/api/v1/remboursements.py",
     "backend/api/v1/saisie.py",
     "backend/api/v1/saisie_duels.py",
+    "backend/api/v1/sauvegardes.py",
     "backend/api/v1/scoreurs.py",
     "backend/api/v1/simulation.py",
     "backend/api/v1/suisse.py",
@@ -468,7 +473,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 70,
+   "occurrences": 71,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -515,6 +520,7 @@ window.ATLAS.carte = {
     "backend/api/v1/routage.py",
     "backend/api/v1/saisie.py",
     "backend/api/v1/saisie_duels.py",
+    "backend/api/v1/sauvegardes.py",
     "backend/api/v1/scoreurs.py",
     "backend/api/v1/simulation.py",
     "backend/api/v1/suisse.py",
@@ -672,7 +678,7 @@ window.ATLAS.carte = {
    "cible": "infrastructure/db",
    "couche_cible": "infrastructure",
    "couche_source": "api",
-   "occurrences": 34,
+   "occurrences": 35,
    "origines": [
     "backend/api/v1/bareme_qualification.py",
     "backend/api/v1/barrages.py",
@@ -705,6 +711,7 @@ window.ATLAS.carte = {
     "backend/api/v1/remboursements.py",
     "backend/api/v1/saisie.py",
     "backend/api/v1/saisie_duels.py",
+    "backend/api/v1/sauvegardes.py",
     "backend/api/v1/scoreurs.py",
     "backend/api/v1/suisse.py",
     "backend/api/v1/tournois.py"
@@ -727,7 +734,7 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 57,
+   "occurrences": 58,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -777,6 +784,7 @@ window.ATLAS.carte = {
     "backend/application/routage.py",
     "backend/application/saisie.py",
     "backend/application/saisie_duels.py",
+    "backend/application/sauvegardes.py",
     "backend/application/scoreurs.py",
     "backend/application/simulation.py",
     "backend/application/simulation_format.py",
@@ -899,7 +907,7 @@ window.ATLAS.carte = {
    "cible": "api/v1",
    "couche_cible": "api",
    "couche_source": "bootstrap",
-   "occurrences": 57,
+   "occurrences": 58,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -910,7 +918,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 60,
+   "occurrences": 61,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -965,7 +973,7 @@ window.ATLAS.carte = {
    "cible": "infrastructure/backup",
    "couche_cible": "infrastructure",
    "couche_source": "bootstrap",
-   "occurrences": 2,
+   "occurrences": 3,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1120,6 +1128,17 @@ window.ATLAS.carte = {
   },
   {
    "autorise": true,
+   "cible": "application",
+   "couche_cible": "application",
+   "couche_source": "infrastructure",
+   "occurrences": 1,
+   "origines": [
+    "backend/infrastructure/backup/restauration.py"
+   ],
+   "source": "infrastructure/backup"
+  },
+  {
+   "autorise": true,
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
@@ -1134,8 +1153,9 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 1,
+   "occurrences": 2,
    "origines": [
+    "backend/infrastructure/backup/restauration.py",
     "backend/infrastructure/backup/sauvegarde.py"
    ],
    "source": "infrastructure/backup"
@@ -1285,11 +1305,23 @@ window.ATLAS.carte = {
   },
   {
    "autorise": true,
-   "cible": "infrastructure/db",
+   "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "infrastructure",
    "occurrences": 1,
    "origines": [
+    "backend/infrastructure/backup/restauration.py"
+   ],
+   "source": "infrastructure/backup"
+  },
+  {
+   "autorise": true,
+   "cible": "infrastructure/db",
+   "couche_cible": "infrastructure",
+   "couche_source": "infrastructure",
+   "occurrences": 2,
+   "origines": [
+    "backend/infrastructure/backup/restauration.py",
     "backend/infrastructure/backup/sauvegarde.py"
    ],
    "source": "infrastructure/backup"
@@ -2716,8 +2748,16 @@ window.ATLAS.carte = {
      "nom": "ServiceRemboursements"
     },
     {
+     "fichier": "backend/application/sauvegardes.py",
+     "nom": "ServiceSauvegardes"
+    },
+    {
      "fichier": "backend/application/scoreurs.py",
      "nom": "ServiceScoreurs"
+    },
+    {
+     "fichier": "backend/infrastructure/backup/restauration.py",
+     "nom": "StoreSauvegardesSQLite"
     },
     {
      "fichier": "backend/infrastructure/db/repositories/moteur.py",
@@ -3366,6 +3406,26 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/infrastructure/backup/restauration.py",
+     "nom": "StoreSauvegardesSQLite"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/sauvegardes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "copier_avant_restauration",
+    "examiner",
+    "lister",
+    "restaurer",
+    "revision_en_service"
+   ],
+   "nom": "StoreSauvegardes",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/infrastructure/auth/sessions.py",
      "nom": "SessionStore"
     }
@@ -3476,14 +3536,14 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 188,
+  "aretes_front": 189,
   "enchevetrements": 4,
-  "features": 53,
-  "imports": 1063,
-  "imports_entre_couches": 892,
+  "features": 54,
+  "imports": 1074,
+  "imports_entre_couches": 899,
   "plus_gros_noeud": 25,
-  "ports": 79,
-  "ports_hors_domaine": 30,
+  "ports": 80,
+  "ports_hors_domaine": 31,
   "ports_sans_adapter": 0,
   "violations": 0
  },
