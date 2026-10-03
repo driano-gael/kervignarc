@@ -285,7 +285,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 400,
+   "occurrences": 402,
    "source": "application"
   },
   {
@@ -790,7 +790,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 385,
+   "occurrences": 387,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -3475,14 +3475,14 @@ window.ATLAS.carte = {
    "adapters": [
     {
      "fichier": "backend/application/verrou_bareme.py",
-     "nom": "VerrouBaremeDuel"
+     "nom": "VerrouCompositionEquipes"
     }
    ],
    "couche": "application",
    "fichier": "backend/application/equipes.py",
    "hors_domaine": true,
    "methodes": [
-    "type_en_jeu"
+    "en_jeu"
    ],
    "nom": "VerrouDeComposition",
    "sans_adapter": false
@@ -3492,8 +3492,8 @@ window.ATLAS.carte = {
   "aretes_front": 189,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1057,
-  "imports_entre_couches": 890,
+  "imports": 1059,
+  "imports_entre_couches": 892,
   "plus_gros_noeud": 25,
   "ports": 79,
   "ports_hors_domaine": 31,

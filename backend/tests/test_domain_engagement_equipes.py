@@ -104,8 +104,9 @@ def test_a_total_egal_la_somme_des_dix_puis_des_neuf_departage() -> None:
     assert [e.rang for e in engagement.engagees] == [1, 2, 3]
 
 
-def test_a_egalite_complete_l_ordre_alphabetique_du_nom_tranche() -> None:
-    # DETTE-121 : un départage au tir du rang d'entrée n'existe pas encore.
+def test_a_egalite_complete_l_equipe_creee_la_premiere_tranche() -> None:
+    # DETTE-121 : faute de barrage d'équipes. Pas le nom : un renommage après le premier tir
+    # réensemencerait le tableau (relevé en 2ᵉ passe de revue, axe D).
     zulu = _equipe(1, "Zulu", (1, 2, 3))
     alpha = _equipe(2, "alpha", (4, 5, 6))
     lignes = _lignes(*(_ligne(archer, 500) for archer in range(1, 7)))
@@ -114,7 +115,7 @@ def test_a_egalite_complete_l_ordre_alphabetique_du_nom_tranche() -> None:
         TypeEquipe.STANDARD, [zulu, alpha], _profils(*range(1, 7)), lignes
     )
 
-    assert [(e.equipe.nom, e.rang) for e in engagement.engagees] == [("alpha", 1), ("Zulu", 2)]
+    assert [(e.equipe.nom, e.rang) for e in engagement.engagees] == [("Zulu", 1), ("alpha", 2)]
 
 
 # --- CA 2 : qui est engagé, qui est écarté et pourquoi ---------------------------------------
@@ -228,4 +229,18 @@ def test_aucune_equipe_rend_un_engagement_vide() -> None:
     engagement = engager_les_equipes(TypeEquipe.STANDARD, [], {}, {})
 
     assert engagement.engagees == ()
+    assert engagement.ecartees == ()
+
+
+def test_une_equipe_sans_aucun_membre_dans_ce_depart_n_est_pas_listee() -> None:
+    # Elle relève d'un autre départ : la lister comme « écartée » ici serait un faux motif.
+    ici = _equipe(1, "Ici", (1, 2, 3))
+    ailleurs = _equipe(2, "Ailleurs", (7, 8, 9))
+    lignes = _lignes(_ligne(1, 500), _ligne(2, 500), _ligne(3, 500))
+
+    engagement = engager_les_equipes(
+        TypeEquipe.STANDARD, [ici, ailleurs], _profils(1, 2, 3, 7, 8, 9), lignes
+    )
+
+    assert [e.equipe.nom for e in engagement.engagees] == ["Ici"]
     assert engagement.ecartees == ()

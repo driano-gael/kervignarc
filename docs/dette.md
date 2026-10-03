@@ -40,7 +40,8 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-121](#dette-121--deux-équipes-à-égalité-complète-entrent-au-tableau-par-ordre-alphabétique) | conception | mineur | `backend/domain/engagement_equipes.py` (`engager_les_equipes`, marqueur `DETTE-121`) | Le rang d'entrée d'une équipe est la somme des qualifications de ses membres, puis des 10, puis des 9 ; à égalité **complète**, l'ordre **alphabétique** du nom tranche | Deux équipes réellement ex æquo ne se départagent pas au tir : l'une est mieux ensemencée qu'une autre pour un motif sans rapport avec le sport. Rare (trois totaux, trois décomptes de 10 et de 9 égaux) et **visible** — l'ordre se lit à l'écran | **E13US004** (03/10/2026) — le barrage de places d'E06US003 ne range que des archers | Un barrage d'équipes au rang d'entrée, sur le modèle d'E06US003 — `E13US005` |
+| [DETTE-123](#dette-123--le-gel-de-la-composition-ne-tient-que-sur-lécran-équipes) | conception | majeur | `backend/application/archers.py` (`fusionner`, `supprimer`, `_signaler_changement_categorie`), `backend/application/categories.py` (`modifier`), `backend/application/forfaits.py` (`declarer_en_qualification`) — marqueurs `DETTE-123` | Le gel de la composition d'E13US004 (CA 10) ne tient que sur l'écran « Équipes ». Cinq autres gestes changent encore l'engagement d'un tableau d'équipes **déjà tiré** : supprimer un archer membre (confirmé), fusionner deux fiches, changer la catégorie d'un membre, modifier le sexe ou le blason d'une catégorie de membre, déclarer un membre forfait en qualification | Le tableau se réensemence et les tirs faits sont **masqués** (« désynchronisés », ADR-0049 §4) — le régime déjà accepté pour un tableau individuel quand on corrige une qualification | **E13US004** (03/10/2026, 2ᵉ passe de revue, axes B, C1, C2, D) — arbitrage du commanditaire : accepter, en dette, plutôt que verrouiller cinq routes | **Figer l'engagement** au premier tir (liste et ordre des équipes persistés), ce qui rend les cinq routes inoffensives — `E13US005` |
+| [DETTE-121](#dette-121--deux-équipes-à-égalité-complète-entrent-au-tableau-par-ordre-de-création) | conception | mineur | `backend/domain/engagement_equipes.py` (`engager_les_equipes`, marqueur `DETTE-121`) | Le rang d'entrée d'une équipe est la somme des qualifications de ses membres, puis des 10, puis des 9 ; à égalité **complète**, l'équipe **créée la première** tranche (et non le nom, qu'un renommage après le premier tir changerait) | Deux équipes réellement ex æquo ne se départagent pas au tir : l'une est mieux ensemencée qu'une autre pour un motif sans rapport avec le sport. Rare (trois totaux, trois décomptes de 10 et de 9 égaux) et **visible** — l'ordre se lit à l'écran | **E13US004** (03/10/2026) — le barrage de places d'E06US003 ne range que des archers | Un barrage d'équipes au rang d'entrée, sur le modèle d'E06US003 — `E13US005` |
 | [DETTE-120](#dette-120--une-phase-déquipes-ne-prélève-pas-nalimente-personne-et-ignore-les-forfaits) | conception | majeur | `backend/domain/phase.py` (`_anomalies_ilot_d_equipes`), `backend/application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`, `_appliquer_forfaits`), `backend/domain/erreurs/moteur.py`, `frontend/src/features/feu-vert/etat.ts`, `frontend/src/features/saisie-duels/SaisieDuels.tsx` — marqueurs `DETTE-120` (back **et** front, `grep`) | Une phase réglée par équipes engage **toutes** les équipes conformes de son type : elle ne prélève pas « les 16 premières » (§6.4), n'alimente aucune phase aval (consolante, petite finale par équipes), et un **forfait** — déclaré pour un archer — n'atteint pas un camp d'équipe | Un tournoi de plus de 16 équipes d'un type ne peut pas s'en tenir aux 16 premières ; une équipe qui abandonne en cours de tableau ne se déclare pas forfait, il faut saisir ses duels perdus. Les deux premiers cas sont **refusés** en anomalie de déroulé, jamais joués faux | **E13US004** (03/10/2026) — arbitrage du commanditaire au cadrage : top N différé | `E13US005` — prélèvement par rangs sur le classement des équipes, forfait d'équipe |
 | [DETTE-119](#dette-119--la-reconnaissance-des-poulies-vit-en-double-au-front-et-au-domaine) | technique | mineur | `frontend/src/shared/phases/baremeDuel.ts` (`estPoulies`, `presetFftaEquipe`, `presetFftaMixte`) ↔ `backend/domain/duel.py` (`_est_poulies`, `BaremeDuel.preset_ffta_equipe`), marqueurs `DETTE-119` aux sites | La règle « une arme dont le libellé contient *poulie* ou *compound* est un arc à poulies » est écrite deux fois : au domaine (défaut d'une phase non réglée) et au front (pré-remplissage des presets, avertissements d'écart) | Si elles divergent, un preset oublie une arme ou l'avertissement « sans barème propre » se trompe — sans test qui les confronte. Règle courte et stable : l'option « rien » se défend | **E01US011** (01/10/2026, 2ᵉ passe de revue, axe C2) — précédent `DETTE-076`. ⚠️ **Élargie par E13US004** (03/10/2026) : les presets **équipe** et **mixte** (4 manches de 6 ou de 4, barrage 3 ou 2, cumul aux poulies) vivent désormais aussi au domaine, défaut d'une phase d'équipes non réglée | Un test de contrat qui passe la **même** liste de libellés aux deux règles ; ou une route qui expose la reconnaissance du domaine |
 | [DETTE-118](#dette-118--déplacer-un-archer-après-son-duel-relit-ses-duels-sous-un-autre-barème) | conception | majeur | `backend/application/archers.py` (`_signaler_changement_categorie`, marqueur `DETTE-118`) | Changer la catégorie d'un archer qui a tiré ne pose qu'une **confirmation** ; si l'arme change, ses duels déjà tirés se **relisent** sous le barème de la nouvelle arme (le barème n'est pas stocké avec le tir, ADR-0049 §4) | Un vainqueur peut changer, ou un duel validé redevenir non tranché et disparaître du tableau. Le message le dit depuis E01US011, sans le refuser — c'est la route jumelle du verrou d'arme d'ADR-0117 §7 | **E01US011** (01/10/2026, 2ᵉ passe, axe D) — arbitrage du commanditaire : dette + message plutôt que refus ; le défaut existait depuis E04US013 (ADR-0049, « mutation d'arme ») sans ligne au registre | Le **gel du classement** pendant les phases finales (E01US017/E12US002) ; à défaut, étendre `VerrouBaremeDuel` à ce chemin |
@@ -1069,7 +1070,7 @@ d'aller-retour HTTP calqué sur celui qu'E16US002 vient d'écrire pour le titre.
 **Ce qui est dupliqué, et ce qui ne l'est pas.** Les **contrôles** de réglage sont partagés : les six
 `shared/phases/Reglage*.tsx` et `ChoixProfondeur.tsx` sont montés par les deux écrans, et leurs
 en-têtes le disent (« partagée par les **deux** écrans qui composent des phases »). Ce qui reste
-écrit deux fois est la **plomberie** autour d'eux, pour chacun des douze réglages :
+écrit deux fois est la **plomberie** autour d'eux, pour chacun des treize réglages :
 
 1. l'état local et son adaptateur d'entrée — `useState(depuisReglageColline(etape?.colline ?? null))` ;
 2. la **garde de type** au moment de construire la charge utile — `estColline ? versReglageColline(colline) : null`,
@@ -1089,7 +1090,8 @@ ne se résorbent pas au même endroit.
   « *relevé en 2ᵉ passe : le correctif n'avait été appliqué qu'à un des deux formulaires jumeaux* ».
 - La **colline** manquait à cette même liste de reset (2ᵉ passe d'E05US027) : un Ladder portée 4 sur
   8 manches se serait reporté en silence sur la phase suivante.
-- `Deroule.tsx` réinitialise **8 champs sur 13** (`bareme_duel` y compris, depuis E01US011) ;
+- `Deroule.tsx` réinitialise **10 champs sur 15** (`bareme_duel` depuis E01US011, `duree_prevue`
+  depuis E03US010, `equipes` depuis E13US004) ;
   **`colline`, `arrets`, `decoupage`, `type` et le barème de qualification** n'y sont pas. C'est donc une divergence **ouverte**, pas seulement un risque — et
   `colline` en fait partie, alors que le point ci-dessus la présente comme un cas *résolu* :
   E05US027 l'a bien ajoutée au reset de `Phases.tsx`, **pas** à celui de l'atelier. Composer deux
@@ -3790,6 +3792,12 @@ résolveur au port. Il se traite avec `E05US033`, qui rouvrira ces trois réalis
 et le signal que le réflexe « une US qui touche au suivi élargit DETTE-031 » n'est toujours pas
 acquis à l'écriture.*
 
+**Élargie par E13US004.** Un camp d'équipe se résout par `ServiceEquipes.jouee` — l'équipe, puis
+chaque membre et sa catégorie — **à chaque** besoin (barème, pavé, nom), plusieurs fois par match
+et par reconstruction. L'engagement lui-même est calculé dans `_decor`, puis **recalculé** par
+`_ecartees` et, quand moins de deux équipes sont engagées, par `_equipes_sans_tableau`. Le remède
+est celui de la ligne : un décor mémoïsé qui porte les `EquipeJouee` d'une reconstruction.
+
 ### DETTE-032 — la prise de contrôle se mesure sur l'heure murale, pas sur une horloge monotone
 
 `ServiceEcrans._ecoulees` calcule la durée écoulée d'une prise de contrôle comme un écart entre deux
@@ -5256,9 +5264,11 @@ bouge pas.
 
 ### DETTE-120 — une phase d'équipes ne prélève pas, n'alimente personne et ignore les forfaits
 
-**Où** : `backend/domain/phase.py` (`_anomalies_ilot_d_equipes`) et
+**Où** : `backend/domain/phase.py` (`_anomalies_ilot_d_equipes`),
 `backend/application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`,
-`_appliquer_forfaits`), marqueur `DETTE-120`.
+`_appliquer_forfaits`), `backend/domain/placement.py` (`_ordonner_pour_adjacence`),
+`backend/domain/erreurs/moteur.py`, `frontend/src/features/feu-vert/etat.ts` et
+`frontend/src/features/saisie-duels/SaisieDuels.tsx` — marqueur `DETTE-120` (`grep`).
 
 **Le raccourci.** E13US004 livre le tableau d'équipes comme un **îlot** (ADR-0120 §6) : il engage
 toutes les équipes conformes de son type, et aucune source ne le relie au reste du déroulé. Le
@@ -5277,14 +5287,33 @@ deux groupes de cibles. Le duel reste jouable, la proximité est perdue.
 d'entrée d'`engager_les_equipes`, puis celui du tableau), un forfait déclarable pour une équipe,
 et un cloisonnement qui laisse une équipe mixte d'un seul tenant.
 
-### DETTE-121 — deux équipes à égalité complète entrent au tableau par ordre alphabétique
+### DETTE-121 — deux équipes à égalité complète entrent au tableau par ordre de création
 
 **Où** : `backend/domain/engagement_equipes.py` (`engager_les_equipes`), marqueur `DETTE-121`.
 
 **Le raccourci.** Le rang d'entrée somme les qualifications des membres, puis leurs 10, puis leurs 9
 (arbitrage du 03/10/2026, règle World Archery — le référentiel §6.4 ne dit que « placées selon la
-qualification »). À égalité complète, rien de sportif ne départage : l'ordre alphabétique du nom
-tranche, pour que l'ensemencement reste déterministe.
+qualification »). À égalité complète, rien de sportif ne départage : l'équipe créée la première
+passe devant, pour que l'ensemencement reste déterministe. Pas le **nom** (1ʳᵉ rédaction) : un
+renommage, libre après le premier tir, aurait échangé deux têtes de série (2ᵉ passe de revue).
 
 **Remède** (`E13US005`) : un barrage d'équipes au rang d'entrée, sur le modèle du barrage de places
 d'E06US003, qui ne range aujourd'hui que des archers.
+
+### DETTE-123 — le gel de la composition ne tient que sur l'écran « Équipes »
+
+**Où** : `backend/application/archers.py` (`fusionner`, `supprimer`, `_signaler_changement_categorie`),
+`backend/application/categories.py` (`modifier`), `backend/application/forfaits.py`
+(`declarer_en_qualification`), marqueur `DETTE-123`.
+
+**Le raccourci.** L'engagement d'un tableau d'équipes se recalcule à chaque lecture depuis trois
+entrées : la composition des équipes, le profil de catégorie de chaque membre (arme, sexe, blason) et
+son statut au classement de qualification. Le CA 10 ne fige que la première, et seulement par
+`ServiceEquipes`. Les cinq gestes listés modifient les deux autres sans consulter le verrou : le
+tableau se réensemence et les tirs faits sont masqués. C'est le régime d'un tableau **individuel**
+quand on corrige une qualification (ADR-0049 §4) ; arbitrage du commanditaire du 03/10/2026 : le
+garder pour les équipes plutôt que de refuser cinq gestes du jour J (un membre blessé déclaré forfait,
+une catégorie corrigée).
+
+**Remède** (`E13US005`) : figer l'**engagement** lui-même au premier tir — liste et ordre des équipes
+persistés —, ce qui rend inoffensives ces cinq routes et le verrou de composition à la fois.

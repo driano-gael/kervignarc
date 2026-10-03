@@ -7,10 +7,20 @@ duels validés sous d'autres règles. Une seule définition de « déjà tiré �
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
+from domain.archer import ArcherId
+from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, ResolveurBaremeDuel
 from domain.equipe import TypeEquipe
-from domain.ports import DepartRepository, DerouleRepository, DuelRepository, PhaseRepository
+from domain.ports import (
+    DepartRepository,
+    DerouleRepository,
+    DuelRepository,
+    InscriptionRepository,
+    PhaseRepository,
+)
 from domain.tournoi import TournoiId
 
 
@@ -36,21 +46,16 @@ class VerrouBaremeDuel:
 
         ⚠️ Tout tir enregistré compte, vestige désynchronisé compris (ADR-0117, Conséquences).
         """
+        departs = {d.id for d in self._departs.par_tournoi(tournoi_id) if d.id is not None}
+        return self.etape_tiree_dans(etape_id, departs)
+
+    def etape_tiree_dans(self, etape_id: EtapeDerouleId, departs: Iterable[DepartId]) -> bool:
+        """Une phase de cette étape a-t-elle un tir dans l'un de ces créneaux (E13US004) ?"""
         return any(
             phase.id is not None and self._duels.numeros_enregistres(phase.id)
-            for depart in self._departs.par_tournoi(tournoi_id)
-            if depart.id is not None
-            for phase in self._phases.par_depart(depart.id)
+            for depart_id in departs
+            for phase in self._phases.par_depart(depart_id)
             if phase.etape_id == etape_id
-        )
-
-    def type_en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe) -> bool:
-        """Une étape qui oppose des équipes de ce type a-t-elle un tir (E13US004) ?"""
-        return any(
-            etape.id is not None
-            and etape.equipes is type
-            and self.etape_tiree(tournoi_id, etape.id)
-            for etape in self._deroules.par_tournoi(tournoi_id)
         )
 
     def arme_figee(self, tournoi_id: TournoiId, ancienne: str | None, nouvelle: str | None) -> bool:
@@ -70,3 +75,31 @@ class VerrouBaremeDuel:
         if etape.bareme_duel is not None:
             return etape.bareme_duel.pour(arme)
         return self._resolveur.bareme_pour(arme)
+
+
+class VerrouCompositionEquipes:
+    """Une équipe est-elle en jeu : un de ses membres tire-t-il un départ dont le tableau d'équipes
+    de ce type a un tir (E13US004, ADR-0120 §7) ?
+
+    ⚠️ **Par départ** (ADR-0075) : un tableau tiré le samedi ne fige pas les équipes du dimanche,
+    qu'il n'engage pas.
+    """
+
+    def __init__(
+        self,
+        verrou: VerrouBaremeDuel,
+        deroules: DerouleRepository,
+        inscriptions: InscriptionRepository,
+    ) -> None:
+        self._verrou = verrou
+        self._deroules = deroules
+        self._inscriptions = inscriptions
+
+    def en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe, archers: Iterable[ArcherId]) -> bool:
+        departs = {i.depart_id for a in archers for i in self._inscriptions.par_archer(a)}
+        return bool(departs) and any(
+            etape.id is not None
+            and etape.equipes is type
+            and self._verrou.etape_tiree_dans(etape.id, departs)
+            for etape in self._deroules.par_tournoi(tournoi_id)
+        )

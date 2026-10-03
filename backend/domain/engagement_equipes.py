@@ -65,7 +65,8 @@ def engager_les_equipes(
     engagees: list[EquipeEngagee] = []
     ecartees: list[EquipeEcartee] = []
     for equipe in equipes:
-        if equipe.type is not type:
+        if equipe.type is not type or not any(m in lignes for m in equipe.membres):
+            # Aucun membre au classement de ce départ : l'équipe en relève d'un autre.
             continue
         ecarts = ecarts_de_composition(
             equipe, [profils.get(membre, _PROFIL_INCONNU) for membre in equipe.membres]
@@ -84,8 +85,9 @@ def engager_les_equipes(
                 nb_neuf=sum(ligne.nb_neuf for ligne in membres),
             )
         )
-    # DETTE-121 : à égalité complète, l'ordre alphabétique tranche faute de barrage d'équipes.
-    engagees.sort(key=lambda e: (-e.total, -e.nb_dix, -e.nb_neuf, *_cle(e.equipe)))
+    # DETTE-121 : à égalité complète, l'équipe créée la première — pas le nom, qu'un renommage
+    # après le premier tir changerait, réensemençant le tableau.
+    engagees.sort(key=lambda e: (-e.total, -e.nb_dix, -e.nb_neuf, e.equipe.id or 0))
     return Engagement(
         engagees=tuple(
             EquipeEngagee(e.equipe, rang, e.total, e.nb_dix, e.nb_neuf)

@@ -294,7 +294,7 @@ async def lire_tableau(
     """Le tableau reconstruit d'une phase (matchs, tirs, podium). Scoreur, dans son tournoi."""
     service: ServiceSaisieDuels = request.app.state.service_saisie_duels
     _exiger_meme_tournoi(scoreur, tournoi_id)
-    etat = await run_in_threadpool(service.etat_tableau, tournoi_id, phase_id)
+    etat = await run_in_threadpool(service.etat_tableau_de_saisie, tournoi_id, phase_id)
     return TableauReponse.de_etat(etat)
 
 

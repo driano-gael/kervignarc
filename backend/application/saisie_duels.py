@@ -282,17 +282,24 @@ class ServiceSaisieDuels:
 
     # --- Lecture -------------------------------------------------------------------------------
 
-    def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
-        """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
+    def etat_tableau_de_saisie(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
+        """`etat_tableau` pour l'écran des duels : sous deux équipes engagées, un tableau **vide**
+        qui porte les équipes écartées et leurs motifs (E13US004, CA 2), au lieu de lever.
+
+        ⚠️ Distinct d'`etat_tableau`, qui lève toujours : les tableaux publics et la simulation
+        sautent une phase pas encore jouable sur cette exception.
+        """
         try:
-            tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
+            return self.etat_tableau(tournoi_id, phase_id)
         except EffectifTableauInvalide:
-            # Moins de deux équipes engagées : c'est justement là qu'il faut dire pourquoi les
-            # autres sont écartées (E13US004, CA 2) — un tableau vide qui porte les motifs.
             sans_tableau = self._equipes_sans_tableau(tournoi_id, phase_id)
             if sans_tableau is None:
                 raise
             return sans_tableau
+
+    def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
+        """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
+        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         duels = tuple(
             self._etat_du_match(m, phase_id, lignes, tableau.nb_tours, reglage)
             for m in tableau.matchs

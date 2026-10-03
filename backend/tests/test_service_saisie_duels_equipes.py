@@ -424,7 +424,7 @@ def test_sous_deux_equipes_engagees_le_tableau_est_vide_mais_dit_pourquoi() -> N
     monde.equipe_de_trois("Seule", 10)
     monde.equipe("Incomplète", (monde.archer(9),))
 
-    etat = monde.service().etat_tableau(1, monde.phase_id)
+    etat = monde.service().etat_tableau_de_saisie(1, monde.phase_id)
 
     assert (etat.effectif, etat.duels, etat.podium) == (1, (), ())
     assert [e.nom for e in etat.equipes_ecartees] == ["Incomplète"]
@@ -439,3 +439,14 @@ def test_une_phase_individuelle_sous_deux_archers_leve_toujours() -> None:
 
     with pytest.raises(EffectifTableauInvalide):
         monde.service().etat_tableau(1, monde.phase_id)
+
+
+def test_les_autres_lecteurs_du_tableau_recoivent_toujours_l_exception() -> None:
+    # Tableaux publics et simulation sautent une phase pas encore jouable sur cette exception :
+    # seul l'écran des duels reçoit le tableau vide (relevé en 2ᵉ passe de revue, axes A, C1, D).
+    monde = _Monde()
+    monde.equipe_de_trois("Seule", 10)
+
+    with pytest.raises(EffectifTableauInvalide):
+        monde.service().etat_tableau(1, monde.phase_id)
+    assert monde.service().etat_tableau_de_saisie(1, monde.phase_id).duels == ()

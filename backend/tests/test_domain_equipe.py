@@ -349,12 +349,21 @@ def test_des_membres_sur_des_blasons_differents_sont_un_ecart() -> None:
     assert ecarts_de_composition(equipe, profils) == (EcartComposition.BLASONS_DIFFERENTS,)
 
 
-def test_un_blason_inconnu_ne_cree_pas_d_ecart_de_blason() -> None:
+def test_un_blason_connu_mele_a_un_blason_inconnu_est_un_ecart() -> None:
+    # Le pavé est celui du premier membre : sans cet écart, l'issue dépendrait de l'ordre d'ajout
+    # (relevé en 2ᵉ passe de revue, axe C1).
     equipe = Equipe(1, "Partielle", TypeEquipe.STANDARD, 2, (1, 2), id=1)
     profils = [
         ProfilMembre(arme="Classique", sexe=H, blason_id=10),
         ProfilMembre(arme="Classique", sexe=H, blason_id=None),
     ]
+
+    assert EcartComposition.BLASONS_DIFFERENTS in ecarts_de_composition(equipe, profils)
+
+
+def test_aucun_blason_connu_ne_cree_pas_d_ecart_de_blason() -> None:
+    equipe = Equipe(1, "Sans blason", TypeEquipe.STANDARD, 2, (1, 2), id=1)
+    profils = [ProfilMembre(arme="Classique", sexe=H), ProfilMembre(arme="Classique", sexe=H)]
 
     assert EcartComposition.BLASONS_DIFFERENTS not in ecarts_de_composition(equipe, profils)
 

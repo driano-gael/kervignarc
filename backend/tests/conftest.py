@@ -45,7 +45,7 @@ import dataclasses
 import datetime
 import logging
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -1372,5 +1372,6 @@ class FauxVerrouDeComposition:
     def __init__(self) -> None:
         self.tires: set[TypeEquipe] = set()
 
-    def type_en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe) -> bool:
-        return type in self.tires
+    def en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe, archers: Iterable[ArcherId]) -> bool:
+        # Une équipe sans membre ne tire aucun départ : jamais en jeu, comme la vraie classe.
+        return type in self.tires and any(True for _ in archers)

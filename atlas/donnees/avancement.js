@@ -4,6 +4,17 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "123",
+   "introduite_par": [
+    "E13US004"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E13US005"
+   ],
+   "severite": "majeur"
+  },
+  {
    "identifiant": "121",
    "introduite_par": [
     "E13US004",
@@ -4281,7 +4292,8 @@ window.ATLAS.avancement = {
     "080",
     "119",
     "120",
-    "121"
+    "121",
+    "123"
    ],
    "dettes_resorbees": [],
    "epic": "13",
@@ -4303,7 +4315,8 @@ window.ATLAS.avancement = {
    "dettes_introduites": [],
    "dettes_resorbees": [
     "120",
-    "121"
+    "121",
+    "123"
    ],
    "epic": "13",
    "epic_titre": "Épreuves par équipes — abstraction participant",

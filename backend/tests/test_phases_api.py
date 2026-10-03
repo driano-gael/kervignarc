@@ -16,9 +16,18 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.archer import Archer
+from domain.categorie import Categorie
 from domain.duel import BaremeDuel, Duel
 from domain.equipe import TypeEquipe
+from domain.inscription import Inscription
 from domain.participant import GenreParticipant, Participant
+from infrastructure.db import (
+    ArcherRepositorySQL,
+    AuditRepositorySQL,
+    CategorieRepositorySQL,
+    InscriptionRepositorySQL,
+)
 from infrastructure.db.repositories.moteur import PhaseRepositorySQL
 from infrastructure.db.repositories.tir import DuelRepositorySQL
 from tests.base_migree import preparer_base
@@ -1156,6 +1165,21 @@ def test_supprimer_une_equipe_d_un_type_en_jeu_repond_409(
         fabrique = app_phases.state.database.session_factory
         (phase,) = PhaseRepositorySQL(fabrique).par_tournoi(tournoi_id)
         assert phase.id is not None
+        # Un membre inscrit au départ du tableau : le verrou est **par départ** (ADR-0120 §7).
+        categorie = CategorieRepositorySQL(fabrique).ajouter(Categorie.creer(tournoi_id, "CLH"))
+        assert categorie.id is not None
+        archer = ArcherRepositorySQL(fabrique).ajouter(
+            Archer.creer("Tell", "Guillaume", tournoi_id, categorie.id)
+        )
+        assert archer.id is not None
+        InscriptionRepositorySQL(fabrique, AuditRepositorySQL(fabrique)).ajouter(
+            Inscription(archer.id, phase.depart_id)
+        )
+        membre = client.post(
+            f"/api/v1/tournois/{tournoi_id}/equipes/{equipe.json()['id']}/membres",
+            json={"archer_id": archer.id},
+        )
+        assert membre.status_code == 200, membre.text
         DuelRepositorySQL(fabrique).enregistrer(
             phase.id,
             1,
@@ -1169,4 +1193,4 @@ def test_supprimer_une_equipe_d_un_type_en_jeu_repond_409(
         reponse = client.delete(f"/api/v1/tournois/{tournoi_id}/equipes/{equipe.json()['id']}")
 
         assert reponse.status_code == 409, reponse.text
-        assert reponse.json()["code"] == "equipe_verrouillee"
+        assert reponse.json()["code"] == "composition_equipe_verrouillee"

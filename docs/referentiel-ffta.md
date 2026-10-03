@@ -190,7 +190,7 @@ de la qualification ») s'entend toujours **dans le départ** de la phase qui pr
 
 ### 6.4 Épreuves par équipes (3 archers, art. A.7.5)
 Éliminatoire : 16 équipes/sexe placées selon la qualification ; finale : 4 équipes/sexe. Volée tirée en **2 minutes**.
-Rang d'entrée d'une équipe : la **somme** des scores de qualification de ses membres, puis de leurs 10, puis de leurs 9 (règle World Archery — `❓ à confirmer` sur le texte FFTA, retenue le 03/10/2026 en E13US004, [ADR-0120](adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md)) ; à égalité complète, l'ordre alphabétique tranche faute de barrage d'équipes (`DETTE-121`).
+Rang d'entrée d'une équipe : la **somme** des scores de qualification de ses membres, puis de leurs 10, puis de leurs 9 (règle World Archery — `❓ à confirmer` sur le texte FFTA, retenue le 03/10/2026 en E13US004, [ADR-0120](adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md)) ; à égalité complète, l'équipe créée la première passe devant, faute de barrage d'équipes (`DETTE-121`).
 
 | Division | Format d'un match | Victoire | Statut |
 |---|---|---|---|

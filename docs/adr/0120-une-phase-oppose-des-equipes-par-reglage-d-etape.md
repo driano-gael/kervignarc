@@ -37,7 +37,7 @@ Trois faits du code ont orienté la décision :
    motifs**, jamais en silence. C'est la forme que prend « refusée à l'engagement » quand
    l'engagement n'existe pas comme acte : l'équipe n'entre pas, et l'écran dit pourquoi.
 3. **Rang d'entrée = somme des qualifications des membres**, départagée par la somme des 10 puis des
-   9, puis par le nom (`DETTE-121`). Le tableau d'équipes s'ensemence ensuite par la **même**
+   9, puis par l'ordre de création (`DETTE-121`). Le tableau d'équipes s'ensemence ensuite par la **même**
    politique de seeding que l'individuel : seule la liste des participants change.
 4. **Le barème par défaut d'un duel d'équipes est le preset FFTA du type**, via une seconde méthode
    du résolveur injecté (`bareme_equipe_pour(type, arme)`), et non le barème individuel.
@@ -55,10 +55,12 @@ Trois faits du code ont orienté la décision :
    d'un tableau d'équipes est indexé par équipe, donc le prélever comme un classement d'archers
    produirait une population fausse mais bien formée.
 
-7. **La composition se fige au premier tir** (arbitrage de revue du 03/10/2026). L'engagement
-   étant recalculé, créer, supprimer ou recomposer une équipe d'un type déjà en jeu réécrirait
-   l'ensemencement et masquerait les tirs faits : `ServiceEquipes` le refuse (409), au moyen du
-   même `VerrouBaremeDuel` que le barème. Le verrou du drapeau d'étape (§1) en est le pendant.
+7. **La composition se fige au premier tir, par départ** (arbitrages de revue du 03/10/2026).
+   L'engagement étant recalculé, supprimer ou recomposer une équipe dont un membre tire un départ
+   où le tableau de ce type a un tir réécrirait l'ensemencement : `ServiceEquipes` le refuse (409,
+   `VerrouCompositionEquipes`). Le gel ne couvre **que** cet écran : supprimer ou fusionner un
+   archer, modifier une catégorie, déclarer un forfait de qualification changent encore
+   l'engagement, comme en individuel (`DETTE-123`) — le remède est de figer l'engagement.
 
 ## Alternatives écartées
 
@@ -93,6 +95,6 @@ Trois faits du code ont orienté la décision :
 | 1 — réglage d'étape | `domain/deroule_etape.py`, `domain/phase.py` (garde), `domain/format_tournoi.py`, `infrastructure/db/repositories/moteur.py`, `application/phases.py` (verrou), `api/v1/phases.py`, `api/v1/formats.py`, `frontend/src/shared/phases/` |
 | 2, 3 — engagement et rang d'entrée | `domain/engagement_equipes.py`, `domain/equipe.py` (écart « blasons différents »), `application/equipes.py` (`a_engager`, `jouee`), `application/saisie_duels.py` (`_decor`, `_equipes_sans_tableau`) |
 | 4 — barème par défaut | `domain/duel.py` (`ResolveurBaremeDuelFfta.bareme_equipe_pour`), `application/saisie_duels.py` (`_bareme_du`) |
-| 5 — résolution en couche haute | `application/saisie_duels.py`, `application/placement_duels.py`, `application/pilotage_tour.py`, `domain/placement.py` (adjacence par groupe de duel) |
+| 5 — résolution en couche haute | `application/saisie_duels.py`, `application/placement_duels.py`, `application/pilotage_tour.py`, `domain/placement.py` (adjacence par groupe de duel) ; frontière `Camp` : `api/v1/saisie_duels.py` et `api/v1/tableaux.py` (aplatissement), `application/routage.py` et `application/pilotage_simulation.py` (camp d'équipe écarté) |
 | 6 — îlot | `domain/phase.py` (`_anomalies_ilot_d_equipes`), `application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`) |
-| 7 — composition figée | `application/equipes.py` (`_refuser_si_en_jeu`), `application/verrou_bareme.py` (`type_en_jeu`) |
+| 7 — composition figée | `application/equipes.py` (`_refuser_si_en_jeu`), `application/verrou_bareme.py` (`VerrouCompositionEquipes`, `VerrouBaremeDuel.etape_tiree_dans`) |

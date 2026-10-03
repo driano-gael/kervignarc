@@ -224,10 +224,10 @@ function ListeDuels({
   return (
     <div className="duels-liste">
       {tableau.est_termine && tableau.podium.length > 0 && <Podium tableau={tableau} />}
-      {tableau.duels.length === 0 && tableau.equipes_ecartees.length > 0 && (
+      {tableau.duels.length === 0 && (
         <p className="carte__aide">
-          Moins de deux équipes engagées : aucun duel à jouer tant que la composition n’est pas
-          corrigée.
+          Moins de deux équipes engagées : aucun duel à jouer. Les motifs des équipes écartées
+          figurent ci-dessous.
         </p>
       )}
       {tableau.equipes_ecartees.length > 0 && (

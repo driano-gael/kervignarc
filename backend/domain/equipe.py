@@ -163,8 +163,8 @@ def ecarts_de_composition(
         return tuple(ecarts)
     ecarts.extend(_ecarts_d_arme(profils))
     ecarts.extend(_ecarts_de_sexe(equipe.type, profils))
-    # Un blason inconnu ne crée pas d'écart ici : le pavé introuvable lève à la saisie.
-    if len({p.blason_id for p in profils if p.blason_id is not None}) > 1:
+    # Un blason inconnu mêlé à un blason connu est un écart : le pavé est celui du premier membre.
+    if len({p.blason_id for p in profils}) > 1:
         ecarts.append(EcartComposition.BLASONS_DIFFERENTS)
     return tuple(ecarts)
 

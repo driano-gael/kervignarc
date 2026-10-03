@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Duel, Tableau } from './api'
 import { SaisieDuels } from './SaisieDuels'
 
@@ -54,6 +54,10 @@ const TABLEAU: Tableau = {
 }
 
 let tableauCourant: Tableau = TABLEAU
+
+afterEach(() => {
+  tableauCourant = TABLEAU
+})
 
 const MUTATION = { mutate: vi.fn(), isPending: false, isError: false, error: null }
 
@@ -121,6 +125,19 @@ describe('SaisieDuels — un tableau d’équipes', () => {
     expect(screen.getByRole('region', { name: 'Équipes non engagées' })).toHaveTextContent(
       'Hennebont',
     )
-    tableauCourant = TABLEAU
+  })
+
+  it('le dit aussi quand aucune équipe n’est écartée', async () => {
+    tableauCourant = {
+      ...TABLEAU,
+      effectif: 1,
+      taille: 0,
+      nb_tours: 0,
+      duels: [],
+      equipes_ecartees: [],
+    }
+    await monter()
+
+    expect(await screen.findByText(/Moins de deux équipes engagées/)).toBeInTheDocument()
   })
 })

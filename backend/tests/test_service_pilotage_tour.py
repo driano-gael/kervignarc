@@ -992,8 +992,8 @@ def test_annuler_un_forfait_laisse_le_tour_suivant_posable() -> None:
 
 
 def test_le_feu_vert_annonce_la_cible_du_premier_membre_de_chaque_equipe() -> None:
-    """E13US004, CA 6 : un duel d'équipes est « prêt » dès que ses camps ont une cible — celle de
-    leur premier membre posé. Avant l'US, un camp d'équipe restait « cible non attribuée »."""
+    """E13US004, CA 6 : un duel d'équipes est « prêt » quand tous les membres des deux camps
+    sont posés ; chaque camp annonce la cible de son premier membre ; six archers au lancement."""
     monde = _Monde(capacites=(4, 4))
     categorie = monde.categories.par_id(monde.categorie_id)
     assert categorie is not None
@@ -1017,6 +1017,7 @@ def test_le_feu_vert_annonce_la_cible_du_premier_membre_de_chaque_equipe() -> No
     assert duel.cible_haut == poses[premier[duel.haut.nom]]
     assert duel.cible_bas == poses[premier[duel.bas.nom]]
     assert duel.pret_a_lancer
+    assert monde.pilotage.impact_lancement(monde.tournoi_id, monde.phase_id).nb_archers == 6
 
 
 def test_un_duel_d_equipes_dont_un_membre_est_en_reserve_n_est_pas_pret() -> None:

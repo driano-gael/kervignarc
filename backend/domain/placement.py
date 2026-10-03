@@ -449,6 +449,7 @@ def _grouper_duels(
     return resultat
 
 
+# DETTE-120 — les deux membres d'une équipe mixte tombent dans deux groupes de cloisonnement.
 def _ordonner_pour_adjacence(
     archers: tuple[ArcherAPlacer, ...],
     cloisonnement: Cloisonnement = Cloisonnement.AUCUN,

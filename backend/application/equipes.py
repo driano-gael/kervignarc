@@ -7,15 +7,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 from application.erreurs import (
     ArcherDejaEnEquipe,
     ArcherHorsTournoi,
+    CompositionEquipeVerrouillee,
     EquipeIntrouvable,
-    EquipeVerrouillee,
     MembreIntrouvable,
     NomEquipeDejaPris,
     TournoiIntrouvable,
@@ -71,9 +71,11 @@ class EquipeJouee:
 
 
 class VerrouDeComposition(Protocol):
-    """Un type d'équipe est-il déjà en jeu — un tableau de ce type a-t-il un tir (E13US004) ?"""
+    """Ces archers tirent-ils un départ où un tableau d'équipes de ce type a un tir (E13US004) ?"""
 
-    def type_en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe) -> bool: ...
+    def en_jeu(
+        self, tournoi_id: TournoiId, type: TypeEquipe, archers: Iterable[ArcherId]
+    ) -> bool: ...
 
 
 class ServiceEquipes:
@@ -134,7 +136,6 @@ class ServiceEquipes:
         self, tournoi_id: TournoiId, nom: str, type: TypeEquipe, effectif_attendu: int | None
     ) -> EquipeVue:
         self._verifier_tournoi(tournoi_id)
-        self._refuser_si_en_jeu(tournoi_id, type)
         equipe = Equipe.creer(tournoi_id, nom, type, effectif_attendu)
         self._refuser_nom_pris(equipe)
         return self._vue(self._equipes.enregistrer(equipe))
@@ -151,8 +152,8 @@ class ServiceEquipes:
         equipe = self._equipe_du_tournoi(tournoi_id, equipe_id)
         modifiee = equipe.modifier(nom, type, effectif_attendu)
         if (modifiee.type, modifiee.effectif_attendu) != (equipe.type, equipe.effectif_attendu):
-            self._refuser_si_en_jeu(tournoi_id, equipe.type)
-            self._refuser_si_en_jeu(tournoi_id, modifiee.type)
+            self._refuser_si_en_jeu(tournoi_id, equipe.type, equipe.membres)
+            self._refuser_si_en_jeu(tournoi_id, modifiee.type, equipe.membres)
         self._refuser_nom_pris(modifiee)
         for archer_id in modifiee.membres:
             self._refuser_autre_equipe_du_type(modifiee, archer_id)
@@ -160,14 +161,14 @@ class ServiceEquipes:
 
     def supprimer(self, tournoi_id: TournoiId, equipe_id: EquipeId) -> None:
         equipe = self._equipe_du_tournoi(tournoi_id, equipe_id)
-        self._refuser_si_en_jeu(tournoi_id, equipe.type)
+        self._refuser_si_en_jeu(tournoi_id, equipe.type, equipe.membres)
         self._equipes.supprimer(equipe_id)
 
     def ajouter_membre(
         self, tournoi_id: TournoiId, equipe_id: EquipeId, archer_id: ArcherId
     ) -> EquipeVue:
         equipe = self._equipe_du_tournoi(tournoi_id, equipe_id)
-        self._refuser_si_en_jeu(tournoi_id, equipe.type)
+        self._refuser_si_en_jeu(tournoi_id, equipe.type, (*equipe.membres, archer_id))
         archer = self._archers.par_id(archer_id)
         if archer is None or archer.tournoi_id != tournoi_id:
             raise ArcherHorsTournoi(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")
@@ -183,7 +184,7 @@ class ServiceEquipes:
         self, tournoi_id: TournoiId, equipe_id: EquipeId, archer_id: ArcherId
     ) -> EquipeVue:
         equipe = self._equipe_du_tournoi(tournoi_id, equipe_id)
-        self._refuser_si_en_jeu(tournoi_id, equipe.type)
+        self._refuser_si_en_jeu(tournoi_id, equipe.type, equipe.membres)
         if archer_id not in equipe.membres:
             raise MembreIntrouvable(
                 f"{self._nom_archer(archer_id)} ne figure pas dans l'équipe « {equipe.nom} »."
@@ -192,12 +193,14 @@ class ServiceEquipes:
 
     # --- Gardes ---
 
-    def _refuser_si_en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe) -> None:
-        if self._verrou.type_en_jeu(tournoi_id, type):
-            raise EquipeVerrouillee(
-                "Un tableau d'équipes de ce type a déjà été tiré : ses équipes ne se créent, ne "
-                "se suppriment et ne se recomposent plus, sans quoi les résultats seraient relus "
-                "pour d'autres équipes."
+    def _refuser_si_en_jeu(
+        self, tournoi_id: TournoiId, type: TypeEquipe, archers: Iterable[ArcherId]
+    ) -> None:
+        if self._verrou.en_jeu(tournoi_id, type, archers):
+            raise CompositionEquipeVerrouillee(
+                "Le tableau d'équipes de ce départ a déjà été tiré : ses équipes ne se suppriment "
+                "et ne se recomposent plus, sans quoi les résultats seraient relus pour d'autres "
+                "équipes."
             )
 
     def _verifier_tournoi(self, tournoi_id: TournoiId) -> None:

@@ -63,6 +63,7 @@ class ServiceForfait:
 
     # --- Qualification (phase résolue par le service) ------------------------------------------
 
+    # DETTE-123 — forfait d'un membre : son équipe est écartée d'un tableau d'équipes déjà tiré.
     def declarer_en_qualification(
         self,
         tournoi_id: TournoiId,
