@@ -47,15 +47,30 @@ export function Departs({ tournoiId }: { tournoiId: number }) {
       <FormulaireDepart tournoiId={tournoiId} />
       {departs.isError && <MessageErreur erreur={departs.error} />}
       {departs.data && departs.data.length > 0 && (
-        <ul className="liste-departs">
-          {departs.data.map((depart) => (
-            <LigneDepart key={depart.id} tournoiId={tournoiId} depart={depart} />
-          ))}
-        </ul>
+        <div className="table-defilement">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Départ</th>
+                <th scope="col">État</th>
+                <th scope="col">Horaire</th>
+                <th scope="col">Tarif</th>
+                <th scope="col">Quota</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            {departs.data.map((depart) => (
+              <LigneDepart key={depart.id} tournoiId={tournoiId} depart={depart} />
+            ))}
+          </table>
+        </div>
       )}
     </section>
   )
 }
+
+// Les six colonnes du tableau — la largeur d'une ligne de détail ou du formulaire d'édition.
+const COLONNES = 6
 
 function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart }) {
   const [edition, setEdition] = useState(false)
@@ -75,104 +90,121 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
   const cycleSignale =
     supprimer.error instanceof ErreurApi && supprimer.error.code === 'depart_en_cours_non_confirme'
 
+  // Un `<tbody>` par départ : la ligne et ses signalements de suppression se tiennent ensemble.
   if (edition) {
     return (
-      <li>
-        <FormulaireDepart
-          tournoiId={tournoiId}
-          depart={depart}
-          onTermine={() => setEdition(false)}
-        />
-      </li>
+      <tbody>
+        <tr>
+          <td colSpan={COLONNES}>
+            <FormulaireDepart
+              tournoiId={tournoiId}
+              depart={depart}
+              onTermine={() => setEdition(false)}
+            />
+          </td>
+        </tr>
+      </tbody>
     )
   }
 
+  const libelle = `Départ ${depart.numero}`
   return (
-    <li className="depart">
-      <div className="depart__ligne">
-        <span className="depart__numero">Départ {depart.numero}</span>
-        <span className={`badge badge--${depart.etat}`} title="État du créneau">
-          {LIBELLE_ETAT[depart.etat]}
-        </span>
-        <span className="depart__attributs">{decrire(depart)}</span>
-        <span className="depart__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-            Éditer
-          </button>
-          {confirmationSuppression ? (
-            <>
+    <tbody>
+      <tr>
+        <td className="depart__numero">{libelle}</td>
+        <td>
+          <span className={`badge badge--${depart.etat}`}>{LIBELLE_ETAT[depart.etat]}</span>
+        </td>
+        <td>{depart.horaire}</td>
+        <td>{decrireTarif(depart.tarif_centimes)}</td>
+        <td>{depart.quota === null ? 'sans plafond' : depart.quota}</td>
+        <td>
+          <span className="depart__actions">
+            <button
+              type="button"
+              className="bouton--discret"
+              aria-label={`Éditer le ${libelle.toLowerCase()}`}
+              onClick={() => setEdition(true)}
+            >
+              Éditer
+            </button>
+            {confirmationSuppression ? (
+              <>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Confirmer la suppression du ${libelle.toLowerCase()}`}
+                  onClick={() => supprimer.mutate({ departId: depart.id })}
+                >
+                  Confirmer la suppression
+                </button>
+                <button
+                  type="button"
+                  className="bouton--discret"
+                  aria-label={`Annuler la suppression du ${libelle.toLowerCase()}`}
+                  onClick={() => {
+                    // `reset()` : sans lui, un signalement en cours resterait affiché sur une ligne
+                    // où l'admin vient justement de renoncer.
+                    supprimer.reset()
+                    setConfirmationSuppression(false)
+                  }}
+                >
+                  Annuler
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="bouton--danger"
-                disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate({ departId: depart.id })}
+                aria-label={`Supprimer le ${libelle.toLowerCase()}`}
+                onClick={() => setConfirmationSuppression(true)}
               >
-                Confirmer la suppression
+                Supprimer
               </button>
-              <button
-                type="button"
-                className="bouton--discret"
-                onClick={() => {
-                  // `reset()` : sans lui, un signalement en cours resterait affiché sur une ligne
-                  // où l'admin vient justement de renoncer.
-                  supprimer.reset()
-                  setConfirmationSuppression(false)
-                }}
-              >
-                Annuler
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="bouton--danger"
-              onClick={() => setConfirmationSuppression(true)}
-            >
-              Supprimer
-            </button>
-          )}
-        </span>
-      </div>
-      {cycleSignale ? (
-        <div className="carte__etat" role="alert">
-          <p>{supprimer.error?.message}</p>
-          <button
-            type="button"
-            className="bouton--danger"
-            disabled={supprimer.isPending}
-            onClick={() => supprimer.mutate({ departId: depart.id, confirmeCycle: true })}
-          >
-            Supprimer quand même (session de tir)
-          </button>
-        </div>
-      ) : inscriptionsSignalees ? (
-        <div className="carte__etat" role="alert">
-          <p>{supprimer.error?.message}</p>
-          <button
-            type="button"
-            className="bouton--danger"
-            disabled={supprimer.isPending}
-            onClick={() =>
-              supprimer.mutate({ departId: depart.id, autoriserSuppressionInscrits: true })
-            }
-          >
-            Supprimer quand même, avec les inscriptions
-          </button>
-        </div>
-      ) : (
-        <MessageErreur erreur={supprimer.error} />
+            )}
+          </span>
+        </td>
+      </tr>
+      {supprimer.error !== null && (
+        <tr>
+          <td colSpan={COLONNES}>
+            {cycleSignale ? (
+              <div className="carte__etat" role="alert">
+                <p>{supprimer.error.message}</p>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Supprimer quand même le ${libelle.toLowerCase()} (session de tir)`}
+                  onClick={() => supprimer.mutate({ departId: depart.id, confirmeCycle: true })}
+                >
+                  Supprimer quand même (session de tir)
+                </button>
+              </div>
+            ) : inscriptionsSignalees ? (
+              <div className="carte__etat" role="alert">
+                <p>{supprimer.error.message}</p>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Supprimer quand même le ${libelle.toLowerCase()}, avec les inscriptions`}
+                  onClick={() =>
+                    supprimer.mutate({ departId: depart.id, autoriserSuppressionInscrits: true })
+                  }
+                >
+                  Supprimer quand même, avec les inscriptions
+                </button>
+              </div>
+            ) : (
+              <MessageErreur erreur={supprimer.error} />
+            )}
+          </td>
+        </tr>
       )}
-    </li>
+    </tbody>
   )
-}
-
-// Décrit un départ pour l'affichage : horaire (HH:MM, toujours présent) · tarif · quota (si
-// plafonné). Le ` · ` sépare nettement l'horaire du numéro affiché à côté (bug démo « n° collé à
-// l'horaire » : « Départ 1 » suivi de « 8h00 » se lisait « 18h00 » — le vrai HH:MM « 08:00 » et le
-// séparateur lèvent l'ambiguïté).
-function decrire(depart: Depart): string {
-  const base = `${depart.horaire} · ${decrireTarif(depart.tarif_centimes)}`
-  return depart.quota === null ? base : `${base} · quota ${depart.quota}`
 }
 
 // Analyse la saisie du quota : vide = pas de plafond (null, valide) ; sinon un entier ≥ 1. Une

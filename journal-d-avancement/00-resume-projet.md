@@ -639,7 +639,8 @@ Dans l'ordre de valeur prévu par le backlog :
    depuis l'appli**, sans redémarrer, `E11US006`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
-est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
+est désormais **livré** (E01US017), et les **écrans d'administration** se lisent tous en tableaux
+ou en listes arbitrées sur planche (E00US016) ; restent le **vocabulaire de score configurable** et les
 **épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
 — standard ou mixte, avec leur conformité affichée —, et depuis `E13US003` une phase sait se
 régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; mais les équipes ne
@@ -649,10 +650,13 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **162 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E11US006`,
+- **163 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E11US006`,
   à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
   sans redémarrer le serveur, après l'avoir vérifiée ; l'état d'avant est gardé et se restaure pour
-  annuler, et fermer la fenêtre du serveur n'efface plus une saisie en cours. Juste avant, `E03US010`,
+  annuler, et fermer la fenêtre du serveur n'efface plus une saisie en cours. Juste avant, `E00US016`,
+  à **surface visible** : les catégories, les gabarits, les clubs et les départs se lisent en
+  **tableaux** — une colonne par information, l'état d'un départ dans la sienne — et la taille d'un
+  blason se choisit en **fractions** (entière, ½, ⅓, ¼). Juste avant, `E03US010`,
   à **surface visible** : l'organisateur donne une **durée** à chaque phase et l'application en
   déduit l'**horaire de la journée**, départ par départ ; le public voit l'heure de début de chaque
   phase. Juste avant, `E10US006`,
