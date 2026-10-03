@@ -51,6 +51,8 @@ from application.erreurs import (
     RemboursementIntrouvable,
     RencontreIntrouvable,
     SaisieHorsCible,
+    SauvegardeIntrouvable,
+    SauvegardeNonRestaurable,
     ScenarioInconnu,
     ScoreurHorsTournoi,
     ScoreurIntrouvable,
@@ -86,7 +88,9 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         EffectifSimulationInvalide
         | FormatNonSimulable
         | FormatExportIndisponible
-        | NouveauxIdentifiantsInvalides,
+        | NouveauxIdentifiantsInvalides
+        # E11US006 : une sauvegarde corrompue ne le sera jamais moins.
+        | SauvegardeNonRestaurable,
     ):
         # 400 : la requête est impossible **en soi** (borne de service), pas en conflit avec un
         # état. Le 409 par défaut promettrait qu'un changement d'état la rendrait acceptable, ce qui
@@ -147,7 +151,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | JalonNonInstruit
         # E16US006. Emplacement de logo vide. Inscrite **ici** et non seulement en docstring — cf.
         # les deux commentaires ci-dessus, ce mapping étant une liste écrite à la main.
-        | LogoIntrouvable,
+        | LogoIntrouvable
+        | SauvegardeIntrouvable,
     ):
         status = 404
     else:

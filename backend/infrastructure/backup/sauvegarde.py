@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from domain.ports import Horloge
-from infrastructure.db.snapshot import copier_base_coherente
+from infrastructure.db.snapshot import copier_base_atomique
 
 _logger = logging.getLogger(__name__)
 
@@ -32,10 +32,23 @@ class SauvegardeSQLite:
         self._dossier.mkdir(parents=True, exist_ok=True)
         horodatage = self._horloge.maintenant().strftime("%Y%m%d-%H%M%S")
         cible = self._dossier / f"kervignarc-{horodatage}.db"
-        copier_base_coherente(self._source, cible)
+        copier_base_atomique(self._source, cible)
         self._appliquer_retention()
         _logger.info("Sauvegarde de la base : %s", cible.name)
         return cible
+
+    def purger_provisoires(self) -> None:
+        """Supprime les `*.db.tmp` d'une copie interrompue (processus tué en pleine copie).
+
+        ⚠️ Au démarrage seulement : plus tard, un `.tmp` peut être une copie EN COURS d'écriture.
+        """
+        if not self._dossier.is_dir():
+            return
+        for provisoire in self._dossier.glob("*.db.tmp"):
+            try:
+                provisoire.unlink(missing_ok=True)
+            except OSError:
+                _logger.warning("Copie provisoire %s non supprimée.", provisoire.name)
 
     def _appliquer_retention(self) -> None:
         """Supprime les sauvegardes au-delà des `retention` plus récentes (tri par nom)."""
@@ -43,4 +56,11 @@ class SauvegardeSQLite:
         # ≤ retention fichiers ⇒ tranche vide (on garde tout) ; au-delà ⇒ purge des plus anciens.
         sauvegardes = sorted(self._dossier.glob(_MOTIF))
         for ancienne in sauvegardes[: -self._retention]:
-            ancienne.unlink(missing_ok=True)
+            try:
+                ancienne.unlink(missing_ok=True)
+            except OSError:
+                # Windows refuse de supprimer un fichier ouvert : une vérification (E11US006) peut
+                # tenir cette copie. Elle sera purgée au cycle suivant, sans échec du cycle courant.
+                _logger.warning(
+                    "Purge différée de %s : fichier en cours de lecture.", ancienne.name
+                )

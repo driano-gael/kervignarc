@@ -127,6 +127,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Rang** | `rang` | Position finale d'un archer. |
 | **Feuille de marque** | — | Document de scores par cible/archer. |
 | **File du scoreur** | `ServiceSaisie.file_du_scoreur`, `CibleEnAttente` | Les **cibles** d'un créneau dont une feuille de qualification est **validable** maintenant (même règle que la validation, `Serie.lot_a_valider`), la plus ancienne en tête ; l'attente est calculée par le serveur (E04US019). ⚠️ Ne pas confondre avec la **file d'écriture** (ADR-0005), concept technique sans rapport. |
+| **Sauvegarde** · **copie avant restauration** | `SauvegardeDisponible`, `NatureSauvegarde` (`periodique` / `avant_restauration`), `application/sauvegardes.py` | Une copie horodatée de **toute** la base, prise automatiquement pendant que le serveur tourne (E11US003, [ADR-0044](adr/0044-sauvegarde-lecture-concurrente-et-tache-periodique.md)). **Restaurer** remet tous les tournois dans l'état d'une copie, à chaud (E11US006, [ADR-0119](adr/0119-la-restauration-est-une-ecriture-de-la-file.md)) ; juste avant, l'état courant est mis de côté en **copie avant restauration**, hors rétention, qui se restaure à son tour pour annuler. Une copie se **vérifie** avant usage : son verdict (`restaurable` / `corrompue` / `version_differente`) s'affiche toujours en clair. |
 
 ## Rôles
 

@@ -37,3 +37,8 @@ class RegistrePresenceMemoire:
         """Oublie la présence d'un poste (à sa révocation) ; sans effet s'il est absent."""
         with self._verrou:
             self._activite.pop(poste_id, None)
+
+    def vider(self) -> None:
+        """Oublie tout — après une restauration de la base (E11US006, ADR-0119)."""
+        with self._verrou:
+            self._activite.clear()

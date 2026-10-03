@@ -1205,6 +1205,14 @@ window.ATLAS.corpus = {
   },
   {
    "genre": "decision",
+   "identifiant": "0119",
+   "lien": "adr.html?id=0119",
+   "recherche": "adr-0119 la restauration d'une sauvegarde est une ecriture de la file, a chaud, qui oublie l'etat volatil us adr-e11us006 precise adr-0044 e00us007 e11us003 e11us006 1. la restauration copie la sauvegarde dans la base vive par l'api backup de sqlite, au lieu de remplacer le fichier. les connexions deja ouvertes du pool voient le nouveau contenu a leur transaction suivante : ni engine a rouvrir, ni fichier a ecraser sous des descripteurs ouverts. 2. c'est une commande de la file d'ecriture, comme toute autre ecriture. la verification, la copie de securite et la copie s'enchainent dans la meme commande : aucune ecriture ne s'intercale entre le controle et le remplacement. la regle 7 est tenue sans exception a adr-0044. 3. la verification est une lecture hors file (le precedent d'adr-0044) : la sauvegarde s'ouvre en mode=ro&immutable=1, puis pragma […]",
+   "texte": "1. La restauration copie la sauvegarde dans la base vive par l'API backup de SQLite, au lieu de remplacer le fichier. Les connexions déjà ouvertes du pool voient le nouveau contenu à leur transaction suivante : ni engine à rouvrir, ni fichier à écraser sous des descripteurs ouverts. 2. C'est une commande de la file d'écriture, comme toute autre écriture. La vérification, la copie de sécurité et la copie s'enchaînent dans la même commande : aucune écriture ne s'intercale entre le contrôle et le remplacement. La règle 7 est tenue sans exception à ADR-0044. 3. La vérification est une lecture hors file (le précédent d'ADR-0044) : la sauvegarde s'ouvre en mode=ro&immutable=1, puis PRAGMA […]",
+   "titre": "ADR-0119 — La restauration d'une sauvegarde est une écriture de la file, à chaud, qui oublie l'état volatil"
+  },
+  {
+   "genre": "decision",
    "identifiant": "0120",
    "lien": "adr.html?id=0120",
    "recherche": "adr-0120 une phase oppose des equipes par un reglage d'etape ; l'engagement est derive us adr-e13us004 prolonge adr-0028 e13us002 e13us003 e13us004 e13us005 1. « par equipes » est un reglage d'etape : etapederoule.equipes: typeequipe | none, recopie sur phase.equipes a l'instanciation et porte par le format de bibliotheque. none = individuel, le comportement d'avant. seule l'elimination directe l'accepte dans cette tranche ; tout autre type le refuse (equipesnonprisesencharge). comme le bareme, le reglage est verrouille au premier tir de l'etape (adr-0117 §5). 2. l'engagement est une derivation, pas un geste. a chaque reconstruction, engager_les_equipes (domaine pur) range les equipes du type : sont engagees celles qui sont conformes et dont tous les membres sont en lice au classement du depart ; les autres sont ecartees avec leurs motifs, […]",

@@ -15,6 +15,15 @@ window.ATLAS.avancement = {
    "severite": "majeur"
   },
   {
+   "identifiant": "122",
+   "introduite_par": [
+    "E11US006"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
+  },
+  {
    "identifiant": "121",
    "introduite_par": [
     "E13US004",
@@ -41,8 +50,7 @@ window.ATLAS.avancement = {
   {
    "identifiant": "119",
    "introduite_par": [
-    "E01US011",
-    "E13US004"
+    "E01US011"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -1024,6 +1032,7 @@ window.ATLAS.avancement = {
  "entete": {
   "adr_du_resume": [
    "0120",
+   "0119",
    "0118",
    "0028",
    "0049",
@@ -1300,7 +1309,9 @@ window.ATLAS.avancement = {
    "titre_story": "Connexion SQLite (WAL) + migration initiale"
   },
   {
-   "adr": [],
+   "adr": [
+    "0119"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "00",
@@ -1943,7 +1954,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1958,7 +1969,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "~~Gérer plusieurs gabarits~~ → absorbée par E01US007/E01US008",
@@ -2281,7 +2292,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US027",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Barème propre aux ½ finales et finales d'un tableau",
@@ -2431,7 +2442,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2613,7 +2624,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2957,7 +2968,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3831,7 +3842,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3969,7 +3980,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -4015,7 +4026,8 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0044"
+    "0044",
+    "0119"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -4032,16 +4044,19 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0044"
+    "0044",
+    "0119"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "122"
+   ],
    "dettes_resorbees": [],
    "epic": "11",
    "epic_titre": "Exploitation : sauvegarde, packaging, réseau",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -4290,7 +4305,6 @@ window.ATLAS.avancement = {
     "006",
     "064",
     "080",
-    "119",
     "120",
     "121",
     "123"
@@ -5133,7 +5147,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 163,
+  "livrees": 164,
   "vivantes": 182
  },
  "sections": [
@@ -5818,11 +5832,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    4,
+    5,
     7
    ],
    "compteur_ecrit": [
-    4,
+    5,
     7
    ],
    "lignes": [
@@ -5864,7 +5878,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E11US006",
      "titre": "Restauration & arrêt propre"
     },
@@ -5881,7 +5895,7 @@ window.ATLAS.avancement = {
      "titre": "Barème propre aux ½ finales et finales d'un tableau"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
   },
   {
    "calcule": [

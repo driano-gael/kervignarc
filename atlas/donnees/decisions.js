@@ -2069,7 +2069,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0119"
+   ],
    "date": "2026-07-26",
    "date_brute": "2026-07-26",
    "extrait": "Une copie de base est une LECTURE ; elle ne passe donc pas par la file d'écriture. On utilise l'API de sauvegarde en ligne de SQLite (sqlite3.Connection.backup()), qui copie page à page au niveau moteur, inclut l'état WAL, et redémarre proprement si la source change pendant la copie. Conformément à la règle 7 (« lectures synchrones hors boucle »), cette opération : - ouvre une connexion sqlite3 brute directe au fichier, en parallèle du writer et hors du moteur SQLAlchemy (helper unique infrastructure/db/snapshot.py) ; - s'exécute hors boucle événementielle, dans un run_in_threadpool (même patron que les endpoints PDF) ; - pose un PRAGMA busy_timeout sur la connexion source pour patienter […]",
@@ -2089,7 +2091,52 @@ window.ATLAS.decisions = {
      "type": "voisin"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "_boucle_sauvegarde",
+      "lifespan"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/archive/constructeur.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/backup/restauration.py",
+     "existe": true,
+     "symboles": [
+      "StoreSauvegardesSQLite.examiner"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/backup/sauvegarde.py",
+     "existe": true,
+     "symboles": [
+      "SauvegardeSQLite"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/snapshot.py",
+     "existe": true,
+     "symboles": [
+      "copier_base_coherente"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -12018,6 +12065,98 @@ window.ATLAS.decisions = {
     "E01US024",
     "E03US010",
     "E09US007"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-10-03",
+   "date_brute": "2026-10-03",
+   "extrait": "1. La restauration copie la sauvegarde dans la base vive par l'API backup de SQLite, au lieu de remplacer le fichier. Les connexions déjà ouvertes du pool voient le nouveau contenu à leur transaction suivante : ni engine à rouvrir, ni fichier à écraser sous des descripteurs ouverts. 2. C'est une commande de la file d'écriture, comme toute autre écriture. La vérification, la copie de sécurité et la copie s'enchaînent dans la même commande : aucune écriture ne s'intercale entre le contrôle et le remplacement. La règle 7 est tenue sans exception à ADR-0044. 3. La vérification est une lecture hors file (le précédent d'ADR-0044) : la sauvegarde s'ouvre en mode=ro&immutable=1, puis PRAGMA […]",
+   "fichier": "docs/adr/0119-la-restauration-est-une-ecriture-de-la-file.md",
+   "identifiant": "0119",
+   "liens": [
+    {
+     "cible": "E11US006",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0044",
+     "libelle": "Précise",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/sauvegardes.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/sauvegardes.py",
+     "existe": true,
+     "symboles": [
+      "ServiceSauvegardes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "_oublier_etat_volatil"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/backup/restauration.py",
+     "existe": true,
+     "symboles": [
+      "StoreSauvegardesSQLite",
+      "integrity_check",
+      "backup"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/snapshot.py",
+     "existe": true,
+     "symboles": [
+      "copier_base_atomique"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/release/arret_console.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/run.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "La restauration d'une sauvegarde est une écriture de la file, à chaud, qui oublie l'état volatil",
+   "us": [
+    "E00US007",
+    "E11US003",
+    "E11US006"
    ]
   },
   {
