@@ -14,13 +14,13 @@ import { type ModeAffichage } from '../../shared/suivis/focus'
 import { VueBigShootOffPublique } from '../big-shoot-off/VueBigShootOffPublique'
 import { useDeparts } from '../departs/hooks'
 import { BandeauDePause } from '../../shared/ui/BandeauDePause'
-import { useAvancementPhases } from '../phases/hooks'
+import { useAvancementPhases, useHorairesPrevus } from '../phases/hooks'
 import { VuePoulesPublique } from '../poules/VuePoulesPublique'
 import { departDeSalle } from '../salle/rotation'
 import { VueCollinePublique } from '../colline/VueCollinePublique'
 import { VueSuissePublique } from '../suisse/VueSuissePublique'
 import { VueTableaux } from '../tableaux/VueTableaux'
-import { phaseAAtterrir, type PhaseLisible } from './presentation'
+import { debutsPrevus, phaseAAtterrir, type PhaseLisible } from './presentation'
 
 export function VueEnCours({
   tournoiId,
@@ -52,6 +52,9 @@ export function VueEnCours({
   // d'être corrigé en revue. Résorption : `E10US009` (DTO d'avancement étroit).
   const phases = useAvancementPhases(departId)
   const donnees = phases.data
+  // CA 7 d'E03US010 : le début prévu de chaque phase, et lui seul (réponse P05). Une lecture en
+  // échec ne fait que taire les heures — jamais l'onglet.
+  const debuts = debutsPrevus(useHorairesPrevus(tournoiId).data, departId)
 
   if (departs.isSuccess && (departs.data ?? []).length === 0) {
     return <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
@@ -94,6 +97,7 @@ export function VueEnCours({
                 onClick={() => setPhaseChoisie(p.id)}
               >
                 {p.ordre}. {nommerType(p.type)}
+                {debuts.has(p.ordre) && ` · ${debuts.get(p.ordre)}`}
                 {p.statut === 'terminee' ? ' ✓' : p.id === courante.id ? ' ▶' : ''}
               </button>
             ))}
@@ -102,6 +106,9 @@ export function VueEnCours({
 
       <h3 className="encours__phase">
         {phase.ordre}. {nommerType(phase.type)}
+        {debuts.has(phase.ordre) && (
+          <span className="encours__statut"> · début prévu {debuts.get(phase.ordre)}</span>
+        )}
         {phase.statut === 'a_venir' && (
           <span className="encours__statut"> · pas encore lancée</span>
         )}

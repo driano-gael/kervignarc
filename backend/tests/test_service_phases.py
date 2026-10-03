@@ -623,3 +623,54 @@ def test_renvoyer_le_meme_bareme_a_la_casse_pres_n_est_pas_un_changement() -> No
 
     meme = ReglageBaremeDuel(_FFTA.par_defaut, (SurchargeArme("ARC À POULIES", poulies),))
     _modifier_bareme(service, tournoi_id, etape, meme)
+
+
+# --- E03US010 : horaires prévus, par départ (écrits depuis le CA, avant le code) ---------------
+
+
+def test_les_horaires_prevus_se_calculent_pour_chaque_depart() -> None:
+    """CA 2 : une même définition d'étapes, un horaire par créneau, depuis l'heure du créneau."""
+    departs = FauxDepartRepository()
+    service, tournoi_id = _service(departs=departs)
+    departs.ajouter(
+        Depart.creer(tournoi_id=tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+    )
+    qualif = service.ajouter(tournoi_id, TypePhase.QUALIFICATION, duree_prevue=120)
+    assert qualif.id is not None
+    service.ajouter(
+        tournoi_id,
+        TypePhase.ELIMINATION_DIRECTE,
+        sources=(SourcePhase.par_rangs(qualif.id, 1, 8),),
+        duree_prevue=60,
+    )
+
+    par_creneau = service.horaires_prevus(tournoi_id)
+
+    assert [
+        (
+            c.depart.horaire,
+            [(h.debut and h.debut.libelle, h.fin and h.fin.libelle) for h in c.horaires],
+        )
+        for c in par_creneau
+    ] == [
+        ("09:00", [("09:00", "11:00"), ("11:00", "12:00")]),
+        ("14:00", [("14:00", "16:00"), ("16:00", "17:00")]),
+    ]
+
+
+def test_la_duree_prevue_s_edite_et_s_efface() -> None:
+    """CA 1 : facultative, donc l'effacer est un geste licite — édition totale."""
+    service, tournoi_id = _service()
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, duree_prevue=45)
+    assert etape.id is not None and etape.duree_prevue == 45
+
+    modifiee = service.modifier(tournoi_id, etape.id, etape.type, (), None, duree_prevue=50)
+    assert modifiee.duree_prevue == 50
+    effacee = service.modifier(tournoi_id, etape.id, etape.type, (), None)
+    assert effacee.duree_prevue is None
+
+
+def test_les_horaires_prevus_d_un_tournoi_inconnu_sont_refuses() -> None:
+    service, _ = _service()
+    with pytest.raises(TournoiIntrouvable):
+        service.horaires_prevus(999)

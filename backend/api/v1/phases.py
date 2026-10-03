@@ -29,6 +29,7 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule_etape import EtapeDeroule
 from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
+from domain.horaire_prevu import HeurePrevue
 from domain.phase import (
     IssueTour,
     NatureSource,
@@ -484,6 +485,11 @@ class ConfigPhaseRequete(BaseModel):
     métier sur la longueur. Ce qu'il faut borner est l'**entrée** — même garde que `sources` (16).
     """
 
+    duree_prevue: int | None = None
+    """Minutes prévues pour l'étape (E03US010) — `null` = inconnue. Même édition **totale** que
+    `titre` : l'omettre au `PUT` l'efface. Les bornes vivent dans le domaine (`DureePrevueInvalide`,
+    422) : ici, c'est une règle métier, pas une garde d'entrée."""
+
     bareme_duel: ReglageBaremeDuelDTO | None = None
     """Le barème des duels de l'étape (E01US011) — `null` = défaut FFTA, poulies reconnues.
 
@@ -648,6 +654,8 @@ class EtapeReponse(BaseModel):
     Servi **normalisé** par le domaine (espaces de bord retirés, blanc ramené à `null`) : le client
     n'a donc rien à nettoyer, et deux clients ne peuvent pas normaliser différemment."""
 
+    duree_prevue: int | None = None
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -683,6 +691,7 @@ class EtapeReponse(BaseModel):
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             titre=etape.titre,
+            duree_prevue=etape.duree_prevue,
             nb_volees=None if etape.bareme is None else etape.bareme.nb_volees,
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
@@ -694,6 +703,66 @@ async def lister_phases(tournoi_id: int, request: Request) -> list[EtapeReponse]
     service: ServicePhases = request.app.state.service_phases
     phases = await run_in_threadpool(service.lister, tournoi_id)
     return [EtapeReponse.de_agregat(phase) for phase in phases]
+
+
+class HeurePrevueDTO(BaseModel):
+    heure: str
+    """`HH:MM` sur 24 h."""
+    jours_apres: int
+    """0 le jour du départ, 1 le lendemain (CA 5 d'E03US010)."""
+
+    @staticmethod
+    def depuis(heure: HeurePrevue | None) -> HeurePrevueDTO | None:
+        return (
+            None
+            if heure is None
+            else HeurePrevueDTO(heure=heure.libelle, jours_apres=heure.jours_apres)
+        )
+
+
+class HoraireEtapeDTO(BaseModel):
+    etape_id: int
+    ordre: int
+    """⚠️ Clé de rapprochement de l'onglet public, dont `PhaseReponse` ne porte pas l'étape
+    (`DETTE-071`) : une phase est assemblée depuis son étape, leurs `ordre` coïncident
+    (ADR-0076)."""
+    debut: HeurePrevueDTO | None
+    fin: HeurePrevueDTO | None
+
+
+class HorairesDepartDTO(BaseModel):
+    depart_id: int
+    numero: int
+    horaire: str
+    etapes: list[HoraireEtapeDTO]
+
+
+@router.get("/tournois/{tournoi_id}/horaires-prevus", response_model=list[HorairesDepartDTO])
+async def lister_horaires_prevus(tournoi_id: int, request: Request) -> list[HorairesDepartDTO]:
+    """Le déroulé horaire prévu, par créneau (E03US010, ADR-0118). Route **ouverte**, comme
+    `lister_phases` : l'onglet public en lit le début de chaque phase (CA 7)."""
+    service: ServicePhases = request.app.state.service_phases
+    par_creneau = await run_in_threadpool(service.horaires_prevus, tournoi_id)
+    reponse: list[HorairesDepartDTO] = []
+    for creneau in par_creneau:
+        assert creneau.depart.id is not None, "Un départ lu en base est persisté."
+        reponse.append(
+            HorairesDepartDTO(
+                depart_id=creneau.depart.id,
+                numero=creneau.depart.numero,
+                horaire=creneau.depart.horaire,
+                etapes=[
+                    HoraireEtapeDTO(
+                        etape_id=horaire.etape_id,
+                        ordre=horaire.ordre,
+                        debut=HeurePrevueDTO.depuis(horaire.debut),
+                        fin=HeurePrevueDTO.depuis(horaire.fin),
+                    )
+                    for horaire in creneau.horaires
+                ],
+            )
+        )
+    return reponse
 
 
 @router.get("/departs/{depart_id}/phases", response_model=list[PhaseReponse])
@@ -743,6 +812,7 @@ async def ajouter_phase(
                 bareme_duel=(
                     None if requete.bareme_duel is None else requete.bareme_duel.vers_agregat()
                 ),
+                duree_prevue=requete.duree_prevue,
             )
         )
     )
@@ -781,6 +851,7 @@ async def modifier_phase(
                 bareme_duel=(
                     None if requete.bareme_duel is None else requete.bareme_duel.vers_agregat()
                 ),
+                duree_prevue=requete.duree_prevue,
             )
         )
     )

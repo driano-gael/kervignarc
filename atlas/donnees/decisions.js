@@ -11926,6 +11926,147 @@ window.ATLAS.decisions = {
   },
   {
    "amende_par": [],
+   "date": "2026-10-02",
+   "date_brute": "2026-10-02",
+   "extrait": "1. L'étape porte une durée, jamais une heure. EtapeDeroule.duree_prevue : minutes entières, 1 à 1440, facultative, pauses comprises. Elle n'est jamais préremplie (arbitrage du 02/10/2026). Elle voyage avec le format (ModelePhase.duree_prevue), comme titre. 2. L'heure se calcule, par départ, sur le graphe des sources. Une étape sans source commence à l'heure du départ ; une étape avec sources commence à la fin la plus tardive de ses sources ; sa fin est son début plus sa durée. ⚠️ Une source « issue d'un tour » (repêchage, consolante) rend le début inconnu — arbitrage du 03/10/2026 en revue : sa sémantique n'est pas tranchée (DETTE-033), et caler le début sur la fin du tableau entier serait […]",
+   "fichier": "docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md",
+   "identifiant": "0118",
+   "liens": [
+    {
+     "cible": "E03US010",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.duree_prevue",
+      "pour_tournoi",
+      "d_etape",
+      "verifier_duree_prevue",
+      "EtapeDTO.vers_modele"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "lister_horaires_prevus",
+      "ConfigPhaseRequete.duree_prevue"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "ServicePhases.horaires_prevus",
+      "HorairesDuDepart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.duree_prevue",
+      "__post_init__"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.duree_prevue",
+      "pour_tournoi",
+      "d_etape",
+      "verifier_duree_prevue",
+      "EtapeDTO.vers_modele"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/horaire_prevu.py",
+     "existe": true,
+     "symboles": [
+      "horaires_prevus",
+      "HeurePrevue",
+      "verifier_duree_prevue",
+      "DUREE_PREVUE_MAX"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_politiques_json",
+      "_lire_duree_prevue"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/departs/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "invaliderLesCreneaux"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/en-cours/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "debutsPrevus"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/GrilleHoraire.tsx",
+     "existe": true,
+     "symboles": [
+      "dureeSaisieValide"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ChampDureePrevue.tsx",
+     "existe": true,
+     "symboles": [
+      "dureeSaisieValide"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "L'horaire prévu se calcule depuis des durées d'étape, pour chaque départ, par le graphe des sources",
+   "us": [
+    "E01US024",
+    "E03US010",
+    "E09US007"
+   ]
+  },
+  {
+   "amende_par": [],
    "date": "2026-10-03",
    "date_brute": "2026-10-03",
    "extrait": "1. La restauration copie la sauvegarde dans la base vive par l'API backup de SQLite, au lieu de remplacer le fichier. Les connexions déjà ouvertes du pool voient le nouveau contenu à leur transaction suivante : ni engine à rouvrir, ni fichier à écraser sous des descripteurs ouverts. 2. C'est une commande de la file d'écriture, comme toute autre écriture. La vérification, la copie de sécurité et la copie s'enchaînent dans la même commande : aucune écriture ne s'intercale entre le contrôle et le remplacement. La règle 7 est tenue sans exception à ADR-0044. 3. La vérification est une lecture hors file (le précédent d'ADR-0044) : la sauvegarde s'ouvre en mode=ro&immutable=1, puis PRAGMA […]",

@@ -670,7 +670,8 @@ window.ATLAS.avancement = {
    "introduite_par": [
     "E01US024",
     "E16US002",
-    "E01US011"
+    "E01US011",
+    "E03US010"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -984,6 +985,7 @@ window.ATLAS.avancement = {
  "entete": {
   "adr_du_resume": [
    "0119",
+   "0118",
    "0028",
    "0049",
    "0117",
@@ -1904,7 +1906,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1919,7 +1921,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "~~Gérer plusieurs gabarits~~ → absorbée par E01US007/E01US008",
@@ -2155,7 +2157,8 @@ window.ATLAS.avancement = {
     "0080",
     "0083",
     "0095",
-    "0099"
+    "0099",
+    "0118"
    ],
    "dettes_introduites": [
     "028",
@@ -2241,7 +2244,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US027",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Barème propre aux ½ finales et finales d'un tableau",
@@ -2391,7 +2394,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2561,15 +2564,19 @@ window.ATLAS.avancement = {
    "titre_story": "Placer les duellistes côte à côte ✅"
   },
   {
-   "adr": [],
-   "dettes_introduites": [],
+   "adr": [
+    "0118"
+   ],
+   "dettes_introduites": [
+    "080"
+   ],
    "dettes_resorbees": [],
    "epic": "03",
    "epic_titre": "Placement des archers & plan de cibles",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2913,7 +2920,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3774,7 +3781,9 @@ window.ATLAS.avancement = {
    "titre_story": "Classement de qualification exportable (PDF, CSV, Excel)"
   },
   {
-   "adr": [],
+   "adr": [
+    "0118"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "09",
@@ -3782,7 +3791,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3920,7 +3929,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -3994,7 +4003,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -5052,7 +5061,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 161,
+  "livrees": 162,
   "vivantes": 181
  },
  "sections": [
@@ -5737,11 +5746,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    4,
+    5,
     7
    ],
    "compteur_ecrit": [
-    4,
+    5,
     7
    ],
    "lignes": [
@@ -5765,7 +5774,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E03US010",
      "titre": "Générer / éditer le déroulé horaire"
     },
@@ -5800,7 +5809,7 @@ window.ATLAS.avancement = {
      "titre": "Barème propre aux ½ finales et finales d'un tableau"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (4/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
   },
   {
    "calcule": [
