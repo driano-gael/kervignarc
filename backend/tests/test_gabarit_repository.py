@@ -37,11 +37,11 @@ def _base(tmp_path: Path) -> Database:
     return Database(url)
 
 
-def _tournoi(db: Database) -> TournoiId:
+def _tournoi(db: Database, nom: str = "Kervignarc") -> TournoiId:
     """Persiste un tournoi (nécessaire à la FK d'une instance de gabarit) et renvoie son id."""
     tournoi = TournoiRepositorySQL(db.session_factory).ajouter(
         Tournoi(
-            nom="Kervignarc",
+            nom=nom,
             date=datetime.date(2026, 3, 14),
             lieu=None,
             type_tournoi=TypeTournoi.NON_OFFICIEL,
@@ -143,6 +143,30 @@ def test_par_tournoi_renvoie_l_instance_rattachee(tmp_path: Path) -> None:
         assert relue == instance
         assert relue is not None and relue.tournoi_id == tournoi_id
         assert relue.capacites == (4, 4, 4)
+    finally:
+        db.engine.dispose()
+
+
+def test_deux_tournois_relisent_chacun_leur_salle(tmp_path: Path) -> None:
+    """E01US012 « plusieurs salles » : chaque tournoi relit sa copie, et en changer une
+    n'atteint pas l'autre."""
+    db = _base(tmp_path)
+    try:
+        t1 = _tournoi(db, "Tournoi d'hiver")
+        t2 = _tournoi(db, "Tournoi de printemps")
+        repository = GabaritSalleRepositorySQL(db.session_factory)
+        petite = repository.ajouter(GabaritSalle.creer("Petite", 4, 4))
+        grande = repository.ajouter(GabaritSalle.creer("Grande", 20, 4))
+        repository.ajouter(petite.pour_tournoi(t1))
+        copie_t2 = repository.ajouter(grande.pour_tournoi(t2))
+
+        copie_t1 = repository.par_tournoi(t1)
+        relue_t2 = repository.par_tournoi(t2)
+        assert copie_t1 is not None and (copie_t1.nom, copie_t1.nb_cibles) == ("Petite", 4)
+        assert relue_t2 is not None and (relue_t2.nom, relue_t2.nb_cibles) == ("Grande", 20)
+
+        repository.enregistrer(copie_t1.ajuster("Grande", grande.capacites))
+        assert repository.par_tournoi(t2) == copie_t2
     finally:
         db.engine.dispose()
 
