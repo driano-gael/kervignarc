@@ -997,7 +997,13 @@ def test_la_surcharge_d_arme_de_la_phase_est_appliquee_au_duel() -> None:
     monde = _Monde(arme="Barebow")
     monde.inscrire_classe(("10", "10", "10"))
     monde.inscrire_classe(("9", "9", "9"))
-    cumul = BaremeDuel(ModeDuel.CUMUL, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=0)
+    cumul = BaremeDuel(
+        ModeDuel.CUMUL,
+        nb_manches=5,
+        nb_fleches_par_volee=3,
+        points_pour_gagner=0,
+        nb_fleches_barrage=1,
+    )
     _regler_le_bareme(
         monde,
         ReglageBaremeDuel(

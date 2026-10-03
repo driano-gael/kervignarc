@@ -14,6 +14,8 @@ import {
   estValide,
   presetClub,
   presetFfta,
+  presetFftaEquipe,
+  presetFftaMixte,
 } from './baremeDuel'
 
 function EditeurBareme({
@@ -63,6 +65,14 @@ function EditeurBareme({
           />
         </label>
       )}
+      <label className="formulaire__libelle">
+        Flèches de barrage par camp
+        <input
+          inputMode="numeric"
+          value={etat.barrage}
+          onChange={(e) => surChangement({ ...etat, barrage: e.target.value })}
+        />
+      </label>
     </div>
   )
 }
@@ -116,6 +126,22 @@ export function ReglageBaremeDuel({
           onClick={() => surChangement(presetClub(connues ?? []))}
         >
           Preset format club
+        </button>
+        <button
+          type="button"
+          className="bouton bouton--discret"
+          disabled={!presetsPossibles}
+          onClick={() => surChangement(presetFftaEquipe(connues ?? []))}
+        >
+          Preset FFTA équipe
+        </button>
+        <button
+          type="button"
+          className="bouton bouton--discret"
+          disabled={!presetsPossibles}
+          onClick={() => surChangement(presetFftaMixte(connues ?? []))}
+        >
+          Preset FFTA équipe mixte
         </button>
         {etat.regle && (
           <button
@@ -228,7 +254,8 @@ export function ReglageBaremeDuel({
       {!estValide(etat) && (
         <span className="carte__etat carte__etat--alerte" role="status">
           Complétez le barème&nbsp;: au plus {MANCHES_MAX} manches de {FLECHES_MAX} flèches au plus,
-          un seuil atteignable en sets, et une arme nommée une seule fois.
+          de 1 à {FLECHES_MAX} flèches de barrage, un seuil atteignable en sets, et une arme nommée
+          une seule fois.
         </span>
       )}
     </fieldset>

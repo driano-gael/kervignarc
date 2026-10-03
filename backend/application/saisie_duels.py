@@ -356,8 +356,8 @@ class ServiceSaisieDuels:
         tournoi_id: TournoiId,
         phase_id: PhaseId,
         match_numero: int,
-        fleche_haut: ZoneScore,
-        fleche_bas: ZoneScore,
+        fleches_haut: tuple[ZoneScore, ...],
+        fleches_bas: tuple[ZoneScore, ...],
         gagnant_designe: Cote | None = None,
     ) -> EtatDuel:
         """Saisit le tir de barrage d'un match à égalité (§8.2)."""
@@ -367,7 +367,7 @@ class ServiceSaisieDuels:
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.saisir_barrage(
-            fleche_haut, fleche_bas, zones_admises=zones, gagnant_designe=gagnant_designe
+            fleches_haut, fleches_bas, zones_admises=zones, gagnant_designe=gagnant_designe
         )
         self._duels.enregistrer(phase_id, match_numero, duel)
         return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, reglage, duel=duel)

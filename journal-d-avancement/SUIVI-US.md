@@ -12,14 +12,23 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 02/10/2026, 22 h 58** · **159 US livrées** · dernière : `E10US006`
+**Dernière mise à jour : 02/10/2026, 22 h 58** · **160 US livrées** · dernière : `E10US006`
 *(**l'accès administrateur se change depuis l'appli** — écran « Compte administrateur » (axe
 Atelier), mot de passe actuel exigé ; la session qui change reste ouverte, **toutes les autres sont
 fermées**. Un refus est un 403/400, jamais un 401 : le client purge la session admin sur tout 401,
 une faute de frappe aurait déconnecté. Trois arbitrages au cadrage, reversés dans `stories/`.
 ⚠️ **Non vérifiée au navigateur ni à deux appareils** — couverte par les tests de service, d'API et
 d'écran monté.)*
-Précédente : `E01US011`
+Précédente : `E13US003`
+*(**le barème d'équipe se règle** : deux presets FFTA, **équipe** (4 manches de 6 flèches, premier
+à 5) et **équipe mixte** (4 flèches), et un barème qui dit **combien de flèches de barrage** tire
+chaque camp — 1 par archer en équipe, le plus haut **total** l'emportant ; le pavé du scoreur les
+saisit. **Cadrage** : la fiche voulait réveiller la politique `scoring`, sans appelant
+(`DETTE-028`) ; arbitrage du commanditaire — le **barème de duel** porte déjà le cumul d'une
+équipe, seul le barrage manquait. ADR-0028 §3 et ADR-0049 amendés ; aucune migration (un barrage
+d'avant se relit). ⚠️ **Une équipe ne se joue pas encore** (`E13US004`). ⚠️ **Non vérifiée au
+navigateur** — couverte par les tests d'écran monté.)*
+Avant elle, `E01US011`
 *(**chaque phase de duels choisit son barème** — FFTA (premier à 6) ou club (premier à 4), avec des
 exceptions **par arme** explicites (les poulies au cumul ne se devinent plus au nom, sauf sur une
 phase non réglée) ; le barème **se fige au premier tir**, faute d'être stocké avec lui ; il voyage
@@ -430,8 +439,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E09US005`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Le classement de qualification s'exporte (PDF, CSV, Excel) ; **J3 est terminé**. Deux arbitrages rendus en revue (barrage en attente ⇒ provisoire ; seuls les placés comptent). |
 > | ~~🎯~~ ✅ | ~~`E13US002`~~ | **Livrée le 01/10/2026 — choisie par le commanditaire** dans le « à choisir ». Composer les équipes d'un tournoi : un écran « Équipes » (axe Gestion), une conformité **signalée, jamais bloquante**. Quatre arbitrages au cadrage, reversés dans `stories/` : sexe lu sur la **catégorie**, composition signalée, **une équipe par type**, backend + écran. ⚠️ Le CA d'origine renvoyait à une `DETTE-001` soldée depuis : les tables d'équipe entrent dans la cascade d'`E01US026`. |
 > | ~~🎯~~ ✅ | ~~`E01US011`~~ | **Livrée le 01/10/2026 — choisie dans le « à choisir » (jalon J4)**. Cadrage du jour : barème **par phase**, surcharges **explicites**, **pas** de bibliothèque. ⚠️ Le reliquat réel était un **réglage**, pas un moteur : la règle était écrite depuis E04US013/E05US028. Verrou au premier tir, faute de stocker le barème avec le tir ([ADR-0117](../docs/adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md)). |
+> | ~~🎯~~ ✅ | ~~`E13US003`~~ | **Livrée le 02/10/2026** — le barème d'équipe se règle (presets FFTA **équipe** et **équipe mixte**) et le barrage tire **N flèches par camp**, au plus haut total. **Recadrée au cadrage** sur arbitrage : le **barème de duel** porte le score d'une équipe, pas la politique `scoring` sans appelant (ADR-0028 §3 amendé). Une équipe ne se **joue** pas encore : c'est `E13US004`. |
 > | ~~🎯~~ ✅ | ~~`E10US006`~~ | **Livrée le 02/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent** : `E13US003` et `E01US012` réservées par d'autres sessions, `E03US010` écartée sur un doute de recoupement. Arbitrages au cadrage : autres sessions coupées, destination de la coquille, CA sans enrichissement. |
-> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US003` scoring d'équipe, puis `E13US004`), le jalon **J4** (`E01US012`, `E03US010`, `E11US006`, `E01US027` — `E09US007` attend `E03US010`). |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US004` — engager, placer, saisir et classer des équipes), le jalon **J4** (`E01US012`, `E03US010`, `E11US006`, `E01US027` — `E09US007` attend `E03US010`). |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1274,7 +1284,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 91 | E10US006 | Modifier le mot de passe admin | ✅ *(livrée le 02/10/2026 — écran « Compte administrateur », mot de passe actuel exigé, autres sessions admin fermées ; refus en 403/400, jamais 401)* |
 | 92 | E01US027 | Barème propre aux ½ finales et finales d'un tableau | ⬜ *(ajoutée le 01/10/2026 à la revue d'E01US011 — format club du référentiel §10.1 ; résorbe `DETTE-117`)* |
 
-## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (5/10)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -1289,7 +1299,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E02US010 | Horaire de départ HH:MM obligatoire | J1 | ✅ |
 | E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
 | E13US002 | Composer les équipes d'un tournoi | J2 | ✅ *(entité `Equipe` + écran « Équipes » ; composition **signalée, pas bloquée** ; sexe et arme lus sur la catégorie ; une équipe par type ; migration `0059`. ADR-0028 porté à moitié : les équipes se composent, elles ne se jouent pas encore)* |
-| E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
+| E13US003 | Scoring d'équipe (barème et barrage) | J2 | ✅ *(presets FFTA équipe / mixte, barrage à N flèches ; barème de duel et non politique `scoring`, ADR-0028 §3 amendé)* |
 | E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
 
 ## Ajout du 20/07/2026 — ✅ **livrée (1/1)**

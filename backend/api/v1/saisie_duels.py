@@ -12,7 +12,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_scoreur
@@ -55,10 +55,10 @@ class MancheReponse(BaseModel):
 
 
 class BarrageReponse(BaseModel):
-    """Le tir de barrage : une flèche par camp et le gagnant désigné (au plus près du centre)."""
+    """Le tir de barrage : les flèches de chaque camp, le gagnant désigné (plus près du centre)."""
 
-    haut: str
-    bas: str
+    haut: list[str]
+    bas: list[str]
     gagnant_designe: str | None
 
 
@@ -75,10 +75,11 @@ class ResultatReponse(BaseModel):
 class DuelReponse(BaseModel):
     """L'état d'un match : câblage, occupants, pavé (mode/barème/zones), tir et résultat.
 
-    `mode`, `nb_manches`, `nb_fleches_par_volee`, `points_pour_gagner` et `zones` **dimensionnent le
-    pavé** de saisie du front (comme la grille + le barème de qualification, E04US002) : renseignés
-    dès qu'un match est **jouable**, avant tout tir, `None`/vides pour un bye ou des occupants pas
-    encore connus. `zones` vide sur un match jouable = blason indéterminable (pavé indisponible UI).
+    `mode`, `nb_manches`, `nb_fleches_par_volee`, `points_pour_gagner`, `nb_fleches_barrage` et
+    `zones` **dimensionnent le pavé** de saisie du front (comme la grille + le barème de
+    qualification, E04US002) : renseignés dès qu'un match est **jouable**, avant tout tir,
+    `None`/vides pour un bye ou des occupants pas encore connus. `zones` vide sur un match jouable
+    = blason indéterminable (pavé indisponible UI).
     """
 
     numero: int
@@ -91,6 +92,7 @@ class DuelReponse(BaseModel):
     nb_manches: int | None
     nb_fleches_par_volee: int | None
     points_pour_gagner: int | None
+    nb_fleches_barrage: int | None
     zones: list[str]
     validee_par: str | None
     manches: list[MancheReponse]
@@ -122,8 +124,8 @@ class DuelReponse(BaseModel):
             if duel.barrage is not None:
                 designe = duel.barrage.gagnant_designe
                 barrage = BarrageReponse(
-                    haut=duel.barrage.fleche_haut.value,
-                    bas=duel.barrage.fleche_bas.value,
+                    haut=[f.value for f in duel.barrage.fleches_haut],
+                    bas=[f.value for f in duel.barrage.fleches_bas],
                     gagnant_designe=None if designe is None else designe.value,
                 )
             issue = duel.resultat
@@ -145,6 +147,7 @@ class DuelReponse(BaseModel):
             nb_manches=None if bareme is None else bareme.nb_manches,
             nb_fleches_par_volee=None if bareme is None else bareme.nb_fleches_par_volee,
             points_pour_gagner=None if bareme is None else bareme.points_pour_gagner,
+            nb_fleches_barrage=None if bareme is None else bareme.nb_fleches_barrage,
             zones=[zone.value for zone in etat.zones],
             validee_par=validee_par,
             manches=manches,
@@ -203,13 +206,14 @@ class SaisirMancheRequete(BaseModel):
 
 
 class SaisirBarrageRequete(BaseModel):
-    """Corps du barrage : le match, une flèche par camp, le gagnant désigné (si flèches égales)."""
+    """Corps du barrage : le match, les flèches de chaque camp, le gagnant désigné si égalité."""
 
     tournoi_id: int
     phase_id: int
     match_numero: int
-    fleche_haut: ZoneScore
-    fleche_bas: ZoneScore
+    # Même borne que `BaremeDuelDTO.nb_fleches_barrage` : le domaine exige ensuite le compte exact.
+    fleches_haut: list[ZoneScore] = Field(min_length=1, max_length=12)
+    fleches_bas: list[ZoneScore] = Field(min_length=1, max_length=12)
     gagnant_designe: Cote | None = None
     identifiant_saisie: str | None = None
 
@@ -320,8 +324,8 @@ async def saisir_barrage(
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
-    fleche_haut = requete.fleche_haut
-    fleche_bas = requete.fleche_bas
+    fleches_haut = tuple(requete.fleches_haut)
+    fleches_bas = tuple(requete.fleches_bas)
     designe = requete.gagnant_designe
     cle = _cle_idempotence(
         "barrage",
@@ -336,8 +340,8 @@ async def saisir_barrage(
             requete.tournoi_id,
             requete.phase_id,
             requete.match_numero,
-            fleche_haut,
-            fleche_bas,
+            fleches_haut,
+            fleches_bas,
             designe,
         )
 

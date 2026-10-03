@@ -672,8 +672,8 @@ def test_une_rencontre_a_egalite_exige_son_barrage_avant_validation() -> None:
         monde.tournoi_id,
         monde.phase_id,
         1,
-        ZoneScore("10"),
-        ZoneScore("9"),
+        (ZoneScore("10"),),
+        (ZoneScore("9"),),
     )
     service.valider(monde.tournoi_id, monde.phase_id, 1, "scoreur")
     # La seconde rencontre clôt la ronde : sans elle, aucun résultat n'entre au classement — c'est

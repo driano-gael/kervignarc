@@ -26,11 +26,11 @@ export interface Manche {
   bas: string[]
 }
 
-// Le tir de barrage (shoot-off, §8.2) : une flèche par camp, et le gagnant **désigné** (le plus près
-// du centre, jugé par le scoreur) quand les flèches sont à égalité.
+// Le tir de barrage (shoot-off, §8.2) : `nb_fleches_barrage` flèches par camp, et le gagnant
+// **désigné** (le plus près du centre, jugé par le scoreur) quand les totaux sont à égalité.
 export interface Barrage {
-  haut: string
-  bas: string
+  haut: string[]
+  bas: string[]
   // Le backend n'émet que `'haut'`/`'bas'` (valeur de l'énuméré `Cote`) ou `null` : on resserre le
   // miroir sur `Cote | null` plutôt que `string | null`, pour éviter un cast au point d'usage.
   gagnant_designe: Cote | null
@@ -66,6 +66,7 @@ export interface Duel {
   nb_manches: number | null
   nb_fleches_par_volee: number | null
   points_pour_gagner: number | null
+  nb_fleches_barrage: number | null
   zones: string[]
   validee_par: string | null
   manches: Manche[]
@@ -125,8 +126,8 @@ export interface SaisirBarrage {
   tournoi_id: number
   phase_id: number
   match_numero: number
-  fleche_haut: string
-  fleche_bas: string
+  fleches_haut: string[]
+  fleches_bas: string[]
   gagnant_designe: Cote | null
   identifiant_saisie: string
 }

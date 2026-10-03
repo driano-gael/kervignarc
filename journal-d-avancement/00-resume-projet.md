@@ -635,17 +635,21 @@ Dans l'ordre de valeur prévu par le backlog :
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
 **épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
-— standard ou mixte, avec leur conformité affichée —, mais elles ne se **jouent** pas encore
-(scoring, placement et classement par équipe restent à faire).
+— standard ou mixte, avec leur conformité affichée —, et depuis `E13US003` une phase sait se
+régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; mais les équipes ne
+se **jouent** pas encore (placement, saisie et classement par équipe restent à faire).
 
 ---
 
 ## Chiffres repères
 
-- **159 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E10US006`,
+- **160 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E10US006`,
   à **surface visible** : l'organisateur **change son identifiant ou son mot de passe** depuis l'écran
   « Compte administrateur », sans ouvrir le fichier du serveur ; les autres appareils connectés en
-  administrateur sont alors déconnectés. Juste avant, `E01US011`,
+  administrateur sont alors déconnectés. Juste avant, `E13US003`,
+  à **surface visible** : une phase de duels se règle au **barème d'équipe** FFTA (quatre manches
+  de six flèches, ou de quatre en mixte) et son barrage fait tirer **une flèche à chaque archer**,
+  le plus haut total l'emportant ; le scoreur les saisit au pavé. Juste avant, `E01US011`,
   à **surface visible** : chaque phase de duels **choisit son barème** — FFTA ou club, avec des
   exceptions par arme — et ce barème se fige au premier duel tiré. Juste avant, `E13US002`,
   à **surface visible** : l'organisateur **compose les équipes** du tournoi sur un écran « Équipes »,

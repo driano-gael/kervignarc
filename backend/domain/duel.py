@@ -76,7 +76,8 @@ def _intervenant_valide(nom: str) -> str:
 
 @dataclass(frozen=True)
 class BaremeDuel:
-    """Le format d'un duel : mode (sets / cumul), nombre de manches, flèches par volée, seuil.
+    """Le format d'un duel : mode (sets / cumul), manches, flèches par volée, seuil, flèches de
+    barrage par camp (1 en individuel, 1 par archer en équipe — §8.2, E13US003).
 
     Value object **pur** paramétré (jumeau de `BaremeQualification`) — une **structure**, pas un
     choix dans un catalogue fermé. `points_pour_gagner` ne sert qu'en `SETS` (ignoré en `CUMUL`).
@@ -86,6 +87,7 @@ class BaremeDuel:
     nb_manches: int
     nb_fleches_par_volee: int
     points_pour_gagner: int
+    nb_fleches_barrage: int
 
     def __post_init__(self) -> None:
         if self.mode is ModeDuel.CUMUL:
@@ -94,6 +96,8 @@ class BaremeDuel:
             object.__setattr__(self, "points_pour_gagner", 0)
         if self.nb_manches < 1 or self.nb_fleches_par_volee < 1:
             raise BaremeDuelInvalide("Un duel demande au moins une manche d'au moins une flèche.")
+        if self.nb_fleches_barrage < 1:
+            raise BaremeDuelInvalide("Un barrage demande au moins une flèche par camp.")
         if self.mode is ModeDuel.SETS and not 1 <= self.points_pour_gagner <= 2 * self.nb_manches:
             raise BaremeDuelInvalide(
                 "Le seuil de points de set doit être atteignable "
@@ -103,19 +107,35 @@ class BaremeDuel:
     @staticmethod
     def preset_ffta_classique() -> BaremeDuel:
         """FFTA arc classique / arc nu (§6.2, §7) : sets, 5 manches de 3, premier à **6** points."""
-        return BaremeDuel(ModeDuel.SETS, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=6)
+        return BaremeDuel(
+            ModeDuel.SETS,
+            nb_manches=5,
+            nb_fleches_par_volee=3,
+            points_pour_gagner=6,
+            nb_fleches_barrage=1,
+        )
 
     @staticmethod
     def preset_ffta_poulies() -> BaremeDuel:
         """FFTA arc à poulies (A.7.5.2) : **cumul** de 5 volées de 3, sans points de set."""
         return BaremeDuel(
-            ModeDuel.CUMUL, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=0
+            ModeDuel.CUMUL,
+            nb_manches=5,
+            nb_fleches_par_volee=3,
+            points_pour_gagner=0,
+            nb_fleches_barrage=1,
         )
 
     @staticmethod
     def preset_club() -> BaremeDuel:
         """Format club (`Tableaux.xlsx`, §11) : sets, 5 manches de 3, premier à **4** points."""
-        return BaremeDuel(ModeDuel.SETS, nb_manches=5, nb_fleches_par_volee=3, points_pour_gagner=4)
+        return BaremeDuel(
+            ModeDuel.SETS,
+            nb_manches=5,
+            nb_fleches_par_volee=3,
+            points_pour_gagner=4,
+            nb_fleches_barrage=1,
+        )
 
 
 @dataclass(frozen=True)
@@ -129,11 +149,11 @@ class MancheDuel:
 
 @dataclass(frozen=True)
 class Barrage:
-    """Le tir de barrage (§8.2) : une flèche par camp ; `gagnant_designe` tranche à flèches égales
-    (le plus près du centre, jugé par le scoreur — l'application ne mesure pas la distance)."""
+    """Le tir de barrage (§8.2) : le plus haut **total** l'emporte ; `gagnant_designe` tranche à
+    totaux égaux (le plus près du centre, jugé par le scoreur : l'appli ne mesure rien)."""
 
-    fleche_haut: ZoneScore
-    fleche_bas: ZoneScore
+    fleches_haut: tuple[ZoneScore, ...]
+    fleches_bas: tuple[ZoneScore, ...]
     gagnant_designe: Cote | None = None
 
 
@@ -148,6 +168,10 @@ class ResultatDuel:
     vainqueur: Cote | None
     termine: bool
     barrage_requis: bool
+
+
+def _total(fleches: tuple[ZoneScore, ...]) -> int:
+    return sum(points_zone(f) for f in fleches)
 
 
 def _points_manche(manche: MancheDuel) -> tuple[int, int]:
@@ -218,11 +242,11 @@ class Duel:
         return tuple(sorted(self.manches, key=lambda m: m.numero))
 
     def _vainqueur_barrage(self) -> Cote | None:
-        """Le vainqueur du barrage : plus haute flèche, sinon la désignation (§8.2)."""
+        """Le vainqueur du barrage : plus haut total, sinon la désignation (§8.2)."""
         if self.barrage is None:
             return None
-        haut = points_zone(self.barrage.fleche_haut)
-        bas = points_zone(self.barrage.fleche_bas)
+        haut = _total(self.barrage.fleches_haut)
+        bas = _total(self.barrage.fleches_bas)
         if haut > bas:
             return Cote.HAUT
         if bas > haut:
@@ -325,32 +349,37 @@ class Duel:
 
     def saisir_barrage(
         self,
-        fleche_haut: ZoneScore,
-        fleche_bas: ZoneScore,
+        fleches_haut: tuple[ZoneScore, ...],
+        fleches_bas: tuple[ZoneScore, ...],
         *,
         zones_admises: tuple[ZoneScore, ...],
         gagnant_designe: Cote | None = None,
     ) -> Duel:
-        """Saisit le tir de barrage (§8.2) — une flèche par camp — quand l'égalité l'exige.
+        """Saisit le tir de barrage (§8.2), `nb_fleches_barrage` flèches par camp, à égalité.
 
         Refuse si le barrage n'est pas requis (`BarrageNonRequis`), sur un duel validé
-        (`DuelVerrouille`), une flèche hors blason, ou une égalité sans désignation du plus près du
-        centre (`BarrageIndecis`). ⚠️ Un barrage **déjà saisi** reste **ré-éditable** tant que le
-        duel n'est pas validé : la garde se fonde sur l'égalité des **manches seules**, sans quoi
-        une flèche de barrage erronée forcerait à valider un vainqueur faux.
+        (`DuelVerrouille`), un autre compte de flèches, une flèche hors blason, ou des totaux égaux
+        sans désignation du plus près du centre (`BarrageIndecis`). ⚠️ Un barrage **déjà saisi**
+        reste **ré-éditable** avant validation : la garde lit l'égalité des **manches seules**, sans
+        quoi une flèche de barrage erronée forcerait à valider un vainqueur faux.
         """
         if self.verrouille:
             raise DuelVerrouille("Ce duel est validé : plus aucune saisie n'est possible.")
         if not replace(self, barrage=None).resultat.barrage_requis:
             raise BarrageNonRequis("Le duel n'est pas à égalité : aucun barrage à tirer.")
-        for fleche in (fleche_haut, fleche_bas):
-            if fleche not in zones_admises:
+        attendu = self.bareme.nb_fleches_barrage
+        for fleches in (fleches_haut, fleches_bas):
+            if len(fleches) != attendu:
+                raise NombreFlechesVoleeInvalide(
+                    f"Un barrage compte {attendu} flèche(s) par camp, pas {len(fleches)}."
+                )
+            if any(f not in zones_admises for f in fleches):
                 raise ValeurHorsBlason("Une flèche de barrage n'est pas une zone admise du blason.")
-        if points_zone(fleche_haut) == points_zone(fleche_bas) and gagnant_designe is None:
+        if _total(fleches_haut) == _total(fleches_bas) and gagnant_designe is None:
             raise BarrageIndecis(
-                "Flèches de barrage à égalité : désignez le plus près du centre (§8.2)."
+                "Barrage à égalité de total : désignez le plus près du centre (§8.2)."
             )
-        return replace(self, barrage=Barrage(fleche_haut, fleche_bas, gagnant_designe))
+        return replace(self, barrage=Barrage(fleches_haut, fleches_bas, gagnant_designe))
 
     def valider(self, par: str) -> Duel:
         """Verrouille le duel **tranché** au nom du scoreur `par` (grain fin de duel).
