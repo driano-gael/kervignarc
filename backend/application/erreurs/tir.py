@@ -107,6 +107,15 @@ class BaremeDuelVerrouille(ApplicationError):
     code = "bareme_duel_verrouille"
 
 
+class EquipesVerrouillees(ApplicationError):
+    """Changer le réglage « par équipes » d'une étape dont une phase a déjà un tir (E13US004) → 409.
+
+    Même motif que `BaremeDuelVerrouille` : les tirs d'avant opposeraient d'autres participants.
+    """
+
+    code = "equipes_verrouillees"
+
+
 class ArmeDeCategorieVerrouillee(ApplicationError):
     """Changer l'arme d'une catégorie quand une étape réglée du tournoi a un tir (E01US011) → 409.
 

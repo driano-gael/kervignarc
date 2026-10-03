@@ -17,7 +17,13 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_scoreur
 from application.erreurs import ScoreurHorsTournoi
-from application.saisie_duels import Duelliste, EtatDuel, EtatTableau, ServiceSaisieDuels
+from application.saisie_duels import (
+    Camp,
+    DuellisteEquipe,
+    EtatDuel,
+    EtatTableau,
+    ServiceSaisieDuels,
+)
 from domain.blason import ZoneScore
 from domain.duel import Cote
 from domain.scoreur import Scoreur
@@ -31,16 +37,30 @@ router = APIRouter(prefix="/api/v1/duels", tags=["duels"])
 
 
 class DuellisteReponse(BaseModel):
-    """Un duelliste résolu pour l'affichage : son archer et son nom (depuis le classement)."""
+    """Un camp résolu pour l'affichage : un archer, ou une équipe (E13US004).
 
-    archer_id: int
+    Une équipe s'aplatit en `nom` d'équipe et `prenom` vide — un écran qui affiche « prénom nom »
+    la nomme donc sans changement —, sans `archer_id`, avec `equipe_id` et ses `membres`.
+    """
+
+    archer_id: int | None
     nom: str
     prenom: str
+    equipe_id: int | None = None
+    membres: list[str] = []
 
     @staticmethod
-    def de_duelliste(duelliste: Duelliste | None) -> DuellisteReponse | None:
+    def de_duelliste(duelliste: Camp | None) -> DuellisteReponse | None:
         if duelliste is None:
             return None
+        if isinstance(duelliste, DuellisteEquipe):
+            return DuellisteReponse(
+                archer_id=None,
+                nom=duelliste.nom,
+                prenom="",
+                equipe_id=duelliste.equipe_id,
+                membres=list(duelliste.membres),
+            )
         return DuellisteReponse(
             archer_id=duelliste.archer_id, nom=duelliste.nom, prenom=duelliste.prenom
         )
@@ -163,6 +183,15 @@ class PlaceReponse(BaseModel):
     duelliste: DuellisteReponse
 
 
+class EquipeEcarteeReponse(BaseModel):
+    """Une équipe qui n'entre pas au tableau, et pourquoi (E13US004, CA 2)."""
+
+    equipe_id: int
+    nom: str
+    ecarts: list[str]
+    membres_hors_course: list[str]
+
+
 class TableauReponse(BaseModel):
     """La photo du tableau reconstruit : dimensions, matchs (avec tirs) et podium acquis."""
 
@@ -172,6 +201,7 @@ class TableauReponse(BaseModel):
     est_termine: bool
     duels: list[DuelReponse]
     podium: list[PlaceReponse]
+    equipes_ecartees: list[EquipeEcarteeReponse] = []
 
     @staticmethod
     def de_etat(etat: EtatTableau) -> TableauReponse:
@@ -185,6 +215,15 @@ class TableauReponse(BaseModel):
                 PlaceReponse(rang=rang, duelliste=reponse)
                 for rang, duelliste in etat.podium
                 if (reponse := DuellisteReponse.de_duelliste(duelliste)) is not None
+            ],
+            equipes_ecartees=[
+                EquipeEcarteeReponse(
+                    equipe_id=e.equipe_id,
+                    nom=e.nom,
+                    ecarts=[ecart.value for ecart in e.ecarts],
+                    membres_hors_course=list(e.membres_hors_course),
+                )
+                for e in etat.equipes_ecartees
             ],
         )
 

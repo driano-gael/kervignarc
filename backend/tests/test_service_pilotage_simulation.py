@@ -64,6 +64,7 @@ from infrastructure.memory.repositories import (
     InMemorySerieRepository,
     InMemoryTournoiRepository,
 )
+from tests.conftest import archer_de
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -306,7 +307,7 @@ def test_meme_graine_meme_deroule_avec_duels() -> None:
         totaux = [ligne.total for ligne in etat.creneau_unique().classement.lignes]
         # `EtatTableau.podium` : tuples (rang, Duelliste), pas des objets.
         podium = [
-            (rang, duelliste.archer_id)
+            (rang, archer_de(duelliste))
             for rang, duelliste in etat.creneau_unique().tableaux[0].podium
         ]
         empreintes.append((totaux, podium))

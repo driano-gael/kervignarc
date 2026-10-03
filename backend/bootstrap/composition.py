@@ -210,6 +210,7 @@ from infrastructure.memory.repositories import (
     InMemoryDepartRepository,
     InMemoryDerouleRepository,
     InMemoryDuelRepository,
+    InMemoryEquipeRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
@@ -314,6 +315,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         PlacementEnCascade(),
         registre,
         aggregation_simulation,
+        equipes=ServiceEquipes(InMemoryEquipeRepository(), tournois, archers, categories),
     )
     placement_duels = ServicePlacementDuels(
         tournois,
@@ -768,6 +770,7 @@ def create_app(
         PlacementEnCascade(),
         app.state.registre_politiques,
         aggregation,
+        equipes=app.state.service_equipes,
     )
     # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*` rend
     # `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui attendent un

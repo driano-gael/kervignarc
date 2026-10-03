@@ -13,11 +13,11 @@ from dataclasses import dataclass
 from application.audit import ServiceAudit
 from application.erreurs import AucunDuelALancer, GabaritDuTournoiAbsent, PrelevementEnAttente
 from application.placement_duels import ServicePlacementDuels
-from application.saisie_duels import Duelliste, ServiceSaisieDuels
+from application.saisie_duels import Camp, ServiceSaisieDuels
 from domain.classement import LigneClassement
 from domain.entree_audit import ActionAuditee
 from domain.erreurs import EffectifTableauInvalide
-from domain.participant import GenreParticipant, Participant
+from domain.participant import Participant
 from domain.phase import PhaseId
 from domain.tableau import Match, PerdantDe, VainqueurDe
 from domain.tournoi import TournoiId
@@ -41,8 +41,8 @@ class DuelAVenir:
 
     numero: int
     tour: int
-    haut: Duelliste | None
-    bas: Duelliste | None
+    haut: Camp | None
+    bas: Camp | None
     participants_connus: bool
     cible_haut: int | None
     cible_bas: int | None
@@ -269,13 +269,14 @@ class ServicePilotageTour:
             blocage=self._blocage(participants_connus, cible_attribuee, sources),
         )
 
-    @staticmethod
-    def _cible_de(participant: Participant | None, cibles: dict[int, int]) -> int | None:
-        """La cible attribuée à l'occupant d'un camp (individuel), ou `None` (vide / équipe / pas
-        placé). Les équipes sont hors périmètre (E13US002), sans cible ici."""
-        if participant is None or participant.genre is not GenreParticipant.INDIVIDUEL:
+    def _cible_de(self, participant: Participant | None, cibles: dict[int, int]) -> int | None:
+        """La cible de l'occupant d'un camp — celle du premier membre posé d'une équipe (E13US004,
+        CA 6) —, ou `None` (vide / pas placé)."""
+        if participant is None:
             return None
-        return cibles.get(participant.ref_id)
+        return next(
+            (cibles[a] for a in self._saisie_duels.archers_du(participant) if a in cibles), None
+        )
 
     # DETTE-019 : corps identique à `ServiceRoutage._sources_en_attente` (E04US018).
     @staticmethod

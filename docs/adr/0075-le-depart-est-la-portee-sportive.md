@@ -237,7 +237,10 @@ que la même US le **rouvre** (sa *Décision* change d'acteur en duels) ; sa sec
 code par » a donc été écrite dans le même commit. Leçon distincte, donc : la liste des **seize
 retenus** mérite le même balayage que celle des ajouts.
 
-**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : **`0117`**
+**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : **`0120`**
+(E13US004, 03/10/2026 — une phase oppose des équipes par un réglage d'étape, l'engagement est
+dérivé ; il **rouvre `0028`**, dont la section « Porté dans le code par » a été relue dans le même
+commit), **`0117`**
 (E01US011, 01/10/2026 — le barème de duel, politique `scoring` au sens de la règle 2, devient un
 réglage d'étape verrouillé au premier tir ; il **rouvre `0049`** §2 et §4, dont la section « Porté
 dans le code par » a été relue dans le même commit), **`0111`**

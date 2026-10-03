@@ -32,6 +32,7 @@ from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.entree_audit import EntreeAudit
+from domain.equipe import TypeEquipe
 from domain.erreurs import DomainError
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -118,6 +119,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         suisse = _lire_reglage_suisse(config)
         colline = _lire_reglage_colline(config)
         bareme_duel = _lire_bareme_duel(config)
+        equipes = _lire_equipes(config)
         decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
         titre = _lire_titre(config)
@@ -149,6 +151,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             arrets=arrets,
             titre=titre,
             bareme_duel=bareme_duel,
+            equipes=equipes,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -303,6 +306,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             arrets=etape.arrets,
             titre=etape.titre,
             bareme_duel=etape.bareme_duel,
+            equipes=etape.equipes,
         )
     )
 
@@ -323,6 +327,7 @@ def _politiques_json(
     arrets: tuple[ArretProgramme, ...],
     titre: str | None,
     bareme_duel: ReglageBaremeDuel | None,
+    equipes: TypeEquipe | None,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
 ) -> dict[str, object]:
@@ -482,6 +487,10 @@ def _politiques_json(
                 for surcharge in bareme_duel.surcharges
             ],
         }
+    if equipes is not None:
+        # E13US004 : racine du `config`, comme `bareme_duel` — absente = individuelle, sans
+        # migration (ADR-0120).
+        config["equipes"] = equipes.value
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -639,6 +648,11 @@ def _lire_bareme_duel(config: Any) -> ReglageBaremeDuel | None:
             for brute in souffle["surcharges"]
         ),
     )
+
+
+def _lire_equipes(config: Any) -> TypeEquipe | None:
+    brute = config.get("equipes")
+    return None if brute is None else TypeEquipe(str(brute))
 
 
 def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
@@ -855,6 +869,8 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         titre=etape.titre,
                         # E01US011 : câblé ici ET sur `_config_etape` — cf. le commentaire du titre.
                         bareme_duel=etape.bareme_duel,
+                        # E13US004 : câblé ici ET sur `_config_etape`, même motif.
+                        equipes=etape.equipes,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -949,6 +965,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         arrets=_lire_arrets(brute),
         titre=_lire_titre(brute),
         bareme_duel=_lire_bareme_duel(brute),
+        equipes=_lire_equipes(brute),
     )
 
 

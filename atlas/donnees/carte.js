@@ -285,7 +285,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 394,
+   "occurrences": 398,
    "source": "application"
   },
   {
@@ -309,7 +309,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 115,
+   "occurrences": 117,
    "source": "infrastructure"
   },
   {
@@ -333,7 +333,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 102,
+   "occurrences": 104,
    "source": "api"
   },
   {
@@ -568,7 +568,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 98,
+   "occurrences": 100,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -790,7 +790,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 379,
+   "occurrences": 383,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1140,7 +1140,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 63,
+   "occurrences": 64,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/equipes.py",
@@ -1196,7 +1196,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 17,
+   "occurrences": 18,
    "origines": [
     "backend/infrastructure/memory/repositories.py"
    ],
@@ -1762,6 +1762,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/infrastructure/db/repositories/equipes.py",
      "nom": "EquipeRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryEquipeRepository"
     }
    ],
    "couche": "domain",
@@ -1806,6 +1810,7 @@ window.ATLAS.carte = {
    "methodes": [
     "bareme",
     "effectif",
+    "equipes",
     "ordre",
     "poules",
     "sources",
@@ -1851,6 +1856,7 @@ window.ATLAS.carte = {
    "hors_domaine": false,
    "methodes": [
     "effectif",
+    "equipes",
     "ordre",
     "sources",
     "type"
@@ -2446,6 +2452,10 @@ window.ATLAS.carte = {
     },
     {
      "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryEquipeRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
      "nom": "InMemoryForfaitRepository"
     },
     {
@@ -2838,6 +2848,10 @@ window.ATLAS.carte = {
     },
     {
      "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryEquipeRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
      "nom": "InMemoryForfaitRepository"
     },
     {
@@ -3158,6 +3172,7 @@ window.ATLAS.carte = {
    "fichier": "backend/domain/duel.py",
    "hors_domaine": false,
    "methodes": [
+    "bareme_equipe_pour",
     "bareme_pour"
    ],
    "nom": "ResolveurBaremeDuel",
@@ -3259,6 +3274,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/domain/completude.py",
      "nom": "LigneCompletude"
+    },
+    {
+     "fichier": "backend/domain/engagement_equipes.py",
+     "nom": "EquipeEngagee"
     },
     {
      "fichier": "backend/domain/politiques.py",
@@ -3456,8 +3475,8 @@ window.ATLAS.carte = {
   "aretes_front": 187,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1044,
-  "imports_entre_couches": 878,
+  "imports": 1052,
+  "imports_entre_couches": 886,
   "plus_gros_noeud": 25,
   "ports": 78,
   "ports_hors_domaine": 30,

@@ -26,6 +26,7 @@ from domain.deroule_etape import (
     titre_normalise,
 )
 from domain.duel import ReglageBaremeDuel
+from domain.equipe import TypeEquipe
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
@@ -137,6 +138,9 @@ class ModelePhase:
     la promotion. Même régime de brouillon : son type n'est jugé qu'à l'application.
     """
 
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe opposé (E13US004) — voyage avec le format, comme `bareme_duel`."""
+
     decoupage: DecoupageEnTours | None = None
     """Le découpage d'une **qualification** en tours (E05US035, ADR-0093).
 
@@ -219,6 +223,7 @@ class ModelePhase:
             suisse=self.suisse,
             colline=self.colline,
             bareme_duel=self.bareme_duel,
+            equipes=self.equipes,
             decoupage=self.decoupage,
             arrets=self.arrets,
             titre=self.titre,
@@ -248,6 +253,7 @@ class ModelePhase:
             suisse=etape.suisse,
             colline=etape.colline,
             bareme_duel=etape.bareme_duel,
+            equipes=etape.equipes,
             decoupage=etape.decoupage,
             arrets=etape.arrets,
             titre=etape.titre,

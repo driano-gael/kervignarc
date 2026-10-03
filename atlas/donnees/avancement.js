@@ -4,9 +4,34 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "121",
+   "introduite_par": [
+    "E13US004",
+    "E06US003"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E06US003",
+    "E13US005"
+   ],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "120",
+   "introduite_par": [
+    "E13US004"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E13US005"
+   ],
+   "severite": "majeur"
+  },
+  {
    "identifiant": "119",
    "introduite_par": [
-    "E01US011"
+    "E01US011",
+    "E13US004"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -245,7 +270,8 @@ window.ATLAS.avancement = {
     "E02US003",
     "E02US005",
     "E16US010",
-    "E13US002"
+    "E13US002",
+    "E13US004"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -865,7 +891,8 @@ window.ATLAS.avancement = {
     "E05US026",
     "E05US027",
     "E01US011",
-    "E05US033"
+    "E05US033",
+    "E13US004"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -3433,9 +3460,12 @@ window.ATLAS.avancement = {
    ],
    "dettes_introduites": [
     "028",
-    "081"
+    "081",
+    "121"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "121"
+   ],
    "epic": "06",
    "epic_titre": "Classements & résultats",
    "etat": "✅",
@@ -4189,7 +4219,8 @@ window.ATLAS.avancement = {
     "0075",
     "0077",
     "0086",
-    "0103"
+    "0103",
+    "0120"
    ],
    "dettes_introduites": [
     "006"
@@ -4209,7 +4240,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0028",
-    "0049"
+    "0049",
+    "0120"
    ],
    "dettes_introduites": [
     "111"
@@ -4228,9 +4260,17 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0028"
+    "0028",
+    "0075",
+    "0120"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "006",
+    "064",
+    "119",
+    "120",
+    "121"
+   ],
    "dettes_resorbees": [],
    "epic": "13",
    "epic_titre": "Épreuves par équipes — abstraction participant",
@@ -4241,7 +4281,7 @@ window.ATLAS.avancement = {
    ],
    "story": "stories/E13-equipes.md",
    "titre": "Placement, saisie & classement par équipe",
-   "titre_story": "Placement, saisie & classement par équipe"
+   "titre_story": "Un tableau d'équipes jouable de bout en bout"
   },
   {
    "adr": [

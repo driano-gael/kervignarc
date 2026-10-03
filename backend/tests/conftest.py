@@ -51,6 +51,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from application.saisie_duels import Camp, Duelliste
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import BlasonId
@@ -965,6 +966,7 @@ def poser_phase_factice(
                 colline=phase.colline,
                 # E01US011 : câblé du premier coup — 5ᵉ réglage, `DETTE-064`.
                 bareme_duel=phase.bareme_duel,
+                equipes=phase.equipes,
                 # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
                 # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
                 # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
@@ -1056,6 +1058,8 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
             colline=phase.colline,
             # E01US011 : câblé du premier coup — 5ᵉ réglage, `DETTE-064`.
             bareme_duel=phase.bareme_duel,
+            # E13US004 : 6ᵉ réglage, **oublié** puis rattrapé par un test d'API — `DETTE-064`.
+            equipes=phase.equipes,
             # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
             # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
             # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
@@ -1350,3 +1354,9 @@ def section_unique(corps: dict[str, Any]) -> dict[str, Any]:
     (section,) = corps["sections"]
     assert isinstance(section, dict)
     return section
+
+
+def archer_de(camp: Camp | None) -> int:
+    """L'archer d'un camp **individuel** — échoue net sur une équipe ou un camp vide (E13US004)."""
+    assert isinstance(camp, Duelliste), f"camp individuel attendu, reçu {camp!r}"
+    return camp.archer_id

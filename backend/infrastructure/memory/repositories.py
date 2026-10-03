@@ -21,6 +21,7 @@ from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
+from domain.equipe import Equipe, EquipeId
 from domain.forfait import Forfait
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
@@ -664,3 +665,30 @@ class InMemoryPlacementTableauRepository:
 
     def retirer(self, phase_id: PhaseId, tour: int, inscription_id: InscriptionId) -> None:
         self._plans.get((phase_id, tour), {}).pop(inscription_id, None)
+
+
+class InMemoryEquipeRepository(_AllocateurId):
+    """Port `EquipeRepository` en mémoire (E13US004) — le harnais de simulation ne compose aucune
+    équipe : une phase d'équipes y engage donc zéro équipe, comme un tournoi sans équipe."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._items: dict[int, Equipe] = {}
+
+    def par_id(self, equipe_id: EquipeId) -> Equipe | None:
+        return self._items.get(equipe_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Equipe]:
+        return [e for e in self._items.values() if e.tournoi_id == tournoi_id]
+
+    def par_archer(self, archer_id: ArcherId) -> list[Equipe]:
+        return [e for e in self._items.values() if archer_id in e.membres]
+
+    def enregistrer(self, equipe: Equipe) -> Equipe:
+        identifiant = self._identifiant(equipe.id)
+        persiste = dataclasses.replace(equipe, id=identifiant)
+        self._items[identifiant] = persiste
+        return persiste
+
+    def supprimer(self, equipe_id: EquipeId) -> None:
+        self._items.pop(equipe_id, None)

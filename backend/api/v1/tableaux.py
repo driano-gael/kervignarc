@@ -15,7 +15,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from application.saisie_duels import Duelliste, EtatDuel
+from application.saisie_duels import Camp, DuellisteEquipe, EtatDuel
 from application.tableaux_publics import ServiceTableauxPublics, TableauPublic
 
 router = APIRouter(prefix="/api/v1/tableaux", tags=["tableaux"])
@@ -32,19 +32,25 @@ class DuellisteReponse(BaseModel):
     correspondre des noms, comparaison qui casse au premier homonyme.
     """
 
-    archer_id: int
+    archer_id: int | None
     nom: str
     prenom: str
+    equipe_id: int | None = None
+    """Un camp d'équipe (E13US004) : nommé par l'équipe, sans `archer_id` ni prénom."""
 
     @staticmethod
-    def de_connu(duelliste: Duelliste) -> DuellisteReponse:
+    def de_connu(duelliste: Camp) -> DuellisteReponse:
         """Projection d'un duelliste **certain** (podium). Domicile unique de la conversion."""
+        if isinstance(duelliste, DuellisteEquipe):
+            return DuellisteReponse(
+                archer_id=None, nom=duelliste.nom, prenom="", equipe_id=duelliste.equipe_id
+            )
         return DuellisteReponse(
             archer_id=duelliste.archer_id, nom=duelliste.nom, prenom=duelliste.prenom
         )
 
     @staticmethod
-    def de_duelliste(duelliste: Duelliste | None) -> DuellisteReponse | None:
+    def de_duelliste(duelliste: Camp | None) -> DuellisteReponse | None:
         """Projection d'un camp qui peut être **vide** (adversaire pas encore sorti de son duel)."""
         return None if duelliste is None else DuellisteReponse.de_connu(duelliste)
 
@@ -148,7 +154,7 @@ class TableauPublicReponse(BaseModel):
             est_termine=etat.est_termine,
             duels=[DuelPublicReponse.de_etat(duel) for duel in etat.duels],
             # `de_connu` et non la fabrique optionnelle : `EtatTableau.podium` est typé
-            # `tuple[tuple[int, Duelliste]]`, donc le filtre `is not None` d'un premier jet était
+            # `tuple[tuple[int, Camp]]`, donc le filtre `is not None` d'un premier jet était
             # **toujours vrai** — et il aurait un jour supprimé une place du podium **en silence**
             # au lieu d'échouer. Deux fabriques, une seule conversion (correctif de revue : la
             # version intermédiaire recopiait le mapping en ligne, dans un fichier dont tout le

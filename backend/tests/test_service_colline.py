@@ -27,6 +27,7 @@ import pytest
 
 from application.classements import ServiceClassement
 from application.colline import ServiceColline
+from application.equipes import ServiceEquipes
 from application.erreurs import PhaseEnPause, PhasePasReglee, PhasePasUneColline
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
@@ -53,6 +54,7 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxDepartRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
@@ -206,6 +208,9 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                FauxEquipeRepository(), self.tournois, self.archers, self.categories
+            ),
         )
         return ServiceColline(
             self.tournois,

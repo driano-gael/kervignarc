@@ -55,6 +55,19 @@ class EquipeVue:
         return not self.ecarts
 
 
+@dataclass(frozen=True)
+class EquipeJouee:
+    """Ce qu'un duel lit d'une équipe engagée (E13US004) : ses membres, et la catégorie commune.
+
+    `categorie` est celle du **premier** membre : une équipe engagée est conforme, donc ses membres
+    partagent l'arme ; c'est elle qui résout le barème et le blason du duel (ADR-0120 §5).
+    """
+
+    equipe: Equipe
+    membres: tuple[MembreVu, ...]
+    categorie: Categorie | None
+
+
 class ServiceEquipes:
     def __init__(
         self,
@@ -73,6 +86,37 @@ class ServiceEquipes:
         self._verifier_tournoi(tournoi_id)
         equipes = sorted(self._equipes.par_tournoi(tournoi_id), key=lambda e: cle_nom(e.nom))
         return self._vues(tournoi_id, equipes)
+
+    def a_engager(
+        self, tournoi_id: TournoiId, type: TypeEquipe
+    ) -> tuple[list[Equipe], dict[ArcherId, ProfilMembre]]:
+        """Les équipes de `type` et le profil de chaque archer du tournoi, lus une fois."""
+        categories = {c.id: c for c in self._categories.par_tournoi(tournoi_id)}
+        profils = {
+            archer.id: ProfilMembre.de_categorie(categories.get(archer.categorie_id))
+            for archer in self._archers.par_tournoi(tournoi_id)
+            if archer.id is not None
+        }
+        equipes = [e for e in self._equipes.par_tournoi(tournoi_id) if e.type is type]
+        return equipes, profils
+
+    def jouee(self, equipe_id: EquipeId) -> EquipeJouee | None:
+        equipe = self._equipes.par_id(equipe_id)
+        if equipe is None:
+            return None
+        membres = [
+            (archer_id, archer)
+            for archer_id in equipe.membres
+            if (archer := self._archers.par_id(archer_id)) is not None
+        ]
+        categories = {a.categorie_id: self._categories.par_id(a.categorie_id) for _, a in membres}
+        return EquipeJouee(
+            equipe=equipe,
+            membres=tuple(
+                _membre_vu(archer_id, a, categories[a.categorie_id]) for archer_id, a in membres
+            ),
+            categorie=categories[membres[0][1].categorie_id] if membres else None,
+        )
 
     def creer(
         self, tournoi_id: TournoiId, nom: str, type: TypeEquipe, effectif_attendu: int | None

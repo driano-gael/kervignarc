@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Protocol
 
 from domain.blason import ZoneScore, points_zone
+from domain.equipe import TypeEquipe
 from domain.erreurs import (
     BaremeDuelInvalide,
     BarrageIndecis,
@@ -124,6 +125,22 @@ class BaremeDuel:
             nb_fleches_par_volee=3,
             points_pour_gagner=0,
             nb_fleches_barrage=1,
+        )
+
+    @staticmethod
+    def preset_ffta_equipe(type: TypeEquipe, poulies: bool) -> BaremeDuel:
+        """FFTA par équipes (§6.4, §7, §8.2) : 4 manches de 6 flèches (4 en mixte), premier à 5,
+        barrage 1 flèche par archer — au **cumul** pour les poulies (E13US004, CA 4).
+
+        DETTE-119 — recopié au front (`shared/phases/baremeDuel.ts`, presets équipe et mixte).
+        """
+        fleches = 6 if type is TypeEquipe.STANDARD else 4
+        return BaremeDuel(
+            ModeDuel.CUMUL if poulies else ModeDuel.SETS,
+            nb_manches=4,
+            nb_fleches_par_volee=fleches,
+            points_pour_gagner=0 if poulies else 5,
+            nb_fleches_barrage=fleches // 2,
         )
 
     @staticmethod
@@ -406,6 +423,8 @@ class ResolveurBaremeDuel(Protocol):
 
     def bareme_pour(self, arme: str | None) -> BaremeDuel: ...
 
+    def bareme_equipe_pour(self, type: TypeEquipe, arme: str | None) -> BaremeDuel: ...
+
 
 @dataclass(frozen=True)
 class ResolveurBaremeDuelFfta:
@@ -420,6 +439,9 @@ class ResolveurBaremeDuelFfta:
         if _est_poulies(arme):
             return BaremeDuel.preset_ffta_poulies()
         return BaremeDuel.preset_ffta_classique()
+
+    def bareme_equipe_pour(self, type: TypeEquipe, arme: str | None) -> BaremeDuel:
+        return BaremeDuel.preset_ffta_equipe(type, _est_poulies(arme))
 
 
 @dataclass(frozen=True)

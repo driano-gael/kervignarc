@@ -1379,7 +1379,8 @@ window.ATLAS.decisions = {
     "E13US001",
     "E13US002",
     "E13US003",
-    "E13US004"
+    "E13US004",
+    "E13US005"
    ]
   },
   {
@@ -4354,6 +4355,7 @@ window.ATLAS.decisions = {
     "E05US035",
     "E06US009",
     "E13US002",
+    "E13US004",
     "E16US002",
     "E16US007",
     "E16US008",
@@ -11875,6 +11877,47 @@ window.ATLAS.decisions = {
     "E01US018",
     "E01US027",
     "E12US002"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-10-03",
+   "date_brute": "2026-10-03",
+   "extrait": "1. « Par équipes » est un réglage d'étape : EtapeDeroule.equipes: TypeEquipe | None, recopié sur Phase.equipes à l'instanciation et porté par le format de bibliothèque. None = individuel, le comportement d'avant. Seule l'élimination directe l'accepte dans cette tranche ; tout autre type le refuse (EquipesNonPrisesEnCharge). Comme le barème, le réglage est verrouillé au premier tir de l'étape (ADR-0117 §5). 2. L'engagement est une dérivation, pas un geste. À chaque reconstruction, engager_les_equipes (domaine pur) range les équipes du type : sont engagées celles qui sont conformes et dont tous les membres sont en lice au classement du départ ; les autres sont écartées avec leurs motifs, […]",
+   "fichier": "docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md",
+   "identifiant": "0120",
+   "liens": [
+    {
+     "cible": "E13US004",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0028",
+     "libelle": "Prolonge",
+     "sens": "sortant",
+     "type": "complete"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "frontend/src/shared/phases/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une phase oppose des équipes par un réglage d'étape ; l'engagement est dérivé",
+   "us": [
+    "E13US002",
+    "E13US003",
+    "E13US004",
+    "E13US005"
    ]
   }
  ]

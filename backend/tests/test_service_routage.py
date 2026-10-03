@@ -26,6 +26,7 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
+from application.equipes import ServiceEquipes
 from application.erreurs import DepartIntrouvable, PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.routage import (
@@ -65,6 +66,7 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
@@ -275,6 +277,9 @@ class _Monde:
             self.routing,
             _REGISTRE,
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                FauxEquipeRepository(), self.tournois, self.archers, self.categories
+            ),
         )
 
     @property
