@@ -226,8 +226,9 @@ function ListeDuels({
       {tableau.est_termine && tableau.podium.length > 0 && <Podium tableau={tableau} />}
       {tableau.duels.length === 0 && (
         <p className="carte__aide">
-          Moins de deux équipes engagées : aucun duel à jouer. Les motifs des équipes écartées
-          figurent ci-dessous.
+          Moins de deux équipes engagées : aucun duel à jouer.
+          {tableau.equipes_ecartees.length > 0 &&
+            ' Les motifs des équipes écartées figurent ci-dessous.'}
         </p>
       )}
       {tableau.equipes_ecartees.length > 0 && (

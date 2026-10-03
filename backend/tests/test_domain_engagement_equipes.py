@@ -244,3 +244,23 @@ def test_une_equipe_sans_aucun_membre_dans_ce_depart_n_est_pas_listee() -> None:
 
     assert [e.equipe.nom for e in engagement.engagees] == ["Ici"]
     assert engagement.ecartees == ()
+
+
+def test_une_equipe_vide_n_est_pas_listee() -> None:
+    # CA 2 : aucun membre au classement de ce départ — elle reste signalée sur l'écran « Équipes ».
+    vide = Equipe(1, "Vide", TypeEquipe.STANDARD, 3, (), id=1)
+
+    engagement = engager_les_equipes(TypeEquipe.STANDARD, [vide], {}, {})
+
+    assert (engagement.engagees, engagement.ecartees) == ((), ())
+
+
+def test_un_seul_membre_dans_ce_depart_suffit_a_lister_l_equipe() -> None:
+    # La frontière du filtre : un membre ici, deux ailleurs — écartée, deux membres hors course.
+    partagee = _equipe(1, "Partagée", (1, 7, 8))
+    lignes = _lignes(_ligne(1, 500))
+
+    engagement = engager_les_equipes(TypeEquipe.STANDARD, [partagee], _profils(1, 7, 8), lignes)
+
+    (ecartee,) = engagement.ecartees
+    assert ecartee.membres_hors_course == (7, 8)

@@ -139,5 +139,6 @@ describe('SaisieDuels — un tableau d’équipes', () => {
     await monter()
 
     expect(await screen.findByText(/Moins de deux équipes engagées/)).toBeInTheDocument()
+    expect(screen.queryByText(/figurent ci-dessous/)).toBeNull()
   })
 })

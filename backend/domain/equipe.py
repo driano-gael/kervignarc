@@ -108,6 +108,7 @@ class EcartComposition(str, Enum):
     SEXES_DIFFERENTS = "sexes_differents"
     SEXE_NON_VERIFIABLE = "sexe_non_verifiable"
     BLASONS_DIFFERENTS = "blasons_differents"
+    BLASON_NON_VERIFIABLE = "blason_non_verifiable"
 
 
 @dataclass(frozen=True)
@@ -163,9 +164,13 @@ def ecarts_de_composition(
         return tuple(ecarts)
     ecarts.extend(_ecarts_d_arme(profils))
     ecarts.extend(_ecarts_de_sexe(equipe.type, profils))
-    # Un blason inconnu mêlé à un blason connu est un écart : le pavé est celui du premier membre.
-    if len({p.blason_id for p in profils}) > 1:
+    # Le pavé d'un duel d'équipe est celui du premier membre : un blason inconnu à côté d'un blason
+    # connu le rendrait faux, ou introuvable, selon l'ordre d'ajout — sans rien deviner.
+    connus = {p.blason_id for p in profils if p.blason_id is not None}
+    if len(connus) > 1:
         ecarts.append(EcartComposition.BLASONS_DIFFERENTS)
+    if connus and any(p.blason_id is None for p in profils):
+        ecarts.append(EcartComposition.BLASON_NON_VERIFIABLE)
     return tuple(ecarts)
 
 

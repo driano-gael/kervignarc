@@ -63,6 +63,7 @@ class ServiceInscriptions:
         self._departs = depart_repository
         self._horloge = horloge
 
+    # DETTE-123 — un membre inscrit ou désinscrit réensemence un tableau d'équipes déjà tiré.
     def inscrire(self, archer_id: ArcherId, depart_id: DepartId) -> InscriptionDetaillee:
         """Inscrit un archer sur un départ de **son** tournoi.
 
@@ -125,6 +126,7 @@ class ServiceInscriptions:
         """
         return sum(detail.montant_du_centimes for detail in self.lister_par_archer(archer_id))
 
+    # DETTE-123 — un membre inscrit ou désinscrit réensemence un tableau d'équipes déjà tiré.
     def desinscrire(self, inscription_id: InscriptionId, confirme: bool = False) -> None:
         """Désinscrit un archer d'un départ. Lève `InscriptionIntrouvable` si elle n'existe pas.
 

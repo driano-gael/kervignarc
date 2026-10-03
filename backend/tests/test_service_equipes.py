@@ -455,3 +455,16 @@ def test_passer_dans_un_type_en_jeu_est_refuse(decor: Decor) -> None:
 
     with pytest.raises(CompositionEquipeVerrouillee):
         decor.service.modifier(decor.tournoi_id, mixte.equipe.id, "Duo", TypeEquipe.STANDARD, None)
+
+
+def test_le_premier_membre_d_une_equipe_vide_est_soumis_au_verrou(decor: Decor) -> None:
+    # Créer est libre parce qu'une équipe vide n'entre nulle part ; c'est l'ajout du premier
+    # membre qui doit être gardé, sur l'union des membres et du nouvel archer.
+    _equipe_en_jeu(decor)
+    retardataire = decor.service.creer(decor.tournoi_id, "Retardataire", TypeEquipe.STANDARD, None)
+    assert retardataire.equipe.id is not None
+
+    with pytest.raises(CompositionEquipeVerrouillee):
+        decor.service.ajouter_membre(
+            decor.tournoi_id, retardataire.equipe.id, decor.archer("Walter")
+        )

@@ -58,9 +58,10 @@ Trois faits du code ont orienté la décision :
 7. **La composition se fige au premier tir, par départ** (arbitrages de revue du 03/10/2026).
    L'engagement étant recalculé, supprimer ou recomposer une équipe dont un membre tire un départ
    où le tableau de ce type a un tir réécrirait l'ensemencement : `ServiceEquipes` le refuse (409,
-   `VerrouCompositionEquipes`). Le gel ne couvre **que** cet écran : supprimer ou fusionner un
-   archer, modifier une catégorie, déclarer un forfait de qualification changent encore
-   l'engagement, comme en individuel (`DETTE-123`) — le remède est de figer l'engagement.
+   `VerrouCompositionEquipes`). Le gel ne couvre **que** cet écran : tout geste sur les
+   inscriptions, la catégorie d'un membre ou la qualification change encore l'engagement, comme
+   en individuel (`DETTE-123`) ; désinscrire les membres lève même le gel, le verrou lisant les
+   inscriptions. Le remède est de figer l'engagement (`E13US005`).
 
 ## Alternatives écartées
 

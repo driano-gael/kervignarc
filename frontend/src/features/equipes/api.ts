@@ -17,6 +17,7 @@ export type EcartEquipe =
   | 'sexes_differents'
   | 'sexe_non_verifiable'
   | 'blasons_differents'
+  | 'blason_non_verifiable'
 
 export interface MembreEquipe {
   archer_id: number

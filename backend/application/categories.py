@@ -143,7 +143,7 @@ class ServiceCategories:
             par_nom[cle] = self._blasons.ajouter(blason)
         return par_nom
 
-    # DETTE-123 — sexe ou blason d'une catégorie de membre : réensemence un tableau d'équipes tiré.
+    # DETTE-123 — arme, sexe ou blason d'une catégorie de membre : réensemence un tableau tiré.
     def modifier(
         self,
         categorie_id: CategorieId,

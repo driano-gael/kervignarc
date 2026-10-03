@@ -20,6 +20,7 @@ const LIBELLES_ECART_COURTS: Record<EcartEquipe, string> = {
   sexes_differents: 'Sexes différents entre les membres',
   sexe_non_verifiable: 'Sexe non vérifiable : catégorie sans sexe ou mixte',
   blasons_differents: 'Blasons différents : les membres ne tirent pas sur le même blason',
+  blason_non_verifiable: 'Blason non vérifiable : une catégorie n’a pas de blason',
 }
 
 const LIBELLES_ECART: Record<EcartEquipe, (equipe: Equipe) => string> = {
@@ -33,6 +34,7 @@ const LIBELLES_ECART: Record<EcartEquipe, (equipe: Equipe) => string> = {
   sexes_differents: () => LIBELLES_ECART_COURTS.sexes_differents,
   sexe_non_verifiable: () => LIBELLES_ECART_COURTS.sexe_non_verifiable,
   blasons_differents: () => LIBELLES_ECART_COURTS.blasons_differents,
+  blason_non_verifiable: () => LIBELLES_ECART_COURTS.blason_non_verifiable,
 }
 
 function estEcartConnu(ecart: string): ecart is EcartEquipe {

@@ -452,3 +452,24 @@ def test_un_tableau_d_equipes_se_lit_et_se_saisit_de_bout_en_bout(
             )
             assert manche.status_code == 200, manche.text
         assert len(manche.json()["manches"]) == 2
+
+
+def test_l_ecran_des_duels_a_une_seule_equipe_engagee_dit_pourquoi(
+    app_duels: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La route de l'écran passe par `etat_tableau_de_saisie` : 200 et les motifs, pas un 422 muet
+    (relevé en 3ᵉ passe de revue, axe B — sans ce test, revenir à `etat_tableau` resterait vert)."""
+    with TestClient(app_duels) as client:
+        tournoi_id, phase_id = _tableau_d_equipes(app_duels)
+        db: Database = app_duels.state.database
+        equipes = EquipeRepositorySQL(db.session_factory)
+        b = next(e for e in equipes.par_tournoi(tournoi_id) if e.nom == "B")
+        assert b.id is not None
+        equipes.supprimer(b.id)
+        entete = _scoreur(client, tournoi_id, connecter_admin)
+
+        tableau = client.get(f"/api/v1/duels/tableau/{tournoi_id}/{phase_id}", headers=entete)
+
+        assert tableau.status_code == 200, tableau.text
+        assert tableau.json()["duels"] == []
+        assert [e["nom"] for e in tableau.json()["equipes_ecartees"]] == ["C"]
