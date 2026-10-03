@@ -67,6 +67,7 @@ from api.v1.remboursements import router as remboursements_router
 from api.v1.routage import router as routage_router
 from api.v1.saisie import router as saisie_router
 from api.v1.saisie_duels import router as saisie_duels_router
+from api.v1.sauvegardes import router as sauvegardes_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.simulation import router as simulation_router
@@ -136,6 +137,7 @@ from application.remboursements import ServiceRemboursements
 from application.routage import LecteurRencontresARouter, ServiceRoutage
 from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
+from application.sauvegardes import ServiceSauvegardes
 from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
@@ -166,6 +168,7 @@ from infrastructure.backup.config import (
     intervalle_secondes,
     retention,
 )
+from infrastructure.backup.restauration import StoreSauvegardesSQLite
 from infrastructure.backup.sauvegarde import SauvegardeSQLite
 from infrastructure.db import (
     ArcherRepositorySQL,
@@ -397,9 +400,11 @@ def create_app(
     # transitent) et s'exécute hors boucle dans un threadpool. Le paramétrage (intervalle,
     # rétention, dossier) vient de variables d'environnement (`infrastructure/backup/config.py`).
     intervalle_backup = intervalle_secondes()
+    chemin_base = Path(database.engine.url.database or "")
+    dossier_backup = dossier_sauvegardes()
     sauvegarde = SauvegardeSQLite(
-        Path(database.engine.url.database or ""),
-        dossier_sauvegardes(),
+        chemin_base,
+        dossier_backup,
         retention(),
         HorlogeSysteme(),
     )
@@ -421,6 +426,7 @@ def create_app(
         broadcaster.bind_loop(asyncio.get_running_loop())
         broadcaster_simulation.bind_loop(asyncio.get_running_loop())
         write_queue.start()
+        await run_in_threadpool(sauvegarde.purger_provisoires)
         # `intervalle <= 0` désactive la sauvegarde (aucune tâche lancée).
         tache_sauvegarde = (
             asyncio.create_task(_boucle_sauvegarde()) if intervalle_backup > 0 else None
@@ -1466,7 +1472,23 @@ def create_app(
     # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
     # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée
     # ni une trace. Exposé sur l'app comme la `write_queue`.
-    app.state.registre_idempotence = RegistreIdempotence()
+    registre_idempotence = RegistreIdempotence()
+    app.state.registre_idempotence = registre_idempotence
+
+    # Restauration à chaud (E11US006, ADR-0119). ⚠️ Tout registre d'**état** en mémoire indexé par un
+    # id de la base doit être vidé ici : la base restaurée peut avoir réattribué ces ids. L'état
+    # persisté côté client (files hors ligne des tablettes) n'est pas purgé — DETTE-122.
+    def _oublier_etat_volatil() -> None:
+        poste_session_store.vider()
+        scoreur_session_store.vider()
+        registre_consignes.vider()
+        poste_presence.vider()
+        registre_idempotence.vider()
+
+    app.state.service_sauvegardes = ServiceSauvegardes(
+        StoreSauvegardesSQLite(chemin_base, dossier_backup, HorlogeSysteme()),
+        _oublier_etat_volatil,
+    )
 
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
@@ -1533,6 +1555,7 @@ def create_app(
     app.include_router(palmares_router)
     app.include_router(classement_imprime_router)
     app.include_router(archive_router)
+    app.include_router(sauvegardes_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
     # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---

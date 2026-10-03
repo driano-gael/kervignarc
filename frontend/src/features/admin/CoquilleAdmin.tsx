@@ -44,6 +44,7 @@ import { Paiements } from '../paiements/Paiements'
 import { Phases } from '../phases/Phases'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
+import { Sauvegardes } from '../sauvegardes/Sauvegardes'
 import { Scoreurs } from '../scoreurs/Scoreurs'
 import { FeuVert } from '../feu-vert/FeuVert'
 import { Simulation } from '../simulation/Simulation'
@@ -421,6 +422,11 @@ function Coquille() {
       id: 'compte',
       libelle: 'Compte administrateur',
       rendu: () => <CompteAdmin />,
+    },
+    {
+      id: 'sauvegardes',
+      libelle: 'Sauvegardes',
+      rendu: () => <Sauvegardes />,
     },
     {
       id: 'simulation',

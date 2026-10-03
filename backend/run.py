@@ -10,11 +10,14 @@ migrer → annoncer → servir.
 from __future__ import annotations
 
 import os
+import sys
+import threading
 
 import uvicorn
+from fastapi import FastAPI
 
 from infrastructure.db.migrate import appliquer_migrations
-from release import chemins, reseau
+from release import arret_console, chemins, reseau
 
 # Port **fixe** documenté, visé par les tablettes. Écoute sur **toutes** les interfaces
 # (`0.0.0.0`) : exposition LAN volontaire du jour J — cf. docs/deploiement.md.
@@ -57,7 +60,33 @@ def main() -> None:
                 f"   (nom {reseau.NOM_HOTE}.local non publié — mDNS indisponible sur ce réseau ; "
                 f"utiliser l'adresse IP ci-dessus)"
             )
-        uvicorn.run(create_app(), host=HOST, port=PORT)
+        _servir(create_app())
+
+
+def _servir(app: FastAPI) -> None:
+    """Sert jusqu'à l'arrêt — Ctrl+C **ou** croix de la console (E11US006, CA 7)."""
+    # Borne l'attente des connexions (WebSocket des tablettes) : sinon le `lifespan`, qui draine
+    # la file d'écriture, n'arriverait pas avant que Windows tue le processus.
+    config = uvicorn.Config(
+        app, host=HOST, port=PORT, timeout_graceful_shutdown=arret_console.ATTENTE_CONNEXIONS_S
+    )
+    serveur = uvicorn.Server(config)
+    arrete = threading.Event()
+
+    def _demander_arret() -> None:
+        serveur.should_exit = True
+
+    _rappel = arret_console.installer(_demander_arret, arrete)  # vivant jusqu'au retour
+    try:
+        serveur.run()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        arrete.set()
+    # Garde défensive, reprise d'`uvicorn.run` : uvicorn 0.51 sort déjà en 3 lui-même sur un port
+    # pris ou un lifespan en échec ; ceci couvre une version qui ne le ferait plus.
+    if not serveur.started:
+        sys.exit(3)
 
 
 if __name__ == "__main__":

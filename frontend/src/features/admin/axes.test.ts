@@ -32,11 +32,11 @@ describe('répartition des destinations', () => {
     // « archer » (la fiche du pilotage) : le compte revient à son point de départ par deux
     // mouvements contraires. Une destination retirée doit l'être des trois tables à la fois, et
     // c'est ce test qui l'impose. E16US016 ajoute « audit », E13US002 « equipes », E10US006 « compte »,
-    // d'où 36.
+    // E11US006 « sauvegardes », d'où 37.
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
-    expect(toutes).toHaveLength(36)
-    expect(rangees).toHaveLength(35)
+    expect(toutes).toHaveLength(37)
+    expect(rangees).toHaveLength(36)
     // La dernière est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par
     // l'accueil.
     expect(toutes.filter((d) => !rangees.includes(d))).toEqual(['tournoi'])

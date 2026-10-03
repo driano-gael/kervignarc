@@ -66,6 +66,8 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   'jeu-essai': 'atelier',
   // L'accès admin (E10US006) ne porte sur aucune édition : l'atelier est le seul axe sans tournoi.
   compte: 'atelier',
+  // Une restauration remplace la base entière (E11US006) : hors édition, comme le compte.
+  sauvegardes: 'atelier',
   // Pilotage — le temps réel, et ce qui règle **cette** édition.
   accueil: 'pilotage',
   assemblage: 'pilotage',
@@ -130,6 +132,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   deroule: false,
   'jeu-essai': false,
   compte: false,
+  sauvegardes: false,
   // Pilotage & gestion — tout y porte sur une édition précise.
   accueil: true,
   assemblage: true,
@@ -369,6 +372,7 @@ export const OUVRE_UN_ELEMENT: Record<Exclude<DestinationAdminId, 'tournoi'>, bo
   deroule: false,
   'jeu-essai': false,
   compte: false,
+  sauvegardes: false,
   accueil: false,
   assemblage: false,
   bareme: false,

@@ -17,3 +17,9 @@ class InfrastructureError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
+
+
+class RestaurationImpossible(InfrastructureError):
+    """Copie de sécurité ou restauration en échec (E11US006) : verrou, disque, fichier disparu."""
+
+    code = "restauration_impossible"

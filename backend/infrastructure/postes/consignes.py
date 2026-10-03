@@ -55,3 +55,8 @@ class RegistreConsignesMemoire:
         """Copie des prises en vigueur, par écran (copie : l'appelant itère hors du verrou)."""
         with self._verrou:
             return dict(self._prises)
+
+    def vider(self) -> None:
+        """Oublie tout — après une restauration de la base (E11US006, ADR-0119)."""
+        with self._verrou:
+            self._prises.clear()
