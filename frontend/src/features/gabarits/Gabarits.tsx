@@ -1,7 +1,7 @@
 // Gestion des gabarits de salle (E01US007) — réservée à l'admin (montée sous `estAdmin`).
 //
-// Un gabarit décrit un **plan de cibles réutilisable** (indépendant d'un tournoi). Liste +
-// création + édition (nom, nombre de cibles, plafond d'archers par cible) + suppression à
+// Un gabarit décrit un **plan de cibles réutilisable** (indépendant d'un tournoi). Tableau +
+// création + édition depuis la ligne (E00US016) (nom, nombre de cibles, plafond d'archers par cible) + suppression à
 // confirmation. À la création, le **plafond** (1 à 4, défaut 4) s'applique à toutes les cibles ;
 // l'ajustement cible par cible est livré (E01US008). Les **couloirs de tir** (A/B/C/D) se
 // déduisent du plafond côté serveur (champ `position`, cf. glossaire et DETTE-042).
@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Gabarit, NouveauGabarit } from './api'
-import { decrire } from './format'
+import { decrireCouloirs } from './format'
 import { useCreerGabarit, useGabarits, useModifierGabarit, useSupprimerGabarit } from './hooks'
 
 const PLAFONDS = [1, 2, 3, 4]
@@ -23,69 +23,104 @@ export function Gabarits() {
       <FormulaireGabarit />
       {gabarits.isError && <MessageErreur erreur={gabarits.error} />}
       {gabarits.data && gabarits.data.length > 0 && (
-        <ul className="liste-gabarits">
-          {gabarits.data.map((gabarit) => (
-            <LigneGabarit key={gabarit.id} gabarit={gabarit} />
-          ))}
-        </ul>
+        <div className="table-defilement">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Nom</th>
+                <th scope="col">Cibles</th>
+                <th scope="col">Couloirs de tir</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            {gabarits.data.map((gabarit) => (
+              <LigneGabarit key={gabarit.id} gabarit={gabarit} />
+            ))}
+          </table>
+        </div>
       )}
     </section>
   )
 }
+
+// Nom, cibles, couloirs, actions — la largeur d'une ligne de détail ou du formulaire d'édition.
+const COLONNES = 4
 
 function LigneGabarit({ gabarit }: { gabarit: Gabarit }) {
   const [edition, setEdition] = useState(false)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerGabarit()
 
+  // Un `<tbody>` par gabarit : la ligne et son erreur de suppression se tiennent ensemble.
   if (edition) {
     return (
-      <li>
-        <FormulaireGabarit gabarit={gabarit} onTermine={() => setEdition(false)} />
-      </li>
+      <tbody>
+        <tr>
+          <td colSpan={COLONNES}>
+            <FormulaireGabarit gabarit={gabarit} onTermine={() => setEdition(false)} />
+          </td>
+        </tr>
+      </tbody>
     )
   }
 
   return (
-    <li className="gabarit">
-      <div className="gabarit__ligne">
-        <span className="gabarit__nom">{gabarit.nom}</span>
-        <span className="gabarit__attributs">{decrire(gabarit)}</span>
-        <span className="gabarit__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-            Éditer
-          </button>
-          {confirmationSuppression ? (
-            <>
+    <tbody>
+      <tr>
+        <td className="gabarit__nom">{gabarit.nom}</td>
+        <td>{gabarit.nb_cibles}</td>
+        <td>{decrireCouloirs(gabarit)}</td>
+        <td>
+          <span className="gabarit__actions">
+            <button
+              type="button"
+              className="bouton--discret"
+              aria-label={`Éditer ${gabarit.nom}`}
+              onClick={() => setEdition(true)}
+            >
+              Éditer
+            </button>
+            {confirmationSuppression ? (
+              <>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Confirmer la suppression de ${gabarit.nom}`}
+                  onClick={() => supprimer.mutate(gabarit.id)}
+                >
+                  Confirmer la suppression
+                </button>
+                <button
+                  type="button"
+                  className="bouton--discret"
+                  aria-label={`Annuler la suppression de ${gabarit.nom}`}
+                  onClick={() => setConfirmationSuppression(false)}
+                >
+                  Annuler
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="bouton--danger"
-                disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate(gabarit.id)}
+                aria-label={`Supprimer ${gabarit.nom}`}
+                onClick={() => setConfirmationSuppression(true)}
               >
-                Confirmer la suppression
+                Supprimer
               </button>
-              <button
-                type="button"
-                className="bouton--discret"
-                onClick={() => setConfirmationSuppression(false)}
-              >
-                Annuler
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="bouton--danger"
-              onClick={() => setConfirmationSuppression(true)}
-            >
-              Supprimer
-            </button>
-          )}
-        </span>
-      </div>
-      <MessageErreur erreur={supprimer.error} />
-    </li>
+            )}
+          </span>
+        </td>
+      </tr>
+      {supprimer.error !== null && (
+        <tr>
+          <td colSpan={COLONNES}>
+            <MessageErreur erreur={supprimer.error} />
+          </td>
+        </tr>
+      )}
+    </tbody>
   )
 }
 

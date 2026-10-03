@@ -1,6 +1,7 @@
 // Gestion des catégories d'un tournoi (E01US003) — réservée à l'admin.
 //
-// Liste, création, édition (libellé, arme, tranches d'âge, sexe) et suppression à confirmation.
+// Tableau, création, édition depuis la ligne (libellé, arme, tranches d'âge, sexe ; E00US016) et
+// suppression à confirmation.
 // L'arme est en **texte libre** ; les **tranches d'âge** sont une sélection multiple parmi les huit
 // tranches FFTA (E01US013 — arc nu « U18 » = U15 + U18). ⚠️ **Le bouton de pré-chargement FFTA a
 // quitté cet écran** avec E01US023 : le référentiel alimente la bibliothèque du club, et un tournoi
@@ -60,16 +61,29 @@ export function Categories({ tournoiId }: { tournoiId: number }) {
       <FormulaireCategorie tournoiId={tournoiId} blasons={listeBlasons} />
       {categories.isError && <MessageErreur erreur={categories.error} />}
       {categories.data && categories.data.length > 0 && (
-        <ul className="liste-categories">
-          {categories.data.map((categorie) => (
-            <LigneCategorie
-              key={categorie.id}
-              tournoiId={tournoiId}
-              categorie={categorie}
-              blasons={listeBlasons}
-            />
-          ))}
-        </ul>
+        <div className="table-defilement">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Libellé</th>
+                <th scope="col">Arme</th>
+                <th scope="col">Tranches d’âge</th>
+                <th scope="col">Sexe</th>
+                <th scope="col">Blason par défaut</th>
+                <th scope="col">Centre</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            {categories.data.map((categorie) => (
+              <LigneCategorie
+                key={categorie.id}
+                tournoiId={tournoiId}
+                categorie={categorie}
+                blasons={listeBlasons}
+              />
+            ))}
+          </table>
+        </div>
       )}
     </section>
   )
@@ -81,6 +95,10 @@ export function Categories({ tournoiId }: { tournoiId: number }) {
 // briques fédérales marquées « création du club » — ce qui salit la liste séparée demandée par le
 // commanditaire. ⚠️ L'endpoint `precharger-ffta` **reste** : le jeu d'essai (E15US001) s'en sert
 // côté serveur pour peupler un tournoi sans passer par l'atelier.
+
+// Les sept colonnes du tableau — la largeur d'une ligne de détail ou du formulaire d'édition.
+const COLONNES = 7
+const VIDE = '—'
 
 function LigneCategorie({
   tournoiId,
@@ -95,73 +113,86 @@ function LigneCategorie({
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerCategorie(tournoiId)
 
+  // Un `<tbody>` par catégorie : la ligne et son erreur de suppression se tiennent ensemble.
   if (edition) {
     return (
-      <li>
-        <FormulaireCategorie
-          tournoiId={tournoiId}
-          categorie={categorie}
-          blasons={blasons}
-          onTermine={() => setEdition(false)}
-        />
-      </li>
+      <tbody>
+        <tr>
+          <td colSpan={COLONNES}>
+            <FormulaireCategorie
+              tournoiId={tournoiId}
+              categorie={categorie}
+              blasons={blasons}
+              onTermine={() => setEdition(false)}
+            />
+          </td>
+        </tr>
+      </tbody>
     )
   }
 
+  const nomBlason = blasons.find((blason) => blason.id === categorie.blason_id)?.nom
   return (
-    <li className="categorie">
-      <div className="categorie__ligne">
-        <span className="categorie__libelle">{categorie.libelle}</span>
-        <span className="categorie__attributs">{decrire(categorie, blasons)}</span>
-        <span className="categorie__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-            Éditer
-          </button>
-          {confirmationSuppression ? (
-            <>
+    <tbody>
+      <tr>
+        <td className="categorie__libelle">{categorie.libelle}</td>
+        <td>{categorie.arme ?? VIDE}</td>
+        <td>{categorie.ages.length > 0 ? categorie.ages.join(', ') : VIDE}</td>
+        <td>{categorie.sexe ? LIBELLE_SEXE[categorie.sexe] : VIDE}</td>
+        <td>{nomBlason ?? VIDE}</td>
+        <td>{categorie.hauteur_cm} cm</td>
+        <td>
+          <span className="categorie__actions">
+            <button
+              type="button"
+              className="bouton--discret"
+              aria-label={`Éditer ${categorie.libelle}`}
+              onClick={() => setEdition(true)}
+            >
+              Éditer
+            </button>
+            {confirmationSuppression ? (
+              <>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Confirmer la suppression de ${categorie.libelle}`}
+                  onClick={() => supprimer.mutate(categorie.id)}
+                >
+                  Confirmer la suppression
+                </button>
+                <button
+                  type="button"
+                  className="bouton--discret"
+                  aria-label={`Annuler la suppression de ${categorie.libelle}`}
+                  onClick={() => setConfirmationSuppression(false)}
+                >
+                  Annuler
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="bouton--danger"
-                disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate(categorie.id)}
+                aria-label={`Supprimer ${categorie.libelle}`}
+                onClick={() => setConfirmationSuppression(true)}
               >
-                Confirmer la suppression
+                Supprimer
               </button>
-              <button
-                type="button"
-                className="bouton--discret"
-                onClick={() => setConfirmationSuppression(false)}
-              >
-                Annuler
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="bouton--danger"
-              onClick={() => setConfirmationSuppression(true)}
-            >
-              Supprimer
-            </button>
-          )}
-        </span>
-      </div>
-      <MessageErreur erreur={supprimer.error} />
-    </li>
+            )}
+          </span>
+        </td>
+      </tr>
+      {supprimer.error !== null && (
+        <tr>
+          <td colSpan={COLONNES}>
+            <MessageErreur erreur={supprimer.error} />
+          </td>
+        </tr>
+      )}
+    </tbody>
   )
-}
-
-// Concatène les attributs facultatifs d'une catégorie pour l'affichage (arme · âges · sexe · blason).
-function decrire(categorie: Categorie, blasons: Blason[]): string {
-  const nomBlason = blasons.find((blason) => blason.id === categorie.blason_id)?.nom ?? null
-  const parties = [
-    categorie.arme,
-    categorie.ages.length > 0 ? categorie.ages.join(', ') : null,
-    categorie.sexe ? LIBELLE_SEXE[categorie.sexe] : null,
-    nomBlason ? `blason ${nomBlason}` : null,
-    `centre ${categorie.hauteur_cm} cm`,
-  ].filter((partie): partie is string => partie !== null)
-  return parties.join(' · ')
 }
 
 // Formulaire partagé création / édition : sans `categorie` il crée, avec il édite.

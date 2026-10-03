@@ -8,15 +8,19 @@ import { Blasons } from './Blasons'
 
 const mutation = () => ({ mutate: vi.fn(), isPending: false, error: null })
 // `vi.hoisted` : la fabrique de `vi.mock` est remontée en tête de fichier, avant toute déclaration.
-const { supprimer, etat } = vi.hoisted(() => ({ supprimer: vi.fn(), etat: { lue: true } }))
+const { supprimer, modifier, etat } = vi.hoisted(() => ({
+  supprimer: vi.fn(),
+  modifier: vi.fn(),
+  etat: { lue: true, horsFractions: false },
+}))
 
 vi.mock('./hooks', () => ({
   useBlasons: () =>
     etat.lue
-      ? { isError: false, isSuccess: true, data: LISTE }
+      ? { isError: false, isSuccess: true, data: etat.horsFractions ? [...LISTE, HORS] : LISTE }
       : { isError: false, isSuccess: false, data: undefined },
   useCreerBlason: () => mutation(),
-  useModifierBlason: () => mutation(),
+  useModifierBlason: () => ({ mutate: modifier, isPending: false, error: null }),
   useSupprimerBlason: () => ({ mutate: supprimer, isPending: false, error: null }),
 }))
 
@@ -40,6 +44,17 @@ const LISTE = [
     origine: 'utilisateur',
   },
 ]
+
+// Une taille qu'aucune des quatre fractions ne porte (E00US016).
+const HORS = {
+  id: 3,
+  tournoi_id: 1,
+  nom: 'Trois quarts',
+  taille: 0.75,
+  capacite: 1,
+  zones: ['10', 'M'],
+  origine: 'utilisateur',
+}
 
 describe('Blasons — liste et panneau latéral', () => {
   it('choisir une ligne ouvre le panneau pré-rempli, et la liste reste à l’écran', async () => {
@@ -85,5 +100,62 @@ describe('Blasons — liste et panneau latéral', () => {
     etat.lue = true
     const lue = render(<Blasons tournoiId={1} />)
     expect(lue.container.querySelector('.blasons__compte')?.textContent).toBe('2 blasons')
+  })
+})
+
+// E00US016 — CA « fractions de blason en déroulante ».
+describe('Blasons — taille en déroulante de fractions', () => {
+  const champTaille = () => screen.getByLabelText('Taille du blason (fraction de place)')
+  const champLibre = () => screen.queryByLabelText('Autre taille du blason (réel de 0 à 1)')
+
+  it('affiche la fraction dans la liste, et la reprend dans la déroulante', async () => {
+    render(<Blasons tournoiId={1} />)
+    expect(within(screen.getByRole('table')).getByText('½')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Trispot 40' }))
+    expect(champTaille()).toHaveValue('2')
+    expect(champLibre()).not.toBeInTheDocument()
+  })
+
+  it('envoie la fraction exacte choisie', async () => {
+    modifier.mockClear()
+    render(<Blasons tournoiId={1} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Mono maison' }))
+
+    await userEvent.selectOptions(champTaille(), 'Tiers (⅓)')
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(modifier).toHaveBeenCalledWith(
+      { id: 2, entree: expect.objectContaining({ taille: 1 / 3 }) },
+      expect.anything(),
+    )
+  })
+
+  it('« Autre… » déplie un réel libre, exigé avant l’envoi', async () => {
+    modifier.mockClear()
+    render(<Blasons tournoiId={1} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Mono maison' }))
+
+    await userEvent.selectOptions(champTaille(), 'Autre…')
+    const libre = champLibre()
+    expect(libre).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+
+    await userEvent.type(libre as HTMLElement, '0,6')
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    expect(modifier).toHaveBeenCalledWith(
+      { id: 2, entree: expect.objectContaining({ taille: 0.6 }) },
+      expect.anything(),
+    )
+  })
+
+  it('rouvre une taille hors fractions sous « Autre… », sans l’arrondir', async () => {
+    etat.horsFractions = true
+    render(<Blasons tournoiId={1} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Trois quarts' }))
+
+    expect(champTaille()).toHaveValue('autre')
+    expect(champLibre()).toHaveValue('0,75')
+    etat.horsFractions = false
   })
 })

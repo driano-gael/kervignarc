@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { Gabarit } from './api'
-import { decrire } from './format'
+import { decrire, decrireCouloirs } from './format'
 
 // Un gabarit réduit à ce que `decrire` lit : le nombre de cibles et leurs capacités.
 function gabarit(capacites: number[]): Gabarit {
@@ -45,5 +45,11 @@ describe('decrire', () => {
 
   it('accorde aussi le mot « cible » au singulier', () => {
     expect(decrire(gabarit([2]))).toBe("1 cible · jusqu'à 2 couloirs/cible")
+  })
+})
+
+describe('decrireCouloirs', () => {
+  it('rend la seule partie « couloirs » du résumé, pour sa colonne (E00US016)', () => {
+    expect(decrireCouloirs(gabarit([1, 2, 4, 2]))).toBe("jusqu'à 1/2/4 couloirs/cible")
   })
 })
