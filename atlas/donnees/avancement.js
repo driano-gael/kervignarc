@@ -1012,6 +1012,7 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0120",
    "0118",
    "0028",
    "0049",
@@ -1023,7 +1024,7 @@ window.ATLAS.avancement = {
    "0074",
    "0104"
   ],
-  "derniere": "E03US010"
+  "derniere": "E13US004"
  },
  "epics": [
   {
@@ -1445,7 +1446,7 @@ window.ATLAS.avancement = {
    "identifiant": "E00US015",
    "sections": [
     "J3 — Placement intégral 1→N + écran de salle — ✅ **terminé (27/27)**",
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Coquille de navigation admin",
@@ -1463,7 +1464,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US016",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Écrans admin : liste/fiche & référentiels",
@@ -2048,7 +2049,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US017",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**",
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**",
     "Ajouts de la démo du 27/07/2026 — ✅ **traités (12/12)**"
    ],
    "story": "stories/E01-configuration.md",
@@ -2068,7 +2069,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US018",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Vocabulaire de score configurable",
@@ -2089,7 +2090,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US019",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Capacité de cible non bornée",
@@ -2465,7 +2466,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E02US010",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**",
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**",
     "Ajouts de la démo du 27/07/2026 — ✅ **traités (12/12)**"
    ],
    "story": "stories/E02-inscriptions.md",
@@ -4215,7 +4216,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E13US001",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E13-equipes.md",
    "titre": "Abstraction participant",
@@ -4241,7 +4242,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E13US002",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E13-equipes.md",
    "titre": "Composer les équipes d'un tournoi",
@@ -4262,7 +4263,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E13US003",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E13-equipes.md",
    "titre": "Scoring d'équipe (barème et barrage)",
@@ -4285,14 +4286,35 @@ window.ATLAS.avancement = {
    "dettes_resorbees": [],
    "epic": "13",
    "epic_titre": "Épreuves par équipes — abstraction participant",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E13US004",
    "sections": [
-    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
    ],
    "story": "stories/E13-equipes.md",
-   "titre": "Placement, saisie & classement par équipe",
+   "titre": "Un tableau d'équipes jouable de bout en bout",
    "titre_story": "Un tableau d'équipes jouable de bout en bout"
+  },
+  {
+   "adr": [
+    "0028",
+    "0120"
+   ],
+   "dettes_introduites": [],
+   "dettes_resorbees": [
+    "120",
+    "121"
+   ],
+   "epic": "13",
+   "epic_titre": "Épreuves par équipes — abstraction participant",
+   "etat": "⬜",
+   "identifiant": "E13US005",
+   "sections": [
+    "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
+   ],
+   "story": "stories/E13-equipes.md",
+   "titre": "Équipes jouées : le reliquat d'E13US004",
+   "titre_story": "Équipes jouées : le reliquat d'E13US004"
   },
   {
    "adr": [
@@ -5098,8 +5120,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 161,
-  "vivantes": 181
+  "livrees": 162,
+  "vivantes": 182
  },
  "sections": [
   {
@@ -5850,12 +5872,12 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    6,
-    10
+    7,
+    11
    ],
    "compteur_ecrit": [
-    6,
-    10
+    7,
+    11
    ],
    "lignes": [
     {
@@ -5914,12 +5936,18 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E13US004",
-     "titre": "Placement, saisie & classement par équipe"
+     "titre": "Un tableau d'équipes jouable de bout en bout"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E13US005",
+     "titre": "Équipes jouées : le reliquat d'E13US004"
     }
    ],
-   "titre": "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**"
+   "titre": "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**"
   },
   {
    "calcule": [

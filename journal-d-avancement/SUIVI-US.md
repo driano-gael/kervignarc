@@ -12,7 +12,17 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 03/10/2026, 11 h 26** · **161 US livrées** · dernière : `E03US010`
+**Dernière mise à jour : 03/10/2026, 13 h 30** · **162 US livrées** · dernière : `E13US004`
+*(**un tableau d'équipes se joue de bout en bout** — une élimination directe se règle « par
+équipes » (de trois ou mixtes) ; les équipes **conformes** dont tous les membres sont en lice y
+entrent, rangées par la **somme des qualifications** de leurs membres ; les autres sont **écartées
+et listées** avec leurs motifs, sans bloquer personne. Barème non réglé = **preset FFTA équipe**,
+membres posés à la suite sur les cibles, podium nommant les équipes. **Cadrage** : 1ʳᵉ tranche
+du CA d'origine, le reliquat part en `E13US005` (autres formats, palmarès, affectations, top N,
+forfait d'équipe). [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md) ;
+**aucune migration**. `DETTE-120`, `DETTE-121` créées. ⚠️ **Non vérifiée au navigateur** —
+couverte par les tests de service, d'API et d'écran monté.)*
+Précédente : `E03US010`
 *(**le déroulé horaire de la journée** — l'organisateur donne une **durée prévue** à chaque phase,
 jamais préremplie ; l'application **calcule** début et fin **pour chaque départ**, une phase
 commençant quand ses sources sont finies (l'`ordre` est topologique, deux phases sœurs commencent
@@ -22,7 +32,7 @@ la liste des phases ; le public lit l'heure de **début** de chaque phase dans �
 cahier des charges et la question P05 d'E16 tranchées au cadrage. [ADR-0118](../docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md) ;
 **aucune migration**. `DETTE-080` et `DETTE-071` élargies. ⚠️ **Non vérifiée au navigateur** —
 couverte par les tests d'écran monté et d'API.)*
-Précédente : `E10US006`
+Avant elle, `E10US006`
 *(**l'accès administrateur se change depuis l'appli** — écran « Compte administrateur » (axe
 Atelier), mot de passe actuel exigé ; la session qui change reste ouverte, **toutes les autres sont
 fermées**. Un refus est un 403/400, jamais un 401 : le client purge la session admin sur tout 401,
@@ -454,7 +464,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E13US003`~~ | **Livrée le 02/10/2026** — le barème d'équipe se règle (presets FFTA **équipe** et **équipe mixte**) et le barrage tire **N flèches par camp**, au plus haut total. **Recadrée au cadrage** sur arbitrage : le **barème de duel** porte le score d'une équipe, pas la politique `scoring` sans appelant (ADR-0028 §3 amendé). Une équipe ne se **joue** pas encore : c'est `E13US004`. |
 > | ~~🎯~~ ✅ | ~~`E10US006`~~ | **Livrée le 02/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent** : `E13US003` et `E01US012` réservées par d'autres sessions, `E03US010` écartée sur un doute de recoupement. Arbitrages au cadrage : autres sessions coupées, destination de la coquille, CA sans enrichissement. |
 > | ~~🎯~~ ✅ | ~~`E03US010`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent.** Cadrage : **durées saisies, heures calculées** par départ (Q4 tranchée), maille **phase**, visible **admin + public** (P05 tranchée, lecture (a)), prévisionnel seul, **sans préremplissage**. ⚠️ Le calcul suit le **graphe des sources**, pas l'`ordre` (ADR-0082) ; un **repêchage** (`issue_de_tour`) a un début inconnu, arbitré en revue. [ADR-0118](../docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md). |
-> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US004` — engager, placer, saisir et classer des équipes), le jalon **J4** (`E11US006`, `E01US027`, et `E09US007`, débloquée par `E03US010`). |
+> | ~~🎯~~ ✅ | ~~`E13US004`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir », en mode multi-agent.** Cadrage en cinq arbitrages : **1ʳᵉ tranche** jouable (le tableau à élimination directe), rang d'entrée = **somme des qualifications**, barème non réglé = **preset équipe**, équipe non conforme **écartée et listée** (pas de phase bloquée), top N **différé** (`DETTE-120`). L'engagement est une **dérivation**, pas un geste. [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md). Reliquat : `E13US005`. |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : la suite du fil **équipes** (`E13US005` — les équipes dans les autres formats, au palmarès et sur les écrans publics ; à redécouper), le jalon **J4** (`E11US006`, `E01US027`, et `E09US007`, débloquée par `E03US010`). |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1297,7 +1308,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 91 | E10US006 | Modifier le mot de passe admin | ✅ *(livrée le 02/10/2026 — écran « Compte administrateur », mot de passe actuel exigé, autres sessions admin fermées ; refus en 403/400, jamais 401)* |
 | 92 | E01US027 | Barème propre aux ½ finales et finales d'un tableau | ⬜ *(ajoutée le 01/10/2026 à la revue d'E01US011 — format club du référentiel §10.1 ; résorbe `DETTE-117`)* |
 
-## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (6/10)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/11)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -1313,7 +1324,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
 | E13US002 | Composer les équipes d'un tournoi | J2 | ✅ *(entité `Equipe` + écran « Équipes » ; composition **signalée, pas bloquée** ; sexe et arme lus sur la catégorie ; une équipe par type ; migration `0059`. ADR-0028 porté à moitié : les équipes se composent, elles ne se jouent pas encore)* |
 | E13US003 | Scoring d'équipe (barème et barrage) | J2 | ✅ *(presets FFTA équipe / mixte, barrage à N flèches ; barème de duel et non politique `scoring`, ADR-0028 §3 amendé)* |
-| E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
+| E13US004 | Un tableau d'équipes jouable de bout en bout | J2→J3 | ✅ *(livrée le 03/10/2026 — élimination directe par équipes : engagement dérivé, rang d'entrée par somme des qualifications, preset équipe par défaut, équipes écartées listées ; ADR-0120)* |
+| E13US005 | Équipes jouées : le reliquat d'E13US004 | J3 | ⬜ *(créée le 03/10/2026 au cadrage d'E13US004 — autres formats, palmarès, affectations, top N, forfait d'équipe ; à redécouper)* |
 
 ## Ajout du 20/07/2026 — ✅ **livrée (1/1)**
 

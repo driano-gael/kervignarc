@@ -641,14 +641,19 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle d
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
 **épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
 — standard ou mixte, avec leur conformité affichée —, et depuis `E13US003` une phase sait se
-régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; mais les équipes ne
-se **jouent** pas encore (placement, saisie et classement par équipe restent à faire).
+régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; et depuis
+`E13US004`, un **tableau à élimination directe se joue par équipes** de bout en bout — les autres
+formats, le palmarès et les écrans publics par équipes restent à faire (`E13US005`).
 
 ---
 
 ## Chiffres repères
 
-- **161 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E03US010`,
+- **162 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E13US004`,
+  à **surface visible** : une phase d'élimination directe se règle **par équipes** ; les équipes
+  conformes y entrent, rangées par la somme des qualifications de leurs membres, les autres sont
+  listées avec la raison de leur absence, et chaque duel se saisit volée de camp par volée de camp
+  jusqu'au podium. Juste avant, `E03US010`,
   à **surface visible** : l'organisateur donne une **durée** à chaque phase et l'application en
   déduit l'**horaire de la journée**, départ par départ ; le public voit l'heure de début de chaque
   phase. Juste avant, `E10US006`,
