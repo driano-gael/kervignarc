@@ -1,6 +1,6 @@
 # ADR-0102 — La documentation porte des pointeurs, pas des copies
 
-- **Statut** : Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*
+- **Statut** : Accepté *(la **décision** est prise ; seuls le **§3.1** (`E00US028`) et l'exception bornée du **§1** (`E17US010`) sont implémentés — cf. § « Porté dans le code par », qui dit le reste au lieu de le laisser croire)*
 - **Date** : 2026-08-30
 - **US** : `E00US028`, `E00US029`, `E00US030`
 - **Décideurs** : Organisateur / Architecte
@@ -12,6 +12,8 @@
     qui rend la vérification possible existe déjà, et il lit déjà les ADR
   - [ADR-0075](0075-le-depart-est-la-portee-sportive.md) — la section « Porté dans le code par »,
     et les quatre fois où elle a nommé un module qui ne portait rien
+- **Amende** : [ADR-0086](0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md) §4 —
+  `portage-symbole-absent` sort du calibrage « heuristique ⇒ signal » (§3.1, `E00US028`)
 
 > ⚠️ **Cet ADR ne figure pas à la liste nominative d'ADR-0075 § « Portée de la règle »**, et c'est
 > volontaire : c'est une **convention documentaire**, au même titre qu'`0099` qui y est déjà inscrit
@@ -109,7 +111,7 @@ La doctrine du projet — *ce qu'une machine prouve ne se relit pas* — vaut au
 documentation. Concrètement, et par ordre de coût croissant :
 
 1. **`portage-symbole-absent` passe de `SIGNAL` à `BLOQUANT`** une fois les 22 constats existants
-   soldés. Un ADR qui nomme un symbole disparu fait alors **rougir la CI**, au lieu d'attendre
+   soldés *(fait le 03/10/2026 par `E00US028` — ils étaient 30)*. Un ADR qui nomme un symbole disparu fait alors **rougir la CI**, au lieu d'attendre
    qu'un relecteur le remarque — ce qui a échoué quatre fois (`0017`, `0028`, `0049`, `0050`).
 2. **Une US ✅ qui a touché `frontend/src/` doit avoir sa fiche** `docs/fonctionnel/<US>.md` : le
    garde-fou de la règle 9-doc cesse d'être un réflexe de revue.
@@ -132,7 +134,7 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
   sont ceux à responsabilité unique : l'ADR (section vérifiée ligne à ligne, aucune sur-promesse),
   le registre de dette, le CA. La cible est la **duplication**, pas la documentation.
 - **Le coût est concentré sur une dette de rattrapage** : 22 ADR annoncent aujourd'hui des symboles
-  absents. Tant qu'ils ne sont pas soldés, `portage-symbole-absent` ne peut pas passer bloquant —
+  absents *(au 30/08/2026 ; soldée par `E00US028`, cf. § Porté)*. Tant qu'ils ne sont pas soldés, `portage-symbole-absent` ne peut pas passer bloquant —
   c'est le patron du **cliquet** déjà employé par `E00US027` (on ne relève pas le seuil, on fait
   descendre le chiffre).
 - ⚠️ **Un risque de cet ADR, à ne pas se cacher** : « un fait, un lieu » rend chaque document plus
@@ -146,7 +148,43 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
 
 ## Porté dans le code par
 
-⚠️ **Rien à ce jour pour les quatre §, et c'est écrit exprès** — à une exception près, ajoutée
+- **§3.1 — porté depuis `E00US028`** : `backend/atlas/controles.py` rend `portage-symbole-absent`
+  en `Severite.BLOQUANT`, donc `python -m atlas --verifier` et la CI échouent ; le cliquet à zéro
+  est `test_aucun_symbole_porte_dans_le_code_n_est_absent` (`backend/tests/test_atlas_corpus.py`).
+  Les constats soldés étaient **30**, pas 22 : huit étaient nés entre l'ADR et l'US. ⚠️ Le
+  contrôle prouve que le symbole **existe**, jamais qu'il **porte** la décision.
+- **§3.1, ce qui le rend opposable** — `backend/atlas/sources/adr.py` (`_entrees`, `_portage`,
+  `_chemins_non_reconnus`, `_symboles_absents`) : un fichier de code cité **sans chemin depuis la
+  racine** (`application/…`, ou un nom nu sans chemin complet dans l'entrée) n'était contrôlé par
+  rien ; il lève désormais `portage-chemin-non-reconnu`, bloquant, cliquet à zéro
+  (`test_aucune_entree_de_portage_ne_cite_un_chemin_abrege`, `backend/tests/test_atlas_corpus.py`).
+  Un test ne témoigne pas pour un module de production cité dans la même entrée (il contient le
+  nom par construction), et un frère non vérifiable — répertoire, `.md` — n'excuse rien : deux
+  désarmements prouvés par mutation en revue (axe D). Le second masquait une promesse fausse réelle
+  (ADR-0028, une table citée comme symbole de quatre modules).
+
+**La convention de rédaction qu'impose un contrôle bloquant** — elle est ici parce qu'un auteur
+d'ADR ne lit pas la docstring de l'atlas :
+
+- un symbole censé **porter** la décision et introuvable se **corrige** (renommé, déplacé, ou la
+  promesse retirée en le disant) — jamais ne se désarme ;
+- un nom **historique ou hypothétique** (ancien nom, ajout qu'il ne faut pas faire) se cite **sans**
+  accents graves : il n'est pas une promesse ;
+- un chemin ne s'ajoute à une entrée que pour un fichier qui **porte ou garde** la décision, jamais
+  pour situer un symbole voisin : chaque chemin d'une entrée excuse ses frères — et, les promesses
+  étant fusionnées par chemin, un frère cité **ailleurs** dans l'ADR excuse aussi.
+
+⚠️ **Limites mesurées par mutation, pas supposées** (`DETTE-068`) : le contrôle cherche par
+sous-chaîne, commentaires compris, donc un symbole promis reste « présent » dès qu'un **frère** le
+nomme — par un import, mais aussi par un **commentaire ou une docstring** (un commentaire TypeScript
+masquait un symbole backend d'ADR-0094) : un renommage passe alors mypy, tsc **et** l'atlas.
+Mesuré en revue : ~210 promesses (ADR, symbole) masquées par un frère, dont 22 qu'**aucun** frère
+ne porte dans du code. Le remède est une lecture du code (définition du symbole, hors commentaires),
+pas du texte : c'est le critère de fin de `DETTE-068`. Enfin, seuls les
+fichiers de **code** (`.py`, `.ts`, `.tsx`) sont tenus : `.claude/`, `maquettes/` et la
+documentation restent hors des racines lues, donc hors contrôle.
+
+⚠️ **Rien à ce jour pour les autres §, et c'est écrit exprès** — à une exception près, ajoutée
 par `E17US010` : l'**exception bornée du §1** (une copie inévitable n'est admise que sous contrôle
 de CI, [ADR-0112](0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)) est,
 elle, portée — par `frontend/src/maquettes-navigation.test.ts`. La règle générale du §1, non.
@@ -161,12 +199,13 @@ ce que personne ne porte —, et ce serait le reproduire dans l'ADR **dont c'est
 
 Cette section se remplira, module par module, à la livraison de :
 
+*(`E00US028`, §3.1, livrée : entrée ci-dessus.)*
+
 | US | Ce qu'elle portera |
 |---|---|
-| `E00US028` | §3.1 — le contrôle d'atlas passé bloquant, et les 22 constats soldés |
 | `E00US029` | §2 — la règle des fiches fonctionnelles et son garde-fou |
 | `E00US030` | §1 et §4 — la charte des documents, et le doublon résorbé |
 
-Cette section se remplit à mesure ; si l'une des trois US est abandonnée, l'ADR est **amendé pour
+Cette section se remplit à mesure ; si l'une des deux US restantes est abandonnée, l'ADR est **amendé pour
 dire ce qui n'est pas tenu**, plutôt que de le laisser croire. C'est la seule discipline qui
 distingue un ADR d'une intention.

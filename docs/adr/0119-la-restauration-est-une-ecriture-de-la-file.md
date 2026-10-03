@@ -112,7 +112,7 @@ que le drain tienne dans ce délai.
   lecture immuable, `integrity_check`, copie de sécurité hors rétention, `backup` vers la base vive
   (§1, §3, §5).
 - `backend/infrastructure/db/snapshot.py` — `copier_base_atomique`, la copie en `.tmp` renommée
-  (§5), utilisée aussi par `backup/sauvegarde.py`.
+  (§5), utilisée aussi par `backend/infrastructure/backup/sauvegarde.py`.
 - `backend/api/v1/sauvegardes.py` — la restauration soumise à la file d'écriture (§2).
 - `backend/bootstrap/composition.py` — `_oublier_etat_volatil`, qui vide les cinq registres (§6).
 - `backend/release/arret_console.py` et `backend/run.py` — l'arrêt propre par la croix de la console.

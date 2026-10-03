@@ -135,7 +135,7 @@ Deux points que cet ADR laissait ouverts, arbitrés par le commanditaire :
   descendance ne porte `ON DELETE CASCADE`, et c'est une décision ». C'est le seul endroit où il est
   écrit, exprès : il l'était 45 fois, colonne par colonne, et ces 45 copies disaient « non tranchée ».
 - **`backend/api/v1/tournois.py`** — `supprimer_tournoi`, qui transporte le drapeau en **paramètre
-  de requête** (un `DELETE` n'a pas de corps) et laisse `api/erreurs.py` rendre les deux 409.
+  de requête** (un `DELETE` n'a pas de corps) et laisse `backend/api/erreurs.py` rendre les deux 409.
 - **`frontend/src/features/tournois/Tournois.tsx`** — le `<dialog>` natif de
   [ADR-0072](0072-confirmation-destructrice-dialog-natif.md) (`DialogueConfirmation`, ton `danger`),
   ouvert **par le 409** et non avant : le décompte est rendu par le serveur, jamais recalculé côté

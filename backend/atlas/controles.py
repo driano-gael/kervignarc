@@ -3,8 +3,8 @@
 C'est le vrai livrable de l'atlas : le dessin rend le registre lisible, ces contrôles le rendent
 **opposable** (ADR-0075). ⚠️ Calibrage délibéré des sévérités : **bloquant** pour un constat sans
 ambiguïté, corrigible en une minute (chemin ou ADR inexistant) ; **signal** pour tout constat
-heuristique ou de forme — une porte qui rougit sur de l'heuristique finit désactivée, et on perd
-alors aussi les contrôles justes.
+heuristique ou de forme — une porte qui rougit sur de l'heuristique finit désactivée. Exception :
+`portage-symbole-absent`, bloquant : un signal que nul ne lit n'est pas un garde-fou (ADR-0102).
 """
 
 from __future__ import annotations
@@ -79,11 +79,14 @@ def verifier(
                 trouves.append(
                     Controle(
                         code="portage-symbole-absent",
-                        severite=Severite.SIGNAL,
+                        # Heuristique, et pourtant bloquant : exception tranchée par ADR-0102 §3.
+                        severite=Severite.BLOQUANT,
                         sujet=sujet,
                         message=(
                             f"annonce {', '.join(portage.symboles_absents)} dans "
-                            f"« {portage.chemin} » — introuvable(s) dans le fichier."
+                            f"« {portage.chemin} » — introuvable(s) dans le fichier. Renommé : "
+                            f"corriger l'ADR ; nom historique : le citer sans accents graves "
+                            f"(ADR-0102 § Porté)."
                         ),
                     )
                 )
@@ -103,6 +106,21 @@ def verifier(
                         ),
                     )
                 )
+
+        for abrege in decision.portage_non_reconnu:
+            trouves.append(
+                Controle(
+                    code="portage-chemin-non-reconnu",
+                    severite=Severite.BLOQUANT,
+                    sujet=sujet,
+                    message=(
+                        f"cite « {abrege} » dans une entrée sans aucun chemin depuis la racine "
+                        f"(backend/…, frontend/…) : ses promesses ne sont contrôlées par rien. "
+                        f"Écrire le chemin depuis la racine ; mention historique : la citer "
+                        f"sans accents graves (ADR-0102 § Porté)."
+                    ),
+                )
+            )
 
         for lien in decision.liens:
             if lien.type.value == "us":

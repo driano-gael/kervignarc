@@ -137,7 +137,7 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   `ecarts_de_composition` (point 2) ; `backend/application/equipes.py` (`ServiceEquipes`) tient les
   règles d'ensemble (nom unique, membre du tournoi, une équipe par type) ;
   `backend/infrastructure/db/repositories/equipes.py` (`EquipeRepositorySQL`) et la migration
-  `0059_equipe` persistent `equipe` et `membre_equipe` ; `backend/api/v1/equipes.py` les expose ;
+  `0059_equipe` persistent les tables equipe et membre_equipe ; `backend/api/v1/equipes.py` les expose ;
   `frontend/src/features/equipes/` est l'écran d'administration.
 - `backend/domain/duel.py` — `BaremeDuel.nb_fleches_barrage` et `Barrage(fleches_haut,
   fleches_bas, …)` portent le point 3 tel qu'amendé : `_vainqueur_barrage` compare des **totaux**,
@@ -149,9 +149,9 @@ Les points 1 à 3 sont livrés ; le point 4 **n'a aucun module** :
 
 | Point de la décision | État |
 |---|---|
-| 1. Le match oppose des participants | ✅ `domain/participant.py` |
-| 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ✅ tel qu'amendé le 01/10/2026 — `domain/equipe.py`, `application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
-| 3. Score d'équipe sans branche `if équipe` (amendé : barème de duel, pas la famille `scoring`) | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`domain/duel.py`), pas la famille `scoring`. `E13US003` |
+| 1. Le match oppose des participants | ✅ `backend/domain/participant.py` |
+| 2. `Equipe` est une entité du tournoi (+ la table membre_equipe) | ✅ tel qu'amendé le 01/10/2026 — `backend/domain/equipe.py`, `backend/application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
+| 3. Score d'équipe sans branche `if équipe` (amendé : barème de duel, pas la famille scoring) | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`backend/domain/duel.py`), pas la famille scoring. `E13US003` |
 | 4. Placement / saisie / classement clés sur le participant | ⬜ `E13US004` |
 
 ⚠️ **Une équipe se compose, elle ne se joue pas encore.** Aucun module de production ne construit

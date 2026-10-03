@@ -148,7 +148,7 @@ le § Dette de `CLAUDE.md` proscrit. À rejouer si un format sans ex æquo s'ajo
 | `backend/domain/classement_de_tableau.py` | `ClassementSource.plages_indecises` et `coupe()` — la règle « chevaucher sans contenir » ; `rang_premier` pour le cumul de tranche |
 | `backend/application/prelevement.py` | `preleves` lève `PrelevementEnAttente` ; `tranche` cumule le décalage le long de la chaîne |
 | `backend/application/erreurs/moteur.py` | `PrelevementEnAttente` (409) et son `ordre_source` |
-| `backend/application/saisie_duels.py` | `_classement_de_l_ordre` construit le `ClassementSource` et calcule le `rang_premier` de chaque tableau |
+| `backend/application/saisie_duels.py` | `_classement_produit` (renommé par E05US022) construit le `ClassementSource` et calcule le `rang_premier` de chaque tableau |
 | `backend/application/tableaux_publics.py` | `pour_depart` distingue les trois issues : arbre, attente, échec avalé |
 | `backend/application/palmares.py` | écarte une phase en attente (elle n'a rien à publier), **pas** un déroulé cyclique |
 | `backend/api/v1/tableaux.py` | `TableauPublicReponse.en_attente_de` et la branche « pas d'arbre » |

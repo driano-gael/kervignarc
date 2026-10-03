@@ -297,7 +297,7 @@ Dérivé de la capacité `classement_lisible` (ADR-0083). ⚠️ **À ne pas con
 `_TYPES_DEROULES`** : celui-là répond « le moteur va-t-il *monter* cette phase ? », celui-ci
 « sait-il *lire ce qu'elle a classé* ? » — `qualification` est lue sans être montée, et c'est
 pourquoi ce sont deux capacités et non une. Miroir exact de
-`ServiceSaisieDuels._classement_de_l_ordre` : les faire diverger rouvre le défaut d'E05US021.
+`ServiceSaisieDuels._classement_produit` : les faire diverger rouvre le défaut d'E05US021.
 """
 
 

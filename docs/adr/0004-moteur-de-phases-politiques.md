@@ -61,7 +61,8 @@ composition root. C'est la résorption de DETTE-003.
   d'une phase, `RegistrePolitiques` la table `nom → implémentation`, et `assembler_politiques()` la
   fonction qui transforme une `config` en jeu de stratégies.
 - `backend/domain/tableau.py` — le moteur qui **consomme** les politiques : il ne connaît aucun
-  format, seulement des `Protocol`.
+  format, seulement les familles qu'il importe de `backend/domain/politiques.py` (`Routing`,
+  `Seeding`, `Byes`, `Depth`).
 - `backend/domain/phase.py` — la phase porte le type (`TypePhase`) et la `config` où vivent les
   politiques ; `SourcePhase` porte le peuplement.
 - `backend/domain/politiques.py` — `registre_par_defaut()` est **la table `nom → classe`** : les

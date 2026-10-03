@@ -191,7 +191,7 @@ désormais à tous les tours. La ligne du registre est élargie, pas contournée
   recréation explicite de la table (décision 1, y compris l'avertissement sur `batch_alter_table`).
 - `backend/domain/ports.py` — `PlacementTableauRepository` : les quatre gestes portent le tour
   (décision 1). ⚠️ `par_phase` **n'y est pas** : cette lecture (toutes poses d'une phase) appartient
-  au port `application.formats.LecteurDonneesDePhase`, qui pose une question distincte.
+  au port LecteurDonneesDePhase (couche application), qui pose une question distincte.
 - `backend/infrastructure/db/repositories/moteur.py` et `backend/infrastructure/memory/repositories.py`
   — `PlacementTableauRepositorySQL` / `InMemoryPlacementTableauRepository` : `par_phase_et_tour`,
   et `par_phase` conservée pour le seul port des formats.
