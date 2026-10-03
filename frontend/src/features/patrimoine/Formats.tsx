@@ -314,6 +314,7 @@ function FormulaireFormat() {
       // E05US033 : aucune pause programmée, le défaut — la salle enchaîne les tours.
       arrets: [],
       titre: null,
+      duree_prevue: null,
     }
     creer.mutate(
       { nom, etapes: [etape], effectif_minimum_exige: null },

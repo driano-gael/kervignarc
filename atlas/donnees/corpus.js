@@ -1197,6 +1197,14 @@ window.ATLAS.corpus = {
   },
   {
    "genre": "decision",
+   "identifiant": "0118",
+   "lien": "adr.html?id=0118",
+   "recherche": "adr-0118 l'horaire prevu se calcule depuis des durees d'etape, pour chaque depart, par le graphe des sources us adr-e03us010 e01us024 e03us010 e09us007 1. l'etape porte une duree, jamais une heure. etapederoule.duree_prevue : minutes entieres, 1 a 1440, facultative, pauses comprises. elle n'est jamais preremplie (arbitrage du 02/10/2026). elle voyage avec le format (modelephase.duree_prevue), comme titre. 2. l'heure se calcule, par depart, sur le graphe des sources. une etape sans source commence a l'heure du depart ; une etape avec sources commence a la fin la plus tardive de ses sources ; sa fin est son debut plus sa duree. ⚠ une source « issue d'un tour » (repechage, consolante) rend le debut inconnu — arbitrage du 03/10/2026 en revue : sa semantique n'est pas tranchee (dette-033), et caler le debut sur la fin du tableau entier serait […]",
+   "texte": "1. L'étape porte une durée, jamais une heure. EtapeDeroule.duree_prevue : minutes entières, 1 à 1440, facultative, pauses comprises. Elle n'est jamais préremplie (arbitrage du 02/10/2026). Elle voyage avec le format (ModelePhase.duree_prevue), comme titre. 2. L'heure se calcule, par départ, sur le graphe des sources. Une étape sans source commence à l'heure du départ ; une étape avec sources commence à la fin la plus tardive de ses sources ; sa fin est son début plus sa durée. ⚠️ Une source « issue d'un tour » (repêchage, consolante) rend le début inconnu — arbitrage du 03/10/2026 en revue : sa sémantique n'est pas tranchée (DETTE-033), et caler le début sur la fin du tableau entier serait […]",
+   "titre": "ADR-0118 — L'horaire prévu se calcule depuis des durées d'étape, pour chaque départ, par le graphe des sources"
+  },
+  {
+   "genre": "decision",
    "identifiant": "0120",
    "lien": "adr.html?id=0120",
    "recherche": "adr-0120 une phase oppose des equipes par un reglage d'etape ; l'engagement est derive us adr-e13us004 prolonge adr-0028 e13us002 e13us003 e13us004 e13us005 1. « par equipes » est un reglage d'etape : etapederoule.equipes: typeequipe | none, recopie sur phase.equipes a l'instanciation et porte par le format de bibliotheque. none = individuel, le comportement d'avant. seule l'elimination directe l'accepte dans cette tranche ; tout autre type le refuse (equipesnonprisesencharge). comme le bareme, le reglage est verrouille au premier tir de l'etape (adr-0117 §5). 2. l'engagement est une derivation, pas un geste. a chaque reconstruction, engager_les_equipes (domaine pur) range les equipes du type : sont engagees celles qui sont conformes et dont tous les membres sont en lice au classement du depart ; les autres sont ecartees avec leurs motifs, […]",

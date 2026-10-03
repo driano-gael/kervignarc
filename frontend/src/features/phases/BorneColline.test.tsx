@@ -45,6 +45,7 @@ const PHASE: EtapeDeroule = {
   colline: { nb_manches: 3, portee_de_defi: 12 },
   decoupage: null,
   titre: null,
+  duree_prevue: null,
   nb_volees: null,
   arrets: [],
 }

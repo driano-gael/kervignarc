@@ -71,7 +71,7 @@ window.ATLAS.carte = {
     "feature": "salle"
    },
    {
-    "clientes": 8,
+    "clientes": 9,
     "feature": "phases"
    },
    {
@@ -285,7 +285,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 398,
+   "occurrences": 399,
    "source": "application"
   },
   {
@@ -333,7 +333,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 104,
+   "occurrences": 106,
    "source": "api"
   },
   {
@@ -568,7 +568,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 100,
+   "occurrences": 102,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -790,7 +790,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 383,
+   "occurrences": 384,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1060,7 +1060,7 @@ window.ATLAS.carte = {
    "cible": "domain/erreurs",
    "couche_cible": "domain",
    "couche_source": "domain",
-   "occurrences": 37,
+   "occurrences": 38,
    "origines": [
     "backend/domain/anomalie.py",
     "backend/domain/archer.py",
@@ -1083,6 +1083,7 @@ window.ATLAS.carte = {
     "backend/domain/format_tournoi.py",
     "backend/domain/gabarit_salle.py",
     "backend/domain/grain_validation.py",
+    "backend/domain/horaire_prevu.py",
     "backend/domain/identite.py",
     "backend/domain/import_inscrits.py",
     "backend/domain/phase.py",
@@ -3472,11 +3473,11 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 187,
+  "aretes_front": 188,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1052,
-  "imports_entre_couches": 886,
+  "imports": 1056,
+  "imports_entre_couches": 889,
   "plus_gros_noeud": 25,
   "ports": 78,
   "ports_hors_domaine": 30,

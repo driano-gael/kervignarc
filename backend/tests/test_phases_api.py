@@ -955,6 +955,96 @@ def test_changer_le_bareme_d_une_phase_deja_tiree_repond_409(
         assert reponse.json()["code"] == "bareme_duel_verrouille"
 
 
+# --- E03US010 : durée prévue et horaires prévus -----------------------------------------------
+
+
+def test_la_duree_prevue_fait_l_aller_retour_http(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Envoyée à l'ajout, relue au `GET`, effacée par un `PUT` qui l'omet (édition totale)."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(base, json={"type": "elimination_directe", "duree_prevue": 90})
+        assert creation.status_code == 201, creation.text
+        assert client.get(base).json()[0]["duree_prevue"] == 90
+
+        efface = client.put(
+            f"{base}/{creation.json()['id']}", json={"type": "elimination_directe", "sources": []}
+        )
+        assert efface.status_code == 200, efface.text
+        assert client.get(base).json()[0]["duree_prevue"] is None
+
+
+def test_une_duree_prevue_hors_bornes_est_une_regle_metier_violee(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """422 et non 400 : la borne est une règle du domaine (`DureePrevueInvalide`), pas de forme."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        refus = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={"type": "elimination_directe", "duree_prevue": 0},
+        )
+
+        assert refus.status_code == 422, refus.text
+        assert refus.json()["code"] == "duree_prevue_invalide"
+
+
+def test_les_horaires_prevus_se_lisent_sans_compte_par_depart(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA 2, 3, 5 et 7 de bout en bout : un horaire par créneau, l'inconnu servi à `null`, le
+    lendemain signalé, et la route **ouverte** — l'onglet public la lit sans jeton."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.post(
+            f"/api/v1/tournois/{tournoi_id}/departs",
+            json={"horaire": "23:00", "tarif_centimes": 800},
+        )
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        qualif = client.post(base, json={"type": "qualification", "duree_prevue": 90}).json()
+        client.post(
+            base,
+            json={
+                "type": "elimination_directe",
+                "sources": [{"etape_source_id": qualif["id"], "rang_debut": 1, "rang_fin": 8}],
+            },
+        )
+        client.headers.pop("Authorization", None)
+        client.cookies.clear()
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/horaires-prevus")
+
+    assert reponse.status_code == 200, reponse.text
+    soir = next(c for c in reponse.json() if c["horaire"] == "23:00")
+    assert soir["etapes"] == [
+        {
+            "etape_id": qualif["id"],
+            "ordre": 1,
+            "debut": {"heure": "23:00", "jours_apres": 0},
+            "fin": {"heure": "00:30", "jours_apres": 1},
+        },
+        {
+            "etape_id": soir["etapes"][1]["etape_id"],
+            "ordre": 2,
+            "debut": {"heure": "00:30", "jours_apres": 1},
+            "fin": None,
+        },
+    ]
+    assert len(reponse.json()) == 2
+
+
+def test_les_horaires_prevus_d_un_tournoi_inconnu_repondent_404(app_phases: FastAPI) -> None:
+    with TestClient(app_phases) as client:
+        assert client.get("/api/v1/tournois/999/horaires-prevus").status_code == 404
+
+
 def test_le_reglage_par_equipes_fait_l_aller_retour_http(
     app_phases: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

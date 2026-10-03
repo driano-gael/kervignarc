@@ -1692,6 +1692,25 @@ def test_un_format_conserve_le_bareme_de_duel_de_ses_etapes(tmp_path: Path) -> N
         db.engine.dispose()
 
 
+def test_un_format_conserve_la_duree_prevue_de_ses_etapes(tmp_path: Path) -> None:
+    """E03US010, CA 8 — `_politiques_json` a deux appelants ; ce test garde celui des formats."""
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(ordre=1, type=TypePhase.ELIMINATION_DIRECTE, duree_prevue=75)
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Format minuté", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
+    finally:
+        db.engine.dispose()
+
+
 def test_le_reglage_par_equipes_fait_l_aller_retour(tmp_path: Path) -> None:
     """E13US004 : `config.equipes` s'écrit et se relit, sur l'étape comme sur la phase."""
     db = _base(tmp_path)

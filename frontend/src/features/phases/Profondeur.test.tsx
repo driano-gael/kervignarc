@@ -44,6 +44,7 @@ const PHASE: EtapeDeroule = {
   colline: null,
   decoupage: null,
   titre: null,
+  duree_prevue: null,
   nb_volees: null,
   // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.
   arrets: [],

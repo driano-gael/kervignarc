@@ -168,6 +168,9 @@ class ModelePhase:
     l'autre remonte avec ses titres. Un champ présent d'un seul côté de la traversée est le défaut
     `barrage_jusqu_au` qu'ADR-0076 a fermé."""
 
+    duree_prevue: int | None = None
+    """Voir `EtapeDeroule.duree_prevue` (E03US010) — même raison de traversée que `titre`."""
+
     def __post_init__(self) -> None:
         """Normalise le titre — **sans rien valider** (E16US002).
 
@@ -227,6 +230,7 @@ class ModelePhase:
             decoupage=self.decoupage,
             arrets=self.arrets,
             titre=self.titre,
+            duree_prevue=self.duree_prevue,
         )
 
     @staticmethod
@@ -257,6 +261,7 @@ class ModelePhase:
             decoupage=etape.decoupage,
             arrets=etape.arrets,
             titre=etape.titre,
+            duree_prevue=etape.duree_prevue,
         )
 
 

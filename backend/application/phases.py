@@ -12,7 +12,7 @@ avancements citent des identités, donc il n'y a plus rien à remapper — c'ét
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from application.erreurs import (
     BaremeDuelVerrouille,
@@ -32,7 +32,7 @@ from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
-from domain.depart import DepartId
+from domain.depart import Depart, DepartId
 from domain.deroule_etape import (
     EtapeDeroule,
     EtapeDerouleId,
@@ -40,6 +40,7 @@ from domain.deroule_etape import (
 )
 from domain.duel import ReglageBaremeDuel, memes_baremes
 from domain.equipe import TypeEquipe
+from domain.horaire_prevu import HorairePrevu, horaires_prevus
 from domain.phase import (
     Phase,
     PhaseId,
@@ -60,6 +61,12 @@ from domain.poule import ReglageDePoules
 from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
+
+
+@dataclass(frozen=True)
+class HorairesDuDepart:
+    depart: Depart
+    horaires: tuple[HorairePrevu, ...]
 
 
 class ServicePhases:
@@ -138,6 +145,7 @@ class ServicePhases:
         titre: str | None = None,
         bareme_duel: ReglageBaremeDuel | None = None,
         equipes: TypeEquipe | None = None,
+        duree_prevue: int | None = None,
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
@@ -174,6 +182,7 @@ class ServicePhases:
             titre=titre,
             bareme_duel=bareme_duel,
             equipes=equipes,
+            duree_prevue=duree_prevue,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence(vues_du_deroule([*existantes, nouvelle]))
@@ -204,6 +213,7 @@ class ServicePhases:
         titre: str | None = None,
         bareme_duel: ReglageBaremeDuel | None = None,
         equipes: TypeEquipe | None = None,
+        duree_prevue: int | None = None,
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape — édition **totale** de sa config.
 
@@ -242,6 +252,8 @@ class ServicePhases:
             # E01US011 : passé explicitement, même motif que ses voisins (édition totale).
             bareme_duel=bareme_duel,
             equipes=equipes,
+            # E03US010 : idem — une durée omise par le client est effacée, pas conservée.
+            duree_prevue=duree_prevue,
         )
         if modifiee.equipes is not etape.equipes and self._verrou.etape_tiree(tournoi_id, etape_id):
             raise EquipesVerrouillees(
@@ -337,6 +349,15 @@ class ServicePhases:
                     self._phases.supprimer(phase.id)
         self._deroules.supprimer(cible.id)
         self._deroules.enregistrer_plusieurs(recompactees)
+
+    def horaires_prevus(self, tournoi_id: TournoiId) -> tuple[HorairesDuDepart, ...]:
+        """Le déroulé horaire du tournoi : un jeu d'horaires par créneau (E03US010, ADR-0118)."""
+        self._exiger_tournoi(tournoi_id)
+        etapes = self._deroules.par_tournoi(tournoi_id)
+        return tuple(
+            HorairesDuDepart(depart=depart, horaires=horaires_prevus(depart.horaire, etapes))
+            for depart in self._departs.par_tournoi(tournoi_id)
+        )
 
     def _creneaux(self, tournoi_id: TournoiId) -> list[int]:
         """Les identifiants des créneaux du tournoi — là où les avancements se déclinent."""

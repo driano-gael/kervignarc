@@ -8,7 +8,7 @@
 // conservés parce que justes, mais rattachés à ce qu'ils gardent.
 
 import { describe, expect, it } from 'vitest'
-import { phaseAAtterrir, type PhaseLisible } from './presentation'
+import { debutsPrevus, phaseAAtterrir, type PhaseLisible } from './presentation'
 
 function phase(ordre: number, statut: PhaseLisible['statut']): PhaseLisible {
   return { id: 100 + ordre, ordre, type: 'elimination_directe', statut }
@@ -81,5 +81,38 @@ describe('phaseAAtterrir — l’onglet s’ouvre sur ce qui se joue', () => {
     const phases = [phase(1, 'terminee'), phase(2, 'en_pause'), phase(3, 'a_venir')]
 
     expect(phaseAAtterrir(phases)?.ordre).toBe(2)
+  })
+})
+
+describe('debutsPrevus (E03US010, CA 7)', () => {
+  const creneaux = [
+    {
+      depart_id: 41,
+      numero: 1,
+      horaire: '23:00',
+      etapes: [
+        {
+          etape_id: 1,
+          ordre: 1,
+          debut: { heure: '23:00', jours_apres: 0 },
+          fin: { heure: '23:45', jours_apres: 0 },
+        },
+        { etape_id: 2, ordre: 2, debut: { heure: '00:30', jours_apres: 1 }, fin: null },
+        { etape_id: 3, ordre: 3, debut: null, fin: null },
+      ],
+    },
+  ]
+
+  it('rend le début par rang, lendemain signalé, et omet l’inconnu', () => {
+    const debuts = debutsPrevus(creneaux, 41)
+    expect([...debuts]).toEqual([
+      [1, '23:00'],
+      [2, '00:30 (lendemain)'],
+    ])
+  })
+
+  it('ne rend rien pour un autre créneau, ni avant que les horaires soient lus', () => {
+    expect(debutsPrevus(creneaux, 7).size).toBe(0)
+    expect(debutsPrevus(undefined, 41).size).toBe(0)
   })
 })

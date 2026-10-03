@@ -15,6 +15,7 @@ function etape(ordre: number, titre: string | null): EtapeDeroule {
   return {
     id: ordre,
     tournoi_id: 1,
+    duree_prevue: null,
     ordre,
     type: 'qualification',
     sources: [],

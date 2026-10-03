@@ -11881,6 +11881,147 @@ window.ATLAS.decisions = {
   },
   {
    "amende_par": [],
+   "date": "2026-10-02",
+   "date_brute": "2026-10-02",
+   "extrait": "1. L'étape porte une durée, jamais une heure. EtapeDeroule.duree_prevue : minutes entières, 1 à 1440, facultative, pauses comprises. Elle n'est jamais préremplie (arbitrage du 02/10/2026). Elle voyage avec le format (ModelePhase.duree_prevue), comme titre. 2. L'heure se calcule, par départ, sur le graphe des sources. Une étape sans source commence à l'heure du départ ; une étape avec sources commence à la fin la plus tardive de ses sources ; sa fin est son début plus sa durée. ⚠️ Une source « issue d'un tour » (repêchage, consolante) rend le début inconnu — arbitrage du 03/10/2026 en revue : sa sémantique n'est pas tranchée (DETTE-033), et caler le début sur la fin du tableau entier serait […]",
+   "fichier": "docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md",
+   "identifiant": "0118",
+   "liens": [
+    {
+     "cible": "E03US010",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.duree_prevue",
+      "pour_tournoi",
+      "d_etape",
+      "verifier_duree_prevue",
+      "EtapeDTO.vers_modele"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "lister_horaires_prevus",
+      "ConfigPhaseRequete.duree_prevue"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "ServicePhases.horaires_prevus",
+      "HorairesDuDepart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.duree_prevue",
+      "__post_init__"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.duree_prevue",
+      "pour_tournoi",
+      "d_etape",
+      "verifier_duree_prevue",
+      "EtapeDTO.vers_modele"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/horaire_prevu.py",
+     "existe": true,
+     "symboles": [
+      "horaires_prevus",
+      "HeurePrevue",
+      "verifier_duree_prevue",
+      "DUREE_PREVUE_MAX"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_politiques_json",
+      "_lire_duree_prevue"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/departs/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "invaliderLesCreneaux"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/en-cours/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "debutsPrevus"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/GrilleHoraire.tsx",
+     "existe": true,
+     "symboles": [
+      "dureeSaisieValide"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ChampDureePrevue.tsx",
+     "existe": true,
+     "symboles": [
+      "dureeSaisieValide"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "L'horaire prévu se calcule depuis des durées d'étape, pour chaque départ, par le graphe des sources",
+   "us": [
+    "E01US024",
+    "E03US010",
+    "E09US007"
+   ]
+  },
+  {
+   "amende_par": [],
    "date": "2026-10-03",
    "date_brute": "2026-10-03",
    "extrait": "1. « Par équipes » est un réglage d'étape : EtapeDeroule.equipes: TypeEquipe | None, recopié sur Phase.equipes à l'instanciation et porté par le format de bibliothèque. None = individuel, le comportement d'avant. Seule l'élimination directe l'accepte dans cette tranche ; tout autre type le refuse (EquipesNonPrisesEnCharge). Comme le barème, le réglage est verrouillé au premier tir de l'étape (ADR-0117 §5). 2. L'engagement est une dérivation, pas un geste. À chaque reconstruction, engager_les_equipes (domaine pur) range les équipes du type : sont engagées celles qui sont conformes et dont tous les membres sont en lice au classement du départ ; les autres sont écartées avec leurs motifs, […]",

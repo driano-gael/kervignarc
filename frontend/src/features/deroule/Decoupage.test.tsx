@@ -31,6 +31,7 @@ const QUALIFICATION: Etape = {
   profondeur: null,
   arrets: [],
   titre: null,
+  duree_prevue: null,
 }
 
 function poser(etape: Etape = QUALIFICATION) {

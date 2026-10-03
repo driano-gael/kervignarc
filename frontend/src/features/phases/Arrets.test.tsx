@@ -43,6 +43,7 @@ const PHASE: EtapeDeroule = {
   colline: null,
   decoupage: null,
   titre: null,
+  duree_prevue: null,
   nb_volees: null,
   arrets: [
     { apres_tour: 2, portee: 'phase' },
