@@ -44,11 +44,21 @@ Trois faits du code ont orienté la décision :
 5. **Le moteur ne change pas.** `Tableau`, `Duel` et la persistance du tir traitent déjà des
    participants opaques. Ce sont les couches hautes qui résolvent une équipe en membres : arme et
    blason (lus sur la catégorie de ses membres, homogène puisqu'elle est conforme), noms, et
-   archers à poser sur les cibles.
+   archers à poser sur les cibles. ⚠️ **L'arme est homogène parce que l'équipe est conforme ; le
+   blason ne l'était pas** (la conformité d'E13US002 ne lisait que l'arme et le sexe) : la revue
+   l'a relevé, et l'écart « blasons différents » écarte désormais une telle équipe.
+   **Frontière** : `Camp = Duelliste | DuellisteEquipe` n'apparaît que sur la surface du tableau ;
+   poules, suisse et colline gardent `Duelliste`. L'API aplatit un camp d'équipe (nom d'équipe,
+   prénom vide, `equipe_id`, `archer_id` nul) ; routage et simulation l'écartent explicitement.
 6. **Une phase d'équipes est un îlot** dans cette tranche : elle ne prélève pas par rangs et
    n'alimente aucune phase aval, ce que le déroulé signale en anomalie (`DETTE-120`). Le classement
    d'un tableau d'équipes est indexé par équipe, donc le prélever comme un classement d'archers
    produirait une population fausse mais bien formée.
+
+7. **La composition se fige au premier tir** (arbitrage de revue du 03/10/2026). L'engagement
+   étant recalculé, créer, supprimer ou recomposer une équipe d'un type déjà en jeu réécrirait
+   l'ensemencement et masquerait les tirs faits : `ServiceEquipes` le refuse (409), au moyen du
+   même `VerrouBaremeDuel` que le barème. Le verrou du drapeau d'étape (§1) en est le pendant.
 
 ## Alternatives écartées
 
@@ -81,7 +91,8 @@ Trois faits du code ont orienté la décision :
 | Point | Module |
 |---|---|
 | 1 — réglage d'étape | `domain/deroule_etape.py`, `domain/phase.py` (garde), `domain/format_tournoi.py`, `infrastructure/db/repositories/moteur.py`, `application/phases.py` (verrou), `api/v1/phases.py`, `api/v1/formats.py`, `frontend/src/shared/phases/` |
-| 2, 3 — engagement et rang d'entrée | `domain/engagement_equipes.py`, `application/saisie_duels.py` (`_decor`) |
-| 4 — barème par défaut | `domain/duel.py` (`ResolveurBaremeDuelFfta.bareme_equipe_pour`) |
+| 2, 3 — engagement et rang d'entrée | `domain/engagement_equipes.py`, `domain/equipe.py` (écart « blasons différents »), `application/equipes.py` (`a_engager`, `jouee`), `application/saisie_duels.py` (`_decor`, `_equipes_sans_tableau`) |
+| 4 — barème par défaut | `domain/duel.py` (`ResolveurBaremeDuelFfta.bareme_equipe_pour`), `application/saisie_duels.py` (`_bareme_du`) |
 | 5 — résolution en couche haute | `application/saisie_duels.py`, `application/placement_duels.py`, `application/pilotage_tour.py`, `domain/placement.py` (adjacence par groupe de duel) |
-| 6 — îlot | `domain/phase.py` (`_anomalies_sources`) |
+| 6 — îlot | `domain/phase.py` (`_anomalies_ilot_d_equipes`), `application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`) |
+| 7 — composition figée | `application/equipes.py` (`_refuser_si_en_jeu`), `application/verrou_bareme.py` (`type_en_jeu`) |

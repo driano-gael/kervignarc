@@ -23,7 +23,7 @@ from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
-from domain.contrat_phase import TYPES_A_BAREME_DE_DUEL, TYPES_EN_TABLEAU_JOUE
+from domain.contrat_phase import TYPES_A_BAREME_DE_DUEL
 from domain.contrat_phase import TYPES_EN_TABLEAU as TYPES_EN_TABLEAU
 from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
 from domain.contrat_phase import TypePhase as TypePhase
@@ -678,7 +678,7 @@ class Phase:
                 f"Une phase de type « {self.type.value} » ne tire pas de duels : elle n'a pas de "
                 "barème de duel à régler."
             )
-        if self.equipes is not None and self.type not in TYPES_EN_TABLEAU_JOUE:
+        if self.equipes is not None and self.type is not TypePhase.ELIMINATION_DIRECTE:
             raise EquipesNonPrisesEnCharge(
                 f"Une phase de type « {self.type.value} » ne se joue pas encore par équipes : "
                 "seule l'élimination directe les accepte."

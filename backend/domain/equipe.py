@@ -13,6 +13,7 @@ from enum import Enum
 from types import MappingProxyType
 
 from domain.archer import ArcherId
+from domain.blason import BlasonId
 from domain.categorie import Categorie, SexeCategorie
 from domain.erreurs import (
     ArcherDejaMembre,
@@ -106,6 +107,7 @@ class EcartComposition(str, Enum):
     MIXITE_MANQUANTE = "mixite_manquante"
     SEXES_DIFFERENTS = "sexes_differents"
     SEXE_NON_VERIFIABLE = "sexe_non_verifiable"
+    BLASONS_DIFFERENTS = "blasons_differents"
 
 
 @dataclass(frozen=True)
@@ -118,13 +120,15 @@ class ProfilMembre:
 
     arme: str | None
     sexe: SexeCategorie | None
+    blason_id: BlasonId | None = None
+    """Le blason de la catégorie : un duel d'équipe se saisit sur un seul pavé (E13US004)."""
 
     @staticmethod
     def de_categorie(categorie: Categorie | None) -> ProfilMembre:
         """Sans catégorie résolue, arme et sexe sont inconnus — jamais devinés."""
         if categorie is None:
             return ProfilMembre(arme=None, sexe=None)
-        return ProfilMembre(arme=categorie.arme, sexe=categorie.sexe)
+        return ProfilMembre(arme=categorie.arme, sexe=categorie.sexe, blason_id=categorie.blason_id)
 
 
 def conflit_de_type(
@@ -159,6 +163,9 @@ def ecarts_de_composition(
         return tuple(ecarts)
     ecarts.extend(_ecarts_d_arme(profils))
     ecarts.extend(_ecarts_de_sexe(equipe.type, profils))
+    # Un blason inconnu ne crée pas d'écart ici : le pavé introuvable lève à la saisie.
+    if len({p.blason_id for p in profils if p.blason_id is not None}) > 1:
+        ecarts.append(EcartComposition.BLASONS_DIFFERENTS)
     return tuple(ecarts)
 
 

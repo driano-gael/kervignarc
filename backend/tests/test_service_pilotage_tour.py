@@ -68,6 +68,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
     archer_de,
 )
 from tests.test_domain_tableau import construire, jouer_gagne_mieux_classe
@@ -213,7 +214,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
-            equipes=ServiceEquipes(self.equipes, self.tournois, self.archers, self.categories),
+            equipes=ServiceEquipes(
+                self.equipes,
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
 
     @property
@@ -1010,3 +1017,27 @@ def test_le_feu_vert_annonce_la_cible_du_premier_membre_de_chaque_equipe() -> No
     assert duel.cible_haut == poses[premier[duel.haut.nom]]
     assert duel.cible_bas == poses[premier[duel.bas.nom]]
     assert duel.pret_a_lancer
+
+
+def test_un_duel_d_equipes_dont_un_membre_est_en_reserve_n_est_pas_pret() -> None:
+    """Relevé en revue (axes C1 et D) : « en réserve, comme tout archer » — un seul membre posé ne
+    suffit pas, sans quoi le tour partirait avec des archers sans butte."""
+    monde = _Monde(capacites=(4,))
+    categorie = monde.categories.par_id(monde.categorie_id)
+    assert categorie is not None
+    monde.categories.enregistrer(replace(categorie, sexe=SexeCategorie.HOMME))
+    archers = [monde.inscrire_classe(("10", "10")) for _ in range(6)]
+    for nom, trio in (("A", archers[:3]), ("B", archers[3:])):
+        monde.equipes.enregistrer(
+            Equipe(tournoi_id=1, nom=nom, type=TypeEquipe.STANDARD, effectif_attendu=3,
+                   membres=tuple(trio))
+        )  # fmt: skip
+    monde.phases._phases[monde.phase_id] = replace(
+        monde.phases._phases[monde.phase_id], equipes=TypeEquipe.STANDARD
+    )
+    monde.placer()
+
+    (duel,) = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+
+    assert not duel.pret_a_lancer
+    assert duel.blocage == "cible non attribuée"

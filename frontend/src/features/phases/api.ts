@@ -10,7 +10,7 @@ import type { Decoupage } from '../../shared/phases/decoupage'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
 import type { ReglageColline } from '../../shared/phases/colline'
 import type { ReglageBaremeDuel } from '../../shared/phases/baremeDuel'
-import type { TypeEquipe } from '../../shared/phases/ReglageEquipes'
+import type { TypeEquipe } from '../../shared/phases/equipes'
 import type { Profondeur } from '../patrimoine/api'
 
 // Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé

@@ -51,7 +51,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from application.saisie_duels import Camp, Duelliste
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import BlasonId
@@ -63,7 +62,7 @@ from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
-from domain.equipe import Equipe, EquipeId
+from domain.equipe import Equipe, EquipeId, TypeEquipe
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi
 from domain.gabarit_salle import GabaritSalle
@@ -76,6 +75,8 @@ from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+
+    from application.saisie_duels import Camp
 
 # Alias de type en **forward-ref** (chaîne) : `conftest.py` reste importable sans `fastapi`
 # installé — nécessaire au hook pre-commit `domain-isolation`, qui exécute pytest dans un
@@ -1358,5 +1359,18 @@ def section_unique(corps: dict[str, Any]) -> dict[str, Any]:
 
 def archer_de(camp: Camp | None) -> int:
     """L'archer d'un camp **individuel** — échoue net sur une équipe ou un camp vide (E13US004)."""
+    # Import local : ce fichier est chargé par le hook d'isolation du domaine (pytest seul).
+    from application.saisie_duels import Duelliste
+
     assert isinstance(camp, Duelliste), f"camp individuel attendu, reçu {camp!r}"
     return camp.archer_id
+
+
+class FauxVerrouDeComposition:
+    """`VerrouDeComposition` réglé à la main : les types d'équipe dont un tableau a un tir."""
+
+    def __init__(self) -> None:
+        self.tires: set[TypeEquipe] = set()
+
+    def type_en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe) -> bool:
+        return type in self.tires

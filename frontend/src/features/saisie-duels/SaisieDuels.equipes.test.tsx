@@ -34,7 +34,7 @@ const DUEL: Duel = {
   manches: [],
   barrage: null,
   resultat: null,
-} as unknown as Duel
+}
 
 const TABLEAU: Tableau = {
   effectif: 2,
@@ -53,11 +53,13 @@ const TABLEAU: Tableau = {
   ],
 }
 
+let tableauCourant: Tableau = TABLEAU
+
 const MUTATION = { mutate: vi.fn(), isPending: false, isError: false, error: null }
 
 vi.mock('./hooks', () => ({
   usePhases: () => ({ data: [PHASE], isError: false, isSuccess: true, error: null }),
-  useTableau: () => ({ isPending: false, isError: false, data: TABLEAU, error: null }),
+  useTableau: () => ({ isPending: false, isError: false, data: tableauCourant, error: null }),
   useDuel: () => ({ isPending: true, isError: false, isSuccess: false, data: undefined }),
   useDuelsEnAttente: () => 0,
   useRejeuDuelsHorsLigne: () => undefined,
@@ -108,6 +110,17 @@ describe('SaisieDuels — un tableau d’équipes', () => {
     const section = await screen.findByRole('region', { name: 'Équipes non engagées' })
     expect(section).toHaveTextContent('Hennebont')
     expect(section).toHaveTextContent('Il manque des archers')
-    expect(section).toHaveTextContent('Jean PETIT ne tire pas la qualification de ce départ')
+    expect(section).toHaveTextContent('Jean PETIT n’est pas en lice dans ce départ')
+  })
+
+  it('sans deux équipes engagées, dit qu’il n’y a rien à jouer et pourquoi', async () => {
+    tableauCourant = { ...TABLEAU, effectif: 1, taille: 0, nb_tours: 0, duels: [] }
+    await monter()
+
+    expect(await screen.findByText(/Moins de deux équipes engagées/)).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Équipes non engagées' })).toHaveTextContent(
+      'Hennebont',
+    )
+    tableauCourant = TABLEAU
   })
 })

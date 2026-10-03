@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
 from domain.duel import BaremeDuel, Duel
+from domain.equipe import TypeEquipe
 from domain.participant import GenreParticipant, Participant
 from infrastructure.db.repositories.moteur import PhaseRepositorySQL
 from infrastructure.db.repositories.tir import DuelRepositorySQL
@@ -1136,3 +1137,36 @@ def test_changer_le_reglage_par_equipes_d_une_phase_deja_tiree_repond_409(
 
         assert reponse.status_code == 409, reponse.text
         assert reponse.json()["code"] == "equipes_verrouillees"
+
+
+def test_supprimer_une_equipe_d_un_type_en_jeu_repond_409(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Arbitrage de revue d'E13US004 : la composition se fige au premier tir, code stable."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        creation = client.post(base, json={"type": "elimination_directe", "equipes": "standard"})
+        assert creation.status_code == 201, creation.text
+        equipe = client.post(
+            f"/api/v1/tournois/{tournoi_id}/equipes", json={"nom": "A", "type": "standard"}
+        )
+        assert equipe.status_code == 201, equipe.text
+        fabrique = app_phases.state.database.session_factory
+        (phase,) = PhaseRepositorySQL(fabrique).par_tournoi(tournoi_id)
+        assert phase.id is not None
+        DuelRepositorySQL(fabrique).enregistrer(
+            phase.id,
+            1,
+            Duel.vide(
+                BaremeDuel.preset_ffta_equipe(TypeEquipe.STANDARD, poulies=False),
+                Participant(GenreParticipant.EQUIPE, 1),
+                Participant(GenreParticipant.EQUIPE, 2),
+            ),
+        )
+
+        reponse = client.delete(f"/api/v1/tournois/{tournoi_id}/equipes/{equipe.json()['id']}")
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "equipe_verrouillee"

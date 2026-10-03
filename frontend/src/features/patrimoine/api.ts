@@ -6,7 +6,7 @@
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
 import type { ArretProgramme } from '../../shared/phases/arrets'
 import type { ReglageBaremeDuel } from '../../shared/phases/baremeDuel'
-import type { TypeEquipe } from '../../shared/phases/ReglageEquipes'
+import type { TypeEquipe } from '../../shared/phases/equipes'
 
 import { fetchJson } from '../../shared/api/client'
 import type { Profondeur, TypePhase } from '../../shared/phases/catalogue'

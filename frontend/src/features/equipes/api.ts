@@ -3,7 +3,9 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-export type TypeEquipe = 'standard' | 'mixte'
+// Déclaré une fois, dans `shared/` : l'atelier des phases le lit aussi (E13US004).
+export type { TypeEquipe } from '../../shared/phases/equipes'
+import type { TypeEquipe } from '../../shared/phases/equipes'
 
 // Codes d'écart renvoyés par le serveur : jamais affichés bruts, cf. `libelleEcart` (`presentation.ts`).
 export type EcartEquipe =
@@ -14,6 +16,7 @@ export type EcartEquipe =
   | 'mixite_manquante'
   | 'sexes_differents'
   | 'sexe_non_verifiable'
+  | 'blasons_differents'
 
 export interface MembreEquipe {
   archer_id: number

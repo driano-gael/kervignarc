@@ -55,6 +55,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
     identite_d_etape,
 )
 
@@ -421,7 +422,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
-            equipes=ServiceEquipes(self.equipes, self.tournois, self.archers, self.categories),
+            equipes=ServiceEquipes(
+                self.equipes,
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
 
 

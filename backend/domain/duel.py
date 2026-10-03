@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Protocol
 
 from domain.blason import ZoneScore, points_zone
-from domain.equipe import TypeEquipe
+from domain.equipe import EFFECTIF_FFTA, TypeEquipe
 from domain.erreurs import (
     BaremeDuelInvalide,
     BarrageIndecis,
@@ -140,7 +140,7 @@ class BaremeDuel:
             nb_manches=4,
             nb_fleches_par_volee=fleches,
             points_pour_gagner=0 if poulies else 5,
-            nb_fleches_barrage=fleches // 2,
+            nb_fleches_barrage=EFFECTIF_FFTA[type],  # une flèche par archer (§8.2)
         )
 
     @staticmethod

@@ -116,6 +116,16 @@ class EquipesVerrouillees(ApplicationError):
     code = "equipes_verrouillees"
 
 
+class EquipeVerrouillee(ApplicationError):
+    """Changer la population ou la composition d'un type d'équipe déjà en jeu (E13US004) → 409.
+
+    Le tableau d'équipes se recalcule à chaque lecture (ADR-0120 §2) : une équipe créée, supprimée
+    ou recomposée après le premier tir réécrirait l'ensemencement et masquerait les tirs faits.
+    """
+
+    code = "equipe_verrouillee"
+
+
 class ArmeDeCategorieVerrouillee(ApplicationError):
     """Changer l'arme d'une catégorie quand une étape réglée du tournoi a un tir (E01US011) → 409.
 

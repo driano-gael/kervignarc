@@ -442,9 +442,13 @@ def test_un_tableau_d_equipes_se_lit_et_se_saisit_de_bout_en_bout(
                 "membres_hors_course": [],
             }
         ]
-        manche = client.post(
-            "/api/v1/duels/manches",
-            json=_manche(1, ("10",) * 6, ("9",) * 6, phase_id, tournoi_id),
-            headers=entete,
-        )
-        assert manche.status_code == 200, manche.text
+        # Deux manches : la seconde relit le camp d'équipe persisté (genre `equipe` en base) et
+        # doit traverser la garde de désynchronisation sans faux refus.
+        for numero in (1, 2):
+            manche = client.post(
+                "/api/v1/duels/manches",
+                json=_manche(numero, ("10",) * 6, ("9",) * 6, phase_id, tournoi_id),
+                headers=entete,
+            )
+            assert manche.status_code == 200, manche.text
+        assert len(manche.json()["manches"]) == 2

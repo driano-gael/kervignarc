@@ -315,7 +315,13 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         PlacementEnCascade(),
         registre,
         aggregation_simulation,
-        equipes=ServiceEquipes(InMemoryEquipeRepository(), tournois, archers, categories),
+        equipes=ServiceEquipes(
+            InMemoryEquipeRepository(),
+            tournois,
+            archers,
+            categories,
+            verrou=VerrouBaremeDuel(departs, phases, deroules, duels, ResolveurBaremeDuelFfta()),
+        ),
     )
     placement_duels = ServicePlacementDuels(
         tournois,
@@ -637,7 +643,11 @@ def create_app(
     )
     # Équipes d'un tournoi (E13US002).
     app.state.service_equipes = ServiceEquipes(
-        equipe_repository, tournoi_repository, archer_repository, categorie_repository
+        equipe_repository,
+        tournoi_repository,
+        archer_repository,
+        categorie_repository,
+        verrou=verrou_bareme,
     )
     # Classement de qualification (E06US001) : lit les **séries** de saisie, plus les catégories
     # pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail flèche par

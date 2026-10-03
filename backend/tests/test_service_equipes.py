@@ -17,6 +17,7 @@ from application.erreurs import (
     ArcherDejaEnEquipe,
     ArcherHorsTournoi,
     EquipeIntrouvable,
+    EquipeVerrouillee,
     MembreIntrouvable,
     NomEquipeDejaPris,
     TournoiIntrouvable,
@@ -31,6 +32,7 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxEquipeRepository,
     FauxTournoiRepository,
+    FauxVerrouDeComposition,
 )
 
 _DATE = datetime.date(2026, 11, 14)
@@ -46,6 +48,7 @@ class Decor:
     autre_tournoi_id: TournoiId
     clh: CategorieId
     clf: CategorieId
+    verrou: FauxVerrouDeComposition
 
     def archer(
         self, prenom: str, categorie_id: CategorieId | None = None, tournoi_id: int | None = None
@@ -78,8 +81,10 @@ def decor() -> Decor:
         Categorie.creer(tournoi.id, "Senior 1 F CL", arme="CL", sexe=SexeCategorie.FEMME)
     )
     assert clh.id is not None and clf.id is not None
+    verrou = FauxVerrouDeComposition()
     return Decor(
-        service=ServiceEquipes(equipes, tournois, archers, categories),
+        service=ServiceEquipes(equipes, tournois, archers, categories, verrou=verrou),
+        verrou=verrou,
         equipes=equipes,
         archers=archers,
         categories=categories,
@@ -379,3 +384,72 @@ def test_une_categorie_sans_sexe_rend_le_sexe_non_verifiable(decor: Decor) -> No
         decor.tournoi_id, vue.equipe.id, decor.archer("Lucie", sans_sexe.id)
     )
     assert apres.ecarts == (EcartComposition.SEXE_NON_VERIFIABLE,)
+
+
+# --- E13US004, arbitrage de revue (03/10/2026) : la composition se fige au premier tir ----------
+# Le tableau d'équipes se recalcule à chaque lecture (ADR-0120 §2) : changer la population ou la
+# composition d'un type déjà en jeu réécrirait l'ensemencement et masquerait les tirs faits.
+
+
+def _equipe_en_jeu(decor: Decor) -> int:
+    vue = decor.service.creer(decor.tournoi_id, "En jeu", TypeEquipe.STANDARD, None)
+    assert vue.equipe.id is not None
+    decor.service.ajouter_membre(decor.tournoi_id, vue.equipe.id, decor.archer("Guillaume"))
+    decor.verrou.tires.add(TypeEquipe.STANDARD)
+    return vue.equipe.id
+
+
+def test_apres_le_premier_tir_on_ne_supprime_plus_une_equipe_du_type(decor: Decor) -> None:
+    equipe_id = _equipe_en_jeu(decor)
+
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.supprimer(decor.tournoi_id, equipe_id)
+
+
+def test_apres_le_premier_tir_on_ne_change_plus_ses_membres(decor: Decor) -> None:
+    equipe_id = _equipe_en_jeu(decor)
+    equipe = decor.equipes.par_id(equipe_id)
+    assert equipe is not None
+    (membre,) = equipe.membres
+
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.ajouter_membre(decor.tournoi_id, equipe_id, decor.archer("Walter"))
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.retirer_membre(decor.tournoi_id, equipe_id, membre)
+
+
+def test_apres_le_premier_tir_on_ne_cree_plus_d_equipe_du_type(decor: Decor) -> None:
+    _equipe_en_jeu(decor)
+
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.creer(decor.tournoi_id, "Retardataire", TypeEquipe.STANDARD, None)
+
+
+def test_apres_le_premier_tir_type_et_effectif_sont_figes_mais_pas_le_nom(decor: Decor) -> None:
+    equipe_id = _equipe_en_jeu(decor)
+
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.modifier(decor.tournoi_id, equipe_id, "En jeu", TypeEquipe.MIXTE, None)
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.modifier(decor.tournoi_id, equipe_id, "En jeu", TypeEquipe.STANDARD, 4)
+    renommee = decor.service.modifier(
+        decor.tournoi_id, equipe_id, "Nouveau nom", TypeEquipe.STANDARD, None
+    )
+    assert renommee.equipe.nom == "Nouveau nom"
+
+
+def test_un_autre_type_reste_libre(decor: Decor) -> None:
+    _equipe_en_jeu(decor)
+
+    mixte = decor.service.creer(decor.tournoi_id, "Duo", TypeEquipe.MIXTE, None)
+    assert mixte.equipe.id is not None
+    decor.service.supprimer(decor.tournoi_id, mixte.equipe.id)
+
+
+def test_passer_dans_un_type_en_jeu_est_refuse(decor: Decor) -> None:
+    decor.verrou.tires.add(TypeEquipe.STANDARD)
+    mixte = decor.service.creer(decor.tournoi_id, "Duo", TypeEquipe.MIXTE, None)
+    assert mixte.equipe.id is not None
+
+    with pytest.raises(EquipeVerrouillee):
+        decor.service.modifier(decor.tournoi_id, mixte.equipe.id, "Duo", TypeEquipe.STANDARD, None)

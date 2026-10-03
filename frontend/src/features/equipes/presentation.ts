@@ -19,21 +19,29 @@ const LIBELLES_ECART_COURTS: Record<EcartEquipe, string> = {
   mixite_manquante: 'Il faut un homme et une femme',
   sexes_differents: 'Sexes différents entre les membres',
   sexe_non_verifiable: 'Sexe non vérifiable : catégorie sans sexe ou mixte',
+  blasons_differents: 'Blasons différents : les membres ne tirent pas sur le même blason',
 }
 
 const LIBELLES_ECART: Record<EcartEquipe, (equipe: Equipe) => string> = {
-  ...(Object.fromEntries(
-    Object.entries(LIBELLES_ECART_COURTS).map(([code, libelle]) => [code, () => libelle]),
-  ) as Record<EcartEquipe, () => string>),
   effectif_insuffisant: (e) =>
     `Il manque des archers (${e.membres.length} sur ${e.effectif_attendu})`,
   effectif_excedentaire: (e) =>
     `Trop d’archers (${e.membres.length} pour ${e.effectif_attendu} attendus)`,
+  armes_differentes: () => LIBELLES_ECART_COURTS.armes_differentes,
+  arme_non_verifiable: () => LIBELLES_ECART_COURTS.arme_non_verifiable,
+  mixite_manquante: () => LIBELLES_ECART_COURTS.mixite_manquante,
+  sexes_differents: () => LIBELLES_ECART_COURTS.sexes_differents,
+  sexe_non_verifiable: () => LIBELLES_ECART_COURTS.sexe_non_verifiable,
+  blasons_differents: () => LIBELLES_ECART_COURTS.blasons_differents,
+}
+
+function estEcartConnu(ecart: string): ecart is EcartEquipe {
+  return Object.hasOwn(LIBELLES_ECART_COURTS, ecart)
 }
 
 // Sans l'équipe sous la main (l'écran des duels, E13US004) : le libellé sans les effectifs.
 export function libelleEcartCourt(ecart: string): string {
-  return (LIBELLES_ECART_COURTS as Record<string, string | undefined>)[ecart] ?? 'Écart non reconnu'
+  return estEcartConnu(ecart) ? LIBELLES_ECART_COURTS[ecart] : 'Écart non reconnu'
 }
 
 // ⚠️ Le serveur peut ajouter un code avant le front : jamais la valeur brute à l'écran.

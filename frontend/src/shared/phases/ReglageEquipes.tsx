@@ -1,7 +1,7 @@
 // Le réglage « qui s'oppose » d'une élimination directe (E13US004, ADR-0120) — partagé par l'écran
 // du tournoi et l'atelier de formats. Aucun état interne, même convention que ses voisins.
 
-export type TypeEquipe = 'standard' | 'mixte'
+import { estTypeEquipe, type TypeEquipe } from './equipes'
 
 const VALEUR_INDIVIDUELLE = 'individuel'
 
@@ -18,14 +18,10 @@ export function ReglageEquipes({
       <select
         className="formulaire__champ"
         value={valeur ?? VALEUR_INDIVIDUELLE}
-        onChange={(e) =>
-          surChangement(
-            e.target.value === VALEUR_INDIVIDUELLE ? null : (e.target.value as TypeEquipe),
-          )
-        }
+        onChange={(e) => surChangement(estTypeEquipe(e.target.value) ? e.target.value : null)}
       >
         <option value={VALEUR_INDIVIDUELLE}>Archers (individuel)</option>
-        <option value="standard">Équipes de trois</option>
+        <option value="standard">Équipes standard</option>
         <option value="mixte">Équipes mixtes</option>
       </select>
       <span className="carte__aide">

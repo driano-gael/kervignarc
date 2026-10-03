@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, ResolveurBaremeDuel
+from domain.equipe import TypeEquipe
 from domain.ports import DepartRepository, DerouleRepository, DuelRepository, PhaseRepository
 from domain.tournoi import TournoiId
 
@@ -41,6 +42,15 @@ class VerrouBaremeDuel:
             if depart.id is not None
             for phase in self._phases.par_depart(depart.id)
             if phase.etape_id == etape_id
+        )
+
+    def type_en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe) -> bool:
+        """Une étape qui oppose des équipes de ce type a-t-elle un tir (E13US004) ?"""
+        return any(
+            etape.id is not None
+            and etape.equipes is type
+            and self.etape_tiree(tournoi_id, etape.id)
+            for etape in self._deroules.par_tournoi(tournoi_id)
         )
 
     def arme_figee(self, tournoi_id: TournoiId, ancienne: str | None, nouvelle: str | None) -> bool:

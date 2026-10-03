@@ -70,6 +70,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
     poser_phase_factice,
 )
 from tests.test_service_placement_duels import (
@@ -278,7 +279,11 @@ class _Monde:
             _REGISTRE,
             AggregationParQualification(),
             equipes=ServiceEquipes(
-                FauxEquipeRepository(), self.tournois, self.archers, self.categories
+                FauxEquipeRepository(),
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
             ),
         )
 

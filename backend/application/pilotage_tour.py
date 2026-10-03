@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from application.audit import ServiceAudit
 from application.erreurs import AucunDuelALancer, GabaritDuTournoiAbsent, PrelevementEnAttente
 from application.placement_duels import ServicePlacementDuels
-from application.saisie_duels import Camp, ServiceSaisieDuels
+from application.saisie_duels import Camp, DuellisteEquipe, ServiceSaisieDuels
 from domain.classement import LigneClassement
 from domain.entree_audit import ActionAuditee
 from domain.erreurs import EffectifTableauInvalide
@@ -206,7 +206,7 @@ class ServicePilotageTour:
             numeros=numeros,
             cibles=cibles,
             nb_duels=len(numeros),
-            nb_archers=2 * len(numeros),
+            nb_archers=sum(_nb_archers(d.haut) + _nb_archers(d.bas) for d in duels),
         )
 
     @staticmethod
@@ -270,13 +270,14 @@ class ServicePilotageTour:
         )
 
     def _cible_de(self, participant: Participant | None, cibles: dict[int, int]) -> int | None:
-        """La cible de l'occupant d'un camp — celle du premier membre posé d'une équipe (E13US004,
-        CA 6) —, ou `None` (vide / pas placé)."""
+        """La cible de l'occupant d'un camp — celle du premier membre d'une équipe (E13US004,
+        CA 6) —, ou `None` (vide, ou un archer du camp pas placé : le duel n'est pas prêt)."""
         if participant is None:
             return None
-        return next(
-            (cibles[a] for a in self._saisie_duels.archers_du(participant) if a in cibles), None
-        )
+        archers = self._saisie_duels.archers_du(participant)
+        if not archers or any(a not in cibles for a in archers):
+            return None
+        return cibles[archers[0]]
 
     # DETTE-019 : corps identique à `ServiceRoutage._sources_en_attente` (E04US018).
     @staticmethod
@@ -312,3 +313,10 @@ class ServicePilotageTour:
         if not cible_attribuee:
             return "cible non attribuée"
         return None
+
+
+def _nb_archers(camp: Camp | None) -> int:
+    """Les archers qu'un camp envoie sur la butte : un, ou les membres de l'équipe (E13US004)."""
+    if camp is None:
+        return 0
+    return len(camp.membres) if isinstance(camp, DuellisteEquipe) else 1

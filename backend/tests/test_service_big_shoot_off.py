@@ -64,6 +64,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
@@ -271,7 +272,11 @@ class _Monde:
             registre_par_defaut(),
             AggregationParQualification(),
             equipes=ServiceEquipes(
-                FauxEquipeRepository(), self.tournois, self.archers, self.categories
+                FauxEquipeRepository(),
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
             ),
         )
         return ServiceBigShootOff(

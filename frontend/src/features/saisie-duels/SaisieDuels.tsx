@@ -224,6 +224,12 @@ function ListeDuels({
   return (
     <div className="duels-liste">
       {tableau.est_termine && tableau.podium.length > 0 && <Podium tableau={tableau} />}
+      {tableau.duels.length === 0 && tableau.equipes_ecartees.length > 0 && (
+        <p className="carte__aide">
+          Moins de deux équipes engagées : aucun duel à jouer tant que la composition n’est pas
+          corrigée.
+        </p>
+      )}
       {tableau.equipes_ecartees.length > 0 && (
         <EquipesEcartees equipes={tableau.equipes_ecartees} />
       )}
@@ -295,7 +301,8 @@ function EquipesEcartees({ equipes }: { equipes: EquipeEcartee[] }) {
             {[
               ...equipe.ecarts.map(libelleEcartCourt),
               ...equipe.membres_hors_course.map(
-                (membre) => `${membre} ne tire pas la qualification de ce départ`,
+                (membre) =>
+                  `${membre} n’est pas en lice dans ce départ (absent, forfait ou disqualifié)`,
               ),
             ].join(' ; ')}
           </li>

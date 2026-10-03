@@ -285,7 +285,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 399,
+   "occurrences": 400,
    "source": "application"
   },
   {
@@ -790,7 +790,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 384,
+   "occurrences": 385,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -3470,17 +3470,33 @@ window.ATLAS.carte = {
    ],
    "nom": "TournoiRepository",
    "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/application/verrou_bareme.py",
+     "nom": "VerrouBaremeDuel"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/equipes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "type_en_jeu"
+   ],
+   "nom": "VerrouDeComposition",
+   "sans_adapter": false
   }
  ],
  "resume": {
   "aretes_front": 189,
   "enchevetrements": 4,
   "features": 53,
-  "imports": 1056,
-  "imports_entre_couches": 889,
+  "imports": 1057,
+  "imports_entre_couches": 890,
   "plus_gros_noeud": 25,
-  "ports": 78,
-  "ports_hors_domaine": 30,
+  "ports": 79,
+  "ports_hors_domaine": 31,
   "ports_sans_adapter": 0,
   "violations": 0
  },

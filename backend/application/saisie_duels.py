@@ -46,7 +46,7 @@ from domain.deroule_etape import EtapeDerouleId
 from domain.duel import BaremeDuel, Cote, Duel, ReglageBaremeDuel, ResolveurBaremeDuel
 from domain.engagement_equipes import Engagement, EquipeEcartee, engager_les_equipes
 from domain.equipe import EcartComposition
-from domain.erreurs import EquipesNonPrisesEnCharge, MatchNonJouable
+from domain.erreurs import EffectifTableauInvalide, EquipesNonPrisesEnCharge, MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import (
@@ -284,7 +284,15 @@ class ServiceSaisieDuels:
 
     def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
         """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
-        tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
+        try:
+            tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
+        except EffectifTableauInvalide:
+            # Moins de deux équipes engagées : c'est justement là qu'il faut dire pourquoi les
+            # autres sont écartées (E13US004, CA 2) — un tableau vide qui porte les motifs.
+            sans_tableau = self._equipes_sans_tableau(tournoi_id, phase_id)
+            if sans_tableau is None:
+                raise
+            return sans_tableau
         duels = tuple(
             self._etat_du_match(m, phase_id, lignes, tableau.nb_tours, reglage)
             for m in tableau.matchs
@@ -728,11 +736,30 @@ class ServiceSaisieDuels:
             self._vue_ecartee(e) for e in self._engagement(tournoi_id, phase, lignes).ecartees
         )
 
+    def _equipes_sans_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau | None:
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None or phase.equipes is None:
+            return None
+        classement = self._classements.pour_depart(phase.depart_id)
+        lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
+        engagement = self._engagement(tournoi_id, phase, lignes)
+        return EtatTableau(
+            phase_id=phase_id,
+            effectif=len(engagement.engagees),
+            taille=0,
+            nb_tours=0,
+            est_termine=False,
+            duels=(),
+            podium=(),
+            equipes_ecartees=tuple(self._vue_ecartee(e) for e in engagement.ecartees),
+        )
+
     def _vue_ecartee(self, ecartee: EquipeEcartee) -> EquipeEcarteeVue:
-        jouee = self._equipes.jouee(ecartee.equipe.id) if ecartee.equipe.id is not None else None
+        assert ecartee.equipe.id is not None  # relue du dépôt : toujours persistée
+        jouee = self._equipes.jouee(ecartee.equipe.id)
         noms = {} if jouee is None else {m.archer_id: f"{m.prenom} {m.nom}" for m in jouee.membres}
         return EquipeEcarteeVue(
-            equipe_id=ecartee.equipe.id or 0,
+            equipe_id=ecartee.equipe.id,
             nom=ecartee.equipe.nom,
             ecarts=ecartee.ecarts,
             membres_hors_course=tuple(

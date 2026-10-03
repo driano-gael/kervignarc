@@ -27,7 +27,7 @@ from domain.categorie import Categorie, SexeCategorie
 from domain.depart import Depart
 from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, ResolveurBaremeDuelFfta
 from domain.equipe import EcartComposition, Equipe, TypeEquipe
-from domain.erreurs import NombreFlechesVoleeInvalide
+from domain.erreurs import EffectifTableauInvalide, NombreFlechesVoleeInvalide
 from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription
 from domain.participant import GenreParticipant
@@ -48,6 +48,7 @@ from tests.conftest import (
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
     identite_d_etape,
 )
 from tests.test_service_placement_duels import (
@@ -167,7 +168,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
-            equipes=ServiceEquipes(self.equipes, self.tournois, self.archers, self.categories),
+            equipes=ServiceEquipes(
+                self.equipes,
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
 
 
@@ -341,7 +348,11 @@ def test_un_match_a_4_4_se_tranche_au_barrage_de_trois_fleches_et_nomme_le_podiu
         service.saisir_manche(1, monde.phase_id, numero, manche, (haut,) * 6, (bas,) * 6)
 
     service.saisir_barrage(1, monde.phase_id, numero, (DIX, DIX, NEUF), (DIX, NEUF, NEUF))
-    service.valider(1, monde.phase_id, numero, "DURAND")
+    valide = service.valider(1, monde.phase_id, numero, "DURAND")
+
+    assert valide.duel is not None
+    resultat = valide.duel.resultat
+    assert (resultat.points_haut, resultat.points_bas) == (5, 4)
 
     etat = service.etat_tableau(1, monde.phase_id)
     assert etat.est_termine
@@ -349,6 +360,7 @@ def test_un_match_a_4_4_se_tranche_au_barrage_de_trois_fleches_et_nomme_le_podiu
     assert isinstance(podium[1], DuellisteEquipe)
     assert podium[1].equipe_id == a
     assert podium[1].nom == "A"
+    assert len(podium[1].membres) == 3
     assert podium[2].nom == "B"
 
 
@@ -373,3 +385,57 @@ def test_un_forfait_individuel_n_atteint_pas_un_tableau_d_equipes() -> None:
     etat = monde.service().etat_tableau(1, monde.phase_id)
 
     assert not etat.est_termine, "la finale ne doit pas être gagnée d'office"
+
+
+# --- Arbitrage de revue (03/10/2026) et cas limites relevés en revue --------------------------
+
+
+def test_une_equipe_aux_blasons_differents_est_ecartee() -> None:
+    monde = _Monde()
+    monde.equipe_de_trois("A", 10)
+    monde.equipe_de_trois("B", 9)
+    autre_blason = monde.blasons.ajouter(Blason.creer(1, "60 cm", taille=0.6, capacite=1))
+    minimes = monde.categories.ajouter(
+        Categorie.creer(
+            1, "Minimes H", arme="Arc Classique", sexe=SexeCategorie.HOMME,
+            blason_id=autre_blason.id,
+        )
+    )  # fmt: skip
+    assert minimes.id is not None
+    minime = monde.archers.ajouter(
+        Archer(nom="M", prenom="P", tournoi_id=1, categorie_id=minimes.id)
+    )
+    assert minime.id is not None
+    monde.series.semer(1, minime.id, (ZoneScore.DIX,) * 3, monde.qualif_id)
+    monde.inscriptions.ajouter(Inscription(minime.id, monde.depart_id))
+    monde.equipe("Mêlée", (monde.archer(10), monde.archer(10), minime.id))
+
+    etat = monde.service().etat_tableau(1, monde.phase_id)
+
+    assert _noms(etat) == {("A", "B")}
+    assert [(e.nom, e.ecarts) for e in etat.equipes_ecartees] == [
+        ("Mêlée", (EcartComposition.BLASONS_DIFFERENTS,))
+    ]
+
+
+def test_sous_deux_equipes_engagees_le_tableau_est_vide_mais_dit_pourquoi() -> None:
+    # Relevé par l'axe D : la liste des écartées doit atteindre l'écran quand elle sert le plus.
+    monde = _Monde()
+    monde.equipe_de_trois("Seule", 10)
+    monde.equipe("Incomplète", (monde.archer(9),))
+
+    etat = monde.service().etat_tableau(1, monde.phase_id)
+
+    assert (etat.effectif, etat.duels, etat.podium) == (1, (), ())
+    assert [e.nom for e in etat.equipes_ecartees] == ["Incomplète"]
+
+
+def test_une_phase_individuelle_sous_deux_archers_leve_toujours() -> None:
+    monde = _Monde()
+    monde.phases._phases[monde.phase_id] = replace(
+        monde.phases._phases[monde.phase_id], equipes=None
+    )
+    monde.archer(10)
+
+    with pytest.raises(EffectifTableauInvalide):
+        monde.service().etat_tableau(1, monde.phase_id)
