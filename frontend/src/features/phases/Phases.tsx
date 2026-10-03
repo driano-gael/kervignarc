@@ -29,7 +29,8 @@ import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
 import { ChampTitre } from '../../shared/phases/ChampTitre'
 import { ChampDureePrevue } from '../../shared/phases/ChampDureePrevue'
-import { depuisDureePrevue, versDureePrevue } from '../../shared/phases/horaires'
+import { depuisDureePrevue, dureeSaisieValide, versDureePrevue } from '../../shared/phases/horaires'
+import { texteErreur } from '../../shared/ui/texteErreur'
 import { GrilleHoraire } from './GrilleHoraire'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
 import {
@@ -962,7 +963,7 @@ export function FormulairePhase({
  */
 function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
   // DETTE-080 — la config est recopiée depuis la **prop**, qui reste périmée jusqu'au refetch de
-  // React Query. Trois widgets d'édition totale cohabitent dans la fiche : enregistrer deux d'entre
+  // React Query. Plusieurs widgets d'édition totale cohabitent dans la fiche : enregistrer deux d'entre
   // eux coup sur coup peut réécrire la valeur du premier. Assumé (fenêtre d'un aller-retour LAN),
   // inscrit au registre avec son remède borné.
   return {
@@ -1041,7 +1042,7 @@ function ReglageDuree({ tournoiId, phase }: { tournoiId: number; phase: EtapeDer
       <button
         type="button"
         className="bouton--discret"
-        disabled={modifier.isPending}
+        disabled={modifier.isPending || !dureeSaisieValide(valeur)}
         aria-label={`Enregistrer la durée prévue de la phase ${phase.ordre}`}
         onClick={() =>
           modifier.mutate({
@@ -1052,10 +1053,9 @@ function ReglageDuree({ tournoiId, phase }: { tournoiId: number; phase: EtapeDer
       >
         Enregistrer
       </button>
-      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur`, comme ses voisins. */}
       {modifier.isError && (
         <span className="carte__etat carte__etat--erreur" role="alert">
-          {modifier.error.message}
+          {texteErreur(modifier.error)}
         </span>
       )}
     </div>

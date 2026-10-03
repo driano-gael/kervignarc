@@ -14,7 +14,7 @@ from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import DureePrevueInvalide
 from domain.format_tournoi import ModelePhase
 from domain.horaire_prevu import HeurePrevue, horaires_prevus
-from domain.phase import SourcePhase, TypePhase
+from domain.phase import IssueTour, SourcePhase, TypePhase
 
 
 def _etape(
@@ -195,3 +195,32 @@ def test_une_heure_apres_minuit_se_signale_du_lendemain() -> None:
 def test_une_heure_du_jour_meme_n_est_pas_du_lendemain() -> None:
     assert HeurePrevue(9 * 60 + 5).libelle == "09:05"
     assert HeurePrevue(9 * 60 + 5).jours_apres == 0
+
+
+# --- CA 2 (arbitrage du 03/10/2026) : une source « issue d'un tour » ne se devine pas -----------
+
+
+def test_une_source_issue_d_un_tour_rend_le_debut_inconnu() -> None:
+    """Un repêchage nourri des perdants du tour 1 commence peut-être pendant le tableau : caler son
+    début sur la fin du tableau entier serait deviner (`DETTE-033`)."""
+    repechage = replace(
+        _etape(2, duree=30),
+        sources=(SourcePhase.par_issue_de_tour(1, tour=1, issue=IssueTour.PERDANTS),),
+    )
+    horaires = _par_etape(
+        "09:00", _etape(1, duree=120), repechage, _etape(3, duree=20, sources=(2,))
+    )
+    assert horaires[1] == ("09:00", "11:00")
+    assert horaires[2] == (None, None)
+    assert horaires[3] == (None, None)
+
+
+# --- ADR-0118 §3 : un cycle de sources donne « inconnu », jamais une erreur ---------------------
+
+
+def test_un_cycle_de_sources_donne_inconnu_au_lieu_de_lever() -> None:
+    """Le déroulé n'admet pas de cycle ; une donnée altérée ne doit pas faire tomber la route
+    publique en `RecursionError`."""
+    assert _par_etape(
+        "09:00", _etape(1, duree=30, sources=(2,)), _etape(2, duree=30, sources=(1,))
+    ) == {1: (None, None), 2: (None, None)}

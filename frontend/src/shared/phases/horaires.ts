@@ -10,6 +10,12 @@ export function versDureePrevue(texte: string): number | null {
   return nettoye === '' ? null : Number(nettoye)
 }
 
+/** Ce que le serveur acceptera : vide (= durée retirée) ou un entier de 1 à `DUREE_PREVUE_MAX`. */
+export function dureeSaisieValide(texte: string): boolean {
+  const duree = versDureePrevue(texte)
+  return duree === null || (Number.isInteger(duree) && duree >= 1 && duree <= DUREE_PREVUE_MAX)
+}
+
 export function depuisDureePrevue(duree: number | null): string {
   return duree === null ? '' : String(duree)
 }

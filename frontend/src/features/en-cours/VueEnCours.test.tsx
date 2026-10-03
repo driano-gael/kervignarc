@@ -309,8 +309,18 @@ describe('VueEnCours — l’heure de début prévue (E03US010, CA 7)', () => {
         numero: 1,
         horaire: '09:00',
         etapes: [
-          { etape_id: 1, ordre: 1, debut: { heure: '09:00', jours_apres: 0 }, fin: null },
-          { etape_id: 2, ordre: 2, debut: { heure: '11:30', jours_apres: 0 }, fin: null },
+          {
+            etape_id: 1,
+            ordre: 1,
+            debut: { heure: '09:00', jours_apres: 0 },
+            fin: { heure: '11:30', jours_apres: 0 },
+          },
+          {
+            etape_id: 2,
+            ordre: 2,
+            debut: { heure: '11:30', jours_apres: 0 },
+            fin: { heure: '13:05', jours_apres: 0 },
+          },
           { etape_id: 3, ordre: 3, debut: null, fin: null },
         ],
       },
@@ -322,6 +332,8 @@ describe('VueEnCours — l’heure de début prévue (E03US010, CA 7)', () => {
     const deroule = await screen.findByRole('navigation', { name: 'Déroulé du départ' })
     expect(deroule).toHaveTextContent('1. Qualification · 09:00')
     expect(deroule).not.toHaveTextContent('16:00')
+    // « Et elle seule » (réponse P05) : une heure de fin servie n'apparaît nulle part.
+    expect(document.body).not.toHaveTextContent('13:05')
     expect(screen.getByRole('button', { name: /^3\./ })).not.toHaveTextContent(':')
   })
 })

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from domain.erreurs import DureePrevueInvalide
+from domain.phase import NatureSource
 
 if TYPE_CHECKING:
     from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
@@ -23,7 +24,8 @@ _MINUTES_PAR_JOUR = 24 * 60
 
 
 def verifier_duree_prevue(duree: int | None) -> None:
-    """Le refus commun aux deux portes d'entrée de la durée, `EtapeDeroule` et `ModelePhase`."""
+    """Le refus porté par `EtapeDeroule`. ⚠️ `ModelePhase` ne l'appelle pas (sans invariant,
+    E01US024) : un format est borné à sa frontière, `EtapeDTO.vers_modele`."""
     if duree is not None and not 1 <= duree <= DUREE_PREVUE_MAX:
         raise DureePrevueInvalide(
             f"La durée prévue d'une étape va de 1 à {DUREE_PREVUE_MAX} minutes ; "
@@ -95,8 +97,8 @@ def _calculer(
 ) -> HeurePrevue | None:
     """Renvoie la fin prévue de l'étape, en mémorisant début et fin au passage.
 
-    ⚠️ `en_cours` coupe un cycle de sources — le déroulé n'en admet aucun, mais une boucle infinie
-    sur une donnée altérée ferait tomber l'écran au lieu d'afficher « inconnu ».
+    ⚠️ `en_cours` coupe un cycle de sources — le déroulé n'en admet aucun, mais une donnée altérée
+    lèverait `RecursionError` sur une route publique au lieu d'afficher « inconnu ».
     """
     if etape_id in fins:
         return fins[etape_id]
@@ -105,7 +107,10 @@ def _calculer(
         return None
     en_cours.add(etape_id)
     debut: HeurePrevue | None = depart
-    if etape.sources:
+    if any(source.nature is NatureSource.ISSUE_DE_TOUR for source in etape.sources):
+        # Arbitrage du 03/10/2026 : sémantique non tranchée (`DETTE-033`), donc rien à déduire.
+        debut = None
+    elif etape.sources:
         fins_amont = [
             _calculer(source.etape_source_id, par_id, depart, debuts, fins, en_cours)
             for source in etape.sources

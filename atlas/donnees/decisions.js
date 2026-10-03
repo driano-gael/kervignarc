@@ -11846,7 +11846,7 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-10-02",
    "date_brute": "2026-10-02",
-   "extrait": "1. L'étape porte une durée, jamais une heure. EtapeDeroule.duree_prevue : minutes entières, 1 à 1440, facultative, pauses comprises. Elle n'est jamais préremplie (arbitrage du 02/10/2026). Elle voyage avec le format (ModelePhase.duree_prevue), comme titre. 2. L'heure se calcule, par départ, sur le graphe des sources. Une étape sans source commence à l'heure du départ ; une étape avec sources commence à la fin la plus tardive de ses sources ; sa fin est son début plus sa durée. Le calcul est une fonction pure du domaine (horaires_prevus), exécutée à chaque lecture : rien n'est persisté hormis la durée. 3. L'inconnu se propage, jamais ne se devine. Sans durée, la fin d'une étape est inconnue, […]",
+   "extrait": "1. L'étape porte une durée, jamais une heure. EtapeDeroule.duree_prevue : minutes entières, 1 à 1440, facultative, pauses comprises. Elle n'est jamais préremplie (arbitrage du 02/10/2026). Elle voyage avec le format (ModelePhase.duree_prevue), comme titre. 2. L'heure se calcule, par départ, sur le graphe des sources. Une étape sans source commence à l'heure du départ ; une étape avec sources commence à la fin la plus tardive de ses sources ; sa fin est son début plus sa durée. ⚠️ Une source « issue d'un tour » (repêchage, consolante) rend le début inconnu — arbitrage du 03/10/2026 en revue : sa sémantique n'est pas tranchée (DETTE-033), et caler le début sur la fin du tableau entier serait […]",
    "fichier": "docs/adr/0118-l-horaire-prevu-se-calcule-depuis-des-durees-par-depart.md",
    "identifiant": "0118",
    "liens": [
@@ -11864,7 +11864,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "ModelePhase.duree_prevue",
       "pour_tournoi",
-      "d_etape"
+      "d_etape",
+      "verifier_duree_prevue",
+      "EtapeDTO.vers_modele"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11905,7 +11907,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "ModelePhase.duree_prevue",
       "pour_tournoi",
-      "d_etape"
+      "d_etape",
+      "verifier_duree_prevue",
+      "EtapeDTO.vers_modele"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11933,6 +11937,15 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/departs/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "invaliderLesCreneaux"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/en-cours/presentation.ts",
      "existe": true,
      "symboles": [
@@ -11944,14 +11957,18 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/features/phases/GrilleHoraire.tsx",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "dureeSaisieValide"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/shared/phases/ChampDureePrevue.tsx",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "dureeSaisieValide"
+     ],
      "symboles_absents": [],
      "verifiable": true
     }

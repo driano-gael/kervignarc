@@ -188,7 +188,10 @@ l'événement.
      préremplie**. Une durée hors bornes est refusée.
   2. L'horaire prévu d'une étape se **calcule pour chaque départ**, jamais ne se saisit : une étape
      **sans source** commence à l'heure du départ ; une étape **avec sources** commence à la fin
-     **la plus tardive** de ses étapes sources. Sa fin = son début + sa durée prévue.
+     **la plus tardive** de ses étapes sources. Sa fin = son début + sa durée prévue. Une source
+     « **issue d'un tour** » (les gagnants ou perdants du tour N : repêchage, consolante) rend le
+     début **inconnu** — arbitrage du 03/10/2026 en revue : sa sémantique n'est pas tranchée
+     (`DETTE-033`), et la caler sur la fin du tableau source entier serait deviner.
   3. **L'inconnu se propage, jamais ne se devine** : une étape sans durée a une fin inconnue, et
      toute étape qui en dépend (directement ou non) a un début **et** une fin inconnus. Le début
      d'une étape reste connu même si sa propre durée ne l'est pas.

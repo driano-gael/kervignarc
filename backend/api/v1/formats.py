@@ -30,7 +30,7 @@ from domain.colline import ConfigurationColline
 from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
-from domain.horaire_prevu import DUREE_PREVUE_MAX
+from domain.horaire_prevu import verifier_duree_prevue
 from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourceModele, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
@@ -406,10 +406,10 @@ class EtapeDTO(BaseModel):
     sont identiques, pas les racines »).
     """
 
-    duree_prevue: int | None = Field(default=None, ge=1, le=DUREE_PREVUE_MAX)
+    duree_prevue: int | None = None
     """Minutes prévues pour l'étape (E03US010) — même raison de présence que `titre`. ⚠️ **Bornée
-    ici** et non par le domaine : `ModelePhase` n'a aucun invariant (E01US024), et sans cette borne
-    un format invalide s'enregistrerait pour n'échouer qu'à son application."""
+    par `vers_modele`**, faute d'invariant sur `ModelePhase` (E01US024) : sans elle, un format
+    invalide s'enregistrerait pour n'échouer qu'à son application."""
 
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
@@ -420,6 +420,7 @@ class EtapeDTO(BaseModel):
         le premier. Les **value objects** conservent, eux, leurs invariants : une donnée
         **malformée** reste un 422, seule la **composition** est tolérée incomplète.
         """
+        verifier_duree_prevue(self.duree_prevue)
         return ModelePhase(
             ordre=self.ordre,
             type=self.type,

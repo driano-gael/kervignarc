@@ -31,7 +31,10 @@ Le référentiel FFTA ne donne que le temps de **tir** d'une volée (2 min), pas
    02/10/2026). Elle voyage avec le format (`ModelePhase.duree_prevue`), comme `titre`.
 2. **L'heure se calcule, par départ, sur le graphe des sources.** Une étape sans source commence à
    l'heure du départ ; une étape avec sources commence à la fin **la plus tardive** de ses sources ;
-   sa fin est son début plus sa durée. Le calcul est une fonction pure du domaine
+   sa fin est son début plus sa durée. ⚠️ Une source « **issue d'un tour** » (repêchage,
+   consolante) rend le début **inconnu** — arbitrage du 03/10/2026 en revue : sa sémantique n'est
+   pas tranchée (`DETTE-033`), et caler le début sur la fin du tableau entier serait deviner.
+   Le calcul est une fonction pure du domaine
    (`horaires_prevus`), exécutée à chaque lecture : **rien n'est persisté** hormis la durée.
 3. **L'inconnu se propage, jamais ne se devine.** Sans durée, la fin d'une étape est inconnue, et
    le début (donc la fin) de toute sa descendance aussi. Une source introuvable ou un cycle — que le
@@ -40,7 +43,9 @@ Le référentiel FFTA ne donne que le temps de **tir** d'une volée (2 min), pas
    24 h ; elle se rend `HH:MM` plus un nombre de jours après (« lendemain »).
 5. **Une route de lecture dédiée, étroite et ouverte** : `GET /tournois/{id}/horaires-prevus`, un jeu
    d'horaires par créneau. `PhaseReponse` n'est **pas** élargie : la route d'avancement est déjà
-   servie entière à l'anonyme (`DETTE-071`), et le public ne lit que le **début** (réponse P05 :
+   servie entière à l'anonyme (`DETTE-071`). `EtapeReponse`, servie elle aussi sans garde, gagne
+   `duree_prevue` — exposition assumée, la ligne `DETTE-071` est élargie. Le public ne lit que le
+   **début** (réponse P05 :
    « seulement pour les départs des différentes phases, les autres sont trop imprévisibles »).
 6. **Prévisionnel seul** : aucun calcul d'avance ou de retard sur le réel.
 
@@ -62,8 +67,8 @@ Le référentiel FFTA ne donne que le temps de **tir** d'une volée (2 min), pas
 - Deux étapes parallèles qui partagent en réalité les mêmes cibles seront annoncées **simultanées** :
   le graphe ne connaît pas la salle. L'organisateur l'exprime aujourd'hui par une durée plus longue
   sur la source ; une contrainte de salle relèverait d'une autre US.
-- L'heure d'un départ modifiée n'invalide pas le cache des horaires côté front : il se rattrape au
-  remontage et par un poll de 60 s — c'est un prévisionnel.
+- L'heure d'un départ décale toute sa grille : les trois mutations de départ invalident donc le
+  cache des horaires, en plus du poll de 60 s qui tient l'écran public à jour.
 - `E09US007` (déroulé imprimable) peut consommer la même lecture.
 
 ## Porté dans le code par
@@ -72,11 +77,13 @@ Le référentiel FFTA ne donne que le temps de **tir** d'une volée (2 min), pas
   `verifier_duree_prevue` et `DUREE_PREVUE_MAX` (§1).
 - `backend/domain/deroule_etape.py` — `EtapeDeroule.duree_prevue`, validée dans `__post_init__`.
 - `backend/domain/format_tournoi.py` — `ModelePhase.duree_prevue`, traduite par `pour_tournoi` et
-  `d_etape` ; sans invariant (E01US024), d'où la borne de `backend/api/v1/formats.py`.
+  `d_etape` ; sans invariant (E01US024), d'où l'appel à `verifier_duree_prevue` dans
+  `EtapeDTO.vers_modele` (`backend/api/v1/formats.py`).
 - `backend/infrastructure/db/repositories/moteur.py` — `_politiques_json` (deux appelants) et
   `_lire_duree_prevue`.
 - `backend/application/phases.py` — `ServicePhases.horaires_prevus` et `HorairesDuDepart`.
 - `backend/api/v1/phases.py` — `lister_horaires_prevus` (§5) et `ConfigPhaseRequete.duree_prevue`.
 - `frontend/src/features/phases/GrilleHoraire.tsx` — la grille admin ; la durée se saisit par
-  `frontend/src/shared/phases/ChampDureePrevue.tsx`.
+  `frontend/src/shared/phases/ChampDureePrevue.tsx`, bornée par `dureeSaisieValide`.
+- `frontend/src/features/departs/hooks.ts` — `invaliderLesCreneaux` (§ Conséquences).
 - `frontend/src/features/en-cours/presentation.ts` — `debutsPrevus`, lu par `VueEnCours.tsx` (§5).

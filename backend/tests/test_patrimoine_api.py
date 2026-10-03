@@ -1183,7 +1183,8 @@ def test_un_format_a_duree_hors_bornes_est_refuse_a_l_ecriture(
     app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin, duree: int
 ) -> None:
     """`ModelePhase` n'a aucun invariant (E01US024) : sans la borne du DTO, le format
-    s'enregistrerait et n'échouerait qu'à son application, loin de la saisie fautive."""
+    s'enregistrerait et n'échouerait qu'à son application, loin de la saisie fautive. 422 et le
+    même code que côté tournoi : c'est la même règle du domaine."""
     with TestClient(app_patrimoine) as client:
         connecter_admin(client)
         refus = client.post(
@@ -1191,4 +1192,5 @@ def test_un_format_a_duree_hors_bornes_est_refuse_a_l_ecriture(
             json={"nom": "Format faux", "etapes": [{**_QUALIFICATION, "duree_prevue": duree}]},
         )
 
-    assert refus.status_code == 400, refus.text
+    assert refus.status_code == 422, refus.text
+    assert refus.json()["code"] == "duree_prevue_invalide"

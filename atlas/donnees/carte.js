@@ -71,7 +71,7 @@ window.ATLAS.carte = {
     "feature": "salle"
    },
    {
-    "clientes": 8,
+    "clientes": 9,
     "feature": "phases"
    },
    {
@@ -3453,7 +3453,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 187,
+  "aretes_front": 188,
   "enchevetrements": 4,
   "features": 53,
   "imports": 1047,

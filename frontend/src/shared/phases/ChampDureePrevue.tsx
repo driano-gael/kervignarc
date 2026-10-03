@@ -1,7 +1,7 @@
 // Le champ de **durée prévue** d'une étape (E03US010) — partagé, comme `ChampTitre`, par l'écran
 // du tournoi et l'atelier de formats. Aucun état interne, même convention que ses voisins.
 
-import { decrireDuree, DUREE_PREVUE_MAX, versDureePrevue } from './horaires'
+import { decrireDuree, DUREE_PREVUE_MAX, dureeSaisieValide, versDureePrevue } from './horaires'
 
 export function ChampDureePrevue({
   valeur,
@@ -25,9 +25,11 @@ export function ChampDureePrevue({
         onChange={(e) => surChangement(e.target.value)}
       />
       <span className="carte__aide">
-        {duree !== null && Number.isInteger(duree) && duree >= 1
-          ? `Soit ${decrireDuree(duree)}, pauses comprises.`
-          : 'Pauses comprises. Vide = horaire inconnu pour cette phase et celles qui en dépendent.'}
+        {!dureeSaisieValide(valeur)
+          ? `Un nombre entier de minutes, de 1 à ${DUREE_PREVUE_MAX}.`
+          : duree !== null
+            ? `Soit ${decrireDuree(duree)}, pauses comprises.`
+            : 'Pauses comprises. Vide = horaire inconnu pour cette phase et celles qui en dépendent.'}
       </span>
     </label>
   )

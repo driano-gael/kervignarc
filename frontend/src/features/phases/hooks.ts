@@ -36,10 +36,9 @@ export const RACINE_AVANCEMENT = ['avancement-phases'] as const
 const cleAvancement = (departId: number) => [...RACINE_AVANCEMENT, departId] as const
 
 // ⚠️ **Sous** `clePhases` : les mutations du déroulé l'invalident par préfixe, sans site de plus.
-const cleHoraires = (tournoiId: number) => [...clePhases(tournoiId), 'horaires'] as const
+// L'heure dépend aussi des départs : leurs trois mutations l'invalident (`departs/hooks.ts`).
+export const cleHoraires = (tournoiId: number) => [...clePhases(tournoiId), 'horaires'] as const
 
-// L'horaire dépend aussi de l'heure des départs, dont les mutations n'invalident pas ce cache : le
-// poll lent (et le remontage) le rattrapent — c'est un prévisionnel, pas un chronomètre.
 export function useHorairesPrevus(tournoiId: number) {
   return useQuery({
     queryKey: cleHoraires(tournoiId),

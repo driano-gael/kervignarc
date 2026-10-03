@@ -4,7 +4,7 @@
 // l'organisateur puisse régler une durée sans effacer le reste (`PUT` total), et lire la grille.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -56,6 +56,7 @@ const QUALIFICATION: EtapeDeroule = {
 
 beforeEach(() => {
   vi.mocked(modifierPhase).mockClear()
+  vi.mocked(getHorairesPrevus).mockClear()
   vi.mocked(getHorairesPrevus).mockResolvedValue([])
 })
 
@@ -98,6 +99,33 @@ describe('la durée prévue d’une phase', () => {
     )
 
     expect(configEnvoyee()).toMatchObject({ duree_prevue: 150, titre: 'Qualif du matin' })
+  })
+
+  it('rafraîchit la grille après l’enregistrement', async () => {
+    vi.mocked(modifierPhase).mockResolvedValue(QUALIFICATION)
+    monter([QUALIFICATION])
+    await ouvrirLaFiche(0)
+    await waitFor(() => expect(vi.mocked(getHorairesPrevus)).toHaveBeenCalledTimes(1))
+
+    await userEvent.type(ligne(0).getByLabelText(/Durée prévue/), '150')
+    await userEvent.click(
+      ligne(0).getByRole('button', { name: 'Enregistrer la durée prévue de la phase 1' }),
+    )
+
+    await waitFor(() => expect(vi.mocked(getHorairesPrevus)).toHaveBeenCalledTimes(2))
+  })
+
+  it('refuse d’envoyer une durée que le serveur refuserait', async () => {
+    monter([QUALIFICATION])
+    await ouvrirLaFiche(0)
+
+    await userEvent.type(ligne(0).getByLabelText(/Durée prévue/), '1.5')
+
+    const bouton = ligne(0).getByRole('button', {
+      name: 'Enregistrer la durée prévue de la phase 1',
+    })
+    expect(bouton).toBeDisabled()
+    expect(ligne(0).getByText(/Un nombre entier de minutes, de 1 à 1440/)).toBeInTheDocument()
   })
 
   it('vidée, est envoyée à null : c’est le geste qui la retire', async () => {

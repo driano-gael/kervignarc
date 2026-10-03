@@ -91,7 +91,12 @@ describe('debutsPrevus (E03US010, CA 7)', () => {
       numero: 1,
       horaire: '23:00',
       etapes: [
-        { etape_id: 1, ordre: 1, debut: { heure: '23:00', jours_apres: 0 }, fin: null },
+        {
+          etape_id: 1,
+          ordre: 1,
+          debut: { heure: '23:00', jours_apres: 0 },
+          fin: { heure: '23:45', jours_apres: 0 },
+        },
         { etape_id: 2, ordre: 2, debut: { heure: '00:30', jours_apres: 1 }, fin: null },
         { etape_id: 3, ordre: 3, debut: null, fin: null },
       ],
