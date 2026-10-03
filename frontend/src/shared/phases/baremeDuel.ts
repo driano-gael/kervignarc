@@ -10,6 +10,8 @@ export interface BaremeDuel {
   nb_manches: number
   nb_fleches_par_volee: number
   points_pour_gagner: number
+  /** Flèches de barrage par camp : 1 en individuel, 1 par archer en équipe (§8.2, E13US003). */
+  nb_fleches_barrage: number
 }
 
 export interface SurchargeArme {
@@ -27,6 +29,7 @@ export interface EtatBareme {
   manches: string
   fleches: string
   points: string
+  barrage: string
 }
 
 export interface EtatBaremeDuel {
@@ -52,6 +55,7 @@ const SETS_FFTA: BaremeDuel = {
   nb_manches: 5,
   nb_fleches_par_volee: 3,
   points_pour_gagner: 6,
+  nb_fleches_barrage: 1,
 }
 const SETS_CLUB: BaremeDuel = { ...SETS_FFTA, points_pour_gagner: 4 }
 const CUMUL_POULIES: BaremeDuel = {
@@ -59,7 +63,19 @@ const CUMUL_POULIES: BaremeDuel = {
   nb_manches: 5,
   nb_fleches_par_volee: 3,
   points_pour_gagner: 0,
+  nb_fleches_barrage: 1,
 }
+// Équipe (§6.4, §7, §8.2) : 4 manches, 2 flèches par archer, barrage d'1 flèche par archer.
+const SETS_EQUIPE: BaremeDuel = {
+  mode: 'sets',
+  nb_manches: 4,
+  nb_fleches_par_volee: 6,
+  points_pour_gagner: 5,
+  nb_fleches_barrage: 3,
+}
+const CUMUL_EQUIPE: BaremeDuel = { ...SETS_EQUIPE, mode: 'cumul', points_pour_gagner: 0 }
+const SETS_MIXTE: BaremeDuel = { ...SETS_EQUIPE, nb_fleches_par_volee: 4, nb_fleches_barrage: 2 }
+const CUMUL_MIXTE: BaremeDuel = { ...SETS_MIXTE, mode: 'cumul', points_pour_gagner: 0 }
 
 export function depuisBareme(bareme: BaremeDuel): EtatBareme {
   return {
@@ -67,6 +83,7 @@ export function depuisBareme(bareme: BaremeDuel): EtatBareme {
     manches: String(bareme.nb_manches),
     fleches: String(bareme.nb_fleches_par_volee),
     points: String(bareme.points_pour_gagner),
+    barrage: String(bareme.nb_fleches_barrage),
   }
 }
 
@@ -96,13 +113,15 @@ function entier(texte: string, min: number, max: number): number | undefined {
 export function versBareme(etat: EtatBareme): BaremeDuel | undefined {
   const manches = entier(etat.manches, 1, MANCHES_MAX)
   const fleches = entier(etat.fleches, 1, FLECHES_MAX)
-  if (manches === undefined || fleches === undefined) return undefined
+  const barrage = entier(etat.barrage, 1, FLECHES_MAX)
+  if (manches === undefined || fleches === undefined || barrage === undefined) return undefined
   if (etat.mode === 'cumul') {
     return {
       mode: 'cumul',
       nb_manches: manches,
       nb_fleches_par_volee: fleches,
       points_pour_gagner: 0,
+      nb_fleches_barrage: barrage,
     }
   }
   // Même borne que `BaremeDuel.__post_init__` : le seuil doit être atteignable en `manches` sets.
@@ -113,6 +132,7 @@ export function versBareme(etat: EtatBareme): BaremeDuel | undefined {
     nb_manches: manches,
     nb_fleches_par_volee: fleches,
     points_pour_gagner: points,
+    nb_fleches_barrage: barrage,
   }
 }
 
@@ -156,23 +176,31 @@ export function armesDistinctes(armes: readonly (string | null)[]): string[] {
   return [...retenues.values()].sort((a, b) => a.localeCompare(b, 'fr'))
 }
 
-function preset(defaut: BaremeDuel, armes: readonly string[]): EtatBaremeDuel {
+function preset(defaut: BaremeDuel, armes: readonly string[], poulies: BaremeDuel): EtatBaremeDuel {
   return {
     regle: true,
     par_defaut: depuisBareme(defaut),
     surcharges: armesDistinctes(armes)
       .filter(estPoulies)
-      .map((arme) => ({ arme, bareme: depuisBareme(CUMUL_POULIES) })),
+      .map((arme) => ({ arme, bareme: depuisBareme(poulies) })),
   }
 }
 
 export function presetFfta(armes: readonly string[]): EtatBaremeDuel {
-  return preset(SETS_FFTA, armes)
+  return preset(SETS_FFTA, armes, CUMUL_POULIES)
+}
+
+export function presetFftaEquipe(armes: readonly string[]): EtatBaremeDuel {
+  return preset(SETS_EQUIPE, armes, CUMUL_EQUIPE)
+}
+
+export function presetFftaMixte(armes: readonly string[]): EtatBaremeDuel {
+  return preset(SETS_MIXTE, armes, CUMUL_MIXTE)
 }
 
 // DETTE-117 — 4 points jusqu'en finale : le §10.1 veut 6 en ½ finales, inexprimable par étape.
 export function presetClub(armes: readonly string[]): EtatBaremeDuel {
-  return preset(SETS_CLUB, armes)
+  return preset(SETS_CLUB, armes, CUMUL_POULIES)
 }
 
 export interface EcartsDArmes {

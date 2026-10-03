@@ -34,6 +34,9 @@ Les défauts que `/revue-us` trouve **le plus souvent**, transformés en questio
       traité **tous** ceux qui remontent, jumeau front compris. *(26 commits.)*
 - [ ] **Conjonction** — Si le diff touche back **et** front : qui émet l'événement, qui le consomme,
       qui rafraîchit ? Aucun relecteur mono-couche ne verra le trou. *(14 commits.)*
+- [ ] **Refus sous session** — Une route admin qui refuse **alors que la session est valide**
+      (mauvais secret, valeur invalide) rend 400/403, jamais 401 : le client purge la session sur
+      tout 401 (ADR-0025, ADR-0030). *(Rappel, sans compte — relevé en revue d'E10US006.)*
 - [ ] **Typage** — Pas de paramètre à défaut qui laisse un champ s'oublier en silence ; pas de
       `Record` non exhaustif ; `assert` → garde typée (404, jamais 500). *(21 commits.)*
 - [ ] **Vocabulaire** — Terme métier neuf : vérifié au glossaire qu'il n'est pas déjà pris par la

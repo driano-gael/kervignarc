@@ -83,9 +83,19 @@
   Historique : alimente les politiques `scoring` du moteur (EPIC-05) ; cf. EF-3.4 et `config.policies.scoring_par_arme` du [modèle de données](../docs/modele-de-donnees.md). ~~⚠️ Le **Big Shoot Off n'a pas de règle connue** (Q9 du CDC fonctionnel) — cette US est **bloquée** sur ce point tant que le club ne l'a pas fournie.~~ **Verrou levé le 31/07/2026** : le commanditaire a fourni la règle du Big Shoot Off, **Q9 est fermée**, et `E05US015` a livré les onze formats dont celui-ci ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md)). ⚠️ **La note de blocage a survécu huit jours à sa cause** et aurait fait renoncer à une US redevenue faisable — corrigée le 08/08/2026. Reste une dépendance **réelle et distincte** : le Big Shoot Off n'est pas encore **jouable** (`DETTE-028`), c'est `E05US023` ; un preset de barème pour un format que le moteur ne sait pas dérouler ne se recetterait pas.
 - **Dépend de** : E01US009 · **Jalon** : J4
 
-### E01US012 — Gérer plusieurs gabarits
+### E01US012 — Gérer plusieurs gabarits — ⛔ **absorbée par E01US007/E01US008 (constat du 02/10/2026)**
 *En tant qu'*administrateur, *je veux* une bibliothèque de gabarits, *afin de* gérer plusieurs salles.
 - **CA** : créer/nommer/lister plusieurs gabarits ; en choisir un par tournoi.
+- **Notes** : *(Cadrage du 02/10/2026.)* **Le CA était livré avant que la fiche ne soit prise.**
+  E01US007 a posé une **bibliothèque** de gabarits sans limite de nombre (écran
+  `features/gabarits/Gabarits.tsx`, CRUD `/api/v1/gabarits`) ; E01US008 a distingué modèle et copie
+  (`gabarit_salle.tournoi_id` nul = modèle, migration `0010`) et ajouté le **choix par tournoi**
+  (`SelecteurModele` de `PlanDeSalle.tsx`, `PUT /tournois/{id}/gabarit`, qui copie le modèle et
+  remplace la copie en place). Le cas « plusieurs salles » — deux tournois, deux modèles — est
+  testé depuis la revue (`test_gabarit_repository.py`). Arbitrage du commanditaire : **close sans code**,
+  hors décompte de J4 — rien n'a été livré sous ce numéro. Une version plus riche (promouvoir le plan
+  ajusté d'un tournoi en modèle, comme les autres briques d'ADR-0060) a été proposée et **non
+  retenue** ; elle reste à épiquer si le besoin se présente.
 - **Dépend de** : E01US007 · **Jalon** : J4
 
 ---

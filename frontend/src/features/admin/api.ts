@@ -1,5 +1,6 @@
 // Accès API de la feature « admin » (E10US002) : état de l'accès, définition au 1ᵉʳ usage,
-// connexion, déconnexion. Miroir des DTO exposés par `api/v1/auth.py`.
+// connexion, déconnexion, modification des identifiants (E10US006). Miroir des DTO exposés par
+// `api/v1/auth.py`.
 
 import { fetchJson } from '../../shared/api/client'
 
@@ -41,4 +42,20 @@ export function connexionAdmin(identifiants: Identifiants): Promise<Jeton> {
 
 export function deconnexionAdmin(): Promise<void> {
   return fetchJson<void>('/api/v1/auth/deconnexion', { method: 'POST' })
+}
+
+// Champ absent = valeur inchangée (le serveur refuse une demande qui ne change rien).
+export interface ModificationIdentifiants {
+  mot_de_passe_actuel: string
+  nouveau_login?: string
+  nouveau_mot_de_passe?: string
+}
+
+export function modifierIdentifiants(modification: ModificationIdentifiants): Promise<void> {
+  // Portée `'admin'` : le serveur exige la session. Ses refus **métier** sont des 403/400 (un 401
+  // purgerait la session dans `fetchJson`) ; seul un jeton périmé rend 401, et purge à raison.
+  return fetchJson<void>('/api/v1/auth/identifiants', {
+    method: 'PATCH',
+    body: JSON.stringify(modification),
+  })
 }

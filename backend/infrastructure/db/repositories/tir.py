@@ -150,17 +150,27 @@ def _manches_json(duel: Duel) -> str:
 
 
 def _barrage_json(duel: Duel) -> str | None:
-    """Sérialise le barrage d'un duel en JSON (`None` si aucun) : `{haut, bas, gagnant}`."""
+    """Sérialise le barrage d'un duel en JSON (`None` si aucun) : `{haut, bas, gagnant}`, les deux
+    camps en **listes** de flèches (E13US003)."""
     if duel.barrage is None:
         return None
     designe = duel.barrage.gagnant_designe
     return json.dumps(
         {
-            "haut": duel.barrage.fleche_haut.value,
-            "bas": duel.barrage.fleche_bas.value,
+            "haut": [f.value for f in duel.barrage.fleches_haut],
+            "bas": [f.value for f in duel.barrage.fleches_bas],
             "gagnant": None if designe is None else designe.value,
         }
     )
+
+
+def _fleches_de_barrage(brut: object) -> tuple[ZoneScore, ...]:
+    # Avant E13US003 un camp tirait une flèche, stockée seule (`"10"`) : ces lignes se relisent.
+    if isinstance(brut, str):
+        return (ZoneScore(brut),)
+    if isinstance(brut, list):
+        return tuple(ZoneScore(v) for v in brut)
+    raise TypeError("Flèches de barrage ni chaîne ni liste.")
 
 
 def _vers_duel(ligne: DuelORM, *, bareme: BaremeDuel) -> Duel:
@@ -194,8 +204,8 @@ def _vers_duel(ligne: DuelORM, *, bareme: BaremeDuel) -> Duel:
             brut = json.loads(ligne.barrage)
             gagnant = brut["gagnant"]
             barrage = Barrage(
-                fleche_haut=ZoneScore(brut["haut"]),
-                fleche_bas=ZoneScore(brut["bas"]),
+                fleches_haut=_fleches_de_barrage(brut["haut"]),
+                fleches_bas=_fleches_de_barrage(brut["bas"]),
                 gagnant_designe=None if gagnant is None else Cote(gagnant),
             )
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:

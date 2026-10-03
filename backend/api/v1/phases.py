@@ -319,6 +319,8 @@ class BaremeDuelDTO(BaseModel):
     nb_manches: int = Field(ge=1, le=64)
     nb_fleches_par_volee: int = Field(ge=1, le=12)
     points_pour_gagner: int = Field(ge=0, le=128)
+    # Un client d'avant E13US003 n'envoie pas ce champ : son barème tire 1 flèche (CA 2).
+    nb_fleches_barrage: int = Field(default=1, ge=1, le=12)
 
     def vers_agregat(self) -> BaremeDuel:
         return BaremeDuel(
@@ -326,6 +328,7 @@ class BaremeDuelDTO(BaseModel):
             nb_manches=self.nb_manches,
             nb_fleches_par_volee=self.nb_fleches_par_volee,
             points_pour_gagner=self.points_pour_gagner,
+            nb_fleches_barrage=self.nb_fleches_barrage,
         )
 
     @staticmethod
@@ -335,6 +338,7 @@ class BaremeDuelDTO(BaseModel):
             nb_manches=bareme.nb_manches,
             nb_fleches_par_volee=bareme.nb_fleches_par_volee,
             points_pour_gagner=bareme.points_pour_gagner,
+            nb_fleches_barrage=bareme.nb_fleches_barrage,
         )
 
 

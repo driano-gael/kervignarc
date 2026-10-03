@@ -111,8 +111,8 @@
 
 ### E10US006 — Modifier le mot de passe admin
 *En tant qu'*organisateur connecté, *je veux* changer mon login/mot de passe depuis l'app, *afin de* faire tourner l'accès sans éditer le fichier à la main.
-- **CA** : depuis une session admin valide, modifier le login et/ou le mot de passe en fournissant le **mot de passe actuel** ; en cas de succès, `.env` est réécrit et les sessions existantes restent valides (ou sont invalidées — au choix d'implémentation, documenté).
-- **Notes** : réutilise le store d'identifiants `.env` d'E10US002 (écriture) ; édition directe de `.env` reste la porte de secours en cas d'oubli. Pas d'entité domaine.
+- **CA** : depuis une session admin valide, modifier le login et/ou le mot de passe en fournissant le **mot de passe actuel** ; en cas de succès, `.env` est réécrit, **la session qui a fait le changement reste ouverte et toutes les autres sessions admin sont fermées** (faire tourner l'accès éjecte qui détenait l'ancien secret). Un mot de passe actuel faux, un nouvel identifiant mal formé (vide, saut de ligne) ou une demande qui ne change rien est refusé **sans fermer la session** de l'admin ni toucher au `.env`. L'écran est une destination de la coquille admin.
+- **Notes** : réutilise le store d'identifiants `.env` d'E10US002 (écriture) ; édition directe de `.env` reste la porte de secours en cas d'oubli. Pas d'entité domaine. *(Arbitrages du 02/10/2026 au cadrage : autres sessions coupées, entrée dans la coquille, périmètre du CA sans enrichissement. Un refus n'est jamais un 401 : le client purge la session admin sur tout 401.)*
 - **Dépend de** : E10US002 · **Jalon** : J4 (confort/robustesse ; déplaçable en J1 si prioritaire)
 
 ### E10US007 — Poste de cible : saisir sans s'identifier

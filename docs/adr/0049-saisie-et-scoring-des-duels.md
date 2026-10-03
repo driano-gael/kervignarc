@@ -106,6 +106,11 @@ réservée au **classement** (E06US003 en fera l'autre implémentation, comme sa
 E04US013 ne la consomme pas. Le barrage ne recompte pas les 10/9 (§8.2) — cohérent avec « c'est un
 autre mécanisme que le départage de classement ».
 
+> **Amendé le 02/10/2026 (E13US003)** : le barrage n'est plus « 1 flèche » en dur. Le barème porte
+> `nb_fleches_barrage` (1 en individuel, 1 **par archer** en équipe — §8.2), et `Barrage` devient
+> `Barrage(fleches_haut, fleches_bas, gagnant_designe)` : le vainqueur est le plus haut **total**,
+> la désignation tranchant à totaux égaux. À une flèche, la règle est inchangée.
+
 ### 4. Le vainqueur est **transmis** à `Tableau.jouer` ; on persiste le **tir**, on **reconstruit** le tableau
 
 Fidèle à ADR-0023/0048 : le tableau **n'est pas persisté**. On persiste le **tir** de chaque match et
@@ -224,12 +229,17 @@ Chaque symbole vérifié dans le code du jour.)*
   (`preset_ffta_classique`, `preset_ffta_poulies`, `preset_club`), résolu derrière le `Protocol`
   `ResolveurBaremeDuel` (`bareme_pour(arme)`), implémenté par `ResolveurBaremeDuelFfta`, injecté au
   composition root (`bootstrap/composition.py`). Depuis ADR-0117, ce n'est plus que le **défaut**
-  d'une phase sans `ReglageBaremeDuel`.
+  d'une phase sans `ReglageBaremeDuel`. Le nombre de flèches de barrage (E13US003) y est un champ
+  **obligatoire**, `nb_fleches_barrage` ; `saisir_barrage` en exige exactement autant par camp.
 - `backend/application/saisie_duels.py` — **le tableau reconstruit** : `_decor` revalide les gardes
   puis rejoue l'arbre à chaque lecture (duels validés rejoués), et `_etat_du_match` masque un tir
   dont les duellistes divergent des occupants recalculés (§4).
 - `backend/infrastructure/db/repositories/tir.py` — **les résultats persistés** :
-  `DuelRepositorySQL`, avec `_manches_json` / `_barrage_json`. Ce sont les **actes** qui sont
+  `DuelRepositorySQL`, avec `_manches_json` / `_barrage_json` ; `_fleches_de_barrage` relit un
+  barrage écrit avant E13US003 (une flèche, pas une liste). Son pendant front est
+  `frontend/src/shared/stores/fileDuelsHorsLigneStore.ts` (`flechesDuBarrage`), qui relit un acte
+  de barrage resté en file hors-ligne sous l'ancienne forme : retirer l'un sans l'autre est un
+  oubli. Ce sont les **actes** qui sont
   stockés ; le verdict, lui, se recalcule (§ Alternatives écartées : « stocker le verdict » a été
   refusé).
 

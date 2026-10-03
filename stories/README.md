@@ -192,7 +192,6 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 |---|---|---|
 | 81 | E02US007 | Importer un fichier inscript'arc (parsing + rapport) |
 | 82 | E01US011 | Presets de barèmes multi-phases *(⚠️ dépend de `E05US023` : un preset pour un format non jouable ne se recette pas)* |
-| 83 | E01US012 | Gérer plusieurs gabarits |
 | 84 | E03US010 | Générer / éditer le déroulé horaire |
 | 85 | E09US007 | Déroulé horaire imprimable |
 | 86 | E11US006 | Restauration & arrêt propre |
@@ -218,7 +217,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | **E02US010** | Horaire de départ HH:MM obligatoire & ≥ 1 départ | J1 | remontée « 9hzc » |
 | **E13US001** | Abstraction participant (le match oppose des participants) | J2 | ADR-0028 (**avant E05US005**) |
 | **E13US002** | Composer les équipes d'un tournoi | J2 | EPIC-13 |
-| **E13US003** | Scoring d'équipe (politique injectable) | J2 | EPIC-13 |
+| **E13US003** | Scoring d'équipe (barème et barrage) | J2 | EPIC-13 |
 | **E13US004** | Placement, saisie & classement par équipe | J2→J3 | EPIC-13 |
 
 > **[EPIC-13](../epics/EPIC-13-equipes.md)** créé — épreuves par équipes, **in-scope MVP** (renverse le « hors périmètre » du 14/07, ADR-0028).
@@ -353,13 +352,14 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 
 > **Ne jamais les ordonnancer.** Une US absorbée dont l'identifiant traîne dans une file de priorité
 > se prend pour du travail restant. ⚠️ Et « absorbée, donc faite » reste un **raccourci** : rien ne
-> garantit qu'une US absorbante ait livré **toute** la capacité de l'absorbée. Les quatre ci-dessous
+> garantit qu'une US absorbante ait livré **toute** la capacité de l'absorbée. Les cinq ci-dessous
 > le sont — `E12US004` comprise : le producteur d'audit `FORFAIT` est livré et câblé
 > (`application/forfaits.py`, trace atomique via `declarer_avec_trace` / `annuler_avec_trace`).
 > Se le faire confirmer **par le code**, jamais par ce tableau.
 
 | US | Titre | Absorbée par | Date |
 |---|---|---|---|
+| **E01US012** | ~~Gérer plusieurs gabarits~~ | **E01US007**/**E01US008** — bibliothèque multi-modèles et choix par tournoi livrés en J1, constat du cadrage ; ex-seq 83 de J4 | 02/10/2026 |
 | **E05US016** | ~~Routing repêchage-réintégration (WA)~~ | **E05US015** — le repêchage est une politique `routing`, pas un type de phase ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) §1) | 31/07/2026 |
 | **E05US018** | ~~Oracle 120 (rejeu + comparaison)~~ | **E05US010** — le moteur et sa preuve ne se séparent pas | 31/07/2026 |
 | **E05US019** | ~~Enregistrer une séquence comme modèle~~ | **E01US023** — doublon repéré au cadrage ([ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5) | 31/07/2026 |
@@ -384,7 +384,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 |---|---|---|
 | **En-têtes d'US dans `stories/`** | **147** | `grep -cE "^### " stories/E*.md` |
 | **US actives** | **143** | = 88 ordonnancées par jalon (J0→J4) + 55 ajoutées par vague |
-| Absorbées | **4** | `E05US016`, `E05US018`, `E05US019`, `E12US004` — dont **3 ont encore une fiche** dans `stories/` (`E05US016` n'en a jamais eu) |
+| Absorbées | **5** | `E01US012`, `E05US016`, `E05US018`, `E05US019`, `E12US004` — dont **4 ont encore une fiche** dans `stories/` (`E05US016` n'en a jamais eu) *(ligne mise à jour le 02/10/2026 ; les autres lignes et l'égalité ci-dessous sont une **photo du 08/08/2026**, non recomptée depuis — 184 en-têtes au 02/10)* |
 | Caduques | **1** | `E10US004` — la fiche est conservée comme trace |
 
 > **147 = 143 actives + 3 fiches absorbées + 1 fiche caduque.** `E05US016` est le 4ᵉ identifiant

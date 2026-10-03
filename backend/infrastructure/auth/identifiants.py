@@ -109,10 +109,10 @@ class AdminCredentialsStore:
         """Remplace `.env` de façon **atomique** : fichier temporaire voisin puis `os.replace`.
 
         ⚠️ `.env` est la **porte de secours** de l'accès admin : un `write_text` direct tronque
-        puis réécrit, donc un crash entre les deux — ou deux écritures concurrentes — laisserait un
-        `.env` tronqué, verrouillant l'admin hors de sa propre appli. `os.replace` d'un fichier
-        complet est atomique sur le même volume (POSIX **et** Windows) ; le temporaire est un
-        voisin pour rester sur le même système de fichiers.
+        puis réécrit, donc un crash entre les deux laisserait un `.env` tronqué, verrouillant
+        l'admin hors de sa propre appli. `os.replace` est atomique sur le même volume (POSIX **et**
+        Windows). Le temporaire a un nom **fixe** : deux écritures concurrentes s'y mêleraient —
+        elles sont sérialisées par le verrou de `ServiceAuth`, seul écrivain (E10US006).
         """
         temporaire = self._env_path.with_name(self._env_path.name + ".tmp")
         try:

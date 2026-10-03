@@ -1,4 +1,4 @@
-"""Test bout-en-bout de l'API d'accès admin (E10US002).
+"""Test bout-en-bout de l'API d'accès admin (E10US002, E10US006).
 
 Vérifie le parcours et le mapping d'erreurs à la frontière :
 - état initial « non configuré » → définition (201) → état « configuré » ;
@@ -127,3 +127,86 @@ def test_deconnexion_invalide_le_jeton(app_auth: FastAPI) -> None:
         assert client.post("/api/v1/auth/deconnexion", headers=entete).status_code == 204
         refus = client.post("/api/v1/tournois", json=_TOURNOI, headers=entete)
     assert refus.status_code == 401
+
+
+# --- E10US006 : modifier les identifiants ------------------------------------------------------
+
+
+def _bearer(jeton: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {jeton}"}
+
+
+def test_modifier_identifiants_coupe_les_autres_sessions(app_auth: FastAPI) -> None:
+    """204 ; la session courante reste valide, l'autre est fermée ; l'ancien secret ne sert plus."""
+    with TestClient(app_auth) as client:
+        courante = client.post("/api/v1/auth/configurer", json=_IDENTIFIANTS).json()["jeton"]
+        autre = client.post("/api/v1/auth/connexion", json=_IDENTIFIANTS).json()["jeton"]
+        reponse = client.patch(
+            "/api/v1/auth/identifiants",
+            json={"mot_de_passe_actuel": "secret-123", "nouveau_mot_de_passe": "neuf-456"},
+            headers=_bearer(courante),
+        )
+        assert reponse.status_code == 204
+        assert (
+            client.post("/api/v1/tournois", json=_TOURNOI, headers=_bearer(courante)).status_code
+            == 201
+        )
+        assert (
+            client.post("/api/v1/tournois", json=_TOURNOI, headers=_bearer(autre)).status_code
+            == 401
+        )
+        assert client.post("/api/v1/auth/connexion", json=_IDENTIFIANTS).status_code == 401
+        nouveaux = {"login": "admin", "mot_de_passe": "neuf-456"}
+        assert client.post("/api/v1/auth/connexion", json=nouveaux).status_code == 200
+
+
+def test_modifier_identifiants_mot_de_passe_actuel_faux_403(app_auth: FastAPI) -> None:
+    """403 typé — jamais 401, que le client traduirait en déconnexion."""
+    with TestClient(app_auth) as client:
+        jeton = client.post("/api/v1/auth/configurer", json=_IDENTIFIANTS).json()["jeton"]
+        reponse = client.patch(
+            "/api/v1/auth/identifiants",
+            json={"mot_de_passe_actuel": "faux", "nouveau_login": "arbitre"},
+            headers=_bearer(jeton),
+        )
+        assert reponse.status_code == 403
+        assert reponse.json()["code"] == "mot_de_passe_actuel_incorrect"
+        assert (
+            client.post("/api/v1/tournois", json=_TOURNOI, headers=_bearer(jeton)).status_code
+            == 201
+        )
+
+
+@pytest.mark.parametrize(
+    "corps",
+    [
+        {"mot_de_passe_actuel": "secret-123"},
+        {"mot_de_passe_actuel": "secret-123", "nouveau_login": "  "},
+        {"mot_de_passe_actuel": "secret-123", "nouveau_mot_de_passe": "secret-123"},
+    ],
+)
+def test_modifier_identifiants_sans_changement_ou_mal_formes_400(
+    app_auth: FastAPI, corps: dict[str, str]
+) -> None:
+    """Rien à changer, ou valeur vide → 400 typé, session conservée."""
+    with TestClient(app_auth) as client:
+        jeton = client.post("/api/v1/auth/configurer", json=_IDENTIFIANTS).json()["jeton"]
+        reponse = client.patch("/api/v1/auth/identifiants", json=corps, headers=_bearer(jeton))
+        assert reponse.status_code == 400
+        assert reponse.json()["code"] == "nouveaux_identifiants_invalides"
+        assert (
+            client.post("/api/v1/tournois", json=_TOURNOI, headers=_bearer(jeton)).status_code
+            == 201
+        )
+
+
+def test_modifier_identifiants_sans_session_401(app_auth: FastAPI) -> None:
+    """Sans jeton admin, la route est fermée et `.env` n'est pas touché."""
+    with TestClient(app_auth) as client:
+        client.post("/api/v1/auth/configurer", json=_IDENTIFIANTS)
+        reponse = client.patch(
+            "/api/v1/auth/identifiants",
+            json={"mot_de_passe_actuel": "secret-123", "nouveau_login": "arbitre"},
+        )
+        assert reponse.status_code == 401
+        assert client.post("/api/v1/auth/connexion", json=_IDENTIFIANTS).status_code == 200

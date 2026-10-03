@@ -29,6 +29,7 @@ function duel(over: Partial<Duel> = {}): Duel {
     nb_manches: 5,
     nb_fleches_par_volee: 3,
     points_pour_gagner: 6,
+    nb_fleches_barrage: 1,
     zones: ['10', '9', '8', '7', '6', 'M'],
     validee_par: null,
     manches: [],
@@ -227,13 +228,17 @@ describe('injecterBarrage (optimiste hors-ligne)', () => {
       tournoi_id: 1,
       phase_id: 2,
       match_numero: 1,
-      fleche_haut: '10',
-      fleche_bas: '9',
+      fleches_haut: ['10', '9', '9'],
+      fleches_bas: ['9', '9', '9'],
       gagnant_designe: null,
       identifiant_saisie: 'id-b',
     }
     const d = injecterBarrage(duel(), corps)
-    expect(d.barrage).toEqual({ haut: '10', bas: '9', gagnant_designe: null })
+    expect(d.barrage).toEqual({
+      haut: ['10', '9', '9'],
+      bas: ['9', '9', '9'],
+      gagnant_designe: null,
+    })
     expect(d.en_attente).toBe(true)
   })
 })

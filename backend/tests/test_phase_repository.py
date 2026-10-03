@@ -34,7 +34,7 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule
-from domain.duel import BaremeDuel, ReglageBaremeDuel, SurchargeArme
+from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
@@ -1612,6 +1612,60 @@ def test_un_bareme_de_duel_incomplet_remonte_en_erreur_typee(tmp_path: Path) -> 
 
         with pytest.raises(InfrastructureError):
             PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+    finally:
+        db.engine.dispose()
+
+
+def test_un_bareme_d_equipe_garde_ses_fleches_de_barrage(tmp_path: Path) -> None:
+    """E13US003 CA 2 : `nb_fleches_barrage` s'écrit et se relit (3 en équipe, pas le repli à 1)."""
+    equipe = ReglageBaremeDuel(
+        par_defaut=BaremeDuel(ModeDuel.SETS, 4, 6, 5, nb_fleches_barrage=3),
+        surcharges=(
+            SurchargeArme(
+                "Arc à poulies", BaremeDuel(ModeDuel.CUMUL, 4, 6, 0, nb_fleches_barrage=3)
+            ),
+        ),
+    )
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(db, depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE, bareme_duel=equipe)
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.bareme_duel == equipe
+    finally:
+        db.engine.dispose()
+
+
+def test_un_bareme_de_duel_d_avant_les_fleches_de_barrage_en_tire_une(tmp_path: Path) -> None:
+    """E13US003 CA 2 : un réglage écrit avant l'US (sans clé `barrage`) se relit à 1 flèche."""
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        ancien = {
+            "bareme_duel": {
+                "defaut": {"mode": "sets", "manches": 5, "fleches": 3, "points": 4},
+                "surcharges": [],
+            }
+        }
+        with db.session_factory() as session:
+            depart = session.get(DepartORM, depart_id)
+            assert depart is not None
+            etape = DerouleEtapeORM(
+                tournoi_id=depart.tournoi_id,
+                ordre=1,
+                type="elimination_directe",
+                config=json.dumps(ancien),
+            )
+            session.add(etape)
+            session.flush()
+            session.add(PhaseORM(depart_id=depart_id, etape_id=etape.id, statut="a_venir"))
+            session.commit()
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.bareme_duel == ReglageBaremeDuel(par_defaut=BaremeDuel.preset_club())
     finally:
         db.engine.dispose()
 

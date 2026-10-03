@@ -37,10 +37,25 @@ export interface BarrageEnFile {
   tournoi_id: number
   phase_id: number
   match_numero: number
-  fleche_haut: string
-  fleche_bas: string
+  fleches_haut: string[]
+  fleches_bas: string[]
   gagnant_designe: 'haut' | 'bas' | null
   identifiant_saisie: string
+}
+
+/** ⚠️ Forme d'avant E13US003, une flèche par camp : une tablette qui avait un barrage en attente au
+ * déploiement le relit ainsi. Lue au rejeu, plus jamais écrite. */
+export interface BarrageEnFileAncien extends Omit<BarrageEnFile, 'fleches_haut' | 'fleches_bas'> {
+  fleche_haut: string
+  fleche_bas: string
+}
+
+export function flechesDuBarrage(acte: BarrageEnFile | BarrageEnFileAncien): {
+  haut: string[]
+  bas: string[]
+} {
+  if ('fleches_haut' in acte) return { haut: acte.fleches_haut, bas: acte.fleches_bas }
+  return { haut: [acte.fleche_haut], bas: [acte.fleche_bas] }
 }
 
 export interface ValidationEnFile {
@@ -52,7 +67,7 @@ export interface ValidationEnFile {
   identifiant_saisie: string
 }
 
-export type ActeDuelEnFile = MancheEnFile | BarrageEnFile | ValidationEnFile
+export type ActeDuelEnFile = MancheEnFile | BarrageEnFile | BarrageEnFileAncien | ValidationEnFile
 
 // Clé d'**emplacement** d'un acte (pas d'identité de geste) : sert à retirer de la file les actes
 // qu'une saisie **en ligne** réussie du même emplacement a rendus obsolètes (supersession, cf.

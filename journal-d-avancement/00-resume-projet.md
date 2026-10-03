@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 2 octobre 2026
+# Résumé du projet — où on en est au 3 octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -630,24 +630,34 @@ Dans l'ordre de valeur prévu par le backlog :
 3. **Le placement intégral 1→N** (le grand format du classeur 120) est **fait** ; l'**écran de salle**
    aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
-4. **Confort et robustesse** : sauvegarde et restauration, plusieurs gabarits (l'import
-   inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ; le déroulé
-   horaire aussi, `E03US010`).
+4. **Confort et robustesse** : sauvegarde et restauration
+   (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ;
+   le déroulé horaire aussi, `E03US010` ;
+   « plusieurs gabarits » l'était **depuis juillet** — `E01US012` est close sans code, sa
+   bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008` ; et l'accès
+   administrateur **se change depuis l'appli**, `E10US006`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
 **épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
-— standard ou mixte, avec leur conformité affichée —, mais elles ne se **jouent** pas encore
-(scoring, placement et classement par équipe restent à faire).
+— standard ou mixte, avec leur conformité affichée —, et depuis `E13US003` une phase sait se
+régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; mais les équipes ne
+se **jouent** pas encore (placement, saisie et classement par équipe restent à faire).
 
 ---
 
 ## Chiffres repères
 
-- **159 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E03US010`,
+- **161 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E03US010`,
   à **surface visible** : l'organisateur donne une **durée** à chaque phase et l'application en
   déduit l'**horaire de la journée**, départ par départ ; le public voit l'heure de début de chaque
-  phase. Juste avant, `E01US011`,
+  phase. Juste avant, `E10US006`,
+  à **surface visible** : l'organisateur **change son identifiant ou son mot de passe** depuis l'écran
+  « Compte administrateur », sans ouvrir le fichier du serveur ; les autres appareils connectés en
+  administrateur sont alors déconnectés. Juste avant, `E13US003`,
+  à **surface visible** : une phase de duels se règle au **barème d'équipe** FFTA (quatre manches
+  de six flèches, ou de quatre en mixte) et son barrage fait tirer **une flèche à chaque archer**,
+  le plus haut total l'emportant ; le scoreur les saisit au pavé. Juste avant, `E01US011`,
   à **surface visible** : chaque phase de duels **choisit son barème** — FFTA ou club, avec des
   exceptions par arme — et ce barème se fige au premier duel tiré. Juste avant, `E13US002`,
   à **surface visible** : l'organisateur **compose les équipes** du tournoi sur un écran « Équipes »,
@@ -862,10 +872,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
   ligne de code** (elles sont ⬜), tandis qu'`E17US003` et `E17US004` ont été livrées sous la
   branche d'`E17US001` (PR #138) et n'apparaissent pas sous leur propre nom.
-  **Quatre US sont *absorbées*** — leur capacité est livrée par une autre, elles ne comptent nulle
+  **Cinq US sont *absorbées*** — leur capacité est livrée par une autre, elles ne comptent nulle
   part : `E12US004` (« tracer un forfait », par `E04US015`, qui livre l'abandon/DSQ en qualif *et*
   en duels — d'où un J2 de 14 et non 15), `E05US016` (par `E05US015`), `E05US018` et `E05US019`
-  (par `E05US010` et `E01US023`). Après les
+  (par `E05US010` et `E01US023`), et `E01US012` (« plusieurs gabarits », par `E01US007`/`E01US008`,
+  close sans code le 02/10/2026 — d'où un J4 de 7 et non 8). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
   réseau LAN + QR E11US008, retour visuel de génération + position A..D E03US011, blason FFTA par
   défaut E01US022), le **lot démo a bouclé EPIC-14** (lisibilité admin : accueil-tableau de bord

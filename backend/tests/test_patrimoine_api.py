@@ -1132,6 +1132,7 @@ def test_un_format_garde_le_bareme_de_duel_de_ses_etapes(
             "nb_manches": 5,
             "nb_fleches_par_volee": 3,
             "points_pour_gagner": 4,
+            "nb_fleches_barrage": 1,
         },
         "surcharges": [
             {
@@ -1141,6 +1142,7 @@ def test_un_format_garde_le_bareme_de_duel_de_ses_etapes(
                     "nb_manches": 5,
                     "nb_fleches_par_volee": 3,
                     "points_pour_gagner": 0,
+                    "nb_fleches_barrage": 1,
                 },
             }
         ],
