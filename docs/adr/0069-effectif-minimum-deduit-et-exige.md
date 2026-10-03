@@ -203,11 +203,12 @@ Le message **chiffre** ce qui manque et **nomme la phase et son prélèvement** 
   ⚠️ *Rectifié le 08/08/2026 en revue : cette ligne annonçait « `effectif_minimum` porté par
   l'étape séquencée ». `EtapeSequencee` n'a pas ce champ — le lecteur cherchait un attribut
   inexistant.* **Au niveau du déroulé**, le minimum est **déduit**, jamais saisi : aucun setter.
-  L'**exigence de club**, elle, est bien saisie — `FormatTournoi.effectif_minimum_exige`, bullet
-  suivant : les deux ne se confondent pas, c'est tout l'objet du titre « déduit **et** exigé ».
-- `backend/domain/format_tournoi.py` — l'exigence remonte au diagnostic du déroulé composé.
+  L'**exigence de club**, elle, est bien saisie — sur le format de tournoi, entrée
+  suivante : les deux ne se confondent pas, c'est tout l'objet du titre « déduit **et** exigé ».
+- `backend/domain/format_tournoi.py` — `FormatTournoi.effectif_minimum_exige` : l'exigence
+  remonte au diagnostic du déroulé composé.
 - `backend/application/formats.py` — l'exposition du minimum comme **donnée** du diagnostic (et non
-  comme anomalie : `PrelevementVide` couvrait déjà le cas, l'ajouter signalerait deux fois le même
+  comme anomalie : `PrelevementVide`, de `backend/domain/erreurs/moteur.py`, couvrait déjà le cas, l'ajouter signalerait deux fois le même
   défaut).
 - `backend/application/tournois.py` — le refus au démarrage quand l'effectif inscrit est sous le
   plancher.

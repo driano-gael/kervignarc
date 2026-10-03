@@ -66,10 +66,7 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/bootstrap/composition.py",
      "existe": true,
-     "symboles": [
-      "tiebreak",
-      "routing"
-     ],
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -108,11 +105,12 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/tableau.py",
      "existe": true,
      "symboles": [
-      "Protocol"
+      "Routing",
+      "Seeding",
+      "Byes",
+      "Depth"
      ],
-     "symboles_absents": [
-      "Protocol"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     }
    ],
@@ -3452,12 +3450,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "RoutingRepechage",
       "ScoreAvecHandicap",
-      "ContexteScore",
-      "elimination_directe"
+      "ContexteScore"
      ],
-     "symboles_absents": [
-      "elimination_directe"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -3947,9 +3942,7 @@ window.ATLAS.decisions = {
      "symboles": [
       "PrelevementVide"
      ],
-     "symboles_absents": [
-      "PrelevementVide"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -3966,18 +3959,26 @@ window.ATLAS.decisions = {
       "ExigenceEffectif",
       "ProjectionDeroule.effectif_minimum",
       "effectif_minimum",
-      "EtapeSequencee",
-      "FormatTournoi.effectif_minimum_exige"
+      "EtapeSequencee"
      ],
-     "symboles_absents": [
-      "FormatTournoi.effectif_minimum_exige"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/erreurs/moteur.py",
+     "existe": true,
+     "symboles": [
+      "PrelevementVide"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "FormatTournoi.effectif_minimum_exige"
+     ],
      "symboles_absents": [],
      "verifiable": true
     }
@@ -4326,14 +4327,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/classements.py",
      "existe": true,
      "symboles": [
-      "pour_depart",
-      "pour_tournoi",
-      "phase_id"
+      "pour_depart"
      ],
-     "symboles_absents": [
-      "pour_tournoi",
-      "phase_id"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5082,12 +5078,11 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "resolveur_de_classement",
-      "_classement_de_l_ordre",
+      "_classement_produit",
+      "_classement_de_l_etape",
       "_decor"
      ],
-     "symboles_absents": [
-      "_classement_de_l_ordre"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5141,6 +5136,7 @@ window.ATLAS.decisions = {
     "E01US024",
     "E05US020",
     "E05US021",
+    "E05US022",
     "E05US023",
     "E05US024",
     "E05US025",
@@ -5245,13 +5241,11 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
-      "_classement_de_l_ordre",
+      "_classement_produit",
       "ClassementSource",
       "rang_premier"
      ],
-     "symboles_absents": [
-      "_classement_de_l_ordre"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5301,6 +5295,7 @@ window.ATLAS.decisions = {
    "titre": "une phase attend que sa source ait départagé les places qu'elle prélève",
    "us": [
     "E05US020",
+    "E05US022",
     "E05US024",
     "E05US027"
    ]
@@ -5367,11 +5362,9 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "pour_phase",
-      "_premiere_qualification"
+      "premiere_qualification"
      ],
-     "symboles_absents": [
-      "_premiere_qualification"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5461,14 +5454,12 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
-      "_classement_de_l_ordre",
+      "_classement_produit",
       "QUALIFICATION",
       "preleves",
       "tranche"
      ],
-     "symboles_absents": [
-      "_classement_de_l_ordre"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5573,6 +5564,7 @@ window.ATLAS.decisions = {
    "titre": "Plusieurs qualifications dans un même déroulé",
    "us": [
     "E05US021",
+    "E05US022",
     "E05US025",
     "E06US004"
    ]
@@ -5672,12 +5664,9 @@ window.ATLAS.decisions = {
       "duel",
       "serie",
       "volee",
-      "LecteurEtatBigShootOff",
-      "LecteurClassementBigShootOff"
+      "LecteurEtatBigShootOff"
      ],
-     "symboles_absents": [
-      "LecteurClassementBigShootOff"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5754,19 +5743,15 @@ window.ATLAS.decisions = {
       "TYPES_EN_TABLEAU_JOUE",
       "TYPES_JOUES",
       "TYPES_SIGNALES_EN_ECART",
-      "_classement_de_l_ordre",
+      "_classement_produit",
       "LecteurClassementDePhase",
       "ServicePoules",
       "ServiceSaisieDuels",
       "brancher_lecteur",
       "TYPES_DELEGUES",
-      "brancher_poules",
       "classement_lisible"
      ],
-     "symboles_absents": [
-      "_classement_de_l_ordre",
-      "brancher_poules"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5843,6 +5828,7 @@ window.ATLAS.decisions = {
       "IssueRoutage.PROCHAINE_MANCHE",
       "plan_de_cibles",
       "AUCUN",
+      "DecorDeSaisie.VOLEE_COLLECTIVE",
       "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
@@ -5967,20 +5953,8 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/tests/test_domain_contrat_phase.py",
      "existe": true,
-     "symboles": [
-      "ServiceRoutage._routage_par_rencontres",
-      "ProchainDuel",
-      "_resultat_classant",
-      "_resultat",
-      "ScoreAvecHandicap",
-      "RoutingRepechage"
-     ],
-     "symboles_absents": [
-      "ProchainDuel",
-      "_resultat_classant",
-      "ScoreAvecHandicap",
-      "RoutingRepechage"
-     ],
+     "symboles": [],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5996,9 +5970,7 @@ window.ATLAS.decisions = {
      "symboles": [
       "DecorDeSaisie.VOLEE_COLLECTIVE"
      ],
-     "symboles_absents": [
-      "DecorDeSaisie.VOLEE_COLLECTIVE"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7130,7 +7102,12 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/big_shoot_off.py",
      "existe": true,
      "symboles": [
-      "refuser_si_en_pause"
+      "refuser_si_en_pause",
+      "corriger_volee",
+      "saisir_manche",
+      "saisir_barrage",
+      "projection",
+      "etat"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7148,7 +7125,12 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/poules.py",
      "existe": true,
      "symboles": [
-      "refuser_si_en_pause"
+      "refuser_si_en_pause",
+      "corriger_volee",
+      "saisir_manche",
+      "saisir_barrage",
+      "projection",
+      "etat"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7173,18 +7155,19 @@ window.ATLAS.decisions = {
       "projection",
       "etat"
      ],
-     "symboles_absents": [
-      "saisir_manche",
-      "saisir_barrage",
-      "projection"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
-      "refuser_si_en_pause"
+      "refuser_si_en_pause",
+      "corriger_volee",
+      "saisir_manche",
+      "saisir_barrage",
+      "projection",
+      "etat"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7193,7 +7176,12 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/suisse.py",
      "existe": true,
      "symboles": [
-      "refuser_si_en_pause"
+      "refuser_si_en_pause",
+      "corriger_volee",
+      "saisir_manche",
+      "saisir_barrage",
+      "projection",
+      "etat"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7453,9 +7441,7 @@ window.ATLAS.decisions = {
       "Horloge",
       "HorlogeSysteme"
      ],
-     "symboles_absents": [
-      "test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7523,16 +7509,17 @@ window.ATLAS.decisions = {
       "IntegrityError",
       "doublon_d_arret"
      ],
-     "symboles_absents": [
-      "IntegrityError",
-      "doublon_d_arret"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/repositories/moteur.py",
      "existe": true,
      "symboles": [
+      "ArretDeCirconstanceORM",
+      "ArretDeCirconstanceRepositorySQL.ajouter",
+      "IntegrityError",
+      "doublon_d_arret",
       "ArretDeCirconstanceRepository",
       "ArretDeCirconstanceRepositorySQL.par_depart"
      ],
@@ -7548,10 +7535,18 @@ window.ATLAS.decisions = {
       "IntegrityError",
       "doublon_d_arret"
      ],
-     "symboles_absents": [
-      "IntegrityError",
-      "doublon_d_arret"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_arrets_programmes.py",
+     "existe": true,
+     "symboles": [
+      "evaluer",
+      "aucun_arret",
+      "test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7601,15 +7596,23 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/suisse/SaisieSuisse.tsx",
+     "existe": true,
+     "symboles": [
+      "ceQuiManque",
+      "CeQuiManqueEncore"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/suisse/presentation.test.ts",
      "existe": true,
      "symboles": [
       "ceQuiManque",
       "CeQuiManqueEncore"
      ],
-     "symboles_absents": [
-      "CeQuiManqueEncore"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7619,15 +7622,18 @@ window.ATLAS.decisions = {
       "ceQuiManque",
       "CeQuiManqueEncore"
      ],
-     "symboles_absents": [
-      "CeQuiManqueEncore"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
      "existe": true,
      "symboles": [
+      "poserArretRelatif",
+      "usePoserArretRelatif",
+      "PoserUnePause",
+      "peutPoserUnePause",
+      "toursBloquablesRestants",
       "libelleEtatDuTour",
       "EtatDuTour",
       "useSuiviDeroule"
@@ -7645,11 +7651,7 @@ window.ATLAS.decisions = {
       "peutPoserUnePause",
       "toursBloquablesRestants"
      ],
-     "symboles_absents": [
-      "PoserUnePause",
-      "peutPoserUnePause",
-      "toursBloquablesRestants"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7662,11 +7664,7 @@ window.ATLAS.decisions = {
       "peutPoserUnePause",
       "toursBloquablesRestants"
      ],
-     "symboles_absents": [
-      "PoserUnePause",
-      "peutPoserUnePause",
-      "toursBloquablesRestants"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7690,6 +7688,11 @@ window.ATLAS.decisions = {
       "ArretFranchiReponse.arrete_depuis",
       "resumeDeRelance",
       "phraseDeRelance",
+      "poserArretRelatif",
+      "usePoserArretRelatif",
+      "PoserUnePause",
+      "peutPoserUnePause",
+      "toursBloquablesRestants",
       "libelleEtatDuTour",
       "EtatDuTour",
       "useSuiviDeroule"
@@ -9539,9 +9542,7 @@ window.ATLAS.decisions = {
       "attachment",
       "test_chaque_format_porte_un_media_type_distinct"
      ],
-     "symboles_absents": [
-      "test_chaque_format_porte_un_media_type_distinct"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9653,9 +9654,7 @@ window.ATLAS.decisions = {
       "RegistreDeFormats.formats",
       "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
      ],
-     "symboles_absents": [
-      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9676,9 +9675,7 @@ window.ATLAS.decisions = {
       "if",
       "test_le_contenu_compose_ne_depend_pas_du_format"
      ],
-     "symboles_absents": [
-      "test_le_contenu_compose_ne_depend_pas_du_format"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9704,9 +9701,7 @@ window.ATLAS.decisions = {
       "formats_disponibles",
       "RegistreDeFormats"
      ],
-     "symboles_absents": [
-      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9736,10 +9731,7 @@ window.ATLAS.decisions = {
       "rendre_csv",
       "rendre_xlsx"
      ],
-     "symboles_absents": [
-      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
-      "test_les_montants_ne_sont_jamais_neutralises"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9767,6 +9759,33 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/tests/test_listes_impression_api.py",
+     "existe": true,
+     "symboles": [
+      "reponse_document",
+      "reponses_document",
+      "MEDIA_TYPES",
+      "inline",
+      "attachment",
+      "test_chaque_format_porte_un_media_type_distinct"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_listes_impression_csv.py",
+     "existe": true,
+     "symboles": [
+      "_cellule_csv",
+      "_AMORCES_DE_FORMULE",
+      "_ecrire_ligne_xlsx",
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/tests/test_service_audit.py",
      "existe": true,
      "symboles": [
@@ -9784,12 +9803,24 @@ window.ATLAS.decisions = {
      "chemin": "backend/tests/test_service_exports.py",
      "existe": true,
      "symboles": [
+      "construire_catalogue",
+      "RegistreDeFormats.formats",
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne",
       "ServiceExportAudit",
       "LecteurJournalAudit",
       "exiger_admin",
       "FormatExport.PDF",
       "test_un_export_peut_n_offrir_aucun_pdf",
       "test_un_format_non_cable_est_refuse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_listes_impression.py",
+     "existe": true,
+     "symboles": [
+      "test_le_contenu_compose_ne_depend_pas_du_format"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9857,10 +9888,31 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/atlas/controles.py",
+     "existe": true,
+     "symboles": [
+      "Severite.BLOQUANT",
+      "test_aucun_symbole_porte_dans_le_code_n_est_absent"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_atlas_corpus.py",
+     "existe": true,
+     "symboles": [
+      "Severite.BLOQUANT",
+      "test_aucun_symbole_porte_dans_le_code_n_est_absent"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
-   "statut_brut": "Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*",
+   "statut_brut": "Accepté *(la **décision** est prise ; seul le **§3.1** est implémenté, par `E00US028` — cf. § « Porté dans le code par », qui dit le reste au lieu de le laisser croire)*",
    "titre": "La documentation porte des pointeurs, pas des copies",
    "us": [
     "E00US027",
@@ -10124,7 +10176,9 @@ window.ATLAS.decisions = {
       "SectionPalmaresReponse.de_section",
       "PalmaresReponse.de_rendu",
       "section.complet",
-      "section.affiche"
+      "section.affiche",
+      "SectionPalmares",
+      "Palmares"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -10153,11 +10207,11 @@ window.ATLAS.decisions = {
       "_libelles",
       "_ranger",
       "_decompter",
-      "vu_par_archer"
+      "SectionPalmares",
+      "Palmares",
+      "SectionPalmaresReponse.de_section"
      ],
-     "symboles_absents": [
-      "vu_par_archer"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -10169,10 +10223,7 @@ window.ATLAS.decisions = {
       "Palmares",
       "SectionPalmaresReponse.de_section"
      ],
-     "symboles_absents": [
-      "classer_clubs",
-      "SectionPalmaresReponse.de_section"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -10399,6 +10450,17 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/formats.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauRepository",
+      "par_phase",
+      "LecteurDonneesDePhase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/phases.py",
      "existe": true,
      "symboles": [
@@ -10490,11 +10552,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "PlacementTableauRepository",
       "par_phase",
-      "application.formats.LecteurDonneesDePhase"
+      "LecteurDonneesDePhase"
      ],
-     "symboles_absents": [
-      "application.formats.LecteurDonneesDePhase"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -11800,10 +11860,21 @@ window.ATLAS.decisions = {
       "ServicePhases",
       "ServiceCategories"
      ],
-     "symboles_absents": [
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "VerrouBaremeDuel",
+      "etape_tiree",
+      "arme_figee",
+      "ResolveurBaremeDuel",
       "ServicePhases",
       "ServiceCategories"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {

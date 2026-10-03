@@ -3019,6 +3019,9 @@ window.ATLAS.avancement = {
     "0075",
     "0076",
     "0078",
+    "0080",
+    "0081",
+    "0082",
     "0085"
    ],
    "dettes_introduites": [

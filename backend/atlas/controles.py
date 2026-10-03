@@ -3,8 +3,8 @@
 C'est le vrai livrable de l'atlas : le dessin rend le registre lisible, ces contrôles le rendent
 **opposable** (ADR-0075). ⚠️ Calibrage délibéré des sévérités : **bloquant** pour un constat sans
 ambiguïté, corrigible en une minute (chemin ou ADR inexistant) ; **signal** pour tout constat
-heuristique ou de forme — une porte qui rougit sur de l'heuristique finit désactivée, et on perd
-alors aussi les contrôles justes.
+heuristique ou de forme — une porte qui rougit sur de l'heuristique finit désactivée. Exception :
+`portage-symbole-absent`, bloquant : un signal que nul ne lit n'est pas un garde-fou (ADR-0102).
 """
 
 from __future__ import annotations
@@ -79,7 +79,8 @@ def verifier(
                 trouves.append(
                     Controle(
                         code="portage-symbole-absent",
-                        severite=Severite.SIGNAL,
+                        # Heuristique, et pourtant bloquant : exception tranchée par ADR-0102 §3.
+                        severite=Severite.BLOQUANT,
                         sujet=sujet,
                         message=(
                             f"annonce {', '.join(portage.symboles_absents)} dans "

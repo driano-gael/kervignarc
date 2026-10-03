@@ -69,6 +69,18 @@ def test_tout_module_porte_dans_le_code_existe(decisions: tuple[Decision, ...]) 
     assert disparus == []
 
 
+def test_aucun_symbole_porte_dans_le_code_n_est_absent(decisions: tuple[Decision, ...]) -> None:
+    """Cliquet à zéro (E00US028, ADR-0102 §3) : il ne se relève pas, au patron d'E00US027."""
+    absents = [
+        (d.identifiant, portage.chemin, portage.symboles_absents)
+        for d in decisions
+        for portage in d.portage
+        if portage.symboles_absents
+    ]
+
+    assert absents == []
+
+
 def test_le_controle_de_portage_n_est_pas_creux(decisions: tuple[Decision, ...]) -> None:
     """Un contrôle qui ne vérifie rien passerait au vert sans rien garantir.
 

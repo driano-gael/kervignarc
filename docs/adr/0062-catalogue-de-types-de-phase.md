@@ -267,7 +267,7 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
 - `backend/domain/politiques.py` — les trois formats qui **ne sont pas des types** :
   `RoutingRepechage` (le repêchage **décore** un routing existant au lieu de le remplacer),
   `ScoreAvecHandicap` (avec `ContexteScore`), et la finale spectacle qui n'est qu'un assemblage
-  d'`elimination_directe` + barème de duel, donc **aucun module**.
+  d'élimination directe + barème de duel, donc **aucun module**.
 
 ✅ **Écart refermé le 22/08/2026 : les quatre types ont désormais leur consommateur de
 production.** `poules` (`ServicePoules`, E05US023), `big_shoot_off` (`ServiceBigShootOff`, E05US028),

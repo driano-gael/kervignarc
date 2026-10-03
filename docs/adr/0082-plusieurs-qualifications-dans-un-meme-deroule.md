@@ -190,8 +190,9 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
 - `backend/application/prelevement.py` — le port étroit `LecteurPopulationPhase` : « quels archers
   cette phase a-t-elle reçus ? », la lecture dont la saisie et la complétude ont besoin pour
   discriminer la fourche (§4, §6)
-- `backend/application/classements.py` — `pour_phase` et `_premiere_qualification` (§2)
-- `backend/application/saisie_duels.py` — `_classement_de_l_ordre`, branche `QUALIFICATION` : la
+- `backend/application/classements.py` — `pour_phase` et `premiere_qualification` (§2)
+- `backend/application/saisie_duels.py` — `_classement_produit` (renommé par E05US022), branche
+  `QUALIFICATION` : la
   population par `preleves` et la tranche par `tranche`, sur le **même** résolveur
 - `backend/application/palmares.py` — `_resultat_qualification` (§2, §3) et ses trois écartements
 - `backend/application/completude.py` — `_jugements_du_creneau`, `_population` et `_est_clos` :

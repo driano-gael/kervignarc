@@ -1,6 +1,6 @@
 # ADR-0102 — La documentation porte des pointeurs, pas des copies
 
-- **Statut** : Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*
+- **Statut** : Accepté *(la **décision** est prise ; seul le **§3.1** est implémenté, par `E00US028` — cf. § « Porté dans le code par », qui dit le reste au lieu de le laisser croire)*
 - **Date** : 2026-08-30
 - **US** : `E00US028`, `E00US029`, `E00US030`
 - **Décideurs** : Organisateur / Architecte
@@ -146,7 +146,13 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
 
 ## Porté dans le code par
 
-⚠️ **Rien à ce jour pour les quatre §, et c'est écrit exprès** — à une exception près, ajoutée
+- **§3.1 — porté depuis `E00US028`** : `backend/atlas/controles.py` rend `portage-symbole-absent`
+  en `Severite.BLOQUANT`, donc `python -m atlas --verifier` et la CI échouent ; le cliquet à zéro
+  est `test_aucun_symbole_porte_dans_le_code_n_est_absent` (`backend/tests/test_atlas_corpus.py`).
+  Les constats soldés étaient **30**, pas 22 : huit étaient nés entre l'ADR et l'US. ⚠️ Le
+  contrôle prouve que le symbole **existe**, jamais qu'il **porte** la décision.
+
+⚠️ **Rien à ce jour pour les autres §, et c'est écrit exprès** — à une exception près, ajoutée
 par `E17US010` : l'**exception bornée du §1** (une copie inévitable n'est admise que sous contrôle
 de CI, [ADR-0112](0112-une-transcription-documentaire-se-tient-sous-garde-mecanique.md)) est,
 elle, portée — par `frontend/src/maquettes-navigation.test.ts`. La règle générale du §1, non.
@@ -161,12 +167,13 @@ ce que personne ne porte —, et ce serait le reproduire dans l'ADR **dont c'est
 
 Cette section se remplira, module par module, à la livraison de :
 
+*(`E00US028`, §3.1, livrée : entrée ci-dessus.)*
+
 | US | Ce qu'elle portera |
 |---|---|
-| `E00US028` | §3.1 — le contrôle d'atlas passé bloquant, et les 22 constats soldés |
 | `E00US029` | §2 — la règle des fiches fonctionnelles et son garde-fou |
 | `E00US030` | §1 et §4 — la charte des documents, et le doublon résorbé |
 
-Cette section se remplit à mesure ; si l'une des trois US est abandonnée, l'ADR est **amendé pour
+Cette section se remplit à mesure ; si l'une des deux US restantes est abandonnée, l'ADR est **amendé pour
 dire ce qui n'est pas tenu**, plutôt que de le laisser croire. C'est la seule discipline qui
 distingue un ADR d'une intention.

@@ -8,7 +8,8 @@ mécaniquement testables et n'étaient couvertes par rien :
   lecteur ignorait les sections écrites en **tableau**, soit un tiers des promesses, et la fiche
   affichait « cette décision ne nomme aucun module » sur les ADR les plus rigoureux du dépôt ;
 - « un chemin disparu est **bloquant**, un symbole introuvable est un **signal** » — aucune
-  assertion ne le vérifiait, un `verifier()` n'émettant jamais de bloquant passait au vert ;
+  assertion ne le vérifiait, un `verifier()` n'émettant jamais de bloquant passait au vert
+  (le symbole est passé **bloquant** depuis, E00US028) ;
 - « la page affiche, pour chaque ADR, ce qui l'a amendé depuis » — le test du graphe restait vert
   **avec les arêtes inversées**.
 
@@ -152,7 +153,24 @@ def test_un_symbole_promis_et_absent_est_repere_dans_le_vrai_fichier(tmp_path: P
     assert portage.symboles_absents == ("Absente",)
 
 
-# --- CA : « un chemin disparu est bloquant, un symbole introuvable est un signal » -------------
+def test_une_liste_numerotee_ne_se_recolle_pas_a_la_derniere_ligne_du_tableau() -> None:
+    """ADR-0083 : sous son tableau, une liste « 1. … » à lignes indentées se lisait comme la
+    suite de la dernière ligne — ses symboles devenaient des promesses d'un fichier de test."""
+    entrees = adr._entrees(
+        "\n| Module | Rôle |\n|---|---|\n| `backend/tests/test_x.py` | le garde-fou |\n"
+        "\n1. **Hors périmètre** — le routage\n   passe par `ProchainDuel`.\n"
+    )
+
+    assert entrees == ["| `backend/tests/test_x.py` | le garde-fou |"]
+
+
+def test_une_puce_garde_ses_lignes_indentees() -> None:
+    entrees = adr._entrees("\n- `backend/a.py` — `Un`\n  et `Deux`\n")
+
+    assert entrees == ["- `backend/a.py` — `Un` et `Deux`"]
+
+
+# --- CA E00US028 : « un chemin disparu ou un symbole introuvable est bloquant » ----------------
 
 
 def test_un_chemin_disparu_est_bloquant(tmp_path: Path) -> None:
@@ -164,7 +182,8 @@ def test_un_chemin_disparu_est_bloquant(tmp_path: Path) -> None:
     assert controle.code == "portage-inexistant"
 
 
-def test_un_symbole_introuvable_n_est_qu_un_signal(tmp_path: Path) -> None:
+def test_un_symbole_introuvable_est_bloquant(tmp_path: Path) -> None:
+    """Il était en signal, noyé dans un lot que personne ne lisait (ADR-0102 §3)."""
     decision = _decision(
         portage=(
             Portage(
@@ -178,7 +197,7 @@ def test_un_symbole_introuvable_n_est_qu_un_signal(tmp_path: Path) -> None:
 
     (controle,) = controles_module.verifier(tmp_path, (), (decision,))
 
-    assert controle.severite is Severite.SIGNAL
+    assert controle.severite is Severite.BLOQUANT
     assert controle.code == "portage-symbole-absent"
 
 

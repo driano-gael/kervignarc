@@ -256,6 +256,7 @@ def _entrees(section: str) -> list[str]:
     """
     entrees: list[list[str]] = []
     tableau: list[str] = []
+    puce_ouverte = False
 
     def vider_tableau() -> None:
         # Une ligne de séparation (`|---|---|`) marque la ligne précédente comme en-tête : les
@@ -266,17 +267,25 @@ def _entrees(section: str) -> list[str]:
 
     for ligne in section.split("\n"):
         nue = ligne.strip()
+        indentee = ligne.startswith((" ", "\t"))
         if nue.startswith("|"):
             tableau.append(nue)
+            puce_ouverte = False
             continue
         vider_tableau()
-        if nue.startswith(("- ", "* ")) and not ligne.startswith((" ", "\t")):
+        if nue.startswith(("- ", "* ")) and not indentee:
             entrees.append([nue])
-        elif entrees and nue and ligne.startswith((" ", "\t")):
+            puce_ouverte = True
+        elif puce_ouverte and nue and indentee:
             # Seules les lignes **indentées** continuent une puce. Recoller toute ligne non vide
             # collait la prose qui suit la liste sur la dernière entrée : ADR-0062 se voyait alors
             # reprocher de ne pas contenir des identifiants tirés du paragraphe d'après.
             entrees[-1].append(nue)
+        elif nue and not indentee:
+            # ⚠️ Toute autre ligne de tête (`1. …`, `### …`, prose) ferme la puce : sinon les
+            # lignes indentées d'une liste numérotée se recollaient à la dernière entrée — y
+            # compris une ligne de tableau, qui n'a pas de suite (ADR-0083, E00US028).
+            puce_ouverte = False
     vider_tableau()
     return [" ".join(morceaux) for morceaux in entrees]
 
@@ -290,8 +299,9 @@ def _symboles_absents(cible: Path, symboles: tuple[str, ...]) -> tuple[str, ...]
 
     Contrôle volontairement grossier — une recherche de nom, pas une analyse. Il attrape le cas
     qui compte (un ADR promettant une classe qui n'existe pas) sans prétendre vérifier que le
-    module **fait** ce que l'ADR annonce. Cette limite est assumée, affichée, et c'est pourquoi
-    le résultat est un signal et non un blocage.
+    module **fait** ce que l'ADR annonce. ⚠️ Le résultat est **bloquant** (ADR-0102 §3) : un
+    symbole cité en prose — ancien nom, hypothèse, test d'un autre fichier — se cite sans accents
+    graves, ou avec le chemin du fichier qui le porte.
     """
     source = markdown.lire(cible)
     return tuple(s for s in symboles if s.rsplit(".", 1)[-1] not in source)
