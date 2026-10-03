@@ -114,8 +114,9 @@ met à niveau). ⚠️ Les deux fichiers sont le journal de l'**ancienne** base 
 un plantage, SQLite les rejouerait sur la sauvegarde et mélangerait les deux.
 
 **Arrêter le serveur.** Ctrl+C **ou** la croix de la fenêtre : les deux attendent que les écritures en
-cours soient enregistrées avant de fermer. La croix est bornée par Windows : au-delà d'environ
-**4 secondes**, la fenêtre se ferme quand même — Ctrl+C n'a pas cette limite. Éviter de **tuer** le processus
+cours soient enregistrées avant de fermer. Mais Windows tue le processus ~5 s après la croix : elle
+laisse au plus **~4,5 s** en tout, dont jusqu'à 2 s pour déconnecter les tablettes, soit **au moins
+~2 s** pour enregistrer ; au-delà, la fenêtre se ferme quand même. Ctrl+C n'a pas cette limite. Éviter de **tuer** le processus
 (gestionnaire des tâches) : c'est le seul arrêt qui peut perdre une écriture en attente.
 
 Rien à configurer par défaut. Pour ajuster (facultatif), définir des **variables d'environnement**

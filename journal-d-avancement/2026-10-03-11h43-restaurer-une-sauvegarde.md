@@ -15,4 +15,5 @@ enregistrées — comme Ctrl+C le faisait déjà.
 
 **Limites.** La restauration remet **tous** les tournois en arrière, pas un seul. Une copie d'une
 version plus ancienne de l’application se restaure encore à la main, selon le guide de déploiement.
-La croix laisse au plus quelques secondes aux saisies en attente : au-delà, préférer Ctrl+C.
+La croix laisse au plus quelques secondes aux saisies en attente : au-delà, préférer Ctrl+C. Le
+mécanisme est vérifié sur une console réelle ; il reste à l'éprouver une fois avec le vrai serveur.

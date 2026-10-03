@@ -83,7 +83,8 @@ def _servir(app: FastAPI) -> None:
         pass
     finally:
         arrete.set()
-    # Ce qu'`uvicorn.run` faisait seul : un démarrage raté (port déjà pris) sort en erreur.
+    # Garde défensive, reprise d'`uvicorn.run` : uvicorn 0.51 sort déjà en 3 lui-même sur un port
+    # pris ou un lifespan en échec ; ceci couvre une version qui ne le ferait plus.
     if not serveur.started:
         sys.exit(3)
 

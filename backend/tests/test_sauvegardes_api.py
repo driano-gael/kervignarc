@@ -16,7 +16,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from infrastructure.backup.restauration import StoreSauvegardesSQLite
 from infrastructure.backup.sauvegarde import SauvegardeSQLite
+from infrastructure.erreurs import RestaurationImpossible
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 
@@ -189,3 +191,23 @@ def test_la_restauration_attend_son_tour_dans_la_file_d_ecriture(
     occupation.result(10)  # une exception dans la commande ne doit pas passer pour un succès
     assert reponses == [200]
     assert _clubs(client) == []
+
+
+def test_une_restauration_en_echec_ne_livre_au_client_aucun_detail_interne(
+    client: TestClient, base: Path, dossier: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    SauvegardeSQLite(base, dossier, 5, _Horloge9h()).sauvegarder()
+
+    def echec(_store: StoreSauvegardesSQLite, nom: str) -> None:
+        raise RestaurationImpossible(r"database is locked : C:\Users\orga\kervignarc.db")
+
+    monkeypatch.setattr(StoreSauvegardesSQLite, "restaurer", echec)
+
+    reponse = client.post(f"/api/v1/sauvegardes/{_SAUVEGARDE}/restauration")
+
+    assert reponse.status_code == 500
+    assert reponse.json() == {
+        "code": "restauration_impossible",
+        "message": "Erreur interne du serveur.",
+    }
+    assert "orga" not in reponse.text

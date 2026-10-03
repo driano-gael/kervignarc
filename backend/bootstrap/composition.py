@@ -426,6 +426,7 @@ def create_app(
         broadcaster.bind_loop(asyncio.get_running_loop())
         broadcaster_simulation.bind_loop(asyncio.get_running_loop())
         write_queue.start()
+        await run_in_threadpool(sauvegarde.purger_provisoires)
         # `intervalle <= 0` désactive la sauvegarde (aucune tâche lancée).
         tache_sauvegarde = (
             asyncio.create_task(_boucle_sauvegarde()) if intervalle_backup > 0 else None

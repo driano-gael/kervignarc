@@ -47,8 +47,9 @@ Trois contraintes du projet pèsent sur le « comment » :
    sauvegardes : une restauration s'annule en restaurant cette copie. Aucune copie n'en écrase une
    autre (suffixe `-n` dans la même seconde). Toute copie, périodique ou de sécurité, s'écrit en
    `.tmp` puis se renomme : une copie **listée** est toujours complète, ce qu'exige l'ouverture en
-   `immutable=1` (sans verrou) du §3.
-6. **Après la copie, les cinq registres en mémoire sont vidés** : les tablettes et les scoreurs se
+   `immutable=1` (sans verrou) du §3. Un `.tmp` laissé par un processus tué en pleine copie est
+   purgé au **démarrage** suivant — jamais plus tard, où il peut être une copie en cours.
+6. **Après la restauration, les cinq registres en mémoire sont vidés** : les tablettes et les scoreurs se
    rattachent, comme après un redémarrage. La session admin, adossée au `.env`, survit.
 7. **Seul un nom présent dans la liste** se vérifie ou se restaure ; aucun chemin n'est construit à
    partir de la requête.
@@ -84,9 +85,11 @@ que le drain tienne dans ce délai.
 - **La croix a été rejouée en vrai** (revue du 03/10/2026) : un processus ouvert dans sa propre
   console (`CREATE_NEW_CONSOLE`), qui installe ce gestionnaire, reçoit `WM_CLOSE` ; un drain de 2 s
   aboutit avant que Windows ne le tue, alors que le témoin sans gestionnaire meurt aussitôt. Un drain
-  de 6 s, lui, est coupé à 4,5 s : la promesse vaut **dans la limite de quelques secondes**, que
-  `test_arret_console` borne côté réglages. La chaîne uvicorn → `lifespan` → `WriteQueue.stop()`
-  est couverte à part (`test_arret_propre_api`), pas d'un seul tenant.
+  de 6 s, lui, est coupé à 4,5 s (le gestionnaire rend la main, Windows tue) : sur ce délai, jusqu'à
+  2 s vont à l'attente des connexions, il reste **au moins ~2 s** au drain — borne que
+  `test_arret_console` vérifie côté réglages. Couvert : `lifespan` → `WriteQueue.stop()` par
+  `test_arret_propre_api` (via `TestClient`) ; `_servir` (uvicorn.Server, `should_exit`) par une
+  **doublure** seulement. L'enchaînement avec le vrai serveur reste le scénario D de la fiche.
 - **« Sessions fermées » vaut à la fin de la commande, pas pendant.** Les gardes de session et le
   rattachement s'exécutent **hors** de la file : une saisie arrivée pendant la restauration passe sa
   garde, attend derrière elle, puis s'écrit sur la base restaurée ; un rattachement exactement
@@ -94,9 +97,10 @@ que le drain tienne dans ce délai.
   copie, acceptée : un identifiant encore valide écrit au bon endroit, un identifiant disparu est
   refusé par le service.
 - **L'état persisté côté client n'est pas purgé** : files hors ligne de volées et de duels, archers
-  suivis. Après une restauration **suivie d'une réimportation** qui redistribue les identifiants, une
-  volée en attente pourrait se rejouer sur un autre archer — trou que la procédure manuelle
-  (redémarrage) avait déjà. Assumé en `DETTE-122`.
+  suivis. `backup` restaure aussi `sqlite_sequence` : **toute création** après la restauration
+  (inscription au greffe, import…) peut réattribuer un identifiant postérieur à la copie, et une
+  volée en attente se rejouer sur un autre archer — trou que la procédure manuelle (redémarrage)
+  avait déjà. Assumé en `DETTE-122`.
 - Les copies `avant-restauration-*` s'accumulent hors rétention, une par restauration : volume
   négligeable à l'échelle d'un tournoi, à purger à la main si besoin.
 

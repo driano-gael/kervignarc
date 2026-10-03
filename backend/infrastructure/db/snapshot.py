@@ -39,5 +39,9 @@ def copier_base_atomique(source: Path, cible: Path) -> None:
     sans le renommage, une copie en cours d'écriture pourrait être restaurée à moitié.
     """
     provisoire = cible.with_name(cible.name + ".tmp")
-    copier_base_coherente(source, provisoire)
-    os.replace(provisoire, cible)
+    try:
+        copier_base_coherente(source, provisoire)
+        os.replace(provisoire, cible)
+    except BaseException:
+        provisoire.unlink(missing_ok=True)
+        raise

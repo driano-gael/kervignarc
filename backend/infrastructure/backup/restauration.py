@@ -55,12 +55,16 @@ class StoreSauvegardesSQLite:
                 continue
             prefixe, horodatage, _ = correspondance.groups()
             prise_le = datetime.datetime.strptime(horodatage, _FORMAT).replace(tzinfo=datetime.UTC)
+            try:
+                taille = chemin.stat().st_size
+            except FileNotFoundError:
+                continue  # purgée par la rétention, hors file, entre `iterdir` et `stat`
             disponibles.append(
                 SauvegardeDisponible(
                     nom=chemin.name,
                     nature=_PREFIXES[prefixe],
                     prise_le=prise_le,
-                    taille_octets=chemin.stat().st_size,
+                    taille_octets=taille,
                 )
             )
         return disponibles
@@ -89,15 +93,15 @@ class StoreSauvegardesSQLite:
             connexion.close()
 
     def copier_avant_restauration(self) -> str:
-        self._dossier.mkdir(parents=True, exist_ok=True)
         horodatage = self._horloge.maintenant().strftime(_FORMAT)
-        cible = self._dossier / f"avant-restauration-{horodatage}.db"
-        rang = 1
-        # ⚠️ Jamais d'écrasement : deux restaurations à la même seconde perdraient l'original.
-        while cible.exists():
-            cible = self._dossier / f"avant-restauration-{horodatage}-{rang}.db"
-            rang += 1
         try:
+            self._dossier.mkdir(parents=True, exist_ok=True)
+            cible = self._dossier / f"avant-restauration-{horodatage}.db"
+            rang = 1
+            # ⚠️ Jamais d'écrasement : deux restaurations à la même seconde perdraient l'original.
+            while cible.exists():
+                cible = self._dossier / f"avant-restauration-{horodatage}-{rang}.db"
+                rang += 1
             copier_base_atomique(self._base, cible)
         except (sqlite3.Error, OSError) as exc:
             raise RestaurationImpossible(f"Copie de sécurité impossible : {exc}") from exc

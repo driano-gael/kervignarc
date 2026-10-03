@@ -217,3 +217,80 @@ def test_la_sauvegarde_periodique_ne_laisse_aucun_fichier_provisoire(tmp_path: P
     SauvegardeSQLite(base, dossier, 5, _HorlogeFigee()).sauvegarder()
 
     assert [c.name for c in dossier.iterdir()] == ["kervignarc-20261003-120000.db"]
+
+
+def test_une_copie_de_securite_en_echec_ne_laisse_ni_cible_ni_provisoire(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Discrimine l'écriture atomique : une copie directe laisserait la cible partielle, un
+    # renommage sans nettoyage laisserait le `.tmp`.
+    store, base, dossier = _store(tmp_path)
+    _base(base, "vive")
+
+    def copie_interrompue(source: Path, cible: Path) -> None:
+        cible.write_bytes(b"debut de copie")
+        raise OSError("disque plein")
+
+    monkeypatch.setattr("infrastructure.db.snapshot.copier_base_coherente", copie_interrompue)
+
+    with pytest.raises(RestaurationImpossible):
+        store.copier_avant_restauration()
+
+    assert list(dossier.iterdir()) == []
+
+
+def test_lister_ignore_une_copie_purgee_entre_l_inventaire_et_sa_taille(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, _, dossier = _store(tmp_path)
+    (dossier / "kervignarc-20261003-090000.db").write_bytes(b"x")
+    (dossier / "kervignarc-20261003-100000.db").write_bytes(b"x")
+    stat_reel = Path.stat
+
+    def stat_apres_purge(chemin: Path, **options: bool) -> object:
+        if chemin.name == "kervignarc-20261003-090000.db" and not options:
+            raise FileNotFoundError(chemin)
+        return stat_reel(chemin, **options)
+
+    monkeypatch.setattr(Path, "is_file", lambda _chemin: True)
+    monkeypatch.setattr(Path, "stat", stat_apres_purge)
+
+    assert [s.nom for s in store.lister()] == ["kervignarc-20261003-100000.db"]
+
+
+def test_la_retention_differe_la_purge_d_une_copie_tenue_ouverte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Sous Windows, une copie ouverte par une vérification ne se supprime pas : le cycle de
+    # sauvegarde ne doit pas échouer pour autant.
+    _, base, dossier = _store(tmp_path)
+    _base(base, "vive")
+    (dossier / "kervignarc-20261003-080000.db").write_bytes(b"ouverte")
+    (dossier / "kervignarc-20261003-090000.db").write_bytes(b"ancienne")
+    unlink_reel = Path.unlink
+
+    def unlink_verrouille(chemin: Path, missing_ok: bool = False) -> None:
+        if chemin.name == "kervignarc-20261003-080000.db":
+            raise PermissionError("WinError 32")
+        unlink_reel(chemin, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", unlink_verrouille)
+
+    SauvegardeSQLite(base, dossier, 1, _HorlogeFigee()).sauvegarder()
+
+    assert sorted(c.name for c in dossier.iterdir()) == [
+        "kervignarc-20261003-080000.db",
+        "kervignarc-20261003-120000.db",
+    ]
+
+
+def test_le_demarrage_purge_les_copies_provisoires_orphelines(tmp_path: Path) -> None:
+    # Un processus tué en pleine copie laisse un `.tmp` qu'aucune rétention ne voit.
+    _, base, dossier = _store(tmp_path)
+    (dossier / "kervignarc-20261003-090000.db.tmp").write_bytes(b"partielle")
+    (dossier / "avant-restauration-20261003-100000.db.tmp").write_bytes(b"partielle")
+    (dossier / "kervignarc-20261003-110000.db").write_bytes(b"complete")
+
+    SauvegardeSQLite(base, dossier, 5, _HorlogeFigee()).purger_provisoires()
+
+    assert [c.name for c in dossier.iterdir()] == ["kervignarc-20261003-110000.db"]
