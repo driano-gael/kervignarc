@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Blason } from '../blasons/api'
+import { AUTRE, FRACTIONS, libelleTaille, tailleDuChoix } from '../blasons/taille'
 import type { Categorie } from '../categories/api'
 import type { OrigineBrique } from './api'
 import { decrireRapport } from './format'
@@ -231,7 +232,8 @@ function LigneBlason({ blason }: { blason: Blason }) {
       <div className="gabarit__ligne">
         <span className="gabarit__nom">{blason.nom}</span>
         <span className="gabarit__attributs">
-          {blason.capacite} archer(s) · {blason.zones.length} zone(s)
+          taille {libelleTaille(blason.taille)} · {blason.capacite} archer(s) ·{' '}
+          {blason.zones.length} zone(s)
         </span>
         <span className="gabarit__actions">
           <BoutonDupliquer
@@ -377,22 +379,25 @@ function FormulaireCategorie() {
 
 function FormulaireBlason() {
   const [nom, setNom] = useState('')
-  const [taille, setTaille] = useState('1')
+  // Même déroulante que l'écran des blasons du tournoi (E00US016) : `blasons/taille.ts` porte la règle.
+  const [choixTaille, setChoixTaille] = useState('1')
+  const [tailleLibre, setTailleLibre] = useState('')
   const [capacite, setCapacite] = useState('1')
   const creer = useCreerBlasonBibliotheque()
 
-  const valide =
-    nom.trim() !== '' && Number(taille) > 0 && Number(taille) <= 1 && Number(capacite) >= 1
+  const taille = tailleDuChoix(choixTaille, tailleLibre)
+  const valide = nom.trim() !== '' && taille !== null && Number(capacite) >= 1
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (!valide) return
+    if (!valide || taille === null) return
     creer.mutate(
-      { nom, taille: Number(taille), capacite: Number(capacite) },
+      { nom, taille, capacite: Number(capacite) },
       {
         onSuccess: () => {
           setNom('')
-          setTaille('1')
+          setChoixTaille('1')
+          setTailleLibre('')
           setCapacite('1')
         },
       },
@@ -409,19 +414,31 @@ function FormulaireBlason() {
           placeholder="Nom (ex. Blason 40 cm)"
           aria-label="Nom du blason"
         />
-        <input
+        {/* « Taille » est une **fraction de place** sur une butte, pas un diamètre — le libellé
+            doit le dire, sinon on saisit « 40 » et le placement devient absurde. */}
+        <select
           className="formulaire__champ"
-          type="number"
-          step="0.05"
-          min={0.05}
-          max={1}
-          value={taille}
-          onChange={(e) => setTaille(e.target.value)}
-          // « Taille » est une **fraction de place** sur une butte, pas un diamètre — le libellé
-          // doit le dire, sinon on saisit « 40 » et le placement devient absurde.
-          placeholder="Place occupée sur une cible (1 = toute la butte)"
+          value={choixTaille}
+          onChange={(e) => setChoixTaille(e.target.value)}
           aria-label="Place occupée sur une cible"
-        />
+        >
+          {FRACTIONS.map((fraction) => (
+            <option key={fraction.cle} value={fraction.cle}>
+              {fraction.libelle}
+            </option>
+          ))}
+          <option value={AUTRE}>Autre…</option>
+        </select>
+        {choixTaille === AUTRE && (
+          <input
+            className="formulaire__champ"
+            inputMode="decimal"
+            value={tailleLibre}
+            onChange={(e) => setTailleLibre(e.target.value)}
+            placeholder="Autre place occupée (réel de 0 à 1, ex. 0,75)"
+            aria-label="Autre place occupée sur une cible (réel de 0 à 1)"
+          />
+        )}
         <input
           className="formulaire__champ"
           type="number"
