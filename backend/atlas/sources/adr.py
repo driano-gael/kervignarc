@@ -157,16 +157,18 @@ def _est_test(chemin: str) -> bool:
 
 
 def _chemins_non_reconnus(texte: str, champs: list[tuple[str, str]]) -> tuple[str, ...]:
-    """Les fichiers de code cités par une entrée qui ne cite **aucun** chemin depuis la racine.
+    """Les fichiers de code cités sans chemin depuis la racine, que rien ne contrôle (E00US028).
 
-    Une telle entrée était ignorée sans un mot (`application/prelevement.py` n'est pas un chemin
-    reconnu) : ses promesses échappaient au contrôle, y compris un symbole disparu (E00US028).
+    Tout chemin abrégé (`application/prelevement.py`) ; un nom de fichier nu (`routage.py`) n'est
+    toléré qu'à côté d'un chemin complet. ⚠️ Code seulement : `.claude/`, `maquettes/` — DETTE-068.
     """
     trouves: list[str] = []
     for entree in _entrees(_section_portage(texte, champs)):
-        tokens = _TOKEN.findall(entree)
-        if not any(_est_chemin(t) for t in tokens):
-            trouves.extend(t for t in tokens if t.endswith(_EXTENSIONS_VERIFIABLES))
+        tokens = [t for t in _TOKEN.findall(entree) if not _est_chemin(t)]
+        sans_chemin = len(tokens) == len(_TOKEN.findall(entree))
+        trouves.extend(
+            t for t in tokens if t.endswith(_EXTENSIONS_VERIFIABLES) and ("/" in t or sans_chemin)
+        )
     return tuple(dict.fromkeys(trouves))
 
 

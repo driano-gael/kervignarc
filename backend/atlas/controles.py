@@ -115,7 +115,9 @@ def verifier(
                     sujet=sujet,
                     message=(
                         f"cite « {abrege} » dans une entrée sans aucun chemin depuis la racine "
-                        f"(backend/…, frontend/…) : ses promesses ne sont contrôlées par rien."
+                        f"(backend/…, frontend/…) : ses promesses ne sont contrôlées par rien. "
+                        f"Écrire le chemin depuis la racine ; mention historique : la citer "
+                        f"sans accents graves (ADR-0102 § Porté)."
                     ),
                 )
             )

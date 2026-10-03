@@ -222,10 +222,10 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > section décrit un code vérifiable, jamais une intention.
 >
 > 🔄 **Re-vérifiée le 18/08/2026**, l'ADR étant rouvert par E05US032 (sa section *Décision* §1 gagne
-> une **7ᵉ question**). Le champ ajouté est `ContratDePhase.unite_de_tour` — `domain/contrat_phase.py`,
+> une **7ᵉ question**). Le champ ajouté est `ContratDePhase.unite_de_tour` — `backend/domain/contrat_phase.py`,
 > avec l'énumération `UniteDeTour` et une valeur renseignée pour six des neuf types du registre, les
 > trois autres tenant le défaut prudent. Sa **résolution en libellé** vit dans
-> `domain/tour_de_phase.py` (`unite_de_tour`, `libelle_de_tour`), qui délègue à
+> `backend/domain/tour_de_phase.py` (`unite_de_tour`, `libelle_de_tour`), qui délègue à
 > `domain.tableau.libelle_tour` pour l'arbre. Cf. [ADR-0090](0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md).
 >
 > 🔄 **Re-vérifiée le 14/08/2026**, l'ADR étant rouvert par E05US028 (sa section *Décision* §2 a
@@ -235,7 +235,7 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > document.** La version du 14/08 affirmait, à trois endroits, que le service, le palmarès et le
 > routage du Big Shoot Off « ne sont pas écrits » et que ses capacités restaient à `False` — vrai
 > quand ces phrases ont été écrites, faux dans le commit qui les livrait, puisque le même diff les
-> a écrits et a basculé les trois capacités à `True` (`domain/contrat_phase.py`). Le commit de
+> a écrits et a basculé les trois capacités à `True` (`backend/domain/contrat_phase.py`). Le commit de
 > rendu annonçait pourtant la section « re-vérifiée sur le code du jour » : elle ne l'avait pas
 > été après coup.
 >
@@ -272,9 +272,9 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 | `backend/domain/deroule.py` · `backend/application/{palmares,simulation_format,saisie_duels,placement_duels,routage}.py` | §1 — les sites **dérivés** ; aucun ne réécrit son filtre |
 | `frontend/src/shared/phases/catalogue.ts` · `TYPES_SIGNALES_EN_ECART` | §1 — le miroir client, écrit **en négatif** (un oubli y coûte un avertissement de trop, jamais un de moins) |
 | `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_poules` | §4 — `config.poules`, à la racine du `config` (ADR-0046), **sans migration** ; barème toujours écrit, relu de ce qui est écrit |
-| `backend/infrastructure/db/models.py` · `PlacementParBlocORM` + `migrations/versions/{0045_placement_des_poules,0046_placement_par_bloc}.py` | §3 — « groupe → couloirs », clé primaire sur le **couloir** (un couloir, un occupant). ⚠️ Table et colonne **renommées en E05US026** (*placement_poule* → `placement_par_bloc`, *poule_numero* → `groupe_numero`, anciens noms retirés) : le mécanisme sert désormais deux formats, et le nom désignait le mauvais concept |
+| `backend/infrastructure/db/models.py` · `PlacementParBlocORM` + `backend/migrations/versions/{0045_placement_des_poules,0046_placement_par_bloc}.py` | §3 — « groupe → couloirs », clé primaire sur le **couloir** (un couloir, un occupant). ⚠️ Table et colonne **renommées en E05US026** (*placement_poule* → `placement_par_bloc`, *poule_numero* → `groupe_numero`, anciens noms retirés) : le mécanisme sert désormais deux formats, et le nom désignait le mauvais concept |
 | `backend/application/poules.py` · `ServicePoules` | §3, §5, §6 — composition le jour J, pose du plan, rencontres par tour, couloirs dérivés, classement, saisie d'une rencontre, et `classement_de_phase` (le port ci-dessous) |
-| `backend/domain/classement_de_poules.py` | §6 — l'ordre « par rang de poule d'abord », les blocs **indécis** (ADR-0081), la liaison d'un ex æquo interne qui enjambe deux blocs, et le départage optionnel. ⚠️ **Descendu dans le domaine** alors que la liste de tranche — supprimée à la clôture — l'annonçait en `application/poules.py` : il croise des `RangPoule`, un `LigneClassement` et une politique `Tiebreak` — l'argument exact qui a placé son jumeau `classement_de_tableau` là |
+| `backend/domain/classement_de_poules.py` | §6 — l'ordre « par rang de poule d'abord », les blocs **indécis** (ADR-0081), la liaison d'un ex æquo interne qui enjambe deux blocs, et le départage optionnel. ⚠️ **Descendu dans le domaine** alors que la liste de tranche — supprimée à la clôture — l'annonçait en `backend/application/poules.py` : il croise des `RangPoule`, un `LigneClassement` et une politique `Tiebreak` — l'argument exact qui a placé son jumeau `classement_de_tableau` là |
 | `backend/domain/poule.py` · `ReglageDePoules.departage_inter_poules` | §6 — le départage optionnel, persisté sous `config.poules.departage` (toujours sans migration) |
 | `backend/application/prelevement.py` · `LecteurClassementDePhase` · `backend/application/poules.py` · `backend/application/saisie_duels.py` | §6 — le **port étroit** qui casse le cycle `ServicePoules` ↔ `ServiceSaisieDuels`, et qui fait traverser le résolveur (donc le cache de reconstruction **et** la chaîne anti-boucle). ⚠️ **Fondu en E05US026** ([ADR-0084](0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)) : il s'appelait *LecteurClassementPoules*, avait été recopié en *LecteurClassementBigShootOff*, et le système suisse a fourni la 3ᵉ preuve qui justifiait de les réunir |
 | `backend/application/saisie_duels.py` · `brancher_lecteur` / `TYPES_DELEGUES` / `_classement_produit` | §6 — la résolution d'un ordre amont pour **tout type délégué**. ⚠️ *brancher_poules* a disparu en E05US026 : le type est devenu un *argument*, et `TYPES_DELEGUES` **dérive** du registre — un format déclaré `classement_lisible` y entre seul |
@@ -349,7 +349,7 @@ oppositions). Le premier format d'une autre forme l'a rendue inrépondable.
 
 **Décision** — la capacité est renommée `deroule_par_un_service`, et sa table dérivée
 `TYPES_MONTES` devient `TYPES_DEROULES`. Le verbe « dérouler » n'est pas neuf : c'est celui
-qu'emploient déjà `domain/deroule.py`, `_TYPES_DEROULES` et le message d'atelier « le moteur ne sait
+qu'emploient déjà `backend/domain/deroule.py`, `_TYPES_DEROULES` et le message d'atelier « le moteur ne sait
 pas encore dérouler ce type ». Le renommage **retire** donc un vocabulaire concurrent au lieu d'en
 ajouter un — `deroule._TYPES_DEROULES = TYPES_DEROULES` devient un alias local homonyme, comme
 `_TYPES_CLASSANTS_LUS` juste à côté.

@@ -178,8 +178,8 @@ décision. Deux points de cet ADR ont été corrigés à cette occasion : voir �
   ⚠️ Avant de supprimer un avancement orphelin, elle **supprime sept de ses huit tables filles**
   plus la petite-fille `volee` (qui pend à `serie`), et **détache** la huitième (`barrage`, dont
   la colonne est nullable — un barrage est un tir réellement effectué). Cinq de ces filles
-  portent `ON DELETE CASCADE`, et cette cascade est **inerte** : `migrations/env.py` monte son
-  moteur sans le `PRAGMA foreign_keys=ON` de `infrastructure/db/engine.py`.
+  portent `ON DELETE CASCADE`, et cette cascade est **inerte** : `backend/migrations/env.py` monte son
+  moteur sans le `PRAGMA foreign_keys=ON` de `backend/infrastructure/db/engine.py`.
 - **`backend/tests/conftest.py`** — `identite_d_etape(ordre, tournoi_id)` et
   `decaler_les_identites_sql` : **décor habilitant, et un garde partiel**. Les deux retirent la
   coïncidence identité ↔ rang qui masquait les violations ailleurs. Deux organes *gardent* :

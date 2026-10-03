@@ -154,9 +154,9 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
   Les constats soldés étaient **30**, pas 22 : huit étaient nés entre l'ADR et l'US. ⚠️ Le
   contrôle prouve que le symbole **existe**, jamais qu'il **porte** la décision.
 - **§3.1, ce qui le rend opposable** — `backend/atlas/sources/adr.py` (`_entrees`, `_portage`,
-  `_chemins_non_reconnus`, `_symboles_absents`) : une entrée qui cite un fichier de code **sans
-  chemin depuis la racine** n'était contrôlée par rien ; elle lève désormais
-  `portage-chemin-non-reconnu`, bloquant, cliquet à zéro
+  `_chemins_non_reconnus`, `_symboles_absents`) : un fichier de code cité **sans chemin depuis la
+  racine** (`application/…`, ou un nom nu sans chemin complet dans l'entrée) n'était contrôlé par
+  rien ; il lève désormais `portage-chemin-non-reconnu`, bloquant, cliquet à zéro
   (`test_aucune_entree_de_portage_ne_cite_un_chemin_abrege`, `backend/tests/test_atlas_corpus.py`).
   Et un test cité dans une entrée ne témoigne **jamais** pour un module de production : il contient
   le nom par construction (mutation de la revue, axe D).
@@ -174,7 +174,9 @@ d'ADR ne lit pas la docstring de l'atlas :
 ⚠️ **Limites mesurées, pas supposées** (`DETTE-068`) : le contrôle cherche par sous-chaîne,
 commentaires compris ; et un symbole **déplacé** vers un autre module reste « présent » si un
 importeur cité dans la même entrée garde le nom — 481 promesses sont dans ce cas sur l'ensemble du
-registre (491 avant l'US). Un renommage, lui, casse l'import, donc mypy ou tsc.
+registre (491 avant l'US). Un renommage, lui, casse l'import, donc mypy ou tsc. Enfin, seuls les
+fichiers de **code** (`.py`, `.ts`, `.tsx`) sont tenus : `.claude/`, `maquettes/` et la
+documentation restent hors des racines lues, donc hors contrôle.
 
 ⚠️ **Rien à ce jour pour les autres §, et c'est écrit exprès** — à une exception près, ajoutée
 par `E17US010` : l'**exception bornée du §1** (une copie inévitable n'est admise que sous contrôle

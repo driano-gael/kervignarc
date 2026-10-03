@@ -271,7 +271,8 @@ ADR promet un module qui ne porte rien.
   fichier qui le porte » **désarmait** le contrôle — chaque chemin d'une entrée excuse ses frères,
   et un test ou un importeur contient le nom par construction (prouvé par mutation, axe D). D'où :
   un test ne témoigne plus pour la production ; une entrée sans chemin depuis la racine lève
-  `portage-chemin-non-reconnu` (bloquant, cliquet à zéro — elle cachait encore un nom mort,
+  `portage-chemin-non-reconnu` (bloquant, cliquet à zéro ; étendu en 2ᵉ passe à tout chemin abrégé,
+  37 réécrits dans une vingtaine d'ADR — elle cachait encore un nom mort,
   ADR-0084) ; la convention est écrite dans ADR-0102 § Porté. Le nom périmé survit dans le texte
   **daté** de deux décisions (ADR-0080, ADR-0084) : non rouvertes, à dessein. Reste, mesuré :
   `DETTE-068`.

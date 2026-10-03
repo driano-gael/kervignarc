@@ -216,6 +216,13 @@ def test_une_entree_sans_chemin_depuis_la_racine_est_reperee() -> None:
     assert adr._chemins_non_reconnus(section, []) == ("application/prelevement.py",)
 
 
+def test_un_chemin_abrege_a_cote_d_un_chemin_complet_est_repere() -> None:
+    """ADR-0115 : `api/corps.py` voisinait un chemin complet, et personne ne le vérifiait."""
+    section = "## Porté dans le code par\n\n- `backend/api/v1/x.py` — routes ; `api/corps.py`\n"
+
+    assert adr._chemins_non_reconnus(section, []) == ("api/corps.py",)
+
+
 # --- CA E00US028 : « un chemin disparu ou un symbole introuvable est bloquant » ----------------
 
 

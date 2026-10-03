@@ -205,7 +205,7 @@ défaut.**
    n'empêchait une US future de l'importer dans l'admin — la décision était appliquée sans être
    gardée, exactement le mode de panne d'ADR-0017
    qu'[ADR-0075](0075-le-depart-est-la-portee-sportive.md) existe pour ne pas rejouer.
-2. La correction a rendu la ligne de `application/identite.py` fausse à son tour, en la faisant
+2. La correction a rendu la ligne de `backend/application/identite.py` fausse à son tour, en la faisant
    renvoyer à un « §3 (`P-4`) » — alors que `P-4` n'apparaît nulle part dans cet ADR et que §3 ne
    décide rien sur le caractère non bloquant du contraste.
 3. Et la suivante a laissé la ligne du repository attester l'invariant « les **deux** colonnes d'un

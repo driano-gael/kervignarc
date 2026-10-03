@@ -100,7 +100,7 @@ tableau peut faire basculer un vainqueur.
   presets tant que `armes` vaut `null`.
 - `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`, `arme_figee`), qui
   résout avec le **même** `ResolveurBaremeDuel` que la saisie ; une instance, câblée dans
-  `bootstrap/composition.py`, partagée par les services de phases et de catégories.
+  bootstrap/composition.py, partagée par les services de phases et de catégories.
 - `backend/application/categories.py` — `ServiceCategories.modifier` (§7).
 - `backend/domain/duel.py` — `memes_baremes`, l'égalité à la casse près que compare le §5.
 - `frontend/src/features/saisie-duels/duel.ts` — `mancheNeuveFermee` (§6 : pas de 5ᵉ manche).

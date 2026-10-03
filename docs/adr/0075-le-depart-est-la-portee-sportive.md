@@ -150,8 +150,8 @@ appliquées dans l'US qui porte cet ADR :
 - `backend/domain/phase.py` (`Phase.depart_id`, `SequencePhases`)
 - `backend/application/classements.py` (`pour_depart` ; la méthode pour_tournoi a disparu — reste `_forfaits_qualif`, à la maille
   tournoi, `DETTE-047`)
-  ⚠️ *Corrigé le 07/08/2026 en revue : cette liste nommait aussi `domain/classement.py`,
-  `domain/tableau.py` et `domain/duel.py`, qui ne portent **rien** de la portée — aucun n'a de champ
+  ⚠️ *Corrigé le 07/08/2026 en revue : cette liste nommait aussi domain/classement.py,
+  domain/tableau.py et domain/duel.py, qui ne portent **rien** de la portée — aucun n'a de champ
   de rattachement, ils suivent la phase par son identifiant. Une section « Porté dans le code par » qui
   nomme des modules vides reproduit exactement le défaut d'ADR-0017 qu'elle existe pour empêcher.*
 - `backend/domain/format_tournoi.py` (`verifier_applicable`, le garde appelable **avant** toute

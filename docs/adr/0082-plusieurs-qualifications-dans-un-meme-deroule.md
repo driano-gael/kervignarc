@@ -205,10 +205,10 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
   `definir_pour_etape`, `qualifications` (§5)
 - `backend/application/phases.py` — `ajouter` : les réglages de départ d'une qualification composée
   à l'atelier (§5)
-- `backend/infrastructure/db/models.py` · `.../repositories/tir.py` — `UNIQUE(phase_id, archer_id)`
+- `backend/infrastructure/db/models.py` · `backend/infrastructure/db/repositories/tir.py` — `UNIQUE(phase_id, archer_id)`
   et l'upsert sur la nouvelle clé
 - `backend/migrations/versions/0044_serie_par_phase.py` — la reprise des données, ses trois cas
-- `backend/api/v1/bareme_qualification.py` · `.../grain_validation.py` — les routes par étape
+- `backend/api/v1/bareme_qualification.py` · `backend/api/v1/grain_validation.py` — les routes par étape
 - `frontend/src/features/bareme/` · `frontend/src/features/grain-validation/` — l'écran
   « Barème & validation » : un formulaire de barème **et** un de grain par qualification (§5)
 - `backend/tests/test_domain_palmares_qualifications_multiples.py`,

@@ -228,7 +228,7 @@ Chaque symbole vérifié dans le code du jour.)*
 - `backend/domain/duel.py` — **le barème** : `BaremeDuel` et ses presets
   (`preset_ffta_classique`, `preset_ffta_poulies`, `preset_club`), résolu derrière le `Protocol`
   `ResolveurBaremeDuel` (`bareme_pour(arme)`), implémenté par `ResolveurBaremeDuelFfta`, injecté au
-  composition root (`bootstrap/composition.py`). Depuis ADR-0117, ce n'est plus que le **défaut**
+  composition root (`backend/bootstrap/composition.py`). Depuis ADR-0117, ce n'est plus que le **défaut**
   d'une phase sans `ReglageBaremeDuel`. Le nombre de flèches de barrage (E13US003) y est un champ
   **obligatoire**, `nb_fleches_barrage` ; `saisir_barrage` en exige exactement autant par camp.
 - `backend/application/saisie_duels.py` — **le tableau reconstruit** : `_decor` revalide les gardes
