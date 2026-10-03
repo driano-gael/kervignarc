@@ -754,3 +754,30 @@ def test_une_phase_dun_autre_type_est_refusee_par_la_route_colline(app_colline: 
 
     assert reponse.status_code == 409, reponse.text
     assert reponse.json()["code"] == "phase_pas_une_colline"
+
+
+def test_le_barrage_se_saisit_en_listes_de_fleches(
+    app_colline: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US003 CA 3 : le corps porte `fleches_haut`/`fleches_bas` en listes (le barrage d'équipe
+    en tire plusieurs) ; l'ancienne forme à une flèche est refusée à la frontière (400)."""
+    with TestClient(app_colline) as client:
+        scn = Scenario(app_colline)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        base = {"tournoi_id": scn.tournoi_id, "phase_id": scn.phase_id, "numero": 1}
+
+        ancienne = client.post(
+            "/api/v1/colline/barrages",
+            json={**base, "fleche_haut": "10", "fleche_bas": "9"},
+            headers=entetes,
+        )
+        nouvelle = client.post(
+            "/api/v1/colline/barrages",
+            json={**base, "fleches_haut": ["10"], "fleches_bas": ["9"]},
+            headers=entetes,
+        )
+
+    assert ancienne.status_code == 400, ancienne.text
+    # Le corps passe la frontière : c'est le métier qui répond (aucun barrage n'est requis ici).
+    assert nouvelle.status_code == 422, nouvelle.text
+    assert nouvelle.json()["code"] == "barrage_non_requis"

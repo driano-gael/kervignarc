@@ -59,13 +59,43 @@ describe('le barème des duels d’une phase', () => {
 
     await waitFor(() => expect(ajouterPhase).toHaveBeenCalled())
     expect(configEnvoyee().bareme_duel).toEqual({
-      par_defaut: { mode: 'sets', nb_manches: 5, nb_fleches_par_volee: 3, points_pour_gagner: 4 },
+      par_defaut: {
+        mode: 'sets',
+        nb_manches: 5,
+        nb_fleches_par_volee: 3,
+        points_pour_gagner: 4,
+        nb_fleches_barrage: 1,
+      },
       surcharges: [
         {
           arme: 'Arc à poulies',
-          bareme: { mode: 'cumul', nb_manches: 5, nb_fleches_par_volee: 3, points_pour_gagner: 0 },
+          bareme: {
+            mode: 'cumul',
+            nb_manches: 5,
+            nb_fleches_par_volee: 3,
+            points_pour_gagner: 0,
+            nb_fleches_barrage: 1,
+          },
         },
       ],
+    })
+  })
+
+  it('le preset FFTA équipe part au serveur avec un barrage à trois flèches (E13US003)', async () => {
+    monter()
+    const preset = await screen.findByRole('button', { name: 'Preset FFTA équipe' })
+    await waitFor(() => expect(preset).toBeEnabled())
+    await userEvent.click(preset)
+    expect(screen.getAllByLabelText('Flèches de barrage par camp')[0]).toHaveValue('3')
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter la phase' }))
+
+    await waitFor(() => expect(ajouterPhase).toHaveBeenCalled())
+    expect(configEnvoyee().bareme_duel?.par_defaut).toEqual({
+      mode: 'sets',
+      nb_manches: 4,
+      nb_fleches_par_volee: 6,
+      points_pour_gagner: 5,
+      nb_fleches_barrage: 3,
     })
   })
 

@@ -25,6 +25,7 @@ const DUEL: Duel = {
   nb_manches: 5,
   nb_fleches_par_volee: 3,
   points_pour_gagner: 6,
+  nb_fleches_barrage: 1,
   zones: ['10', '9', '8', 'M'],
   validee_par: null,
   manches: [],

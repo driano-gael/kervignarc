@@ -218,7 +218,7 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | **E02US010** | Horaire de départ HH:MM obligatoire & ≥ 1 départ | J1 | remontée « 9hzc » |
 | **E13US001** | Abstraction participant (le match oppose des participants) | J2 | ADR-0028 (**avant E05US005**) |
 | **E13US002** | Composer les équipes d'un tournoi | J2 | EPIC-13 |
-| **E13US003** | Scoring d'équipe (politique injectable) | J2 | EPIC-13 |
+| **E13US003** | Scoring d'équipe (barème et barrage) | J2 | EPIC-13 |
 | **E13US004** | Placement, saisie & classement par équipe | J2→J3 | EPIC-13 |
 
 > **[EPIC-13](../epics/EPIC-13-equipes.md)** créé — épreuves par équipes, **in-scope MVP** (renverse le « hors périmètre » du 14/07, ADR-0028).

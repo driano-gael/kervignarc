@@ -49,6 +49,7 @@ function duel(patch: Partial<Duel> = {}): Duel {
     nb_manches: null,
     nb_fleches_par_volee: null,
     points_pour_gagner: null,
+    nb_fleches_barrage: null,
     zones: [],
     validee_par: null,
     manches: [],

@@ -731,34 +731,44 @@ function SaisieBarrage({
   famille: FamilleDuel
 }) {
   const saisir = useSaisirBarrage(tournoiId, phaseId, matchNumero, famille)
-  const [flecheHaut, setFlecheHaut] = useState<string | null>(duel.barrage?.haut ?? null)
-  const [flecheBas, setFlecheBas] = useState<string | null>(duel.barrage?.bas ?? null)
+  const nbFleches = duel.nb_fleches_barrage ?? 1
+  const [flechesHaut, setFlechesHaut] = useState<string[]>(duel.barrage?.haut ?? [])
+  const [flechesBas, setFlechesBas] = useState<string[]>(duel.barrage?.bas ?? [])
   const [designe, setDesigne] = useState<Cote | null>(duel.barrage?.gagnant_designe ?? null)
 
   // Resynchronisation **au rendu** si le barrage serveur change (rejeu / relecture) pendant que le
   // formulaire reste monté — même pattern que la grille de manche. Sans quoi la sélection resterait
   // figée sur les valeurs du montage.
-  const signatureBarrage = `${duel.barrage?.haut ?? ''}:${duel.barrage?.bas ?? ''}:${duel.barrage?.gagnant_designe ?? ''}`
+  const signatureBarrage = `${(duel.barrage?.haut ?? []).join(',')}:${(duel.barrage?.bas ?? []).join(',')}:${duel.barrage?.gagnant_designe ?? ''}`
   const [ancreBarrage, setAncreBarrage] = useState(signatureBarrage)
   if (ancreBarrage !== signatureBarrage) {
     setAncreBarrage(signatureBarrage)
-    setFlecheHaut(duel.barrage?.haut ?? null)
-    setFlecheBas(duel.barrage?.bas ?? null)
+    setFlechesHaut(duel.barrage?.haut ?? [])
+    setFlechesBas(duel.barrage?.bas ?? [])
     setDesigne(duel.barrage?.gagnant_designe ?? null)
   }
 
-  // La désignation n'est requise (et proposée) que si les deux flèches sont saisies **et égales**.
-  const egales = flecheHaut !== null && flecheBas !== null && flecheHaut === flecheBas
-  const pretAEnvoyer = flecheHaut !== null && flecheBas !== null && (!egales || designe !== null)
+  // La désignation n'est requise (et proposée) que si les deux camps sont complets **et à égalité
+  // de total** — la règle du serveur (§8.2, E13US003).
+  const complets = flechesHaut.length === nbFleches && flechesBas.length === nbFleches
+  // DETTE-111 — `totalVolee` recopie la règle zone → points du serveur, et décide ici de la désignation.
+  const egales = complets && totalVolee(flechesHaut) === totalVolee(flechesBas)
+  const pretAEnvoyer = complets && (!egales || designe !== null)
+
+  // Une désignation vaut pour les flèches qu'elle a vues : toute correction la redemande.
+  const changerFleches = (poser: (valeurs: string[]) => void, valeurs: string[]) => {
+    poser(valeurs)
+    setDesigne(null)
+  }
 
   const enregistrer = () => {
-    if (flecheHaut === null || flecheBas === null) return
+    if (!complets) return
     saisir.mutate({
       tournoi_id: tournoiId,
       phase_id: phaseId,
       match_numero: matchNumero,
-      fleche_haut: flecheHaut,
-      fleche_bas: flecheBas,
+      fleches_haut: flechesHaut,
+      fleches_bas: flechesBas,
       gagnant_designe: egales ? designe : null,
       identifiant_saisie: nouvelIdentifiant(),
     })
@@ -766,25 +776,33 @@ function SaisieBarrage({
 
   return (
     <div className="duel__barrage">
-      <p className="duel__barrage-titre">Barrage (une flèche par archer, le plus près du centre)</p>
+      <p className="duel__barrage-titre">
+        {nbFleches === 1
+          ? 'Barrage (une flèche par archer, le plus près du centre)'
+          : `Barrage (${nbFleches} flèches par camp : le plus haut total, puis le plus près du centre)`}
+      </p>
       <div className="duel__barrage-camps">
-        <ChoixFleche
+        <ChoixFleches
           nom={duel.haut ? duel.haut.nom : 'Haut'}
           zones={duel.zones}
-          valeur={flecheHaut}
-          onChoisir={setFlecheHaut}
+          nbFleches={nbFleches}
+          valeurs={flechesHaut}
+          onChanger={(valeurs) => changerFleches(setFlechesHaut, valeurs)}
         />
-        <ChoixFleche
+        <ChoixFleches
           nom={duel.bas ? duel.bas.nom : 'Bas'}
           zones={duel.zones}
-          valeur={flecheBas}
-          onChoisir={setFlecheBas}
+          nbFleches={nbFleches}
+          valeurs={flechesBas}
+          onChanger={(valeurs) => changerFleches(setFlechesBas, valeurs)}
         />
       </div>
 
       {egales && (
         <div className="duel__designation" role="group" aria-label="Plus près du centre">
-          <span>Flèches à égalité — qui est le plus près du centre ?</span>
+          <span>
+            {nbFleches === 1 ? 'Flèches' : 'Totaux'} à égalité — qui est le plus près du centre ?
+          </span>
           <div className="duel__designation-choix">
             <button
               type="button"
@@ -814,22 +832,29 @@ function SaisieBarrage({
   )
 }
 
-// Choix d'**une** flèche (barrage) parmi les zones du blason : un mini-pavé à sélection unique.
-function ChoixFleche({
+// Les flèches de barrage d'un camp parmi les zones du blason. À une flèche, toucher une zone la
+// **remplace** (sélection unique) ; à plusieurs (équipe, E13US003), les flèches s'ajoutent jusqu'à
+// `nbFleches` et « Effacer » retire la dernière, comme la volée d'une manche.
+function ChoixFleches({
   nom,
   zones,
-  valeur,
-  onChoisir,
+  nbFleches,
+  valeurs,
+  onChanger,
 }: {
   nom: string
   zones: string[]
-  valeur: string | null
-  onChoisir: (zone: string) => void
+  nbFleches: number
+  valeurs: string[]
+  onChanger: (valeurs: string[]) => void
 }) {
+  const unique = nbFleches === 1
+  const complet = valeurs.length >= nbFleches
   return (
-    <div className="duel__barrage-camp">
+    <div className="duel__barrage-camp" role="group" aria-label={`Flèches de barrage de ${nom}`}>
       <span className="duel__volee-nom">
-        {nom} : <strong>{valeur ?? '·'}</strong>
+        {nom} : <strong>{valeurs.length === 0 ? '·' : valeurs.join(' ')}</strong>
+        {!unique && ` (${totalVolee(valeurs)})`}
       </span>
       <div className="saisie__zones">
         {zones.map((zone) => (
@@ -837,13 +862,25 @@ function ChoixFleche({
             key={zone}
             type="button"
             className="saisie__zone"
-            aria-pressed={valeur === zone}
-            onClick={() => onChoisir(zone)}
+            aria-pressed={unique ? valeurs[0] === zone : undefined}
+            disabled={!unique && complet}
+            onClick={() => onChanger(unique ? [zone] : [...valeurs, zone])}
           >
             {zone}
           </button>
         ))}
       </div>
+      {!unique && (
+        <button
+          type="button"
+          className="bouton--discret"
+          aria-label={`Effacer la dernière flèche de barrage de ${nom}`}
+          disabled={valeurs.length === 0}
+          onClick={() => onChanger(valeurs.slice(0, -1))}
+        >
+          Effacer
+        </button>
+      )}
     </div>
   )
 }
