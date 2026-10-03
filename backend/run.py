@@ -10,6 +10,7 @@ migrer → annoncer → servir.
 from __future__ import annotations
 
 import os
+import sys
 import threading
 
 import uvicorn
@@ -78,8 +79,13 @@ def _servir(app: FastAPI) -> None:
     _rappel = arret_console.installer(_demander_arret, arrete)  # vivant jusqu'au retour
     try:
         serveur.run()
+    except KeyboardInterrupt:
+        pass
     finally:
         arrete.set()
+    # Ce qu'`uvicorn.run` faisait seul : un démarrage raté (port déjà pris) sort en erreur.
+    if not serveur.started:
+        sys.exit(3)
 
 
 if __name__ == "__main__":

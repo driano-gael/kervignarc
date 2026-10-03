@@ -18,9 +18,10 @@ liste, vérification (intégrité **et** version), restauration confirmée, sans
 courant est d'abord copié (`avant-restauration-*`, hors rétention : une restauration s'annule), les
 sessions de tablette et de scoreur sont fermées. La restauration est une **écriture de la file**
 ([ADR-0119](../docs/adr/0119-la-restauration-est-une-ecriture-de-la-file.md)). L'arrêt draine aussi
-par la **croix de la console**. ⚠️ **Non vérifiée au navigateur, et la croix non rejouée en vrai** —
-couverte par les tests de service, d'adapter, d'API et d'écran monté ; la croix reste à éprouver sur
-le PC du jour J (`docs/fonctionnel/E11US006.md`, scénario D).)*
+par la **croix de la console** — rejouée sur une console Windows réelle en revue (drain de 2 s mené à
+son terme ; au-delà de ~4 s, Windows ferme quand même). `DETTE-122` ouverte : l'état persisté des
+tablettes n'est pas purgé. ⚠️ **Non vérifiée au navigateur** — couverte par les tests de service,
+d'adapter, d'API et d'écran monté.)*
 Précédente : `E03US010`
 *(**le déroulé horaire de la journée** — l'organisateur donne une **durée prévue** à chaque phase,
 jamais préremplie ; l'application **calcule** début et fin **pour chaque départ**, une phase

@@ -8,9 +8,12 @@ l'événement : le gestionnaire **attend** la fin de l'arrêt, dans ce délai.
 
 from __future__ import annotations
 
+import logging
 import sys
 import threading
 from collections.abc import Callable
+
+_logger = logging.getLogger(__name__)
 
 # Valeurs de l'API Windows `SetConsoleCtrlHandler` (wincon.h).
 _CTRL_CLOSE_EVENT = 2
@@ -47,13 +50,17 @@ def installer(demander_arret: Callable[[], None], arrete: threading.Event) -> ob
     if sys.platform != "win32":
         return None
     import ctypes
+    from ctypes import wintypes
 
-    prototype = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint)
+    # `HandlerRoutine` rend un BOOL Windows (entier 32 bits), pas un `_Bool` : avec `c_bool`, les
+    # bits hauts du registre de retour sont indéterminés.
+    prototype = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
 
     def _gestionnaire(evenement: int) -> bool:
         return traiter_evenement(evenement, demander_arret, arrete, DELAI_ARRET_S)
 
     rappel = prototype(_gestionnaire)
     if not ctypes.windll.kernel32.SetConsoleCtrlHandler(rappel, True):
+        _logger.warning("Gestionnaire de console non installé : la croix arrêtera sans drainer.")
         return None
     return rappel

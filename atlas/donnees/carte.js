@@ -1300,6 +1300,17 @@ window.ATLAS.carte = {
   },
   {
    "autorise": true,
+   "cible": "infrastructure",
+   "couche_cible": "infrastructure",
+   "couche_source": "infrastructure",
+   "occurrences": 1,
+   "origines": [
+    "backend/infrastructure/backup/restauration.py"
+   ],
+   "source": "infrastructure/backup"
+  },
+  {
+   "autorise": true,
    "cible": "infrastructure/db",
    "couche_cible": "infrastructure",
    "couche_source": "infrastructure",
@@ -2724,7 +2735,7 @@ window.ATLAS.carte = {
     },
     {
      "fichier": "backend/infrastructure/backup/restauration.py",
-     "nom": "MagasinSauvegardesSQLite"
+     "nom": "StoreSauvegardesSQLite"
     },
     {
      "fichier": "backend/infrastructure/db/repositories/moteur.py",
@@ -2978,26 +2989,6 @@ window.ATLAS.carte = {
     "reconstruire"
    ],
    "nom": "LecteurTableau",
-   "sans_adapter": false
-  },
-  {
-   "adapters": [
-    {
-     "fichier": "backend/infrastructure/backup/restauration.py",
-     "nom": "MagasinSauvegardesSQLite"
-    }
-   ],
-   "couche": "application",
-   "fichier": "backend/application/sauvegardes.py",
-   "hors_domaine": true,
-   "methodes": [
-    "copier_avant_restauration",
-    "examiner",
-    "lister",
-    "restaurer",
-    "revision_en_service"
-   ],
-   "nom": "MagasinSauvegardes",
    "sans_adapter": false
   },
   {
@@ -3393,6 +3384,26 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/infrastructure/backup/restauration.py",
+     "nom": "StoreSauvegardesSQLite"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/sauvegardes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "copier_avant_restauration",
+    "examiner",
+    "lister",
+    "restaurer",
+    "revision_en_service"
+   ],
+   "nom": "StoreSauvegardes",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/infrastructure/auth/sessions.py",
      "nom": "SessionStore"
     }
@@ -3506,7 +3517,7 @@ window.ATLAS.carte = {
   "aretes_front": 189,
   "enchevetrements": 4,
   "features": 54,
-  "imports": 1058,
+  "imports": 1059,
   "imports_entre_couches": 888,
   "plus_gros_noeud": 25,
   "ports": 79,

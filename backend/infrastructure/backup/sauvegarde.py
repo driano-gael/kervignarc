@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from domain.ports import Horloge
-from infrastructure.db.snapshot import copier_base_coherente
+from infrastructure.db.snapshot import copier_base_atomique
 
 _logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class SauvegardeSQLite:
         self._dossier.mkdir(parents=True, exist_ok=True)
         horodatage = self._horloge.maintenant().strftime("%Y%m%d-%H%M%S")
         cible = self._dossier / f"kervignarc-{horodatage}.db"
-        copier_base_coherente(self._source, cible)
+        copier_base_atomique(self._source, cible)
         self._appliquer_retention()
         _logger.info("Sauvegarde de la base : %s", cible.name)
         return cible

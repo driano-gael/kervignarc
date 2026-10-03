@@ -1,4 +1,4 @@
-"""Tests de l'adapter `MagasinSauvegardesSQLite` (E11US006) — infra, écrits après l'adapter.
+"""Tests de l'adapter `StoreSauvegardesSQLite` (E11US006) — infra, écrits après l'adapter.
 
 Ce qui se vérifie ici ne se voit pas avec une doublure : corruption réelle d'un fichier, ouverture
 d'une sauvegarde en WAL, et surtout restauration **sous une connexion déjà ouverte** du pool.
@@ -10,12 +10,14 @@ import datetime
 import sqlite3
 from pathlib import Path
 
+import pytest
 from sqlalchemy import text
 
 from application.sauvegardes import NatureSauvegarde
-from infrastructure.backup.restauration import MagasinSauvegardesSQLite
+from infrastructure.backup.restauration import StoreSauvegardesSQLite
 from infrastructure.backup.sauvegarde import SauvegardeSQLite
 from infrastructure.db.engine import Database
+from infrastructure.erreurs import RestaurationImpossible
 
 _REVISION = "0058_tete"
 
@@ -47,15 +49,15 @@ def _valeur(chemin: Path) -> str:
         connexion.close()
 
 
-def _magasin(tmp_path: Path) -> tuple[MagasinSauvegardesSQLite, Path, Path]:
+def _store(tmp_path: Path) -> tuple[StoreSauvegardesSQLite, Path, Path]:
     base = tmp_path / "kervignarc.db"
     dossier = tmp_path / "backups"
     dossier.mkdir()
-    return MagasinSauvegardesSQLite(base, dossier, _HorlogeFigee()), base, dossier
+    return StoreSauvegardesSQLite(base, dossier, _HorlogeFigee()), base, dossier
 
 
 def test_lister_reconnait_les_deux_natures_et_ignore_le_reste(tmp_path: Path) -> None:
-    magasin, _, dossier = _magasin(tmp_path)
+    store, _, dossier = _store(tmp_path)
     for nom in [
         "kervignarc-20261003-090000.db",
         "avant-restauration-20261003-100000.db",
@@ -63,10 +65,11 @@ def test_lister_reconnait_les_deux_natures_et_ignore_le_reste(tmp_path: Path) ->
         "kervignarc.db",
         "notes.txt",
         "kervignarc-20261003-090000.db-wal",
+        "kervignarc-20261003-100000.db.tmp",  # copie en cours d'écriture
     ]:
         (dossier / nom).write_bytes(b"x")
 
-    trouvees = {s.nom: s for s in magasin.lister()}
+    trouvees = {s.nom: s for s in store.lister()}
 
     assert set(trouvees) == {
         "kervignarc-20261003-090000.db",
@@ -82,44 +85,44 @@ def test_lister_reconnait_les_deux_natures_et_ignore_le_reste(tmp_path: Path) ->
 
 
 def test_lister_un_dossier_absent_rend_une_liste_vide(tmp_path: Path) -> None:
-    magasin = MagasinSauvegardesSQLite(tmp_path / "k.db", tmp_path / "absent", _HorlogeFigee())
+    store = StoreSauvegardesSQLite(tmp_path / "k.db", tmp_path / "absent", _HorlogeFigee())
 
-    assert magasin.lister() == []
+    assert store.lister() == []
 
 
 def test_examiner_une_sauvegarde_saine_produite_par_la_sauvegarde_periodique(
     tmp_path: Path,
 ) -> None:
     # Bout en bout avec E11US003 : la copie hérite du mode WAL de la base, et s'ouvre quand même.
-    magasin, base, dossier = _magasin(tmp_path)
+    store, base, dossier = _store(tmp_path)
     _base(base, "vive")
     nom = SauvegardeSQLite(base, dossier, 5, _HorlogeFigee()).sauvegarder().name
 
-    examen = magasin.examiner(nom)
+    examen = store.examiner(nom)
 
     assert examen.integre
     assert examen.revision == _REVISION
 
 
 def test_examiner_une_base_sans_alembic_version(tmp_path: Path) -> None:
-    magasin, _, dossier = _magasin(tmp_path)
+    store, _, dossier = _store(tmp_path)
     _base(dossier / "kervignarc-20261003-090000.db", "x", revision=None)
 
-    examen = magasin.examiner("kervignarc-20261003-090000.db")
+    examen = store.examiner("kervignarc-20261003-090000.db")
 
     assert examen.integre
     assert examen.revision is None
 
 
 def test_examiner_un_fichier_qui_n_est_pas_une_base(tmp_path: Path) -> None:
-    magasin, _, dossier = _magasin(tmp_path)
+    store, _, dossier = _store(tmp_path)
     (dossier / "kervignarc-20261003-090000.db").write_bytes(b"pas une base SQLite" * 200)
 
-    assert not magasin.examiner("kervignarc-20261003-090000.db").integre
+    assert not store.examiner("kervignarc-20261003-090000.db").integre
 
 
 def test_examiner_une_base_aux_pages_abimees(tmp_path: Path) -> None:
-    magasin, _, dossier = _magasin(tmp_path)
+    store, _, dossier = _store(tmp_path)
     chemin = dossier / "kervignarc-20261003-090000.db"
     _base(chemin, "y" * 200, lignes=500)
     contenu = bytearray(chemin.read_bytes())
@@ -129,13 +132,13 @@ def test_examiner_une_base_aux_pages_abimees(tmp_path: Path) -> None:
     contenu[debut : debut + taille_page] = b"\xff" * taille_page
     chemin.write_bytes(bytes(contenu))
 
-    assert not magasin.examiner(chemin.name).integre
+    assert not store.examiner(chemin.name).integre
 
 
 def test_examiner_une_base_que_integrity_check_signale_sans_lever(tmp_path: Path) -> None:
     # Le cas précédent lève à la lecture ; celui-ci se lit sans erreur, seul le PRAGMA le voit :
     # un index retiré du schéma laisse ses pages orphelines (« Page N is never used »).
-    magasin, _, dossier = _magasin(tmp_path)
+    store, _, dossier = _store(tmp_path)
     chemin = dossier / "kervignarc-20261003-090000.db"
     _base(chemin, "z" * 200, lignes=200)
     connexion = sqlite3.connect(str(chemin))
@@ -147,25 +150,25 @@ def test_examiner_une_base_que_integrity_check_signale_sans_lever(tmp_path: Path
     finally:
         connexion.close()
 
-    examen = magasin.examiner(chemin.name)
+    examen = store.examiner(chemin.name)
 
     assert not examen.integre
     assert examen.revision == _REVISION  # la base se lit : c'est bien le PRAGMA qui a parlé
 
 
 def test_revision_en_service(tmp_path: Path) -> None:
-    magasin, base, _ = _magasin(tmp_path)
+    store, base, _ = _store(tmp_path)
     _base(base, "vive")
 
-    assert magasin.revision_en_service() == _REVISION
+    assert store.revision_en_service() == _REVISION
 
 
 def test_copie_avant_restauration_hors_retention_et_sans_ecrasement(tmp_path: Path) -> None:
-    magasin, base, dossier = _magasin(tmp_path)
+    store, base, dossier = _store(tmp_path)
     _base(base, "original")
 
-    premiere = magasin.copier_avant_restauration()
-    seconde = magasin.copier_avant_restauration()  # même seconde (horloge figée)
+    premiere = store.copier_avant_restauration()
+    seconde = store.copier_avant_restauration()  # même seconde (horloge figée)
     SauvegardeSQLite(base, dossier, 1, _HorlogeFigee()).sauvegarder()
 
     assert premiere == "avant-restauration-20261003-120000.db"
@@ -174,10 +177,12 @@ def test_copie_avant_restauration_hors_retention_et_sans_ecrasement(tmp_path: Pa
     assert (dossier / premiere).exists()
     assert (dossier / seconde).exists()
     assert _valeur(dossier / premiere) == "original"
+    # Écriture atomique : aucun fichier provisoire ne reste après la copie.
+    assert not list(dossier.glob("*.tmp"))
 
 
 def test_restaurer_sous_une_connexion_du_pool_deja_ouverte(tmp_path: Path) -> None:
-    magasin, base, dossier = _magasin(tmp_path)
+    store, base, dossier = _store(tmp_path)
     _base(dossier / "kervignarc-20261003-090000.db", "avant")
     _base(base, "apres")
     database = Database(f"sqlite:///{base}")
@@ -186,9 +191,29 @@ def test_restaurer_sous_une_connexion_du_pool_deja_ouverte(tmp_path: Path) -> No
             assert connexion.execute(text("SELECT x FROM t")).scalar_one() == "apres"
             connexion.commit()
 
-            magasin.restaurer("kervignarc-20261003-090000.db")
+            store.restaurer("kervignarc-20261003-090000.db")
 
             # Même connexion, transaction suivante : elle lit le contenu restauré.
             assert connexion.execute(text("SELECT x FROM t")).scalar_one() == "avant"
     finally:
         database.engine.dispose()
+
+
+def test_restaurer_une_sauvegarde_disparue_leve_une_erreur_typee(tmp_path: Path) -> None:
+    # Purgée par la rétention entre la vérification et la restauration (course hors file).
+    store, base, _ = _store(tmp_path)
+    _base(base, "vive")
+
+    with pytest.raises(RestaurationImpossible):
+        store.restaurer("kervignarc-20261003-090000.db")
+
+    assert _valeur(base) == "vive"
+
+
+def test_la_sauvegarde_periodique_ne_laisse_aucun_fichier_provisoire(tmp_path: Path) -> None:
+    _, base, dossier = _store(tmp_path)
+    _base(base, "vive")
+
+    SauvegardeSQLite(base, dossier, 5, _HorlogeFigee()).sauvegarder()
+
+    assert [c.name for c in dossier.iterdir()] == ["kervignarc-20261003-120000.db"]

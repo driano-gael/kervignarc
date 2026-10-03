@@ -40,6 +40,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
+| [DETTE-122](#dette-122--une-restauration-ne-purge-pas-létat-persisté-des-tablettes) | conception | mineur | `backend/bootstrap/composition.py` (`_oublier_etat_volatil`, marqueur `DETTE-122`) ↔ `frontend/src/shared/stores/fileHorsLigneStore.ts`, `fileDuelsHorsLigneStore.ts`, `sessionSuivisStore.ts` | La restauration vide les registres **du serveur** indexés par des identifiants de la base, pas l'état **persisté par les tablettes** : files hors ligne de volées et de duels, archers suivis. Un 401 est transitoire pour la file hors ligne, qui survit donc au re-rattachement, et l'idempotence vidée laisse le rejeu s'exécuter | Restauration **puis réimportation** qui redistribue les identifiants : une volée en attente sur une tablette se rejoue sur un **autre archer**, sans erreur. Trou déjà présent avec la procédure manuelle (redémarrage), que la restauration à chaud rend plus probable en la rendant facile | **E11US006** (03/10/2026), relevé par la revue adversariale | Un événement temps réel `base_restauree` sur lequel chaque tablette **abandonne** (ou fait valider) sa file au lieu de la rejouer ; à arbitrer : jeter une volée non envoyée est aussi une perte. Sortie : aucune file hors ligne ne survit à une restauration sans décision explicite |
 | [DETTE-119](#dette-119--la-reconnaissance-des-poulies-vit-en-double-au-front-et-au-domaine) | technique | mineur | `frontend/src/shared/phases/baremeDuel.ts` (`estPoulies`) ↔ `backend/domain/duel.py` (`_est_poulies`), marqueurs `DETTE-119` aux deux sites | La règle « une arme dont le libellé contient *poulie* ou *compound* est un arc à poulies » est écrite deux fois : au domaine (défaut d'une phase non réglée) et au front (pré-remplissage des presets, avertissements d'écart) | Si elles divergent, un preset oublie une arme ou l'avertissement « sans barème propre » se trompe — sans test qui les confronte. Règle courte et stable : l'option « rien » se défend | **E01US011** (01/10/2026, 2ᵉ passe de revue, axe C2) — précédent `DETTE-076` | Un test de contrat qui passe la **même** liste de libellés aux deux règles ; ou une route qui expose la reconnaissance du domaine |
 | [DETTE-118](#dette-118--déplacer-un-archer-après-son-duel-relit-ses-duels-sous-un-autre-barème) | conception | majeur | `backend/application/archers.py` (`_signaler_changement_categorie`, marqueur `DETTE-118`) | Changer la catégorie d'un archer qui a tiré ne pose qu'une **confirmation** ; si l'arme change, ses duels déjà tirés se **relisent** sous le barème de la nouvelle arme (le barème n'est pas stocké avec le tir, ADR-0049 §4) | Un vainqueur peut changer, ou un duel validé redevenir non tranché et disparaître du tableau. Le message le dit depuis E01US011, sans le refuser — c'est la route jumelle du verrou d'arme d'ADR-0117 §7 | **E01US011** (01/10/2026, 2ᵉ passe, axe D) — arbitrage du commanditaire : dette + message plutôt que refus ; le défaut existait depuis E04US013 (ADR-0049, « mutation d'arme ») sans ligne au registre | Le **gel du classement** pendant les phases finales (E01US017/E12US002) ; à défaut, étendre `VerrouBaremeDuel` à ce chemin |
 | [DETTE-117](#dette-117--le-barème-club-des--finales-et-finales-nest-pas-exprimable) | conception | mineur | `frontend/src/shared/phases/baremeDuel.ts` (`presetClub`, marqueur `DETTE-117`) · `backend/domain/deroule_etape.py` (`EtapeDeroule.bareme_duel`, un réglage pour tout le tableau) | Le format club du [référentiel §10.1](referentiel-ffta.md) joue ses duels à 4 points mais ses **½ finales et finales à 6** ; le barème de duel est réglé **par étape**, et une étape d'élimination directe porte tout le tableau | Le preset *format club* pose 4 points **jusqu'en finale** : un club qui suit son règlement doit soit l'accepter, soit régler 6 et le perdre aux premiers tours. Aucun archer n'est mal départagé — les deux barèmes sont des règles complètes —, mais ce n'est pas le format du club | **E01US011** (01/10/2026, revue) — arbitrage du commanditaire : US dédiée plutôt qu'élargir l'US en revue | `E01US027` — un barème appliqué **à partir d'un tour** ; amende ADR-0117 (la résolution dépendra aussi du tour du match) |
@@ -5251,3 +5252,25 @@ poules de `DETTE-076`. Aucun test ne confronte les deux copies.
 **Remède** : un test de contrat — une liste de libellés partagée, passée aux deux règles — ou une route
 qui expose la reconnaissance du domaine au front. L'option « rien » se défend tant que la règle ne
 bouge pas.
+
+### DETTE-122 — une restauration ne purge pas l'état persisté des tablettes
+
+**Où** : `backend/bootstrap/composition.py` (`_oublier_etat_volatil`, marqueur `DETTE-122`) ; côté
+client, `frontend/src/shared/stores/fileHorsLigneStore.ts`, `fileDuelsHorsLigneStore.ts` et
+`sessionSuivisStore.ts`.
+
+**Le raccourci.** [ADR-0119](adr/0119-la-restauration-est-une-ecriture-de-la-file.md) §6 vide les cinq
+registres en mémoire du serveur parce que la base restaurée peut avoir réattribué leurs identifiants.
+Le même raisonnement vaut pour ce que les tablettes ont **persisté** — et rien ne le purge. La file
+hors ligne classe le 401 comme transitoire (`features/saisie/horsLigne.ts`) : elle survit au
+re-rattachement et se rejoue, et l'idempotence vidée l'y autorise.
+
+**Pourquoi assumé.** Sans réimportation après la restauration, les identifiants d'une copie de la même
+journée sont ceux de la base : le rejeu écrit au bon endroit ou est refusé. Le cas grave demande une
+restauration **suivie** d'une réimportation, pendant que des tablettes gardent des volées en attente.
+Le même trou existait déjà avec la procédure manuelle. Le remède n'est pas évident : purger une file,
+c'est jeter des volées non envoyées.
+
+**Remède** : diffuser un `LiveEvent("base_restauree")` (le résultat de `restaurer` le porterait) et
+décider, côté tablette, d'abandonner la file ou de la faire valider à l'écran avant tout rejeu.
+

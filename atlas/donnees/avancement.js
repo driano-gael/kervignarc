@@ -4,6 +4,15 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "122",
+   "introduite_par": [
+    "E11US006"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "119",
    "introduite_par": [
     "E01US011"
@@ -3996,7 +4005,9 @@ window.ATLAS.avancement = {
     "0044",
     "0119"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "122"
+   ],
    "dettes_resorbees": [],
    "epic": "11",
    "epic_titre": "Exploitation : sauvegarde, packaging, réseau",

@@ -2112,7 +2112,7 @@ window.ATLAS.decisions = {
      "chemin": "backend/infrastructure/backup/restauration.py",
      "existe": true,
      "symboles": [
-      "MagasinSauvegardesSQLite.examiner"
+      "StoreSauvegardesSQLite.examiner"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -12116,9 +12116,18 @@ window.ATLAS.decisions = {
      "chemin": "backend/infrastructure/backup/restauration.py",
      "existe": true,
      "symboles": [
-      "MagasinSauvegardesSQLite",
+      "StoreSauvegardesSQLite",
       "integrity_check",
       "backup"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/snapshot.py",
+     "existe": true,
+     "symboles": [
+      "copier_base_atomique"
      ],
      "symboles_absents": [],
      "verifiable": true

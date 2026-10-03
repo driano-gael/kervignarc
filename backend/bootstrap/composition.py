@@ -168,7 +168,7 @@ from infrastructure.backup.config import (
     intervalle_secondes,
     retention,
 )
-from infrastructure.backup.restauration import MagasinSauvegardesSQLite
+from infrastructure.backup.restauration import StoreSauvegardesSQLite
 from infrastructure.backup.sauvegarde import SauvegardeSQLite
 from infrastructure.db import (
     ArcherRepositorySQL,
@@ -1474,8 +1474,9 @@ def create_app(
     registre_idempotence = RegistreIdempotence()
     app.state.registre_idempotence = registre_idempotence
 
-    # Restauration à chaud (E11US006, ADR-0119). ⚠️ Tout registre en mémoire indexé par un id de la
-    # base doit être vidé ici : la base restaurée peut avoir réattribué ces ids.
+    # Restauration à chaud (E11US006, ADR-0119). ⚠️ Tout registre d'**état** en mémoire indexé par un
+    # id de la base doit être vidé ici : la base restaurée peut avoir réattribué ces ids. L'état
+    # persisté côté client (files hors ligne des tablettes) n'est pas purgé — DETTE-122.
     def _oublier_etat_volatil() -> None:
         poste_session_store.vider()
         scoreur_session_store.vider()
@@ -1484,7 +1485,7 @@ def create_app(
         registre_idempotence.vider()
 
     app.state.service_sauvegardes = ServiceSauvegardes(
-        MagasinSauvegardesSQLite(chemin_base, dossier_backup, HorlogeSysteme()),
+        StoreSauvegardesSQLite(chemin_base, dossier_backup, HorlogeSysteme()),
         _oublier_etat_volatil,
     )
 

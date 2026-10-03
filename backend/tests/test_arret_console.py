@@ -9,7 +9,7 @@ import threading
 
 import pytest
 
-from release.arret_console import traiter_evenement
+from release.arret_console import ATTENTE_CONNEXIONS_S, DELAI_ARRET_S, traiter_evenement
 
 _CTRL_C, _CTRL_BREAK, _CLOSE, _LOGOFF, _SHUTDOWN = 0, 1, 2, 5, 6
 
@@ -39,3 +39,9 @@ def test_ctrl_c_et_ctrl_break_restent_aux_signaux(evenement: int) -> None:
 
     assert not traiter_evenement(evenement, lambda: demandes.append("x"), threading.Event(), 0)
     assert demandes == []
+
+
+def test_le_budget_d_arret_tient_sous_le_delai_de_windows() -> None:
+    # Windows tue le processus ~5 s après la croix ; l'attente des connexions doit laisser au
+    # moins une seconde au drain de la file avant ce délai.
+    assert ATTENTE_CONNEXIONS_S + 1 <= DELAI_ARRET_S < 5

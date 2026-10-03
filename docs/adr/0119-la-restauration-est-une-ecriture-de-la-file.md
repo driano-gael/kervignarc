@@ -39,11 +39,15 @@ Trois contraintes du projet pèsent sur le « comment » :
    parole.
 4. **Une sauvegarde n'est restaurable qu'au schéma de la base en service** — même révision Alembic.
    Une sauvegarde plus ancienne n'est **pas** migrée à la volée : elle est refusée et se restaure par
-   la procédure manuelle, où la migration du démarrage la met à niveau.
+   la procédure manuelle de [`docs/deploiement.md`](../deploiement.md) §5 — serveur arrêté, **sans
+   oublier `kervignarc.db-wal` et `-shm`**, que SQLite rejouerait sinon sur la copie restaurée —, où
+   la migration du démarrage la met à niveau.
 5. **L'état courant est copié avant**, en `avant-restauration-AAAAMMJJ-HHMMSS.db`, sous un préfixe
    distinct de `kervignarc-*.db` pour rester **hors rétention**. Il est listé avec les autres
    sauvegardes : une restauration s'annule en restaurant cette copie. Aucune copie n'en écrase une
-   autre (suffixe `-n` dans la même seconde).
+   autre (suffixe `-n` dans la même seconde). Toute copie, périodique ou de sécurité, s'écrit en
+   `.tmp` puis se renomme : une copie **listée** est toujours complète, ce qu'exige l'ouverture en
+   `immutable=1` (sans verrou) du §3.
 6. **Après la copie, les cinq registres en mémoire sont vidés** : les tablettes et les scoreurs se
    rattachent, comme après un redémarrage. La session admin, adossée au `.env`, survit.
 7. **Seul un nom présent dans la liste** se vérifie ou se restaure ; aucun chemin n'est construit à
@@ -72,13 +76,27 @@ que le drain tienne dans ce délai.
 
 - La restauration rend **toute** la base : tous les tournois reviennent en arrière, pas un seul.
   L'écran le dit, et vit hors tournoi (axe Atelier).
-- Un registre en mémoire **ajouté plus tard**, et indexé par un identifiant de la base, doit être
-  vidé au même endroit. Rien ne le détecte : c'est l'avertissement porté par la composition root.
+- Un registre d'**état** en mémoire **ajouté plus tard**, et indexé par un identifiant de la base,
+  doit être vidé au même endroit (un simple dédoublonnage de journal, comme celui du suivi du
+  déroulé, n'en est pas). Rien ne le détecte : c'est l'avertissement porté par la composition root.
 - Une simulation en cours (registre de sessions de simulation) n'est pas touchée : elle joue sur un
   harnais en mémoire, indépendant de la base.
-- ⚠️ La fermeture par la croix n'est éprouvée que par un test de la **décision**
-  (`traiter_evenement`) ; l'appel réel à l'API Windows n'a pas pu être rejoué en environnement
-  automatisé. Sa vérification est manuelle (`docs/fonctionnel/E11US006.md`).
+- **La croix a été rejouée en vrai** (revue du 03/10/2026) : un processus ouvert dans sa propre
+  console (`CREATE_NEW_CONSOLE`), qui installe ce gestionnaire, reçoit `WM_CLOSE` ; un drain de 2 s
+  aboutit avant que Windows ne le tue, alors que le témoin sans gestionnaire meurt aussitôt. Un drain
+  de 6 s, lui, est coupé à 4,5 s : la promesse vaut **dans la limite de quelques secondes**, que
+  `test_arret_console` borne côté réglages. La chaîne uvicorn → `lifespan` → `WriteQueue.stop()`
+  est couverte à part (`test_arret_propre_api`), pas d'un seul tenant.
+- **« Sessions fermées » vaut à la fin de la commande, pas pendant.** Les gardes de session et le
+  rattachement s'exécutent **hors** de la file : une saisie arrivée pendant la restauration passe sa
+  garde, attend derrière elle, puis s'écrit sur la base restaurée ; un rattachement exactement
+  concurrent peut réinsérer une session lue sur l'ancienne base. Fenêtre de l'ordre de la durée de la
+  copie, acceptée : un identifiant encore valide écrit au bon endroit, un identifiant disparu est
+  refusé par le service.
+- **L'état persisté côté client n'est pas purgé** : files hors ligne de volées et de duels, archers
+  suivis. Après une restauration **suivie d'une réimportation** qui redistribue les identifiants, une
+  volée en attente pourrait se rejouer sur un autre archer — trou que la procédure manuelle
+  (redémarrage) avait déjà. Assumé en `DETTE-122`.
 - Les copies `avant-restauration-*` s'accumulent hors rétention, une par restauration : volume
   négligeable à l'échelle d'un tournoi, à purger à la main si besoin.
 
@@ -86,9 +104,11 @@ que le drain tienne dans ce délai.
 
 - `backend/application/sauvegardes.py` — `ServiceSauvegardes` : liste, verdict (§3, §4), séquence de
   restauration et ordre des gestes (§5, §6), garde du nom listé (§7).
-- `backend/infrastructure/backup/restauration.py` — `MagasinSauvegardesSQLite` : ouverture en
+- `backend/infrastructure/backup/restauration.py` — `StoreSauvegardesSQLite` : ouverture en
   lecture immuable, `integrity_check`, copie de sécurité hors rétention, `backup` vers la base vive
   (§1, §3, §5).
+- `backend/infrastructure/db/snapshot.py` — `copier_base_atomique`, la copie en `.tmp` renommée
+  (§5), utilisée aussi par `backup/sauvegarde.py`.
 - `backend/api/v1/sauvegardes.py` — la restauration soumise à la file d'écriture (§2).
 - `backend/bootstrap/composition.py` — `_oublier_etat_volatil`, qui vide les cinq registres (§6).
 - `backend/release/arret_console.py` et `backend/run.py` — l'arrêt propre par la croix de la console.

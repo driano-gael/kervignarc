@@ -14,5 +14,5 @@ n'est touché. Après une restauration, les tablettes et les scoreurs se reconne
 enregistrées — comme Ctrl+C le faisait déjà.
 
 **Limites.** La restauration remet **tous** les tournois en arrière, pas un seul. Une copie d'une
-version plus ancienne de l'application se restaure encore à la main (fermer, remplacer, relancer).
-La fermeture par la croix est à vérifier une fois sur le PC du jour J.
+version plus ancienne de l’application se restaure encore à la main, selon le guide de déploiement.
+La croix laisse au plus quelques secondes aux saisies en attente : au-delà, préférer Ctrl+C.

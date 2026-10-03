@@ -76,5 +76,5 @@ base vive à des instants différents. Les parties issues de la base décrivent 
 - `backend/infrastructure/backup/sauvegarde.py` — `SauvegardeSQLite`, copie horodatée et rétention.
 - `backend/infrastructure/archive/constructeur.py` — l'archive tirée d'**un** instantané.
 - `backend/bootstrap/composition.py` — `_boucle_sauvegarde`, la tâche périodique du `lifespan`.
-- `backend/infrastructure/backup/restauration.py` — `MagasinSauvegardesSQLite.examiner`, la
+- `backend/infrastructure/backup/restauration.py` — `StoreSauvegardesSQLite.examiner`, la
   vérification d'intégrité en lecture seule.

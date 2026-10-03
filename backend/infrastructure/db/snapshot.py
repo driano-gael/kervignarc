@@ -6,6 +6,7 @@ Appelée hors boucle, par la sauvegarde périodique comme par la composition d'a
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -29,3 +30,14 @@ def copier_base_coherente(source: Path, cible: Path) -> None:
             connexion_cible.close()
     finally:
         connexion_source.close()
+
+
+def copier_base_atomique(source: Path, cible: Path) -> None:
+    """Copie cohérente vers `cible.tmp`, puis renommage : une copie listée est toujours complète.
+
+    ⚠️ La restauration ouvre les copies en `immutable=1`, sans verrou (`backup/restauration.py`) :
+    sans le renommage, une copie en cours d'écriture pourrait être restaurée à moitié.
+    """
+    provisoire = cible.with_name(cible.name + ".tmp")
+    copier_base_coherente(source, provisoire)
+    os.replace(provisoire, cible)

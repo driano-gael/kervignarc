@@ -1,4 +1,4 @@
-"""Adapter du port `MagasinSauvegardes` : le dossier des sauvegardes et la base en service.
+"""Adapter du port `StoreSauvegardes` : le dossier des sauvegardes et la base en service.
 
 ⚠️ **`restaurer` est une ÉCRITURE dans la base vive** : elle n'est sûre que soumise à la file
 d'écriture (ADR-0119). `examiner` et `revision_en_service` sont des lectures hors file (ADR-0044).
@@ -13,7 +13,8 @@ from pathlib import Path
 
 from application.sauvegardes import ExamenSauvegarde, NatureSauvegarde, SauvegardeDisponible
 from domain.ports import Horloge
-from infrastructure.db.snapshot import copier_base_coherente
+from infrastructure.db.snapshot import copier_base_atomique
+from infrastructure.erreurs import RestaurationImpossible
 
 # Le préfixe périodique dérive de `SauvegardeSQLite` ; celui de la copie de sécurité doit rester
 # hors de son motif `kervignarc-*.db`, sans quoi la rétention la purgerait (CA 4).
@@ -38,7 +39,7 @@ def _revision(connexion: sqlite3.Connection) -> str | None:
     return None if ligne is None else str(ligne[0])
 
 
-class MagasinSauvegardesSQLite:
+class StoreSauvegardesSQLite:
     def __init__(self, base: Path, dossier: Path, horloge: Horloge) -> None:
         self._base = base
         self._dossier = dossier
@@ -96,19 +97,25 @@ class MagasinSauvegardesSQLite:
         while cible.exists():
             cible = self._dossier / f"avant-restauration-{horodatage}-{rang}.db"
             rang += 1
-        copier_base_coherente(self._base, cible)
+        try:
+            copier_base_atomique(self._base, cible)
+        except (sqlite3.Error, OSError) as exc:
+            raise RestaurationImpossible(f"Copie de sécurité impossible : {exc}") from exc
         return cible.name
 
     def restaurer(self, nom: str) -> None:
-        source = _ouvrir_en_lecture(self._dossier / nom)
         try:
-            vive = sqlite3.connect(str(self._base))
+            source = _ouvrir_en_lecture(self._dossier / nom)
             try:
-                vive.execute("PRAGMA busy_timeout = 5000")
-                # `backup` vers la base vive : les connexions du pool voient le nouveau contenu
-                # à leur prochaine transaction — ni fichier remplacé, ni engine rouvert.
-                source.backup(vive)
+                vive = sqlite3.connect(str(self._base))
+                try:
+                    vive.execute("PRAGMA busy_timeout = 5000")
+                    # `backup` vers la base vive : les connexions du pool voient le nouveau
+                    # contenu à leur prochaine transaction — ni fichier remplacé, ni engine rouvert.
+                    source.backup(vive)
+                finally:
+                    vive.close()
             finally:
-                vive.close()
-        finally:
-            source.close()
+                source.close()
+        except sqlite3.Error as exc:
+            raise RestaurationImpossible(f"Restauration de {nom} impossible : {exc}") from exc

@@ -123,8 +123,10 @@ describe('CA E11US006 — sauvegardes', () => {
         json(
           {
             code: 'sauvegarde_non_restaurable',
-            message: 'La sauvegarde ne peut pas être restaurée (corrompue).',
-            details: { verdict: 'corrompue' },
+            // Le message réel du serveur : il se lit, il ne cite jamais l'énuméré.
+            message:
+              "La sauvegarde kervignarc-20261003-090000.db ne peut pas être restaurée : elle vient d'une autre version de l'application.",
+            details: { verdict: 'version_differente' },
           },
           400,
         ),
@@ -135,7 +137,9 @@ describe('CA E11US006 — sauvegardes', () => {
     fireEvent.click(within(ligne('Automatique')).getByRole('button', { name: 'Restaurer…' }))
     fireEvent.click(screen.getByRole('button', { name: 'Restaurer' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/ne peut pas être restaurée/)
+    const alerte = await screen.findByRole('alert')
+    expect(alerte).toHaveTextContent(/autre version de l'application/)
+    expect(alerte).not.toHaveTextContent('version_differente')
     expect(screen.queryByText(/Base restaurée/)).not.toBeInTheDocument()
   })
 })

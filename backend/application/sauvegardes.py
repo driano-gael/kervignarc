@@ -10,12 +10,15 @@ d'exploitation, pas une règle métier.
 from __future__ import annotations
 
 import datetime
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
 from application.erreurs import SauvegardeIntrouvable, SauvegardeNonRestaurable
+
+_logger = logging.getLogger(__name__)
 
 
 class NatureSauvegarde(StrEnum):
@@ -39,7 +42,7 @@ class SauvegardeDisponible:
 
 @dataclass(frozen=True)
 class ExamenSauvegarde:
-    """Constat brut du magasin ; `revision` vaut `None` sans table `alembic_version` lisible."""
+    """Constat brut du store ; `revision` vaut `None` sans table `alembic_version` lisible."""
 
     integre: bool
     revision: str | None
@@ -57,7 +60,7 @@ class RestaurationEffectuee:
     copie_de_securite: str
 
 
-class MagasinSauvegardes(Protocol):
+class StoreSauvegardes(Protocol):
     """Port : le dossier des sauvegardes et la base en service."""
 
     def lister(self) -> list[SauvegardeDisponible]: ...
@@ -78,14 +81,12 @@ class MagasinSauvegardes(Protocol):
 
 
 class ServiceSauvegardes:
-    def __init__(
-        self, magasin: MagasinSauvegardes, oublier_etat_volatil: Callable[[], None]
-    ) -> None:
-        self._magasin = magasin
+    def __init__(self, store: StoreSauvegardes, oublier_etat_volatil: Callable[[], None]) -> None:
+        self._store = store
         self._oublier_etat_volatil = oublier_etat_volatil
 
     def lister(self) -> list[SauvegardeDisponible]:
-        return sorted(self._magasin.lister(), key=lambda s: s.prise_le, reverse=True)
+        return sorted(self._store.lister(), key=lambda s: s.prise_le, reverse=True)
 
     def verifier(self, nom: str) -> VerificationSauvegarde:
         self._exiger_listee(nom)
@@ -96,21 +97,22 @@ class ServiceSauvegardes:
         verdict = self._verdict(nom)
         if verdict is not VerdictSauvegarde.RESTAURABLE:
             raise SauvegardeNonRestaurable(nom, verdict.value)
-        copie = self._magasin.copier_avant_restauration()
-        self._magasin.restaurer(nom)
+        copie = self._store.copier_avant_restauration()
+        self._store.restaurer(nom)
         # ⚠️ Après la restauration, jamais avant : un échec laisse sessions et registres intacts.
         self._oublier_etat_volatil()
+        _logger.warning("Base restaurée depuis %s ; état précédent copié en %s.", nom, copie)
         return RestaurationEffectuee(restauree=nom, copie_de_securite=copie)
 
     def _exiger_listee(self, nom: str) -> None:
         # CA 6 : la liste est la seule source des noms admis — aucun chemin construit depuis `nom`.
-        if nom not in {s.nom for s in self._magasin.lister()}:
+        if nom not in {s.nom for s in self._store.lister()}:
             raise SauvegardeIntrouvable(nom)
 
     def _verdict(self, nom: str) -> VerdictSauvegarde:
-        examen = self._magasin.examiner(nom)
+        examen = self._store.examiner(nom)
         if not examen.integre:
             return VerdictSauvegarde.CORROMPUE
-        if examen.revision is None or examen.revision != self._magasin.revision_en_service():
+        if examen.revision is None or examen.revision != self._store.revision_en_service():
             return VerdictSauvegarde.VERSION_DIFFERENTE
         return VerdictSauvegarde.RESTAURABLE

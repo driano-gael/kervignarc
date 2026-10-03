@@ -108,11 +108,14 @@ tournois** reviennent à l'état de la copie, l'état précédent est mis de cô
 et scoreurs doivent se reconnecter. Une copie d'une **autre version** de l'appli est refusée.
 
 **Recours manuel** — base que le serveur ne parvient plus à ouvrir, ou copie d'une version plus
-ancienne : fermer l'appli, remplacer `kervignarc.db` par la sauvegarde, relancer (la migration du
-démarrage la met à niveau).
+ancienne : fermer l'appli, remplacer `kervignarc.db` par la sauvegarde, **supprimer
+`kervignarc.db-wal` et `kervignarc.db-shm` s'ils existent**, relancer (la migration du démarrage la
+met à niveau). ⚠️ Les deux fichiers sont le journal de l'**ancienne** base : laissés en place après
+un plantage, SQLite les rejouerait sur la sauvegarde et mélangerait les deux.
 
 **Arrêter le serveur.** Ctrl+C **ou** la croix de la fenêtre : les deux attendent que les écritures en
-cours soient enregistrées avant de fermer (quelques secondes au plus). Éviter de **tuer** le processus
+cours soient enregistrées avant de fermer. La croix est bornée par Windows : au-delà d'environ
+**4 secondes**, la fenêtre se ferme quand même — Ctrl+C n'a pas cette limite. Éviter de **tuer** le processus
 (gestionnaire des tâches) : c'est le seul arrêt qui peut perdre une écriture en attente.
 
 Rien à configurer par défaut. Pour ajuster (facultatif), définir des **variables d'environnement**
