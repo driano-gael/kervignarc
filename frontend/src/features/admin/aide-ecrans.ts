@@ -49,8 +49,14 @@ export type DestinationAdminId =
   | 'archer'
   | 'audit'
   | 'compte'
+  | 'sauvegardes'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
+  sauvegardes:
+    'Les copies de la base prises automatiquement pendant que le serveur tourne. Vérifiez une copie ' +
+    'avant de vous en servir ; restaurer remet tous les tournois dans son état, sans redémarrer. ' +
+    'L’état actuel est d’abord mis de côté : restaurez cette copie pour annuler. Les tablettes ' +
+    'et les scoreurs doivent ensuite se reconnecter.',
   compte:
     'Changez l’identifiant ou le mot de passe de l’accès administrateur. Le mot de passe actuel ' +
     'est demandé. Après le changement, les autres appareils connectés en administrateur sont ' +

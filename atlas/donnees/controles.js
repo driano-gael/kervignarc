@@ -82,12 +82,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
-   "code": "derniere-us-orpheline",
-   "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0028, ADR-0049, ADR-0117, ADR-0115, ADR-0014, ADR-0114, ADR-0113, ADR-0074, ADR-0104, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
-   "severite": "signal",
-   "sujet": "E10US006"
-  },
-  {
    "code": "features-enchevetrees",
    "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
@@ -113,7 +107,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 30 port(s) hors du domaine (CompteurArchersParTournoi, CompteurEngages, ConstructeurArchive, DiffusionSimulation…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 31 port(s) hors du domaine (CompteurArchersParTournoi, CompteurEngages, ConstructeurArchive, DiffusionSimulation…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application, infrastructure"
   },
@@ -348,6 +342,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 57
+  "signaux": 56
  }
 };

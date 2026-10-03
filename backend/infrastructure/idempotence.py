@@ -55,3 +55,8 @@ class RegistreIdempotence:
             while len(self._resultats) > self._borne:
                 self._resultats.popitem(last=False)  # éviction du plus ancien (LRU)
         return resultat
+
+    def vider(self) -> None:
+        """Oublie tout — après une restauration de la base (E11US006, ADR-0119)."""
+        with self._verrou:
+            self._resultats.clear()

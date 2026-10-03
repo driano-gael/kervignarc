@@ -99,8 +99,21 @@ plupart des tablettes le résolvent donc sans réglage.
 Pendant que le serveur tourne, une **copie horodatée** de la base est déposée **périodiquement**
 dans le sous-dossier **`backups/`** (à côté de l'exe), sous la forme `kervignarc-AAAAMMJJ-HHMMSS.db`.
 La copie est **cohérente** même si des saisies ont lieu (elle utilise le mécanisme de sauvegarde en
-ligne de SQLite — ce n'est pas une simple copie de fichier). C'est le filet en cas de plantage :
-fermer l'appli, remplacer `kervignarc.db` par une sauvegarde, relancer.
+ligne de SQLite — ce n'est pas une simple copie de fichier).
+
+**Restaurer une sauvegarde (E11US006).** Depuis l'écran **Admin → Atelier → Sauvegardes** : vérifier
+la copie voulue (intégrité et version), puis **Restaurer**. Le serveur ne redémarre pas ; **tous les
+tournois** reviennent à l'état de la copie, l'état précédent est mis de côté sous
+`avant-restauration-AAAAMMJJ-HHMMSS.db` (hors rétention, restaurable pour annuler), et les tablettes
+et scoreurs doivent se reconnecter. Une copie d'une **autre version** de l'appli est refusée.
+
+**Recours manuel** — base que le serveur ne parvient plus à ouvrir, ou copie d'une version plus
+ancienne : fermer l'appli, remplacer `kervignarc.db` par la sauvegarde, relancer (la migration du
+démarrage la met à niveau).
+
+**Arrêter le serveur.** Ctrl+C **ou** la croix de la fenêtre : les deux attendent que les écritures en
+cours soient enregistrées avant de fermer (quelques secondes au plus). Éviter de **tuer** le processus
+(gestionnaire des tâches) : c'est le seul arrêt qui peut perdre une écriture en attente.
 
 Rien à configurer par défaut. Pour ajuster (facultatif), définir des **variables d'environnement**
 avant de lancer l'exe :

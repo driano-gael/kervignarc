@@ -53,15 +53,28 @@ base vive à des instants différents. Les parties issues de la base décrivent 
 
 ## Conséquences
 
-- **Précédent (assumé)** : toute future opération de **maintenance en lecture** (restauration —
-  E11US006, vérification d'intégrité) peut ouvrir une connexion `sqlite3` directe hors file, hors
-  engine, à condition de rester une **lecture** et de tourner hors boucle. Une **écriture** de
-  maintenance, elle, resterait soumise à la règle 7 (via la file).
+- **Précédent (assumé)** : toute future opération de **maintenance en lecture** (vérification
+  d'intégrité d'une sauvegarde) peut ouvrir une connexion `sqlite3` directe hors file, hors engine, à
+  condition de rester une **lecture** et de tourner hors boucle. Une **écriture** de maintenance, elle,
+  reste soumise à la règle 7 (via la file) — c'est le cas de la **restauration** elle-même, que cette
+  puce rangeait à tort parmi les lectures : précisé par
+  [ADR-0119](0119-la-restauration-est-une-ecriture-de-la-file.md) (E11US006).
 - **Cadre du scheduler** : le `lifespan` accueille désormais des tâches périodiques. Rester parcimonieux
   (règle 12) — pas de framework d'ordonnancement ; une coroutine `sleep`/`cancel` suffit à l'échelle
-  mono-club. La restauration/arrêt propre (E11US006) s'y branchera de même.
+  mono-club. L'arrêt propre (E11US006) y draine la file, sans tâche supplémentaire.
 - **Config au démarrage** : changer un `KERVIGNARC_BACKUP_*` exige un **redémarrage** (lu une fois).
   Acceptable pour un déploiement jour J.
 - **Limite** : l'atomicité vaut pour les parties **issues de la base** ; les PDF de l'archive,
   régénérés par le service en amont, reflètent leur propre instant de lecture — non figé avec le
   snapshot. Sans conséquence (archive de fin d'événement, base au calme).
+
+## Porté dans le code par
+
+*(Section ajoutée par E11US006, qui rouvre les Conséquences.)*
+
+- `backend/infrastructure/db/snapshot.py` — `copier_base_coherente`, la lecture page à page hors file.
+- `backend/infrastructure/backup/sauvegarde.py` — `SauvegardeSQLite`, copie horodatée et rétention.
+- `backend/infrastructure/archive/constructeur.py` — l'archive tirée d'**un** instantané.
+- `backend/bootstrap/composition.py` — `_boucle_sauvegarde`, la tâche périodique du `lifespan`.
+- `backend/infrastructure/backup/restauration.py` — `MagasinSauvegardesSQLite.examiner`, la
+  vérification d'intégrité en lecture seule.

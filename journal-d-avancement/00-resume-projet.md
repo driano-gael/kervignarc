@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 2 octobre 2026
+# Résumé du projet — où on en est au 3 octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -631,8 +631,9 @@ Dans l'ordre de valeur prévu par le backlog :
 4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration
    (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ;
    « plusieurs gabarits » l'était **depuis juillet** — `E01US012` est close sans code, sa
-   bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008` ; et l'accès
-   administrateur **se change depuis l'appli**, `E10US006`).
+   bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008` ; l'accès
+   administrateur **se change depuis l'appli**, `E10US006` ; et une sauvegarde **se restaure
+   depuis l'appli**, sans redémarrer, `E11US006`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
@@ -645,7 +646,10 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **160 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E10US006`,
+- **161 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E11US006`,
+  à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
+  sans redémarrer le serveur, après l'avoir vérifiée ; l'état d'avant est gardé et se restaure pour
+  annuler, et fermer la fenêtre du serveur n'efface plus une saisie en cours. Juste avant, `E10US006`,
   à **surface visible** : l'organisateur **change son identifiant ou son mot de passe** depuis l'écran
   « Compte administrateur », sans ouvrir le fichier du serveur ; les autres appareils connectés en
   administrateur sont alors déconnectés. Juste avant, `E13US003`,

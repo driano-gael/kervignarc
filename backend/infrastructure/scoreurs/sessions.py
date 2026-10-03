@@ -45,3 +45,8 @@ class ScoreurSessionStore:
         with self._verrou:
             for jeton in [j for j, sid in self._sessions.items() if sid == scoreur_id]:
                 del self._sessions[jeton]
+
+    def vider(self) -> None:
+        """Oublie tout — après une restauration de la base (E11US006, ADR-0119)."""
+        with self._verrou:
+            self._sessions.clear()
