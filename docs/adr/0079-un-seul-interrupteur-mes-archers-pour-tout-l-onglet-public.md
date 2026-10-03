@@ -114,17 +114,17 @@ réinstallerait au niveau du module le couplage que le §2 évite à l'exécutio
 | `frontend/src/features/tableaux/VueTableaux.tsx` | §2 (`suivis` en prop, plus de lecture du store), §6 |
 | `frontend/src/features/placement/PlanCiblesPublic.tsx` | §3, §6 |
 
-**Tests qui le verrouillent** : `shared/suivis/focus.test.ts` (§1, §3, §4),
-`shared/stores/sessionSuivisStore.test.ts` (§5 — `getInitialState`, le garde de dernier recours),
-`features/public/AccueilPublic.test.tsx` (§1, §2, §5 de bout en bout),
-`features/palmares/VuePalmares.test.tsx` (§3 podiums, §6),
-`features/routage/presentation.test.ts` (§3 buttes entières, `posesParCible`),
-`features/suivi/suivi.test.ts` (`departsDesArchersSuivis` — les créneaux de l'archer, pas ceux de la
-salle), `features/tableaux/VueTableaux.test.tsx` (§2, §6),
-`features/competition/TableClassement.test.tsx` (ex æquo calculés sur la liste complète **mais
+**Tests qui le verrouillent** : `frontend/src/shared/suivis/focus.test.ts` (§1, §3, §4),
+`frontend/src/shared/stores/sessionSuivisStore.test.ts` (§5 — `getInitialState`, le garde de dernier recours),
+`frontend/src/features/public/AccueilPublic.test.tsx` (§1, §2, §5 de bout en bout),
+`frontend/src/features/palmares/VuePalmares.test.tsx` (§3 podiums, §6),
+`frontend/src/features/routage/presentation.test.ts` (§3 buttes entières, `posesParCible`),
+`frontend/src/features/suivi/suivi.test.ts` (`departsDesArchersSuivis` — les créneaux de l'archer, pas ceux de la
+salle), `frontend/src/features/tableaux/VueTableaux.test.tsx` (§2, §6),
+`frontend/src/features/competition/TableClassement.test.tsx` (ex æquo calculés sur la liste complète **mais
 annoncés seulement si une ligne visible les porte**).
 
-⚠️ **Angle mort assumé** : `features/suivi/VueSuivi.tsx` n'a aucun test de **montage**, alors que
+⚠️ **Angle mort assumé** : `frontend/src/features/suivi/VueSuivi.tsx` n'a aucun test de **montage**, alors que
 c'est le composant le plus modifié par E16US004 et l'onglet d'atterrissage. Sa logique extraite est
-testée (`suivi.test.ts`, `tableaux/presentation.test.ts`), son rendu ne l'est pas — relevé en 2ᵉ
+testée (`suivi.test.ts`, `frontend/src/features/tableaux/presentation.test.ts`), son rendu ne l'est pas — relevé en 2ᵉ
 passe de revue, laissé en l'état plutôt que traité à la hâte en fin d'US.

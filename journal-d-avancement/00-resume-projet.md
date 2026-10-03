@@ -653,8 +653,10 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **164 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E09US007`,
-  à **surface visible** : le **déroulé horaire s'imprime** en PDF depuis « Exports & impressions »,
+- **165 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E00US028`,
+  **sans surface utilisateur** : un document de décision qui nomme du code disparu fait désormais
+  échouer la vérification automatique, au lieu d'attendre qu'un relecteur le remarque. Juste avant,
+  `E09US007`, à **surface visible** : le **déroulé horaire s'imprime** en PDF depuis « Exports & impressions »,
   un bloc par départ, une ligne par phase avec ses heures prévues. Juste avant, `E11US006`,
   à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
   sans redémarrer le serveur, après l'avoir vérifiée ; l'état d'avant est gardé et se restaure pour

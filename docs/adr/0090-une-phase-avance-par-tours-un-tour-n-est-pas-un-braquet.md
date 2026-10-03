@@ -166,6 +166,6 @@ personne devant : une phase muette y coûte une ligne incomplète, une exception
   découplé de `TourBraquet` ; c'est ici que la séparation « avancer ≠ classer » est tenue.
 - `backend/application/suivi_deroule.py` — `LecteurAvancementDePhase` (le port) et sa consommation
   par `ServiceSuiviDeroule`.
-- `backend/application/poules.py`, `application/suisse.py`, `application/big_shoot_off.py` — les
+- `backend/application/poules.py`, `backend/application/suisse.py`, `backend/application/big_shoot_off.py` — les
   réalisations du port, une par format qui déroule.
 - `backend/bootstrap/composition.py` — les branchements par type.

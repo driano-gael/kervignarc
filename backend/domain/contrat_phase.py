@@ -281,7 +281,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023**, une fois le
         # code écrit : `domain/classement_de_poules.py` range la phase par rang de poule
         # (ADR-0083 §6), `ServicePoules.classement_de_phase` rend le `ClassementSource`, et
-        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par `LecteurClassementDePhase`.
+        # `ServiceSaisieDuels._classement_produit` le lit par `LecteurClassementDePhase`.
         #
         # ⚠️ L'effet est **mesurable** : elle fait réclamer le plancher d'inscrits (E05US021) pour
         # un prélèvement visant des poules. Posée par anticipation, elle aurait exigé 34 inscrits
@@ -430,7 +430,7 @@ TYPES_CLASSANTS_LUS: frozenset[TypePhase] = frozenset(
 )
 """Les types dont le moteur sait **lire le classement** pour y prélever (E05US024).
 
-Miroir exact de `ServiceSaisieDuels._classement_de_l_ordre` : ce qu'il résout, on l'exige ; ce
+Miroir exact de `ServiceSaisieDuels._classement_produit` : ce qu'il résout, on l'exige ; ce
 qu'il rend `None`, on ne l'exige pas."""
 
 TYPES_SANS_CLASSEMENT: frozenset[TypePhase] = frozenset(
