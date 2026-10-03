@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 1ᵉʳ octobre 2026
+# Résumé du projet — où on en est au 2 octobre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -631,7 +631,8 @@ Dans l'ordre de valeur prévu par le backlog :
 4. **Confort et robustesse** : déroulé horaire, sauvegarde et restauration
    (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ;
    « plusieurs gabarits » l'était **depuis juillet** — `E01US012` est close sans code, sa
-   bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008`).
+   bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008` ; et l'accès
+   administrateur **se change depuis l'appli**, `E10US006`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
 est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
@@ -644,7 +645,10 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **159 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E13US003`,
+- **160 US livrées** (mergées, revues, CI verte) à la date du 02/10/2026 — la dernière, `E10US006`,
+  à **surface visible** : l'organisateur **change son identifiant ou son mot de passe** depuis l'écran
+  « Compte administrateur », sans ouvrir le fichier du serveur ; les autres appareils connectés en
+  administrateur sont alors déconnectés. Juste avant, `E13US003`,
   à **surface visible** : une phase de duels se règle au **barème d'équipe** FFTA (quatre manches
   de six flèches, ou de quatre en mixte) et son barrage fait tirer **une flèche à chaque archer**,
   le plus haut total l'emportant ; le scoreur les saisit au pavé. Juste avant, `E01US011`,

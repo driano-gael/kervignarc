@@ -55,6 +55,7 @@ import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { AideEcran } from '../../shared/ui/AideEcran'
 import { ChangerDeRole } from '../../shared/ui/ChangerDeRole'
 import { BandeauContexte } from './BandeauContexte'
+import { CompteAdmin } from './CompteAdmin'
 import { ConnexionAdmin } from './ConnexionAdmin'
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 import {
@@ -415,6 +416,11 @@ function Coquille() {
           }}
         />
       ),
+    },
+    {
+      id: 'compte',
+      libelle: 'Compte administrateur',
+      rendu: () => <CompteAdmin />,
     },
     {
       id: 'simulation',

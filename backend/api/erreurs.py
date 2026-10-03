@@ -42,7 +42,9 @@ from application.erreurs import (
     LogoIntrouvable,
     MancheIntrouvable,
     MembreIntrouvable,
+    MotDePasseActuelIncorrect,
     NonAuthentifie,
+    NouveauxIdentifiantsInvalides,
     PhaseIntrouvable,
     PhaseQualificationAbsente,
     PosteIntrouvable,
@@ -80,21 +82,27 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
     ):
         status = 401
     elif isinstance(
-        exc, EffectifSimulationInvalide | FormatNonSimulable | FormatExportIndisponible
+        exc,
+        EffectifSimulationInvalide
+        | FormatNonSimulable
+        | FormatExportIndisponible
+        | NouveauxIdentifiantsInvalides,
     ):
         # 400 : la requête est impossible **en soi** (borne de service), pas en conflit avec un
         # état. Le 409 par défaut promettrait qu'un changement d'état la rendrait acceptable, ce qui
         # serait faux — 300 archers ne deviendront jamais simulables, et un format sans
         # qualification ne le devient pas davantage en changeant d'état (E01US024). Idem d'un
-        # format d'export que rien ne sait produire (E16US007).
+        # format d'export que rien ne sait produire (E16US007), et d'identifiants admin mal formés
+        # — jamais 401 pour ceux-là, qui purgerait la session de l'admin (E10US006).
         status = 400
     elif isinstance(exc, CorpsHorsDeProportion):
         # 413 : le serveur refuse d'ingérer le corps, indépendamment de ce qu'il contient. Un 422
         # dirait « votre fichier est invalide », ce qui serait faux — il n'a pas été regardé.
         status = 413
-    elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi):
-        # 403 : l'identité est établie (jeton de poste/scoreur valide) mais elle n'autorise pas
-        # **cette** ressource — la cible (poste, E10US007) ou le tournoi (scoreur, E04US002). À
+    elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi | MotDePasseActuelIncorrect):
+        # 403 : l'identité est établie (jeton de poste/scoreur/admin valide) mais elle n'autorise
+        # pas **cette** ressource — la cible (poste, E10US007), le tournoi (scoreur, E04US002) ou
+        # le changement d'identifiants sans le bon mot de passe actuel (admin, E10US006). À
         # distinguer du 401 (aucune session) et du 409 (conflit d'état).
         status = 403
     elif isinstance(

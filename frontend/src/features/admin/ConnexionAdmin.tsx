@@ -152,7 +152,13 @@ function FormulaireConnexion() {
  * champ sans `id`, et rend le `aria-label` inutile — le laisser **remplacerait** le texte visible
  * pour un lecteur d'écran, donc ferait diverger ce qui est lu de ce qui est vu.
  */
-function ChampConnexion({ libelle, children }: { libelle: string; children: React.ReactNode }) {
+export function ChampConnexion({
+  libelle,
+  children,
+}: {
+  libelle: string
+  children: React.ReactNode
+}) {
   return (
     <label className="connexion__champ">
       <span className="connexion__etiquette">{libelle}</span>
