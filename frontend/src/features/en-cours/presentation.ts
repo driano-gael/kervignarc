@@ -6,6 +6,8 @@
 // l'US — l'atterrissage sur la phase en cours, et le fait qu'un format soit rendable ou non.
 
 import type { TypePhase } from '../../shared/phases/catalogue'
+import { decrireHeure } from '../../shared/phases/horaires'
+import type { HorairesDepart } from '../phases/api'
 
 /** La forme d'une phase dont ce module a besoin — volontairement pauvre.
  *
@@ -43,3 +45,20 @@ export function phaseAAtterrir(phases: readonly PhaseLisible[]): PhaseLisible | 
 // une table se désynchronise en silence, alors que le `switch` de l'aiguilleur est gardé par une
 // affectation à `never` qui rend **non compilable** l'ajout d'un type de phase sans branche. Deux
 // sources pour la même vérité, dont l'une seule est vérifiée, valent moins qu'une seule vérifiée.
+
+/** L'heure de début prévue de chaque phase **de ce créneau**, par `ordre` (E03US010, CA 7).
+ *
+ * ⚠️ Rapprochée par `ordre` : la `Phase` publique ne porte pas son étape (`DETTE-071`), et une
+ * phase est assemblée depuis son étape, donc leurs rangs coïncident (ADR-0076). Une heure inconnue
+ * est **absente** de la table — l'écran ne l'invente pas. */
+export function debutsPrevus(
+  creneaux: readonly HorairesDepart[] | undefined,
+  departId: number | null,
+): Map<number, string> {
+  const creneau = creneaux?.find((c) => c.depart_id === departId)
+  const debuts = new Map<number, string>()
+  for (const horaire of creneau?.etapes ?? []) {
+    if (horaire.debut !== null) debuts.set(horaire.ordre, decrireHeure(horaire.debut))
+  }
+  return debuts
+}

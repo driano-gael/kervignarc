@@ -421,3 +421,9 @@ class ArretProgrammeInvalide(DomainError):
     """
 
     code = "arret_programme_invalide"
+
+
+class DureePrevueInvalide(DomainError):
+    """La **durée prévue** d'une étape sort de 1..1440 minutes (E03US010, ADR-0118)."""
+
+    code = "duree_prevue_invalide"

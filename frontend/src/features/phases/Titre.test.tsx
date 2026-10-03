@@ -46,6 +46,7 @@ const TABLEAU: EtapeDeroule = {
   nb_volees: null,
   arrets: [],
   titre: null,
+  duree_prevue: null,
 }
 
 const QUALIFICATION: EtapeDeroule = {

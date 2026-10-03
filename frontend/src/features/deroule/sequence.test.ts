@@ -33,6 +33,7 @@ function etape(ordre: number, sources: Source[] = []): Etape {
     // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
     arrets: [],
     titre: null,
+    duree_prevue: null,
   }
 }
 
@@ -171,6 +172,7 @@ describe('decrireEtape', () => {
       // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
       arrets: [],
       titre: null,
+      duree_prevue: null,
       effectif: 32,
     }
 

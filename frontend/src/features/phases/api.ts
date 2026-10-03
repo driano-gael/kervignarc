@@ -103,6 +103,9 @@ export interface EtapeDeroule {
   // n'a rien à nettoyer. ⚠️ Comme ses voisins, l'édition est **totale** — omis au `PUT`, il est
   // effacé, et c'est le seul geste par lequel on retire un titre.
   titre: string | null
+
+  // Minutes prévues pour l'étape, `null` = inconnue (E03US010). Même édition totale que `titre`.
+  duree_prevue: number | null
 }
 
 // La **phase** : l'avancement d'une étape dans un créneau — la définition **assemblée** par le
@@ -112,7 +115,10 @@ export interface EtapeDeroule {
 // fois le même défaut (E05US034, E05US035, E16US002). Le serveur ne sert ces champs que sur
 // `EtapeReponse` : sur une `Phase` ils valent `undefined` à l'exécution pendant que TS garantissait
 // une valeur. C'est le `Omit` explicite qui rend la couture visible.
-export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets' | 'nb_volees' | 'titre'> {
+export interface Phase extends Omit<
+  EtapeDeroule,
+  'tournoi_id' | 'arrets' | 'nb_volees' | 'titre' | 'duree_prevue'
+> {
   depart_id: number
   statut: StatutPhase
 }
@@ -152,9 +158,38 @@ export interface ConfigPhase {
   // `configInchangee` dans `Phases.tsx` — les widgets qui n'éditent qu'un champ doivent réémettre
   // celui-ci, faute de quoi régler un barrage renomme la phase en silence.
   titre?: string | null
+  // Même règle (E03US010) : omise, la durée prévue est **effacée**.
+  duree_prevue?: number | null
 }
 
 // --- Composition : le déroulé du tournoi (atelier) ----------------------------------------------
+
+// --- Horaires prévus (E03US010, ADR-0118) ------------------------------------------------------
+
+// Une heure calculée par le serveur ; `jours_apres` = 1 le lendemain du départ.
+export interface HeurePrevue {
+  heure: string
+  jours_apres: number
+}
+
+export interface HoraireEtape {
+  etape_id: number
+  // Clé de rapprochement d'une `Phase`, qui ne porte pas son étape (DETTE-071).
+  ordre: number
+  debut: HeurePrevue | null
+  fin: HeurePrevue | null
+}
+
+export interface HorairesDepart {
+  depart_id: number
+  numero: number
+  horaire: string
+  etapes: HoraireEtape[]
+}
+
+export function getHorairesPrevus(tournoiId: number): Promise<HorairesDepart[]> {
+  return fetchJson<HorairesDepart[]>(`/api/v1/tournois/${tournoiId}/horaires-prevus`)
+}
 
 export function getPhases(tournoiId: number): Promise<EtapeDeroule[]> {
   return fetchJson<EtapeDeroule[]>(`/api/v1/tournois/${tournoiId}/phases`)

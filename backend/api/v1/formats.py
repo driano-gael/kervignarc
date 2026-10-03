@@ -30,6 +30,7 @@ from domain.colline import ConfigurationColline
 from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
+from domain.horaire_prevu import verifier_duree_prevue
 from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourceModele, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
@@ -405,6 +406,11 @@ class EtapeDTO(BaseModel):
     sont identiques, pas les racines »).
     """
 
+    duree_prevue: int | None = None
+    """Minutes prévues pour l'étape (E03US010) — même raison de présence que `titre`. ⚠️ **Bornée
+    par `vers_modele`**, faute d'invariant sur `ModelePhase` (E01US024) : sans elle, un format
+    invalide s'enregistrerait pour n'échouer qu'à son application."""
+
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
@@ -414,6 +420,7 @@ class EtapeDTO(BaseModel):
         le premier. Les **value objects** conservent, eux, leurs invariants : une donnée
         **malformée** reste un 422, seule la **composition** est tolérée incomplète.
         """
+        verifier_duree_prevue(self.duree_prevue)
         return ModelePhase(
             ordre=self.ordre,
             type=self.type,
@@ -441,6 +448,7 @@ class EtapeDTO(BaseModel):
             decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
             titre=self.titre,
+            duree_prevue=self.duree_prevue,
             bareme_duel=(None if self.bareme_duel is None else self.bareme_duel.vers_agregat()),
         )
 
@@ -482,6 +490,7 @@ class EtapeDTO(BaseModel):
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             titre=etape.titre,
+            duree_prevue=etape.duree_prevue,
             bareme_duel=(
                 None
                 if etape.bareme_duel is None

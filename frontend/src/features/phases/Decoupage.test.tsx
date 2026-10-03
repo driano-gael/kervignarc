@@ -43,6 +43,7 @@ const QUALIFICATION: EtapeDeroule = {
   colline: null,
   decoupage: null,
   titre: null,
+  duree_prevue: null,
   nb_volees: 20,
   arrets: [],
 }

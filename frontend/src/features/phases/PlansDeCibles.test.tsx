@@ -36,6 +36,7 @@ function etape(
   return {
     id,
     tournoi_id: 1,
+    duree_prevue: null,
     ordre: id,
     type,
     sources: [],

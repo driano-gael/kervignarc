@@ -51,6 +51,8 @@ import {
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { ChampTitre } from '../../shared/phases/ChampTitre'
+import { ChampDureePrevue } from '../../shared/phases/ChampDureePrevue'
+import { depuisDureePrevue, versDureePrevue } from '../../shared/phases/horaires'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
 import {
   depuisEtape as depuisArrets,
@@ -748,6 +750,7 @@ export function FormulaireEtape({
   // **aucun** champ à l'ajout (« l'asymétrie est constatée, pas voulue ») ; `titre` y est reset,
   // donc il **réduit** l'écart plutôt que de le creuser — mais il ne le referme pas.
   const [titre, setTitre] = useState(etape?.titre ?? '')
+  const [duree, setDuree] = useState(depuisDureePrevue(etape?.duree_prevue ?? null))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -837,6 +840,7 @@ export function FormulaireEtape({
     // réglages ci-dessus : un titre n'appartient à aucun type, et « Tableau des jeunes » reste
     // juste si l'étape devient des poules. Le serveur ne le refuse sur aucun type.
     titre: titre.trim() === '' ? null : titre,
+    duree_prevue: versDureePrevue(duree),
   })
 
   return (
@@ -863,6 +867,7 @@ export function FormulaireEtape({
           // reporterait sur l'étape suivante — et un titre reporté est pire qu'un réglage reporté,
           // puisqu'il **désigne** une phase précise.
           setTitre('')
+          setDuree('')
         }
       }}
     >
@@ -878,6 +883,7 @@ export function FormulaireEtape({
           libelle="Titre de l'étape (facultatif)"
           placeholder={LIBELLE_TYPE[type]}
         />
+        <ChampDureePrevue valeur={duree} surChangement={setDuree} />
         <p className="carte__aide">
           Vide = le type sert de libellé. Utile quand le format enchaîne plusieurs phases du même
           type.
