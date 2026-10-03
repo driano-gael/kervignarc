@@ -11,6 +11,7 @@ import type { Blason, NouveauBlason, Zone } from './api'
 import { ZONE_MANQUE, ZONES_CANONIQUES } from './api'
 import { useBlasons, useCreerBlason, useModifierBlason, useSupprimerBlason } from './hooks'
 import { groupesParOrigine, selectionCourante, type Selection } from './panneau'
+import { AUTRE, FRACTIONS, choixDeTaille, libelleTaille, tailleDuChoix } from './taille'
 import { ZONES_DEFAUT, aUneZoneMarquante, basculerZone, estVerrouillee } from './zones'
 
 // A06, variante B retenue le 04/08 — « la liste reste, l'édition s'ouvre à droite » (E17US007).
@@ -113,7 +114,7 @@ function LigneBlason({
           {blason.nom}
         </button>
       </td>
-      <td>{blason.taille.toLocaleString('fr-FR')}</td>
+      <td>{libelleTaille(blason.taille)}</td>
       <td>{capacite}</td>
       <td>{blason.zones.join(' ')}</td>
     </tr>
@@ -169,7 +170,11 @@ function FormulaireBlason({
 }) {
   const enEdition = blason !== undefined
   const [nom, setNom] = useState(blason?.nom ?? '')
-  const [taille, setTaille] = useState(blason ? String(blason.taille) : '1')
+  // Une taille hors des quatre fractions rouvre « Autre… » avec sa valeur : rien ne s'arrondit en silence.
+  const [choixTaille, setChoixTaille] = useState(blason ? choixDeTaille(blason.taille) : '1')
+  const [tailleLibre, setTailleLibre] = useState(
+    blason && choixDeTaille(blason.taille) === AUTRE ? blason.taille.toLocaleString('fr-FR') : '',
+  )
   const [capacite, setCapacite] = useState(blason ? String(blason.capacite) : '1')
   // À la création, le défaut est le jeu complet d'un blason simple — miroir de `ZONES_DEFAUT`
   // du domaine, et non de `ZONES_CANONIQUES` : c'est un sur-ensemble, à restreindre pour un
@@ -184,20 +189,18 @@ function FormulaireBlason({
   // Reprend les bornes du domaine (taille ]0, 1], capacité entière >= 1, au moins une zone
   // marquante) pour éviter d'envoyer une requête vouée au 422 ; le serveur reste l'autorité
   // (revalidation à la frontière). Les règles de zones vivent dans `zones.ts` — pures, testées.
-  const tailleNombre = Number(taille)
+  const tailleNombre = tailleDuChoix(choixTaille, tailleLibre)
   const capaciteNombre = Number(capacite)
   const entreeValide =
     nom.trim() !== '' &&
-    Number.isFinite(tailleNombre) &&
-    tailleNombre > 0 &&
-    tailleNombre <= 1 &&
+    tailleNombre !== null &&
     Number.isInteger(capaciteNombre) &&
     capaciteNombre >= 1 &&
     aUneZoneMarquante(zones)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (!entreeValide) return
+    if (!entreeValide || tailleNombre === null) return
     const entree: NouveauBlason = {
       nom,
       taille: tailleNombre,
@@ -224,18 +227,33 @@ function FormulaireBlason({
           aria-label="Nom du blason"
         />
         <label className="formulaire__libelle">
-          Taille (fraction de place, de 0 à 1)
-          <input
+          Taille (fraction de place)
+          <select
             className="formulaire__champ"
-            type="number"
-            min="0"
-            max="1"
-            step="0.05"
-            value={taille}
-            onChange={(e) => setTaille(e.target.value)}
+            value={choixTaille}
+            onChange={(e) => setChoixTaille(e.target.value)}
             aria-label="Taille du blason (fraction de place)"
-          />
+          >
+            {FRACTIONS.map((fraction) => (
+              <option key={fraction.cle} value={fraction.cle}>
+                {fraction.libelle}
+              </option>
+            ))}
+            <option value={AUTRE}>Autre…</option>
+          </select>
         </label>
+        {choixTaille === AUTRE && (
+          <label className="formulaire__libelle">
+            Autre taille (réel de 0 à 1, ex. 0,75)
+            <input
+              className="formulaire__champ"
+              inputMode="decimal"
+              value={tailleLibre}
+              onChange={(e) => setTailleLibre(e.target.value)}
+              aria-label="Autre taille du blason (réel de 0 à 1)"
+            />
+          </label>
+        )}
         <label className="formulaire__libelle">
           Capacité (nombre d'archers)
           <input

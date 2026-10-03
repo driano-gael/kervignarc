@@ -1,9 +1,10 @@
 // Référentiel des clubs (E02US001) — réservé à l'admin (monté sous `estAdmin`).
 //
-// Liste + création + renommage + suppression à confirmation. Le référentiel est **global** : aucun
-// `tournoiId` en entrée, les clubs se réutilisent d'une compétition à l'autre. L'unicité du nom
-// (casse **et accents** repliés) est vérifiée côté serveur : un doublon rend un 409, affiché tel
-// quel — le message du serveur nomme le club déjà présent.
+// Tableau + création + renommage depuis la ligne (E00US016) + suppression à confirmation. Le
+// référentiel est **global** : aucun `tournoiId` en entrée, les clubs se réutilisent d'une
+// compétition à l'autre. L'unicité du nom (casse **et accents** repliés) est vérifiée côté
+// serveur : un doublon rend un 409, affiché tel quel — le message du serveur nomme le club déjà
+// présent.
 
 import { useState } from 'react'
 import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
@@ -30,15 +31,26 @@ export function Clubs({
         <p className="carte__etat">Aucun club dans le référentiel.</p>
       )}
       {clubs.data && clubs.data.length > 0 && (
-        <ul className="liste-clubs">
-          {clubs.data.map((club) => (
-            <LigneClub key={club.id} club={club} ouvrir={ouvrir} onOuvrir={onOuvrir} />
-          ))}
-        </ul>
+        <div className="table-defilement">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Nom</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            {clubs.data.map((club) => (
+              <LigneClub key={club.id} club={club} ouvrir={ouvrir} onOuvrir={onOuvrir} />
+            ))}
+          </table>
+        </div>
       )}
     </section>
   )
 }
+
+// Nom, actions — la largeur d'une ligne de détail ou du formulaire de renommage.
+const COLONNES = 2
 
 function LigneClub({
   club,
@@ -53,53 +65,75 @@ function LigneClub({
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerClub()
 
+  // Un `<tbody>` par club : la ligne et son erreur de suppression se tiennent ensemble.
   if (edition) {
     return (
-      <li>
-        <FormulaireClub club={club} onTermine={() => setEdition(false)} />
-      </li>
+      <tbody>
+        <tr>
+          <td colSpan={COLONNES}>
+            <FormulaireClub club={club} onTermine={() => setEdition(false)} />
+          </td>
+        </tr>
+      </tbody>
     )
   }
 
   return (
-    <li className="club">
-      <div className="club__ligne">
-        <span className="club__nom">{club.nom}</span>
-        <span className="club__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-            Renommer
-          </button>
-          {confirmationSuppression ? (
-            <>
+    <tbody>
+      <tr>
+        <td className="club__nom">{club.nom}</td>
+        <td>
+          {/* Le nom accessible nomme le club : vingt « Supprimer » identiques au lecteur d'écran. */}
+          <span className="club__actions">
+            <button
+              type="button"
+              className="bouton--discret"
+              aria-label={`Renommer ${club.nom}`}
+              onClick={() => setEdition(true)}
+            >
+              Renommer
+            </button>
+            {confirmationSuppression ? (
+              <>
+                <button
+                  type="button"
+                  className="bouton--danger"
+                  disabled={supprimer.isPending}
+                  aria-label={`Confirmer la suppression de ${club.nom}`}
+                  onClick={() => supprimer.mutate(club.id)}
+                >
+                  Confirmer la suppression
+                </button>
+                <button
+                  type="button"
+                  className="bouton--discret"
+                  aria-label={`Annuler la suppression de ${club.nom}`}
+                  onClick={() => setConfirmationSuppression(false)}
+                >
+                  Annuler
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 className="bouton--danger"
-                disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate(club.id)}
+                aria-label={`Supprimer ${club.nom}`}
+                onClick={() => setConfirmationSuppression(true)}
               >
-                Confirmer la suppression
+                Supprimer
               </button>
-              <button
-                type="button"
-                className="bouton--discret"
-                onClick={() => setConfirmationSuppression(false)}
-              >
-                Annuler
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="bouton--danger"
-              onClick={() => setConfirmationSuppression(true)}
-            >
-              Supprimer
-            </button>
-          )}
-        </span>
-      </div>
-      <MessageErreur erreur={supprimer.error} />
-    </li>
+            )}
+          </span>
+        </td>
+      </tr>
+      {supprimer.error !== null && (
+        <tr>
+          <td colSpan={COLONNES}>
+            <MessageErreur erreur={supprimer.error} />
+          </td>
+        </tr>
+      )}
+    </tbody>
   )
 }
 

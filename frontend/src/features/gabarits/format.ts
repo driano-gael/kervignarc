@@ -9,11 +9,15 @@ import type { Gabarit } from './api'
 // Le placement peut installer moins d'archers que de couloirs (un blason encombrant occupe la face
 // entière) — l'affirmer comme une égalité tromperait sur ce que le gabarit garantit.
 export function decrire(gabarit: Gabarit): string {
-  const plafonds = [...new Set(gabarit.cibles.map((cible) => cible.capacite))].sort((a, b) => a - b)
   const cibles = `${gabarit.nb_cibles} cible${gabarit.nb_cibles > 1 ? 's' : ''}`
+  return `${cibles} · ${decrireCouloirs(gabarit)}`
+}
+
+// La colonne « Couloirs de tir » de la liste des gabarits (E00US016) : la moitié droite de `decrire`.
+export function decrireCouloirs(gabarit: Gabarit): string {
+  const plafonds = [...new Set(gabarit.cibles.map((cible) => cible.capacite))].sort((a, b) => a - b)
   // Accord sur le **plus grand** plafond, celui que porte le « jusqu'à » : « jusqu'à 1 couloir »,
   // mais « jusqu'à 1/2/4 couloirs ». La liste est triée, donc le dernier est le maximum.
   const maximum = plafonds[plafonds.length - 1] ?? 0
-  const couloirs = `jusqu'à ${plafonds.join('/')} couloir${maximum > 1 ? 's' : ''}/cible`
-  return `${cibles} · ${couloirs}`
+  return `jusqu'à ${plafonds.join('/')} couloir${maximum > 1 ? 's' : ''}/cible`
 }

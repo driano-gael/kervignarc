@@ -641,7 +641,8 @@ Dans l'ordre de valeur prévu par le backlog :
    administrateur **se change depuis l'appli**, `E10US006`).
 
 Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
-est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
+est désormais **livré** (E01US017), et les **écrans d'administration** se lisent tous en tableaux
+ou en listes arbitrées sur planche (E00US016) ; restent le **vocabulaire de score configurable** et les
 **épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
 — standard ou mixte, avec leur conformité affichée —, et depuis `E13US003` une phase sait se
 régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; mais les équipes ne
@@ -651,9 +652,12 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **162 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E09US007`,
+- **163 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E09US007`,
   à **surface visible** : le **déroulé horaire s'imprime** en PDF depuis « Exports & impressions »,
-  un bloc par départ, une ligne par phase avec ses heures prévues. Juste avant, `E03US010`,
+  un bloc par départ, une ligne par phase avec ses heures prévues. Juste avant, `E00US016`,
+  à **surface visible** : les catégories, les gabarits, les clubs et les départs se lisent en
+  **tableaux** — une colonne par information, l'état d'un départ dans la sienne — et la taille d'un
+  blason se choisit en **fractions** (entière, ½, ⅓, ¼). Juste avant, `E03US010`,
   à **surface visible** : l'organisateur donne une **durée** à chaque phase et l'application en
   déduit l'**horaire de la journée**, départ par départ ; le public voit l'heure de début de chaque
   phase. Juste avant, `E10US006`,

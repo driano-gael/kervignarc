@@ -1166,41 +1166,25 @@ button:disabled {
   border-radius: 8px;
 }
 
-/* Liste des catégories d'un tournoi (E01US003). */
-.liste-categories {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.categorie__ligne {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.categorie__libelle {
+/* Tableaux des catégories, clubs et départs (E00US016) : la 1ʳᵉ colonne nomme l'entité. */
+.categorie__libelle,
+.club__nom,
+.depart__numero {
   font-weight: 600;
   color: var(--text);
 }
 
-.categorie__attributs {
-  flex: 1 1 auto;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.categorie__actions {
+.categorie__actions,
+.club__actions,
+.depart__actions {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.categorie__actions button {
+.categorie__actions button,
+.club__actions button,
+.depart__actions button {
   padding: 2px 8px;
   font-size: 13px;
 }
@@ -1325,40 +1309,6 @@ button:disabled {
 
 .zones__case input[disabled] {
   cursor: default;
-}
-
-/* Référentiel des clubs (E02US001) — global, hors tournoi. */
-.liste-clubs {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.club__ligne {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.club__nom {
-  flex: 1 1 auto;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.club__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.club__actions button {
-  padding: 2px 8px;
-  font-size: 13px;
 }
 
 /* Définition des scoreurs (E10US003) — nom + code à distribuer ; un `<table>` depuis E17US012. */
