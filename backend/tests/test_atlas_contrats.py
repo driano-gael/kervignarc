@@ -207,6 +207,30 @@ def test_un_test_cite_a_cote_ne_couvre_pas_un_symbole_retire_du_module(tmp_path:
     assert portages["backend/tests/test_module.py"].symboles_absents == ()
 
 
+def test_un_frere_non_verifiable_n_excuse_rien(tmp_path: Path) -> None:
+    """ADR-0028 : un répertoire cité à côté masquait `membre_equipe`, absent des quatre modules."""
+    (tmp_path / "frontend" / "ecran").mkdir(parents=True)
+    (tmp_path / "backend").mkdir()
+    (tmp_path / "backend" / "module.py").write_text("x = 1\n", encoding="utf-8")
+    section = "\n- `backend/module.py` et `frontend/ecran/` — `disparu`\n"
+
+    portages = {
+        p.chemin: p for p in adr._portage(f"## Porté dans le code par\n{section}", [], tmp_path)
+    }
+
+    assert portages["backend/module.py"].symboles_absents == ("disparu",)
+
+
+def test_un_nom_nu_a_cote_d_un_seul_test_est_repere() -> None:
+    """Le test contiendrait le symbole par construction : seul un module de production rassure."""
+    section = (
+        "## Porté dans le code par\n\n"
+        "- `arrets.py` (garde `aucun_arret`) — gardé par `backend/tests/test_arrets.py`\n"
+    )
+
+    assert adr._chemins_non_reconnus(section, []) == ("arrets.py",)
+
+
 def test_une_entree_sans_chemin_depuis_la_racine_est_reperee() -> None:
     section = (
         "## Porté dans le code par\n\n- `application/prelevement.py` — `Lecteur`\n"

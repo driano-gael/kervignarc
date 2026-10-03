@@ -270,7 +270,8 @@ ADR promet un module qui ne porte rien.
   ⚠️ **La revue a démenti une partie de la 1ʳᵉ livraison** : citer un symbole « avec le chemin du
   fichier qui le porte » **désarmait** le contrôle — chaque chemin d'une entrée excuse ses frères,
   et un test ou un importeur contient le nom par construction (prouvé par mutation, axe D). D'où :
-  un test ne témoigne plus pour la production ; une entrée sans chemin depuis la racine lève
+  un test ne témoigne plus pour la production ni un répertoire pour un module ; un **fichier de
+  code** cité sans chemin depuis la racine lève
   `portage-chemin-non-reconnu` (bloquant, cliquet à zéro ; étendu en 2ᵉ passe à tout chemin abrégé,
   37 réécrits dans une vingtaine d'ADR — elle cachait encore un nom mort,
   ADR-0084) ; la convention est écrite dans ADR-0102 § Porté. Le nom périmé survit dans le texte

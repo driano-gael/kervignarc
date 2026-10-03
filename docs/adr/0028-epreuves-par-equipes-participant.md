@@ -137,7 +137,7 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   `ecarts_de_composition` (point 2) ; `backend/application/equipes.py` (`ServiceEquipes`) tient les
   règles d'ensemble (nom unique, membre du tournoi, une équipe par type) ;
   `backend/infrastructure/db/repositories/equipes.py` (`EquipeRepositorySQL`) et la migration
-  `0059_equipe` persistent `equipe` et `membre_equipe` ; `backend/api/v1/equipes.py` les expose ;
+  `0059_equipe` persistent les tables equipe et membre_equipe ; `backend/api/v1/equipes.py` les expose ;
   `frontend/src/features/equipes/` est l'écran d'administration.
 - `backend/domain/duel.py` — `BaremeDuel.nb_fleches_barrage` et `Barrage(fleches_haut,
   fleches_bas, …)` portent le point 3 tel qu'amendé : `_vainqueur_barrage` compare des **totaux**,

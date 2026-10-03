@@ -1274,9 +1274,7 @@ window.ATLAS.decisions = {
       "EFFECTIF_FFTA",
       "ecarts_de_composition",
       "ServiceEquipes",
-      "EquipeRepositorySQL",
-      "equipe",
-      "membre_equipe"
+      "EquipeRepositorySQL"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1290,9 +1288,7 @@ window.ATLAS.decisions = {
       "EFFECTIF_FFTA",
       "ecarts_de_composition",
       "ServiceEquipes",
-      "EquipeRepositorySQL",
-      "equipe",
-      "membre_equipe"
+      "EquipeRepositorySQL"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1320,9 +1316,7 @@ window.ATLAS.decisions = {
       "EFFECTIF_FFTA",
       "ecarts_de_composition",
       "ServiceEquipes",
-      "EquipeRepositorySQL",
-      "equipe",
-      "membre_equipe"
+      "EquipeRepositorySQL"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1358,9 +1352,7 @@ window.ATLAS.decisions = {
       "EFFECTIF_FFTA",
       "ecarts_de_composition",
       "ServiceEquipes",
-      "EquipeRepositorySQL",
-      "equipe",
-      "membre_equipe"
+      "EquipeRepositorySQL"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -1374,9 +1366,7 @@ window.ATLAS.decisions = {
       "EFFECTIF_FFTA",
       "ecarts_de_composition",
       "ServiceEquipes",
-      "EquipeRepositorySQL",
-      "equipe",
-      "membre_equipe"
+      "EquipeRepositorySQL"
      ],
      "symboles_absents": [],
      "verifiable": false
@@ -7919,6 +7909,13 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/en-cours/VueEnCours.test.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/en-cours/VueEnCours.tsx",
      "existe": true,
      "symboles": [
@@ -7927,6 +7924,13 @@ window.ATLAS.decisions = {
       "EN_COURS",
       "SequenceVues.par_defaut"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/salle/EcranSalle.test.tsx",
+     "existe": true,
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -9040,11 +9044,25 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/admin/axes.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/admin/axes.ts",
      "existe": true,
      "symboles": [
       "completude"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/completude/Completude.test.tsx",
+     "existe": true,
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -9091,6 +9109,13 @@ window.ATLAS.decisions = {
       "tsc",
       "evaluer_terminer"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/jalons/PretADemarrer.test.tsx",
+     "existe": true,
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -11366,6 +11391,34 @@ window.ATLAS.decisions = {
     },
     {
      "chemin": "backend/migrations/versions/0054_volee_annulation_validation.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_serie_annulation.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_archers.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_completude.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_placement.py",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],

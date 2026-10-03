@@ -158,8 +158,10 @@ cédera. Les chiffres du résumé sont **dérivés** (§3.3) ou retirés au prof
   racine** (`application/…`, ou un nom nu sans chemin complet dans l'entrée) n'était contrôlé par
   rien ; il lève désormais `portage-chemin-non-reconnu`, bloquant, cliquet à zéro
   (`test_aucune_entree_de_portage_ne_cite_un_chemin_abrege`, `backend/tests/test_atlas_corpus.py`).
-  Et un test cité dans une entrée ne témoigne **jamais** pour un module de production : il contient
-  le nom par construction (mutation de la revue, axe D).
+  Un test ne témoigne pas pour un module de production cité dans la même entrée (il contient le
+  nom par construction), et un frère non vérifiable — répertoire, `.md` — n'excuse rien : deux
+  désarmements prouvés par mutation en revue (axe D). Le second masquait une promesse fausse réelle
+  (ADR-0028, une table citée comme symbole de quatre modules).
 
 **La convention de rédaction qu'impose un contrôle bloquant** — elle est ici parce qu'un auteur
 d'ADR ne lit pas la docstring de l'atlas :
@@ -169,12 +171,16 @@ d'ADR ne lit pas la docstring de l'atlas :
 - un nom **historique ou hypothétique** (ancien nom, ajout qu'il ne faut pas faire) se cite **sans**
   accents graves : il n'est pas une promesse ;
 - un chemin ne s'ajoute à une entrée que pour un fichier qui **porte ou garde** la décision, jamais
-  pour situer un symbole voisin : chaque chemin d'une entrée excuse ses frères.
+  pour situer un symbole voisin : chaque chemin d'une entrée excuse ses frères — et, les promesses
+  étant fusionnées par chemin, un frère cité **ailleurs** dans l'ADR excuse aussi.
 
-⚠️ **Limites mesurées, pas supposées** (`DETTE-068`) : le contrôle cherche par sous-chaîne,
-commentaires compris ; et un symbole **déplacé** vers un autre module reste « présent » si un
-importeur cité dans la même entrée garde le nom — 481 promesses sont dans ce cas sur l'ensemble du
-registre (491 avant l'US). Un renommage, lui, casse l'import, donc mypy ou tsc. Enfin, seuls les
+⚠️ **Limites mesurées par mutation, pas supposées** (`DETTE-068`) : le contrôle cherche par
+sous-chaîne, commentaires compris, donc un symbole promis reste « présent » dès qu'un **frère** le
+nomme — par un import, mais aussi par un **commentaire ou une docstring** (un commentaire TypeScript
+masquait un symbole backend d'ADR-0094) : un renommage passe alors mypy, tsc **et** l'atlas.
+Mesuré en revue : ~210 promesses (ADR, symbole) masquées par un frère, dont 22 qu'**aucun** frère
+ne porte dans du code. Le remède est une lecture du code (définition du symbole, hors commentaires),
+pas du texte : c'est le critère de fin de `DETTE-068`. Enfin, seuls les
 fichiers de **code** (`.py`, `.ts`, `.tsx`) sont tenus : `.claude/`, `maquettes/` et la
 documentation restent hors des racines lues, donc hors contrôle.
 

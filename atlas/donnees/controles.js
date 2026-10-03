@@ -119,7 +119,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-non-verifiable",
-   "message": "annonce Equipe, TypeEquipe, EFFECTIF_FFTA, ecarts_de_composition, ServiceEquipes, EquipeRepositorySQL, equipe, membre_equipe dans « frontend/src/features/equipes/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "message": "annonce Equipe, TypeEquipe, EFFECTIF_FFTA, ecarts_de_composition, ServiceEquipes, EquipeRepositorySQL dans « frontend/src/features/equipes/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0028"
   },

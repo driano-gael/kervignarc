@@ -153,21 +153,27 @@ def _section_portage(texte: str, champs: list[tuple[str, str]]) -> str:
 
 
 def _est_test(chemin: str) -> bool:
-    return "/tests/" in chemin or chemin.endswith((".test.ts", ".test.tsx"))
+    nom = chemin.rsplit("/", 1)[-1]
+    return "/tests/" in chemin or nom.startswith("test_") or ".test." in nom
 
 
 def _chemins_non_reconnus(texte: str, champs: list[tuple[str, str]]) -> tuple[str, ...]:
     """Les fichiers de code cités sans chemin depuis la racine, que rien ne contrôle (E00US028).
 
-    Tout chemin abrégé (`application/prelevement.py`) ; un nom de fichier nu (`routage.py`) n'est
-    toléré qu'à côté d'un chemin complet. ⚠️ Code seulement : `.claude/`, `maquettes/` — DETTE-068.
+    Tout chemin abrégé (`application/prelevement.py`) ; un nom nu (`routage.py`) n'est toléré
+    qu'à côté d'un chemin complet **du même genre** — un test contiendrait le symbole promis.
+    ⚠️ Code seulement : `.claude/`, `maquettes/` restent hors des racines lues (DETTE-068).
     """
     trouves: list[str] = []
     for entree in _entrees(_section_portage(texte, champs)):
-        tokens = [t for t in _TOKEN.findall(entree) if not _est_chemin(t)]
-        sans_chemin = len(tokens) == len(_TOKEN.findall(entree))
+        tokens = _TOKEN.findall(entree)
+        genres = {_est_test(t) for t in tokens if _est_chemin(t)}
         trouves.extend(
-            t for t in tokens if t.endswith(_EXTENSIONS_VERIFIABLES) and ("/" in t or sans_chemin)
+            t
+            for t in tokens
+            if not _est_chemin(t)
+            and t.endswith(_EXTENSIONS_VERIFIABLES)
+            and ("/" in t or _est_test(t) not in genres)
         )
     return tuple(dict.fromkeys(trouves))
 
@@ -204,9 +210,9 @@ def _portage(texte: str, champs: list[tuple[str, str]], racine: Path) -> tuple[P
         autres = [s for s in promis if not s.startswith("test_")]
         for chemin in chemins:
             promesses.setdefault(chemin, [])
-        # ⚠️ Un test ne témoigne **jamais** pour un module de production : il contient le symbole
-        # par construction, et le renommer en production restait invisible (mutation de l'axe D,
-        # E00US028). Un nom `test_*` n'est promis que par les tests cités.
+        # ⚠️ Un test ne témoigne pas pour un module de production cité dans l'entrée : il contient
+        # le symbole par construction (mutation de l'axe D, E00US028). Sans module de production,
+        # les symboles reviennent au test — limite écrite dans ADR-0102 § Porté.
         for porteurs, noms in (
             (production or tests, autres),
             (tests or production, noms_de_test),
@@ -251,7 +257,8 @@ def _dedouaner_les_fratries(
         presents = {
             symbole
             for frere in fratrie
-            if frere in portes
+            # ⚠️ Un frère non vérifiable (répertoire, `.md`) n'a rien lu : il n'excuse rien.
+            if frere in portes and portes[frere].verifiable and portes[frere].existe
             for symbole in portes[frere].symboles
             if symbole not in portes[frere].symboles_absents
         }

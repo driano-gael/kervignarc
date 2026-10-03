@@ -175,7 +175,7 @@ question.
   `pytest_collection_modifyitems` qui pose les marqueurs à la collecte
 - `backend/pyproject.toml` — `[tool.pytest.ini_options]` : les huit marqueurs déclarés et
   `--strict-markers`
-- `backend/tests/test_porte_couvre_la_ci.py` — la correspondance `porte.py` ↔ `ci.yml` dans les deux
+- `backend/tests/test_porte_couvre_la_ci.py` — la correspondance `backend/porte.py` ↔ `ci.yml` dans les deux
   sens, et un test qui vérifie que le parseur de `ci.yml` n'est pas cassé
 - `backend/tests/test_familles_de_tests.py` — le gel des modules hors convention, et l'absence de
   chevauchement entre familles

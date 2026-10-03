@@ -142,8 +142,8 @@ qui fait partie de la décision, pas de son habillage.
   `Serie.saisir_volee` (décision 3) et la pose du lot dans `Serie.valider` (décision 4). ⚠️ Les
   quatre lecteurs de totaux (`cumul`, `compter`, `nb_fleches_validees`, `est_complete`) filtrent sur
   `validee` : **les repasser à `verrouillee` annulerait silencieusement tout cet ADR**. Le diraient
-  `test_domain_serie_annulation.py` d'abord, puis les trois tests de chaînage
-  (`test_service_{archers,placement,completude}.py`) qui prouvent que les gardes ne se relâchent pas.
+  `backend/tests/test_domain_serie_annulation.py` d'abord, puis les trois tests de chaînage
+  (`backend/tests/test_service_{archers,placement,completude}.py`) qui prouvent que les gardes ne se relâchent pas.
 - `backend/migrations/versions/0054_volee_annulation_validation.py` — les deux colonnes et le
   backfill qui tient l'invariant `lot_validation ⇔ validee_par`.
 - `backend/infrastructure/db/models.py` — `VoleeORM.lot_validation` / `correction_ouverte_par`, et
