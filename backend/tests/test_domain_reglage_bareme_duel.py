@@ -30,8 +30,8 @@ SETS_6 = BaremeDuel(
 def test_une_arme_sans_surcharge_tire_le_bareme_par_defaut() -> None:
     reglage = ReglageBaremeDuel(par_defaut=SETS_4)
 
-    assert reglage.pour("Arc classique") == SETS_4
-    assert reglage.pour(None) == SETS_4
+    assert reglage.pour("Arc classique", tours_restants=0) == SETS_4
+    assert reglage.pour(None, tours_restants=0) == SETS_4
 
 
 def test_une_arme_surchargee_tire_sa_surcharge() -> None:
@@ -39,8 +39,8 @@ def test_une_arme_surchargee_tire_sa_surcharge() -> None:
         par_defaut=SETS_6, surcharges=(SurchargeArme("Arc à poulies", CUMUL_5x3),)
     )
 
-    assert reglage.pour("Arc à poulies") == CUMUL_5x3
-    assert reglage.pour("Arc classique") == SETS_6
+    assert reglage.pour("Arc à poulies", tours_restants=0) == CUMUL_5x3
+    assert reglage.pour("Arc classique", tours_restants=0) == SETS_6
 
 
 def test_l_arme_se_compare_sans_casse_ni_espaces_de_bord() -> None:
@@ -48,7 +48,7 @@ def test_l_arme_se_compare_sans_casse_ni_espaces_de_bord() -> None:
         par_defaut=SETS_6, surcharges=(SurchargeArme("Arc à poulies", CUMUL_5x3),)
     )
 
-    assert reglage.pour("  ARC À POULIES ") == CUMUL_5x3
+    assert reglage.pour("  ARC À POULIES ", tours_restants=0) == CUMUL_5x3
 
 
 def test_la_surcharge_n_est_pas_une_devinette_sur_le_libelle() -> None:
@@ -57,7 +57,7 @@ def test_la_surcharge_n_est_pas_une_devinette_sur_le_libelle() -> None:
         par_defaut=SETS_6, surcharges=(SurchargeArme("Poulies", CUMUL_5x3),)
     )
 
-    assert reglage.pour("Arc à poulies") == SETS_6
+    assert reglage.pour("Arc à poulies", tours_restants=0) == SETS_6
 
 
 def test_deux_surcharges_pour_la_meme_arme_sont_refusees() -> None:

@@ -338,6 +338,7 @@ class ServiceSuisse:
                     lignes,
                     bloc,
                     position,
+                    tours_restants=configuration.nb_rondes - (index + 1),
                 )
                 position += 1
                 rencontres.append(rencontre)
@@ -371,6 +372,8 @@ class ServiceSuisse:
         lignes: dict[int, LigneClassement],
         bloc: BlocDeCouloirs | None,
         position: int,
+        *,
+        tours_restants: int,
     ) -> RencontreDeRonde:
         """Assemble une rencontre : ses adversaires résolus, son pavé, son tir.
 
@@ -381,7 +384,7 @@ class ServiceSuisse:
         a = appariement.a
         b = appariement.b
         assert b is not None, "`_rejouer` écarte les byes avant d'appeler cette méthode."
-        bareme = self._saisie_duels.bareme_de(reglage, a, lignes)
+        bareme = self._saisie_duels.bareme_de(reglage, a, lignes, tours_restants=tours_restants)
         charge = self._duels.charger(phase_id, numero, bareme=bareme)
         # ⚠️ **L'ancrage d'ADR-0049 §4.** Un tir dont les duellistes enregistrés divergent des
         # adversaires recalculés est **masqué**, jamais ré-attribué : la rencontre s'affiche non

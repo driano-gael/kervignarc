@@ -1,5 +1,6 @@
-// Le **barème des duels** d'une étape (E01US011, ADR-0117) : un barème par défaut et des surcharges
-// par arme. Logique pure, partagée par « Phases » et « Composer un format ».
+// Le **barème des duels** d'une étape (E01US011, ADR-0117) : un barème par défaut, des surcharges
+// par arme, et un barème des derniers tours (E01US027). Logique pure, partagée par « Phases » et
+// « Composer un format ».
 
 import type { TypePhase } from './catalogue'
 
@@ -19,9 +20,16 @@ export interface SurchargeArme {
   bareme: BaremeDuel
 }
 
+export interface BaremeDesDerniersTours {
+  nb_tours: number
+  par_defaut: BaremeDuel
+  surcharges: SurchargeArme[]
+}
+
 export interface ReglageBaremeDuel {
   par_defaut: BaremeDuel
   surcharges: SurchargeArme[]
+  derniers_tours: BaremeDesDerniersTours | null
 }
 
 export interface EtatBareme {
@@ -32,11 +40,24 @@ export interface EtatBareme {
   barrage: string
 }
 
+export interface EtatSurcharge {
+  arme: string
+  bareme: EtatBareme
+}
+
+export interface EtatDerniersTours {
+  tours: string
+  par_defaut: EtatBareme
+  surcharges: EtatSurcharge[]
+}
+
 export interface EtatBaremeDuel {
   /** `false` = aucun réglage : le serveur applique son défaut FFTA (CA 3). */
   regle: boolean
   par_defaut: EtatBareme
-  surcharges: { arme: string; bareme: EtatBareme }[]
+  surcharges: EtatSurcharge[]
+  /** `null` = un seul barème pour toute la phase (E01US027). */
+  derniers: EtatDerniersTours | null
 }
 
 // Miroir de `domain/contrat_phase.py::TYPES_A_BAREME_DE_DUEL` — le serveur refuse les autres (422).
@@ -49,6 +70,8 @@ export const TYPES_A_BAREME_DE_DUEL: ReadonlySet<TypePhase> = new Set<TypePhase>
 
 export const MANCHES_MAX = 64
 export const FLECHES_MAX = 12
+// Même borne que `BaremeDesDerniersToursDTO.nb_tours` (api/v1/phases.py).
+export const DERNIERS_TOURS_MAX = 16
 
 const SETS_FFTA: BaremeDuel = {
   mode: 'sets',
@@ -91,14 +114,28 @@ export const BAREME_DUEL_NON_REGLE: EtatBaremeDuel = {
   regle: false,
   par_defaut: depuisBareme(SETS_FFTA),
   surcharges: [],
+  derniers: null,
+}
+
+function depuisSurcharges(surcharges: readonly SurchargeArme[]): EtatSurcharge[] {
+  return surcharges.map((s) => ({ arme: s.arme, bareme: depuisBareme(s.bareme) }))
 }
 
 export function depuisReglage(reglage: ReglageBaremeDuel | null): EtatBaremeDuel {
   if (reglage === null) return BAREME_DUEL_NON_REGLE
+  const fin = reglage.derniers_tours
   return {
     regle: true,
     par_defaut: depuisBareme(reglage.par_defaut),
-    surcharges: reglage.surcharges.map((s) => ({ arme: s.arme, bareme: depuisBareme(s.bareme) })),
+    surcharges: depuisSurcharges(reglage.surcharges),
+    derniers:
+      fin === null
+        ? null
+        : {
+            tours: String(fin.nb_tours),
+            par_defaut: depuisBareme(fin.par_defaut),
+            surcharges: depuisSurcharges(fin.surcharges),
+          },
   }
 }
 
@@ -140,21 +177,42 @@ export function cleArme(arme: string): string {
   return arme.trim().toLocaleLowerCase('fr')
 }
 
-/** `null` = non réglé ; `undefined` = saisie invalide, à ne pas envoyer. */
-export function versReglage(etat: EtatBaremeDuel): ReglageBaremeDuel | null | undefined {
-  if (!etat.regle) return null
-  const par_defaut = versBareme(etat.par_defaut)
-  if (par_defaut === undefined) return undefined
+function versSurcharges(etats: readonly EtatSurcharge[]): SurchargeArme[] | undefined {
   const vues = new Set<string>()
   const surcharges: SurchargeArme[] = []
-  for (const brute of etat.surcharges) {
+  for (const brute of etats) {
     const bareme = versBareme(brute.bareme)
     const cle = cleArme(brute.arme)
     if (bareme === undefined || cle === '' || vues.has(cle)) return undefined
     vues.add(cle)
     surcharges.push({ arme: brute.arme.trim(), bareme })
   }
-  return { par_defaut, surcharges }
+  return surcharges
+}
+
+function versDerniersTours(
+  etat: EtatDerniersTours | null,
+): BaremeDesDerniersTours | null | undefined {
+  if (etat === null) return null
+  const nb_tours = entier(etat.tours, 1, DERNIERS_TOURS_MAX)
+  const par_defaut = versBareme(etat.par_defaut)
+  const surcharges = versSurcharges(etat.surcharges)
+  if (nb_tours === undefined || par_defaut === undefined || surcharges === undefined) {
+    return undefined
+  }
+  return { nb_tours, par_defaut, surcharges }
+}
+
+/** `null` = non réglé ; `undefined` = saisie invalide, à ne pas envoyer. */
+export function versReglage(etat: EtatBaremeDuel): ReglageBaremeDuel | null | undefined {
+  if (!etat.regle) return null
+  const par_defaut = versBareme(etat.par_defaut)
+  const surcharges = versSurcharges(etat.surcharges)
+  const derniers_tours = versDerniersTours(etat.derniers)
+  if (par_defaut === undefined || surcharges === undefined || derniers_tours === undefined) {
+    return undefined
+  }
+  return { par_defaut, surcharges, derniers_tours }
 }
 
 export function estValide(etat: EtatBaremeDuel): boolean {
@@ -176,13 +234,18 @@ export function armesDistinctes(armes: readonly (string | null)[]): string[] {
   return [...retenues.values()].sort((a, b) => a.localeCompare(b, 'fr'))
 }
 
+function surchargesPoulies(armes: readonly string[], poulies: BaremeDuel): EtatSurcharge[] {
+  return armesDistinctes(armes)
+    .filter(estPoulies)
+    .map((arme) => ({ arme, bareme: depuisBareme(poulies) }))
+}
+
 function preset(defaut: BaremeDuel, armes: readonly string[], poulies: BaremeDuel): EtatBaremeDuel {
   return {
     regle: true,
     par_defaut: depuisBareme(defaut),
-    surcharges: armesDistinctes(armes)
-      .filter(estPoulies)
-      .map((arme) => ({ arme, bareme: depuisBareme(poulies) })),
+    surcharges: surchargesPoulies(armes, poulies),
+    derniers: null,
   }
 }
 
@@ -198,9 +261,38 @@ export function presetFftaMixte(armes: readonly string[]): EtatBaremeDuel {
   return preset(SETS_MIXTE, armes, CUMUL_MIXTE)
 }
 
-// DETTE-117 — 4 points jusqu'en finale : le §10.1 veut 6 en ½ finales, inexprimable par étape.
+/** Référentiel §10.1 : premier à 4, puis à 6 dès les ½ finales — poulies au cumul partout. */
 export function presetClub(armes: readonly string[]): EtatBaremeDuel {
-  return preset(SETS_CLUB, armes, CUMUL_POULIES)
+  return {
+    ...preset(SETS_CLUB, armes, CUMUL_POULIES),
+    derniers: {
+      tours: '2',
+      par_defaut: depuisBareme(SETS_FFTA),
+      surcharges: surchargesPoulies(armes, CUMUL_POULIES),
+    },
+  }
+}
+
+/** Ce que pose la case « derniers tours » une fois cochée : le barème principal recopié, K = 2. */
+export function derniersToursDepuis(etat: EtatBaremeDuel): EtatDerniersTours {
+  return {
+    tours: '2',
+    par_defaut: { ...etat.par_defaut },
+    surcharges: etat.surcharges.map((s) => ({ arme: s.arme, bareme: { ...s.bareme } })),
+  }
+}
+
+/** Les K derniers tours, dits dans le vocabulaire du format (E01US027, CA 3). */
+export function libelleDerniersTours(nb: number, type: TypePhase): string {
+  if (type === 'elimination_directe') {
+    if (nb === 1) return 'la finale'
+    if (nb === 2) return 'les ½ finales et la finale'
+    if (nb === 3) return 'les ¼ de finale, les ½ finales et la finale'
+    return `les ${nb} derniers tours`
+  }
+  if (type === 'suisse') return nb === 1 ? 'la dernière ronde' : `les ${nb} dernières rondes`
+  if (type === 'colline') return nb === 1 ? 'la dernière manche' : `les ${nb} dernières manches`
+  return nb === 1 ? 'le dernier tour' : `les ${nb} derniers tours`
 }
 
 export interface EcartsDArmes {
@@ -216,18 +308,24 @@ export type ArmesConnues = readonly string[] | 'chargement' | 'erreur'
 
 export function ecartsDArmes(etat: EtatBaremeDuel, armes: readonly string[]): EcartsDArmes {
   if (!etat.regle) return { poulieSansSurcharge: [], surchargeOrpheline: [] }
-  // Un défaut déjà au cumul couvre les poulies : il n'y a pas d'écart à signaler.
-  const defautAuCumul = etat.par_defaut.mode === 'cumul'
-  const surchargees = new Set(etat.surcharges.map((s) => cleArme(s.arme)))
+  // Les deux barèmes se jugent pareil (E01US027) : une arme oubliée dans l'un est un écart.
+  const portees = etat.derniers === null ? [etat] : [etat, etat.derniers]
   const connues = new Set(armes.map(cleArme))
   return {
-    poulieSansSurcharge: defautAuCumul
-      ? []
-      : armesDistinctes(armes).filter(
-          (arme) => estPoulies(arme) && !surchargees.has(cleArme(arme)),
-        ),
-    surchargeOrpheline: etat.surcharges
-      .map((s) => s.arme.trim())
-      .filter((arme) => arme !== '' && !connues.has(cleArme(arme))),
+    poulieSansSurcharge: armesDistinctes(
+      portees.flatMap((portee) => {
+        // Un défaut déjà au cumul couvre les poulies : il n'y a pas d'écart à signaler.
+        if (portee.par_defaut.mode === 'cumul') return []
+        const surchargees = new Set(portee.surcharges.map((s) => cleArme(s.arme)))
+        return armes.filter((arme) => estPoulies(arme) && !surchargees.has(cleArme(arme)))
+      }),
+    ),
+    surchargeOrpheline: armesDistinctes(
+      portees.flatMap((portee) =>
+        portee.surcharges
+          .map((s) => s.arme.trim())
+          .filter((arme) => arme !== '' && !connues.has(cleArme(arme))),
+      ),
+    ),
   }
 }

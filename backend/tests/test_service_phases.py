@@ -25,6 +25,7 @@ from application.verrou_bareme import VerrouBaremeDuel
 from domain.depart import Depart
 from domain.deroule_etape import EtapeDeroule
 from domain.duel import (
+    BaremeDesDerniersTours,
     BaremeDuel,
     Duel,
     ReglageBaremeDuel,
@@ -674,3 +675,46 @@ def test_les_horaires_prevus_d_un_tournoi_inconnu_sont_refuses() -> None:
     service, _ = _service()
     with pytest.raises(TournoiIntrouvable):
         service.horaires_prevus(999)
+
+
+# --- E01US027 : le verrou couvre le barème des derniers tours ---------------------------------
+
+
+def _club_a_partir_de(nb_tours: int) -> ReglageBaremeDuel:
+    return ReglageBaremeDuel(
+        BaremeDuel.preset_club(),
+        derniers_tours=BaremeDesDerniersTours(nb_tours=nb_tours, reglage=_FFTA),
+    )
+
+
+@pytest.mark.parametrize(
+    ("avant", "apres"),
+    [
+        (_CLUB, _club_a_partir_de(2)),
+        (_club_a_partir_de(2), _CLUB),
+        (_club_a_partir_de(2), _club_a_partir_de(3)),
+    ],
+    ids=["poser", "retirer", "changer-k"],
+)
+def test_le_bareme_des_derniers_tours_d_une_etape_tiree_est_verrouille(
+    avant: ReglageBaremeDuel, apres: ReglageBaremeDuel
+) -> None:
+    """E01US027, CA 5 : poser, retirer ou déplacer le barème des derniers tours relit les duels."""
+    duels = FauxDuelRepository()
+    service, tournoi_id = _service(duels)
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=avant)
+    _tirer_un_duel(duels, _phase_du_creneau(service, _DEPART))
+
+    with pytest.raises(BaremeDuelVerrouille):
+        _modifier_bareme(service, tournoi_id, etape, apres)
+    assert service.lister(tournoi_id)[0].bareme_duel == avant
+
+
+def test_le_bareme_des_derniers_tours_se_pose_tant_qu_aucun_duel_n_est_tire() -> None:
+    service, tournoi_id = _service()
+    etape = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE, bareme_duel=_CLUB)
+
+    modifiee = _modifier_bareme(service, tournoi_id, etape, _club_a_partir_de(2))
+
+    assert modifiee.bareme_duel == _club_a_partir_de(2)
+    assert service.lister(tournoi_id)[0].bareme_duel == _club_a_partir_de(2)

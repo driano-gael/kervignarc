@@ -26,6 +26,7 @@ from domain.categorie import SexeCategorie, TrancheAge
 from domain.depart import Depart
 from domain.deroule_etape import EtapeDeroule
 from domain.duel import (
+    BaremeDesDerniersTours,
     BaremeDuel,
     Duel,
     ReglageBaremeDuel,
@@ -528,3 +529,15 @@ def test_le_libelle_reste_modifiable_sur_une_categorie_figee() -> None:
     decor = _DecorDuVerrou().etape(_REGLAGE_FFTA_POULIES, tiree_dans=0)
 
     decor.changer_arme("Arc à poulies", libelle="Poulies S1")
+
+
+def test_changer_une_arme_qui_ne_change_que_le_bareme_des_derniers_tours_est_refuse() -> None:
+    """E01US027, CA 5 : seule la finale distingue les poulies — l'arme se fige quand même."""
+    reglage = ReglageBaremeDuel(
+        BaremeDuel.preset_club(),
+        derniers_tours=BaremeDesDerniersTours(nb_tours=2, reglage=_REGLAGE_FFTA_POULIES),
+    )
+    decor = _DecorDuVerrou().etape(reglage, tiree_dans=0)
+
+    with pytest.raises(ArmeDeCategorieVerrouillee):
+        decor.changer_arme("Arc classique")

@@ -11736,7 +11736,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/formats.py",
      "existe": true,
      "symboles": [
-      "ReglageBaremeDuelDTO"
+      "ReglageBaremeDuelDTO",
+      "BaremeDesDerniersToursDTO"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11745,7 +11746,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/phases.py",
      "existe": true,
      "symboles": [
-      "ReglageBaremeDuelDTO"
+      "ReglageBaremeDuelDTO",
+      "BaremeDesDerniersToursDTO"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11784,9 +11786,13 @@ window.ATLAS.decisions = {
      "symboles": [
       "_bareme_du",
       "_decor",
-      "bareme_de"
+      "bareme_de",
+      "_photo",
+      "_rejouer"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_photo"
+     ],
      "verifiable": true
     },
     {
@@ -11796,6 +11802,7 @@ window.ATLAS.decisions = {
       "VerrouBaremeDuel",
       "etape_tiree",
       "arme_figee",
+      "_baremes",
       "ResolveurBaremeDuel",
       "ServicePhases",
       "ServiceCategories"
@@ -11832,8 +11839,11 @@ window.ATLAS.decisions = {
      "symboles": [
       "ReglageBaremeDuel",
       "pour",
+      "baremes_pour",
       "SurchargeArme",
       "designe",
+      "BaremeDesDerniersTours",
+      "couvre",
       "BaremeDuel.__post_init__",
       "Duel._resultat_sets",
       "_issue_d_egalite",
@@ -11869,7 +11879,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "_politiques_json",
-      "_lire_bareme_duel"
+      "_reglage_bareme_duel_json",
+      "_lire_bareme_duel",
+      "_vers_reglage_bareme_duel",
+      "derniers_tours"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -11891,6 +11904,8 @@ window.ATLAS.decisions = {
       "presetClub",
       "estPoulies",
       "ecartsDArmes",
+      "derniersToursDepuis",
+      "libelleDerniersTours",
       "armes",
       "null"
      ],
@@ -11905,6 +11920,8 @@ window.ATLAS.decisions = {
       "presetClub",
       "estPoulies",
       "ecartsDArmes",
+      "derniersToursDepuis",
+      "libelleDerniersTours",
       "armes",
       "null"
      ],

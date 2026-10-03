@@ -51,12 +51,13 @@ class VerrouBaremeDuel:
         """
         return any(
             etape.id is not None
-            and self._bareme(etape, ancienne) != self._bareme(etape, nouvelle)
+            and self._baremes(etape, ancienne) != self._baremes(etape, nouvelle)
             and self.etape_tiree(tournoi_id, etape.id)
             for etape in self._deroules.par_tournoi(tournoi_id)
         )
 
-    def _bareme(self, etape: EtapeDeroule, arme: str | None) -> BaremeDuel:
+    def _baremes(self, etape: EtapeDeroule, arme: str | None) -> tuple[BaremeDuel, ...]:
+        """Premiers **et** derniers tours (E01US027) : que l'un change, et des duels se relisent."""
         if etape.bareme_duel is not None:
-            return etape.bareme_duel.pour(arme)
-        return self._resolveur.bareme_pour(arme)
+            return etape.bareme_duel.baremes_pour(arme)
+        return (self._resolveur.bareme_pour(arme),)

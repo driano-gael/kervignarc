@@ -305,7 +305,9 @@ class ServiceSaisieDuels:
             match = tableau.match(numero)
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
-            bareme = self._bareme_du(reglage, match.haut, lignes)
+            bareme = self._bareme_du(
+                reglage, match.haut, lignes, tours_restants=tableau.nb_tours - match.tour
+            )
             duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is not None and (duel.participant_haut, duel.participant_bas) == (
                 match.haut,
@@ -338,7 +340,9 @@ class ServiceSaisieDuels:
         """Saisit (ou réédite) une manche d'un match : les deux volées opposées."""
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        bareme = self._bareme_du(reglage, haut, lignes)
+        bareme = self._bareme_du(
+            reglage, haut, lignes, tours_restants=tableau.nb_tours - match.tour
+        )
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.saisir_manche(
@@ -363,7 +367,9 @@ class ServiceSaisieDuels:
         """Saisit le tir de barrage d'un match à égalité (§8.2)."""
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        bareme = self._bareme_du(reglage, haut, lignes)
+        bareme = self._bareme_du(
+            reglage, haut, lignes, tours_restants=tableau.nb_tours - match.tour
+        )
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.saisir_barrage(
@@ -379,7 +385,9 @@ class ServiceSaisieDuels:
         self._refuser_si_en_pause(tournoi_id, phase_id)
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
-        bareme = self._bareme_du(reglage, haut, lignes)
+        bareme = self._bareme_du(
+            reglage, haut, lignes, tours_restants=tableau.nb_tours - match.tour
+        )
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
         self._duels.enregistrer(phase_id, match_numero, duel)
@@ -699,7 +707,9 @@ class ServiceSaisieDuels:
             match = tableau.match(numero)
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
-            bareme = self._bareme_du(reglage, match.haut, lignes)
+            bareme = self._bareme_du(
+                reglage, match.haut, lignes, tours_restants=tableau.nb_tours - match.tour
+            )
             duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is None or duel.validee_par is None:
                 continue
@@ -761,6 +771,8 @@ class ServiceSaisieDuels:
         reglage: ReglageBaremeDuel | None,
         participant: Participant,
         lignes: dict[int, LigneClassement],
+        *,
+        tours_restants: int,
     ) -> BaremeDuel:
         """Le barème d'un duel, résolu par l'arme du participant — **exposé** pour `ServicePoules`.
 
@@ -770,7 +782,7 @@ class ServiceSaisieDuels:
         sur l'ensemencement (E05US020, plan de 8 pour un tableau de 4) ; on n'en écrit pas une
         seconde.
         """
-        return self._bareme_du(reglage, participant, lignes)
+        return self._bareme_du(reglage, participant, lignes, tours_restants=tours_restants)
 
     def zones_de(
         self, participant: Participant, lignes: dict[int, LigneClassement]
@@ -797,13 +809,15 @@ class ServiceSaisieDuels:
         reglage: ReglageBaremeDuel | None,
         participant: Participant,
         lignes: dict[int, LigneClassement],
+        *,
+        tours_restants: int,
     ) -> BaremeDuel:
-        """Le barème du duel par l'**arme** du participant : le réglage de la phase s'il existe,
-        le défaut injecté sinon (ADR-0117). ⚠️ `reglage` **sans défaut** : l'omettre retomberait en
-        silence sur FFTA."""
+        """Le barème du duel par l'**arme** du participant et son **tour** (`tours_restants` après
+        lui) : le réglage de la phase s'il existe, le défaut injecté sinon (ADR-0117). ⚠️ `reglage`
+        **sans défaut** : l'omettre retomberait en silence sur FFTA."""
         arme = self._arme_du(participant, lignes)
         if reglage is not None:
-            return reglage.pour(arme)
+            return reglage.pour(arme, tours_restants=tours_restants)
         return self._resolveur.bareme_pour(arme)
 
     def _arme_du(self, participant: Participant, lignes: dict[int, LigneClassement]) -> str | None:
@@ -879,7 +893,7 @@ class ServiceSaisieDuels:
         if haut is not None and bas is not None and not match.est_bye:
             # Match jouable : le pavé est déterminé (barème par arme + zones du blason), même avant
             # tout tir — la grille front sait d'emblée sets/cumul, nb de manches et zones légales.
-            bareme = self._bareme_du(reglage, haut, lignes)
+            bareme = self._bareme_du(reglage, haut, lignes, tours_restants=nb_tours - match.tour)
             zones = self._zones_best_effort(haut, lignes)
             if duel is None:
                 charge = self._duels.charger(phase_id, match.numero, bareme=bareme)

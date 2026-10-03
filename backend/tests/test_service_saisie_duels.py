@@ -33,6 +33,7 @@ from domain.categorie import Categorie
 from domain.classement import Classement, StatutClassement
 from domain.depart import Depart
 from domain.duel import (
+    BaremeDesDerniersTours,
     BaremeDuel,
     ModeDuel,
     ReglageBaremeDuel,
@@ -1039,3 +1040,64 @@ def test_le_reglage_de_la_phase_atteint_l_ecriture_pas_seulement_la_lecture() ->
 
     assert etat.duel is not None
     assert etat.duel.resultat.termine
+
+
+# --- E01US027 : le barème des derniers tours ---------------------------------------------------
+
+
+def _club_a_partir_de(nb_tours: int) -> ReglageBaremeDuel:
+    """Premier à 4, puis premier à 6 sur les `nb_tours` derniers tours (référentiel §10.1)."""
+    return ReglageBaremeDuel(
+        BaremeDuel.preset_club(),
+        derniers_tours=BaremeDesDerniersTours(
+            nb_tours=nb_tours, reglage=ReglageBaremeDuel(BaremeDuel.preset_ffta_classique())
+        ),
+    )
+
+
+def _seuils_par_tour(monde: _Monde) -> dict[int, set[int]]:
+    seuils: dict[int, set[int]] = {}
+    for duel in monde.service().etat_tableau(1, monde.phase_id).duels:
+        if duel.bareme is not None:
+            seuils.setdefault(duel.tour, set()).add(duel.bareme.points_pour_gagner)
+    return seuils
+
+
+def test_les_demi_finales_tirent_le_bareme_des_derniers_tours() -> None:
+    """CA 2 et 4 : tableau de 4, K = 2 — le 1ᵉʳ tour *est* la ½ finale, il se tire à 6."""
+    monde = _monde_classe(4)
+    _regler_le_bareme(monde, _club_a_partir_de(2))
+
+    assert _seuils_par_tour(monde) == {1: {6}}
+
+
+def test_un_tour_hors_des_k_derniers_garde_le_bareme_principal() -> None:
+    """CA 2 : tableau de 4, K = 1 — seule la finale passe à 6, les ½ finales restent à 4."""
+    monde = _monde_classe(4)
+    _regler_le_bareme(monde, _club_a_partir_de(1))
+
+    assert _seuils_par_tour(monde) == {1: {4}}
+
+
+def test_les_quarts_restent_au_bareme_principal_quand_k_couvre_les_demi_finales() -> None:
+    """CA 2 : tableau de 8 (3 tours), K = 2 — le 1ᵉʳ tour (¼ de finale) reste à 4."""
+    monde = _monde_classe(8)
+    _regler_le_bareme(monde, _club_a_partir_de(2))
+
+    assert _seuils_par_tour(monde) == {1: {4}}
+
+
+def test_le_bareme_des_derniers_tours_borne_aussi_l_ecriture() -> None:
+    """CA 2 : en ½ finale à 6 points, deux manches gagnées (4 points) ne tranchent pas le duel."""
+    monde = _monde_classe(4)
+    _regler_le_bareme(monde, _club_a_partir_de(2))
+    service = monde.service()
+    numero = next(m.numero for m in service.etat_tableau(1, monde.phase_id).duels if m.tour == 1)
+
+    for manche in (1, 2):
+        etat = service.saisir_manche(
+            1, monde.phase_id, numero, manche, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
+        )
+
+    assert etat.duel is not None
+    assert not etat.duel.resultat.termine

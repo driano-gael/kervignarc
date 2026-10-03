@@ -318,7 +318,10 @@ class ServicePoules:
             # déborderait de son propre bloc.
             position = 0
             tour_courant = 0
-            for rencontre in rencontres_de_poule(poule, configuration):
+            calendrier = rencontres_de_poule(poule, configuration)
+            # Le dernier tour **de cette poule** : une poule plus petite en compte moins (E01US027).
+            dernier_tour = max((r.tour for r in calendrier), default=0)
+            for rencontre in calendrier:
                 if rencontre.tour != tour_courant:
                     tour_courant, position = rencontre.tour, 0
                 numero += 1
@@ -331,6 +334,7 @@ class ServicePoules:
                         lignes,
                         blocs.get(poule.numero),
                         position,
+                        tours_restants=dernier_tour - rencontre.tour,
                     )
                 )
                 position += 1
@@ -742,6 +746,8 @@ class ServicePoules:
         lignes: dict[int, LigneClassement],
         bloc: BlocDeCouloirs | None,
         position_dans_le_tour: int,
+        *,
+        tours_restants: int,
     ) -> RencontreAffichee:
         """Assemble une rencontre : ses adversaires résolus, son pavé, ses couloirs, son tir.
 
@@ -750,7 +756,7 @@ class ServicePoules:
         ordinaire, et le même archer ne peut pas tirer en sets d'un côté et en cumul de l'autre.
         """
         a, b = rencontre.a, rencontre.b
-        bareme = self._saisie_duels.bareme_de(reglage, a, lignes)
+        bareme = self._saisie_duels.bareme_de(reglage, a, lignes, tours_restants=tours_restants)
         charge = self._duels.charger(phase_id, numero, bareme=bareme)
         # ⚠️ **L'ancrage d'ADR-0049 §4.** Un tir dont les duellistes enregistrés divergent des
         # adversaires recalculés est **masqué**, jamais ré-attribué : la rencontre s'affiche non

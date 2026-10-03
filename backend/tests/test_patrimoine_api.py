@@ -1160,7 +1160,7 @@ def test_un_format_garde_le_bareme_de_duel_de_ses_etapes(
 
         assert creation.status_code == 201, creation.text
         (relu,) = client.get("/api/v1/formats").json()
-        assert relu["etapes"][0]["bareme_duel"] == bareme_duel
+        assert relu["etapes"][0]["bareme_duel"] == {**bareme_duel, "derniers_tours": None}
 
 
 def test_la_duree_prevue_survit_a_l_aller_retour_de_bibliotheque(
@@ -1196,3 +1196,39 @@ def test_un_format_a_duree_hors_bornes_est_refuse_a_l_ecriture(
 
     assert refus.status_code == 422, refus.text
     assert refus.json()["code"] == "duree_prevue_invalide"
+
+
+def test_un_format_garde_le_bareme_des_derniers_tours(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US027, CA 6 — le barème des derniers tours voyage avec le format, comme le reste."""
+    sets = {
+        "mode": "sets",
+        "nb_manches": 5,
+        "nb_fleches_par_volee": 3,
+        "points_pour_gagner": 4,
+        "nb_fleches_barrage": 1,
+    }
+    bareme_duel = {
+        "par_defaut": sets,
+        "surcharges": [],
+        "derniers_tours": {
+            "nb_tours": 2,
+            "par_defaut": {**sets, "points_pour_gagner": 6},
+            "surcharges": [],
+        },
+    }
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        creation = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Format club",
+                "etapes": [{"ordre": 1, "type": "elimination_directe", "bareme_duel": bareme_duel}],
+            },
+        )
+
+        assert creation.status_code == 201, creation.text
+        (relu,) = client.get("/api/v1/formats").json()
+        assert relu["etapes"][0]["bareme_duel"] == bareme_duel

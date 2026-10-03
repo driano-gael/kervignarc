@@ -34,7 +34,13 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule
-from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
+from domain.duel import (
+    BaremeDesDerniersTours,
+    BaremeDuel,
+    ModeDuel,
+    ReglageBaremeDuel,
+    SurchargeArme,
+)
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
@@ -1706,5 +1712,27 @@ def test_un_format_conserve_la_duree_prevue_de_ses_etapes(tmp_path: Path) -> Non
 
         assert relu is not None
         assert relu.etapes == (modele,)
+    finally:
+        db.engine.dispose()
+
+
+def test_le_bareme_des_derniers_tours_fait_l_aller_retour(tmp_path: Path) -> None:
+    """E01US027 : `config.bareme_duel.derniers_tours` s'écrit et se relit, surcharges comprises."""
+    reglage = ReglageBaremeDuel(
+        par_defaut=BaremeDuel.preset_club(),
+        derniers_tours=BaremeDesDerniersTours(nb_tours=2, reglage=_BAREME_CLUB_AVEC_POULIES),
+    )
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+
+        _poser(db, depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE, bareme_duel=reglage)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+        etape = DerouleEtapeRepositorySQL(db.session_factory).par_tournoi(
+            _tournoi_du(db, depart_id)
+        )[0]
+
+        assert relue.bareme_duel == reglage
+        assert etape.bareme_duel == reglage
     finally:
         db.engine.dispose()

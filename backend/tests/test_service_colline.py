@@ -35,7 +35,12 @@ from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.colline import ConfigurationColline
 from domain.depart import Depart
-from domain.duel import BaremeDuel, ReglageBaremeDuel, ResolveurBaremeDuelFfta
+from domain.duel import (
+    BaremeDesDerniersTours,
+    BaremeDuel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+)
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
@@ -765,3 +770,32 @@ def test_le_bareme_de_duel_regle_sur_la_phase_atteint_ses_rencontres() -> None:
 
     assert rencontres
     assert all(r.bareme == BaremeDuel.preset_club() for r in rencontres)
+
+
+@pytest.mark.parametrize(("nb_manches", "derniere"), [(1, True), (2, False)])
+def test_la_derniere_manche_tire_le_bareme_des_derniers_tours(
+    nb_manches: int, derniere: bool
+) -> None:
+    """E01US027, CA 2 : K = 1 — la 1ʳᵉ manche n'en relève que si elle est la dernière."""
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ConfigurationColline(nb_manches=nb_manches, portee_de_defi=1))
+    phase = monde.phases.par_id(phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(
+        replace(
+            phase,
+            bareme_duel=ReglageBaremeDuel(
+                BaremeDuel.preset_club(),
+                derniers_tours=BaremeDesDerniersTours(
+                    nb_tours=1, reglage=ReglageBaremeDuel(BaremeDuel.preset_ffta_classique())
+                ),
+            ),
+        )
+    )
+
+    defis = monde.service().etat(monde.tournoi_id, phase_id).manches[0].defis
+
+    attendu = BaremeDuel.preset_ffta_classique() if derniere else BaremeDuel.preset_club()
+    assert defis
+    assert all(d.bareme == attendu for d in defis)

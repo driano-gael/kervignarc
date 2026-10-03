@@ -443,7 +443,8 @@ class SurchargeArme:
 
 @dataclass(frozen=True)
 class ReglageBaremeDuel:
-    """Le barème de duel **réglé sur une phase** : un défaut, des surcharges par arme (E01US011).
+    """Le barème de duel **réglé sur une phase** : un défaut, des surcharges par arme (E01US011),
+    un barème des derniers tours (E01US027).
 
     ⚠️ Les surcharges sont **explicites** : rien ne s'y devine sur le libellé. Les presets qui les
     pré-remplissent vivent au front (`shared/phases/baremeDuel.ts`), seul appelant. ADR-0117.
@@ -451,6 +452,7 @@ class ReglageBaremeDuel:
 
     par_defaut: BaremeDuel
     surcharges: tuple[SurchargeArme, ...] = ()
+    derniers_tours: BaremeDesDerniersTours | None = None
 
     def __post_init__(self) -> None:
         # Rangées par arme : l'ordre de saisie n'est pas une différence de barème (verrou, §5).
@@ -466,12 +468,49 @@ class ReglageBaremeDuel:
                 )
             vues.add(cle)
 
-    def pour(self, arme: str | None) -> BaremeDuel:
+    def pour(self, arme: str | None, *, tours_restants: int) -> BaremeDuel:
+        """`tours_restants` : les tours de la phase **après** celui du duel (0 au dernier).
+
+        ⚠️ Sans défaut : l'omettre tirerait en silence les finales au barème des premiers tours.
+        """
+        if self.derniers_tours is not None and self.derniers_tours.couvre(tours_restants):
+            return self.derniers_tours.reglage.pour(arme, tours_restants=tours_restants)
         if arme is not None:
             for surcharge in self.surcharges:
                 if surcharge.designe(arme):
                     return surcharge.bareme
         return self.par_defaut
+
+    def baremes_pour(self, arme: str | None) -> tuple[BaremeDuel, ...]:
+        """Tous les barèmes que cette arme peut tirer dans la phase, premiers tours d'abord."""
+        principal = self.pour(arme, tours_restants=_HORS_DERNIERS_TOURS)
+        if self.derniers_tours is None:
+            return (principal,)
+        return principal, self.derniers_tours.reglage.pour(arme, tours_restants=0)
+
+
+# Aucun K ne couvre un tour aussi loin du dernier : la portée « premiers tours » de `baremes_pour`.
+_HORS_DERNIERS_TOURS = 1 << 30
+
+
+@dataclass(frozen=True)
+class BaremeDesDerniersTours:
+    """Le barème des **K derniers tours** d'une phase de duels — au tableau, K = 2 couvre les ½
+    finales et la finale (E01US027, ADR-0117 amendé)."""
+
+    nb_tours: int
+    reglage: ReglageBaremeDuel
+
+    def __post_init__(self) -> None:
+        if self.nb_tours < 1:
+            raise BaremeDuelInvalide("Le barème des derniers tours doit couvrir au moins un tour.")
+        if self.reglage.derniers_tours is not None:
+            raise BaremeDuelInvalide(
+                "Le barème des derniers tours ne peut pas porter lui-même un second barème."
+            )
+
+    def couvre(self, tours_restants: int) -> bool:
+        return tours_restants < self.nb_tours
 
 
 def memes_baremes(a: ReglageBaremeDuel | None, b: ReglageBaremeDuel | None) -> bool:
@@ -483,12 +522,15 @@ def memes_baremes(a: ReglageBaremeDuel | None, b: ReglageBaremeDuel | None) -> b
     return _signature(a) == _signature(b)
 
 
-def _signature(
-    reglage: ReglageBaremeDuel | None,
-) -> tuple[BaremeDuel, tuple[tuple[str, BaremeDuel], ...]] | None:
+def _signature(reglage: ReglageBaremeDuel | None) -> tuple[object, ...] | None:
     if reglage is None:
         return None
-    return reglage.par_defaut, tuple((s.arme.casefold(), s.bareme) for s in reglage.surcharges)
+    fin = reglage.derniers_tours
+    return (
+        reglage.par_defaut,
+        tuple((s.arme.casefold(), s.bareme) for s in reglage.surcharges),
+        None if fin is None else (fin.nb_tours, _signature(fin.reglage)),
+    )
 
 
 # DETTE-119 — recopiée au front (`shared/phases/baremeDuel.ts::estPoulies`), sans test commun.

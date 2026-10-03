@@ -338,10 +338,16 @@ window.ATLAS.controles = {
    "message": "annonce ServicePhases, ServiceCategories dans « backend/application/verrou_bareme.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0117"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce _photo dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0117"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 56
+  "signaux": 57
  }
 };

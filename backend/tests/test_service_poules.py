@@ -29,7 +29,12 @@ from domain.barrage import BarrageDePlaces, PorteeBarrage, TirBarrage
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
-from domain.duel import BaremeDuel, ReglageBaremeDuel, ResolveurBaremeDuelFfta
+from domain.duel import (
+    BaremeDesDerniersTours,
+    BaremeDuel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+)
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.participant import Participant
@@ -1069,3 +1074,36 @@ def test_le_bareme_de_duel_regle_sur_la_phase_atteint_ses_rencontres() -> None:
 
     assert rencontres
     assert all(r.bareme == BaremeDuel.preset_club() for r in rencontres)
+
+
+def test_le_dernier_tour_de_chaque_poule_tire_le_bareme_des_derniers_tours() -> None:
+    """E01US027, CA 2 : K = 1 — le dernier tour **de sa poule**, compté sur cette poule seule."""
+    monde = _Monde()
+    monde.inscrire(9)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    phase = monde.phases.par_id(phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(
+        replace(
+            phase,
+            bareme_duel=ReglageBaremeDuel(
+                BaremeDuel.preset_club(),
+                derniers_tours=BaremeDesDerniersTours(
+                    nb_tours=1, reglage=ReglageBaremeDuel(BaremeDuel.preset_ffta_classique())
+                ),
+            ),
+        )
+    )
+
+    etat = monde.service().etat(monde.tournoi_id, phase_id)
+
+    assert len({max(r.tour for r in poule.rencontres) for poule in etat.poules}) == 2
+    for poule in etat.poules:
+        dernier = max(r.tour for r in poule.rencontres)
+        for rencontre in poule.rencontres:
+            attendu = (
+                BaremeDuel.preset_ffta_classique()
+                if rencontre.tour == dernier
+                else BaremeDuel.preset_club()
+            )
+            assert rencontre.bareme == attendu, (poule.numero, rencontre.tour)
