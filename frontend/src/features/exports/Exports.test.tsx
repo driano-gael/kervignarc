@@ -40,6 +40,7 @@ const CATALOGUE = [
   entree('club-paiement', [PDF, CSV]),
   entree('feuille-de-marque', [PDF]),
   entree('classement-qualification', [PDF, CSV]),
+  entree('deroule-horaire', [PDF]),
 ]
 
 function monter() {
@@ -149,6 +150,30 @@ describe('commandes propres à un document', () => {
       '/api/v1/tournois/7/classement-qualification/document?depart_id=3',
       'classement-qualification-7-depart-3',
       'csv',
+    )
+  })
+
+  it('sort le déroulé horaire en PDF seul, de tous les départs ou du seul départ choisi', async () => {
+    monter()
+
+    const titre = await screen.findByRole('heading', { name: 'Déroulé horaire' })
+    const section = titre.closest('section')!
+    expect(section.querySelectorAll('button')).toHaveLength(1)
+    await userEvent.click(section.querySelector('button')!)
+    await userEvent.selectOptions(section.querySelector('select')!, '3')
+    await userEvent.click(section.querySelector('button')!)
+
+    expect(telechargerExport).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/tournois/7/deroule-horaire/document',
+      'deroule-horaire-7',
+      'pdf',
+    )
+    expect(telechargerExport).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/tournois/7/deroule-horaire/document?depart_id=3',
+      'deroule-horaire-7-depart-3',
+      'pdf',
     )
   })
 

@@ -420,11 +420,14 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   [`2026-08-30-18h03-exports-au-format-choisi.md`](2026-08-30-18h03-exports-au-format-choisi.md).
   Depuis, le **palmarès** et le **journal d'audit** se sont ajoutés, et le format **Excel** a
   rejoint le CSV partout où un tableur a un sens.
-- **Le classement de qualification s'imprime** (dernier fait marquant, 01/10) : **une page par
+- **Le classement de qualification s'imprime** (01/10) : **une page par
   catégorie**, départ par départ, à afficher au mur — marquée « provisoire » tant que des volées
   restent à valider —, et le même classement à plat en CSV ou Excel. Détail dans
   [`2026-10-01-18h46-classement-de-qualification-a-imprimer.md`](2026-10-01-18h46-classement-de-qualification-a-imprimer.md).
-  *Reste à faire : le déroulé horaire imprimable.*
+- **Le déroulé horaire s'imprime** (dernier fait marquant, 03/10) : un bloc par départ, une ligne
+  par phase avec ses heures prévues et, quand il est réglé, son nombre de tours — en PDF, pour le
+  tournoi entier ou un seul départ. Détail dans
+  [`2026-10-03-12h52-deroule-horaire-imprimable.md`](2026-10-03-12h52-deroule-horaire-imprimable.md).
 
 ### 10. Déployer le jour J — *l'application tient dans un fichier*
 
@@ -632,7 +635,7 @@ Dans l'ordre de valeur prévu par le backlog :
    livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
 4. **Confort et robustesse** : les capacités annoncées sont livrées
    (l'import inscript'arc est **fait**, `E02US007` ; les presets de barèmes aussi, `E01US011` ;
-   le déroulé horaire aussi, `E03US010` ;
+   le déroulé horaire aussi, `E03US010`, et il s'imprime, `E09US007` ;
    « plusieurs gabarits » l'était **depuis juillet** — `E01US012` est close sans code, sa
    bibliothèque et le choix par tournoi venant d'`E01US007`/`E01US008` ; l'accès
    administrateur **se change depuis l'appli**, `E10US006` ; et une sauvegarde **se restaure
@@ -650,10 +653,12 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **164 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E00US028`,
+- **165 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E00US028`,
   **sans surface utilisateur** : un document de décision qui nomme du code disparu fait désormais
   échouer la vérification automatique, au lieu d'attendre qu'un relecteur le remarque. Juste avant,
-  `E11US006`, à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
+  `E09US007`, à **surface visible** : le **déroulé horaire s'imprime** en PDF depuis « Exports & impressions »,
+  un bloc par départ, une ligne par phase avec ses heures prévues. Juste avant, `E11US006`,
+  à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
   sans redémarrer le serveur, après l'avoir vérifiée ; l'état d'avant est gardé et se restaure pour
   annuler, et fermer la fenêtre du serveur n'efface plus une saisie en cours. Juste avant, `E00US016`,
   à **surface visible** : les catégories, les gabarits, les clubs et les départs se lisent en

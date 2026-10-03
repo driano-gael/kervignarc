@@ -12415,6 +12415,16 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/deroule_imprime.py",
+     "existe": true,
+     "symboles": [
+      "ServiceDerouleImprime",
+      "ServicePhases.horaires_prevus"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/phases.py",
      "existe": true,
      "symboles": [
@@ -12465,6 +12475,16 @@ window.ATLAS.decisions = {
      "symboles": [
       "_politiques_json",
       "_lire_duree_prevue"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/pdf/deroule_horaire.py",
+     "existe": true,
+     "symboles": [
+      "ServiceDerouleImprime",
+      "ServicePhases.horaires_prevus"
      ],
      "symboles_absents": [],
      "verifiable": true
