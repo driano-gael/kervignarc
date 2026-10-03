@@ -12,7 +12,8 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { FamilleDuel } from '../../shared/stores/fileDuelsHorsLigneStore'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
-import type { Cote, Duel, Tableau } from './api'
+import { libelleEcartCourt } from '../equipes/presentation'
+import type { Camp, Cote, Duel, EquipeEcartee, Tableau } from './api'
 import {
   estJouable,
   grouperParTour,
@@ -223,6 +224,9 @@ function ListeDuels({
   return (
     <div className="duels-liste">
       {tableau.est_termine && tableau.podium.length > 0 && <Podium tableau={tableau} />}
+      {tableau.equipes_ecartees.length > 0 && (
+        <EquipesEcartees equipes={tableau.equipes_ecartees} />
+      )}
       {groupes.map((groupe) => (
         <section key={groupe.titre} className="duels-liste__tour">
           <h4 className="duels-liste__titre">{groupe.titre}</h4>
@@ -240,8 +244,8 @@ function ListeDuels({
 function LigneDuel({ duel, onOuvrir }: { duel: Duel; onOuvrir: (n: number) => void }) {
   const statut = statutDuel(duel)
   const ouvrable = statut !== 'bye' && statut !== 'attente_adversaires'
-  const haut = duel.haut ? `${duel.haut.nom} ${duel.haut.prenom}` : '—'
-  const bas = duel.bas ? `${duel.bas.nom} ${duel.bas.prenom}` : '—'
+  const haut = duel.haut ? nomCamp(duel.haut) : '—'
+  const bas = duel.bas ? nomCamp(duel.bas) : '—'
 
   const contenu = (
     <>
@@ -272,6 +276,35 @@ function LigneDuel({ duel, onOuvrir }: { duel: Duel; onOuvrir: (n: number) => vo
   )
 }
 
+// Un camp d'équipe se nomme par l'équipe et ses membres (E13US004) ; un archer, « nom prénom ».
+function nomCamp(camp: Camp): string {
+  if (camp.archer_id !== null) return `${camp.nom} ${camp.prenom}`
+  return camp.membres && camp.membres.length > 0
+    ? `${camp.nom} (${camp.membres.join(', ')})`
+    : camp.nom
+}
+
+function EquipesEcartees({ equipes }: { equipes: EquipeEcartee[] }) {
+  return (
+    <section className="duels-podium" aria-label="Équipes non engagées">
+      <h4 className="duels-liste__titre">Équipes non engagées</h4>
+      <ul className="duels-podium__places">
+        {equipes.map((equipe) => (
+          <li key={equipe.equipe_id}>
+            <strong>{equipe.nom}</strong> —{' '}
+            {[
+              ...equipe.ecarts.map(libelleEcartCourt),
+              ...equipe.membres_hors_course.map(
+                (membre) => `${membre} ne tire pas la qualification de ce départ`,
+              ),
+            ].join(' ; ')}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function Podium({ tableau }: { tableau: Tableau }) {
   return (
     <section className="duels-podium" aria-label="Podium">
@@ -279,7 +312,7 @@ function Podium({ tableau }: { tableau: Tableau }) {
       <ol className="duels-podium__places">
         {tableau.podium.map((place) => (
           <li key={place.rang}>
-            <strong>{place.rang}.</strong> {place.duelliste.nom} {place.duelliste.prenom}
+            <strong>{place.rang}.</strong> {nomCamp(place.duelliste)}
           </li>
         ))}
       </ol>
@@ -347,8 +380,8 @@ export function DuelCharge({
   onValide: (archerIds: number[]) => void
   famille?: FamilleDuel
 }) {
-  const haut = duel.haut ? `${duel.haut.nom} ${duel.haut.prenom}` : '—'
-  const bas = duel.bas ? `${duel.bas.nom} ${duel.bas.prenom}` : '—'
+  const haut = duel.haut ? nomCamp(duel.haut) : '—'
+  const bas = duel.bas ? nomCamp(duel.bas) : '—'
   // Verrou : duel validé (autorité serveur) OU **validation en file hors-ligne** — dans ce dernier cas
   // on ferme la saisie **localement**, comme le ferait le serveur en ligne (`DuelVerrouille`). Sans ce
   // verrou optimiste, le scoreur pourrait rééditer une manche APRÈS avoir validé hors-ligne : au rejeu
@@ -411,16 +444,20 @@ export function DuelCharge({
         />
       )}
 
-      {famille === 'tableau' && !verrou && duel.haut !== null && duel.bas !== null && (
-        <ForfaitDuel
-          tournoiId={tournoiId}
-          phaseId={phaseId}
-          hautId={duel.haut.archer_id}
-          hautNom={haut}
-          basId={duel.bas.archer_id}
-          basNom={bas}
-        />
-      )}
+      {/* DETTE-120 : un forfait se déclare pour un archer — rien à proposer à un duel d'équipes. */}
+      {famille === 'tableau' &&
+        !verrou &&
+        duel.haut?.archer_id != null &&
+        duel.bas?.archer_id != null && (
+          <ForfaitDuel
+            tournoiId={tournoiId}
+            phaseId={phaseId}
+            hautId={duel.haut.archer_id}
+            hautNom={haut}
+            basId={duel.bas.archer_id}
+            basNom={bas}
+          />
+        )}
 
       {resultat?.barrage_requis === true && !verrou && (
         <SaisieBarrage

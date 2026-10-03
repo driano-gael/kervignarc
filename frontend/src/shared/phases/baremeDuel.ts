@@ -190,6 +190,7 @@ export function presetFfta(armes: readonly string[]): EtatBaremeDuel {
   return preset(SETS_FFTA, armes, CUMUL_POULIES)
 }
 
+// DETTE-119 — recopiés au domaine (`BaremeDuel.preset_ffta_equipe`), défaut d'une phase d'équipes.
 export function presetFftaEquipe(armes: readonly string[]): EtatBaremeDuel {
   return preset(SETS_EQUIPE, armes, CUMUL_EQUIPE)
 }

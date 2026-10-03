@@ -697,7 +697,8 @@ window.ATLAS.avancement = {
     "E01US024",
     "E16US002",
     "E01US011",
-    "E03US010"
+    "E03US010",
+    "E13US004"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -4276,6 +4277,7 @@ window.ATLAS.avancement = {
    "dettes_introduites": [
     "006",
     "064",
+    "080",
     "119",
     "120",
     "121"
