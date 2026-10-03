@@ -650,8 +650,10 @@ se **jouent** pas encore (placement, saisie et classement par équipe restent à
 
 ## Chiffres repères
 
-- **163 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E11US006`,
-  à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
+- **164 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E00US028`,
+  **sans surface utilisateur** : un document de décision qui nomme du code disparu fait désormais
+  échouer la vérification automatique, au lieu d'attendre qu'un relecteur le remarque. Juste avant,
+  `E11US006`, à **surface visible** : l'organisateur **revient à une sauvegarde** depuis l'écran « Sauvegardes »,
   sans redémarrer le serveur, après l'avoir vérifiée ; l'état d'avant est gardé et se restaure pour
   annuler, et fermer la fenêtre du serveur n'efface plus une saisie en cours. Juste avant, `E00US016`,
   à **surface visible** : les catégories, les gabarits, les clubs et les départs se lisent en
