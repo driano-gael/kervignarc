@@ -219,6 +219,7 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
         "feuille-de-marque",
         "palmares",
         "classement-qualification",
+        "deroule-horaire",
         "audit",
     }
     codes = {
@@ -235,6 +236,7 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
         "feuille-de-marque": ["pdf"],
         "palmares": ["pdf", "csv", "xlsx"],
         "classement-qualification": ["pdf", "csv", "xlsx"],
+        "deroule-horaire": ["pdf"],
         "audit": ["csv", "xlsx"],
     }
     # ⚠️ ET la même chose lue sur le **câblage réel** : les littéraux ci-dessus disent ce que le
@@ -384,6 +386,7 @@ _CHEMINS_DE_DOCUMENT = {
     "feuille-de-marque": "/api/v1/tournois/{tournoi_id}/departs/{depart_id}/feuille-de-marque",
     "palmares": "/api/v1/tournois/{tournoi_id}/palmares/document",
     "classement-qualification": "/api/v1/tournois/{tournoi_id}/classement-qualification/document",
+    "deroule-horaire": "/api/v1/tournois/{tournoi_id}/deroule-horaire/document",
     "audit": "/api/v1/tournois/{tournoi_id}/audit/document",
 }
 

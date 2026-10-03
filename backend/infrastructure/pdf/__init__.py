@@ -8,6 +8,7 @@ seul endroit du code qui l'importe, les couches supérieures ne connaissant que 
 from __future__ import annotations
 
 from infrastructure.pdf.classement_qualification import GenerateurClassementQualificationPdf
+from infrastructure.pdf.deroule_horaire import GenerateurDerouleHorairePdf
 from infrastructure.pdf.documents_salle import GenerateurDocumentsSallePdf
 from infrastructure.pdf.feuille_de_marque import GenerateurFeuilleDeMarquePdf
 from infrastructure.pdf.listes_impression import GenerateurListesImpressionPdf
@@ -15,6 +16,7 @@ from infrastructure.pdf.palmares import GenerateurPalmaresPdf
 
 __all__ = [
     "GenerateurClassementQualificationPdf",
+    "GenerateurDerouleHorairePdf",
     "GenerateurDocumentsSallePdf",
     "GenerateurFeuilleDeMarquePdf",
     "GenerateurListesImpressionPdf",

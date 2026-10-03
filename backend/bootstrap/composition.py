@@ -35,6 +35,7 @@ from api.v1.competition import router as competition_router
 from api.v1.completude import router as completude_router
 from api.v1.departs import router as departs_router
 from api.v1.deroule import router as deroule_router
+from api.v1.deroule_imprime import router as deroule_imprime_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.ecrans import router as ecrans_router
 from api.v1.ecrans import session_router as ecran_session_router
@@ -92,6 +93,7 @@ from application.clubs import ServiceClubs
 from application.colline import ServiceColline
 from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
+from application.deroule_imprime import ServiceDerouleImprime
 from application.documents_salle import ServiceDocumentsSalle
 from application.ecrans import ServiceEcrans
 from application.equipes import ServiceEquipes
@@ -220,6 +222,7 @@ from infrastructure.memory.repositories import (
 )
 from infrastructure.pdf import (
     GenerateurClassementQualificationPdf,
+    GenerateurDerouleHorairePdf,
     GenerateurDocumentsSallePdf,
     GenerateurFeuilleDeMarquePdf,
     GenerateurListesImpressionPdf,
@@ -1134,6 +1137,13 @@ def create_app(
             }
         ),
     )
+    # E09US007 : le déroulé horaire imprimable, PDF seul. Il **compose** `service_phases` : les
+    # heures sont celles que sert l'écran (ADR-0118), jamais recalculées.
+    app.state.service_deroule_imprime = ServiceDerouleImprime(
+        tournois=tournoi_repository,
+        phases=app.state.service_phases,
+        generateurs=RegistreDeFormats({FormatExport.PDF: GenerateurDerouleHorairePdf()}),
+    )
     # Catalogue d'exports (E16US007, ADR-0101 §3) : ce que l'écran « Exports & impressions »
     # propose. ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici. La composition
     # vit dans `construire_catalogue`, fonction pure, pour rester **testable**.
@@ -1153,12 +1163,16 @@ def create_app(
     formats_classement: tuple[FormatExport, ...] = (
         app.state.service_classement_imprime.formats_disponibles
     )
+    formats_deroule: tuple[FormatExport, ...] = (
+        app.state.service_deroule_imprime.formats_disponibles
+    )
     app.state.catalogue_exports = construire_catalogue(
         formats_listes=formats_listes,
         formats_feuille=formats_feuille,
         formats_palmares=formats_palmares,
         formats_audit=formats_audit,
         formats_classement=formats_classement,
+        formats_deroule=formats_deroule,
     )
 
     # --- Pilotage d'un tour (E12US002, ADR-0056) : feu vert + lancement. Compose les services de
@@ -1532,6 +1546,7 @@ def create_app(
     app.include_router(listes_impression_router)
     app.include_router(palmares_router)
     app.include_router(classement_imprime_router)
+    app.include_router(deroule_imprime_router)
     app.include_router(archive_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
