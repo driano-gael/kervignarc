@@ -46,7 +46,8 @@ Trois faits du code ont orienté la décision :
    blason (lus sur la catégorie de ses membres, homogène puisqu'elle est conforme), noms, et
    archers à poser sur les cibles. ⚠️ **L'arme est homogène parce que l'équipe est conforme ; le
    blason ne l'était pas** (la conformité d'E13US002 ne lisait que l'arme et le sexe) : la revue
-   l'a relevé, et l'écart « blasons différents » écarte désormais une telle équipe.
+   l'a relevé, et les écarts « blasons différents » et « blason non vérifiable » écartent
+   désormais une telle équipe.
    **Frontière** : `Camp = Duelliste | DuellisteEquipe` n'apparaît que sur la surface du tableau ;
    poules, suisse et colline gardent `Duelliste`. L'API aplatit un camp d'équipe (nom d'équipe,
    prénom vide, `equipe_id`, `archer_id` nul) ; routage et simulation l'écartent explicitement.
@@ -60,8 +61,8 @@ Trois faits du code ont orienté la décision :
    où le tableau de ce type a un tir réécrirait l'ensemencement : `ServiceEquipes` le refuse (409,
    `VerrouCompositionEquipes`). Le gel ne couvre **que** cet écran : tout geste sur les
    inscriptions, la catégorie d'un membre ou la qualification change encore l'engagement, comme
-   en individuel (`DETTE-123`) ; désinscrire les membres lève même le gel, le verrou lisant les
-   inscriptions. Le remède est de figer l'engagement (`E13US005`).
+   en individuel (`DETTE-123`) ; désinscrire ou supprimer tous ses membres de ce départ lève même
+   le gel, le verrou lisant les inscriptions. Le remède est de figer l'engagement (`E13US005`).
 
 ## Alternatives écartées
 
@@ -94,7 +95,7 @@ Trois faits du code ont orienté la décision :
 | Point | Module |
 |---|---|
 | 1 — réglage d'étape | `domain/deroule_etape.py`, `domain/phase.py` (garde), `domain/format_tournoi.py`, `infrastructure/db/repositories/moteur.py`, `application/phases.py` (verrou), `api/v1/phases.py`, `api/v1/formats.py`, `frontend/src/shared/phases/` |
-| 2, 3 — engagement et rang d'entrée | `domain/engagement_equipes.py`, `domain/equipe.py` (écart « blasons différents »), `application/equipes.py` (`a_engager`, `jouee`), `application/saisie_duels.py` (`_decor`, `_equipes_sans_tableau`) |
+| 2, 3 — engagement et rang d'entrée | `domain/engagement_equipes.py`, `domain/equipe.py` (écarts « blasons différents » et « blason non vérifiable »), `application/equipes.py` (`a_engager`, `jouee`), `application/saisie_duels.py` (`_decor`, `_equipes_sans_tableau`) |
 | 4 — barème par défaut | `domain/duel.py` (`ResolveurBaremeDuelFfta.bareme_equipe_pour`), `application/saisie_duels.py` (`_bareme_du`) |
 | 5 — résolution en couche haute | `application/saisie_duels.py`, `application/placement_duels.py`, `application/pilotage_tour.py`, `domain/placement.py` (adjacence par groupe de duel) ; frontière `Camp` : `api/v1/saisie_duels.py` et `api/v1/tableaux.py` (aplatissement), `application/routage.py` et `application/pilotage_simulation.py` (camp d'équipe écarté) |
 | 6 — îlot | `domain/phase.py` (`_anomalies_ilot_d_equipes`), `application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`) |

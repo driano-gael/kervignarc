@@ -125,6 +125,7 @@ describe('SaisieDuels — un tableau d’équipes', () => {
     expect(screen.getByRole('region', { name: 'Équipes non engagées' })).toHaveTextContent(
       'Hennebont',
     )
+    expect(screen.getByText(/figurent ci-dessous/)).toBeInTheDocument()
   })
 
   it('le dit aussi quand aucune équipe n’est écartée', async () => {

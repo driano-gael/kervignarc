@@ -249,10 +249,15 @@ def test_une_equipe_sans_aucun_membre_dans_ce_depart_n_est_pas_listee() -> None:
 def test_une_equipe_vide_n_est_pas_listee() -> None:
     # CA 2 : aucun membre au classement de ce départ — elle reste signalée sur l'écran « Équipes ».
     vide = Equipe(1, "Vide", TypeEquipe.STANDARD, 3, (), id=1)
+    conforme = _equipe(2, "Conforme", (1, 2, 3))
+    lignes = _lignes(*(_ligne(archer, 500) for archer in range(1, 4)))
 
-    engagement = engager_les_equipes(TypeEquipe.STANDARD, [vide], {}, {})
+    engagement = engager_les_equipes(
+        TypeEquipe.STANDARD, [vide, conforme], _profils(1, 2, 3), lignes
+    )
 
-    assert (engagement.engagees, engagement.ecartees) == ((), ())
+    assert [e.equipe.nom for e in engagement.engagees] == ["Conforme"]
+    assert engagement.ecartees == ()
 
 
 def test_un_seul_membre_dans_ce_depart_suffit_a_lister_l_equipe() -> None:

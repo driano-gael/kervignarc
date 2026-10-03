@@ -76,6 +76,7 @@ class ServiceForfait:
         phase = self._phase_qualification(tournoi_id)
         return self._declarer(tournoi_id, phase, archer_id, nature, declare_par, motif)
 
+    # DETTE-123 — réadmettre un membre fait rentrer son équipe dans un tableau d'équipes tiré.
     def annuler_en_qualification(
         self, tournoi_id: TournoiId, archer_id: ArcherId, annule_par: str
     ) -> None:

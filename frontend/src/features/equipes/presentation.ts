@@ -20,7 +20,7 @@ const LIBELLES_ECART_COURTS: Record<EcartEquipe, string> = {
   sexes_differents: 'Sexes différents entre les membres',
   sexe_non_verifiable: 'Sexe non vérifiable : catégorie sans sexe ou mixte',
   blasons_differents: 'Blasons différents : les membres ne tirent pas sur le même blason',
-  blason_non_verifiable: 'Blason non vérifiable : une catégorie n’a pas de blason',
+  blason_non_verifiable: 'Blason non vérifiable : un membre n’a pas de blason connu',
 }
 
 const LIBELLES_ECART: Record<EcartEquipe, (equipe: Equipe) => string> = {

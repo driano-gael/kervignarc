@@ -58,6 +58,7 @@ class ServiceImportInscrits:
         """Le rapport de ce que ferait l'import, homonymes non cochés ; n'écrit rien."""
         return self._planifier(tournoi_id, self.lire(contenu), frozenset())
 
+    # DETTE-123 — inscrire une fiche existante (membre) réensemence un tableau d'équipes tiré.
     def importer(
         self, tournoi_id: TournoiId, fichier: FichierInscrits, homonymes_acceptes: frozenset[int]
     ) -> PlanImport:

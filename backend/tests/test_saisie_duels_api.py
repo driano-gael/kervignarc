@@ -473,3 +473,4 @@ def test_l_ecran_des_duels_a_une_seule_equipe_engagee_dit_pourquoi(
         assert tableau.status_code == 200, tableau.text
         assert tableau.json()["duels"] == []
         assert [e["nom"] for e in tableau.json()["equipes_ecartees"]] == ["C"]
+        assert tableau.json()["equipes_ecartees"][0]["ecarts"] == ["effectif_insuffisant"]

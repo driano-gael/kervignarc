@@ -154,6 +154,7 @@ def ecarts_de_composition(
 
     ⚠️ **On ne devine dans aucun sens** : une arme ou un sexe inconnu rend le critère « non
     vérifiable », sans effacer pour autant une différence **déjà établie** entre membres connus.
+    Le blason, lui, n'est « non vérifiable » qu'à côté d'un blason connu (CA 9 d'E13US004).
     """
     ecarts: list[EcartComposition] = []
     if len(profils) < equipe.effectif_attendu:

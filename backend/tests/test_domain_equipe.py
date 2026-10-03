@@ -374,3 +374,18 @@ def test_le_profil_lit_le_blason_de_la_categorie() -> None:
     categorie = Categorie.creer(1, "CLH", arme="Classique", sexe=H, blason_id=7)
 
     assert ProfilMembre.de_categorie(categorie).blason_id == 7
+
+
+def test_deux_blasons_differents_et_un_inconnu_donnent_les_deux_ecarts() -> None:
+    # Un blason inconnu n'efface pas une différence déjà établie entre blasons connus.
+    equipe = Equipe(1, "Mêlée", TypeEquipe.STANDARD, 3, (1, 2, 3), id=1)
+    profils = [
+        ProfilMembre(arme="Classique", sexe=H, blason_id=1),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=2),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=None),
+    ]
+
+    assert ecarts_de_composition(equipe, profils) == (
+        EcartComposition.BLASONS_DIFFERENTS,
+        EcartComposition.BLASON_NON_VERIFIABLE,
+    )
