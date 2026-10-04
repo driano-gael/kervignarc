@@ -15,6 +15,9 @@ import {
   segmentsCanoniques,
   destinationValide,
   segmentsAdmin,
+  marquesDeLAxe,
+  navigationDeLAxe,
+  tournoiParId,
   type Axe,
 } from './axes'
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
@@ -412,5 +415,131 @@ describe('OUVRE_UN_ELEMENT', () => {
     }
 
     expect(elementRetenu(route, 'inscriptions')).toBe(57)
+  })
+})
+
+// — Décisions sorties de `CoquilleAdmin` (E00US024). Oracle : le comportement d'avant l'extraction. —
+
+type Entree = { id: Exclude<DestinationAdminId, 'tournoi'>; libelle: string }
+
+// Un ordre de déclaration où l'ouverture de l'atelier (`formats`) n'est PAS en tête.
+const SIDEBAR: Entree[] = [
+  { id: 'accueil', libelle: 'Accueil' },
+  { id: 'categories', libelle: 'Catégories' },
+  { id: 'formats', libelle: 'Formats' },
+  { id: 'supervision', libelle: 'Supervision' },
+  { id: 'inscriptions', libelle: 'Inscriptions' },
+  { id: 'paiements', libelle: 'Paiements' },
+]
+
+describe('navigationDeLAxe', () => {
+  it('sans axe ouvert : sidebar vide, aucune destination active', () => {
+    expect(navigationDeLAxe(SIDEBAR, null, 'supervision')).toEqual({
+      dansAxe: [],
+      active: undefined,
+    })
+  })
+
+  it('ne garde que les destinations de l’axe, dans l’ordre de déclaration', () => {
+    const { dansAxe } = navigationDeLAxe(SIDEBAR, 'gestion', null)
+    expect(dansAxe.map((d) => d.id)).toEqual(['inscriptions', 'paiements'])
+  })
+
+  it('affiche la destination demandée quand l’axe la propose', () => {
+    expect(navigationDeLAxe(SIDEBAR, 'gestion', 'paiements').active?.id).toBe('paiements')
+  })
+
+  it('une destination d’un AUTRE axe retombe sur l’ouverture de l’axe', () => {
+    expect(navigationDeLAxe(SIDEBAR, 'atelier', 'supervision').active?.id).toBe('formats')
+  })
+
+  it('une destination inconnue, ou absente, retombe aussi sur l’ouverture', () => {
+    expect(navigationDeLAxe(SIDEBAR, 'atelier', 'inexistante').active?.id).toBe('formats')
+    expect(navigationDeLAxe(SIDEBAR, 'atelier', null).active?.id).toBe('formats')
+  })
+
+  it('l’ouverture n’est PAS la première entrée — l’ordre de la sidebar ne la choisit pas', () => {
+    expect(navigationDeLAxe(SIDEBAR, 'atelier', null).dansAxe[0]?.id).toBe('categories')
+  })
+
+  it('sans ouverture dans la liste, dernier recours : la première entrée de l’axe', () => {
+    const sansFormats = SIDEBAR.filter((d) => d.id !== 'formats')
+    expect(navigationDeLAxe(sansFormats, 'atelier', null).active?.id).toBe('categories')
+  })
+
+  it('un axe sans aucune entrée n’a pas de destination active', () => {
+    expect(navigationDeLAxe([], 'pilotage', 'accueil')).toEqual({ dansAxe: [], active: undefined })
+  })
+
+  it('rend les entrées elles-mêmes, libellé compris', () => {
+    expect(navigationDeLAxe(SIDEBAR, 'pilotage', 'supervision').active).toBe(SIDEBAR[3])
+  })
+})
+
+describe('marquesDeLAxe', () => {
+  const lances = [
+    { nom: 'Challenge', statut: 'en_cours' },
+    { nom: 'Nocturne', statut: 'en_pause' },
+    { nom: 'À venir', statut: 'brouillon' },
+  ] as const
+
+  it('l’atelier se dit « sans tournoi », sans compte ni contexte', () => {
+    expect(marquesDeLAxe('atelier', lances)).toEqual({
+      sansTournoi: true,
+      enCours: null,
+      contexte: null,
+    })
+  })
+
+  it('la gestion ne porte aucune marque, même avec des tournois en cours', () => {
+    expect(marquesDeLAxe('gestion', lances)).toEqual({
+      sansTournoi: false,
+      enCours: null,
+      contexte: null,
+    })
+  })
+
+  it('le pilotage compte les tournois lancés — la pause comprise — et les nomme', () => {
+    expect(marquesDeLAxe('pilotage', lances)).toEqual({
+      sansTournoi: false,
+      enCours: 2,
+      contexte: 'Challenge · Nocturne',
+    })
+  })
+
+  it('rien en cours : ni « 0 en cours » ni ligne de contexte', () => {
+    expect(marquesDeLAxe('pilotage', [{ nom: 'À venir', statut: 'brouillon' }])).toEqual({
+      sansTournoi: false,
+      enCours: null,
+      contexte: null,
+    })
+    expect(marquesDeLAxe('pilotage', []).enCours).toBeNull()
+  })
+})
+
+describe('tournoiParId', () => {
+  const liste = [
+    { id: 3, nom: 'A' },
+    { id: 12, nom: 'B' },
+  ]
+
+  it('trouve le tournoi désigné', () => {
+    expect(tournoiParId(liste, 12)).toBe(liste[1])
+  })
+
+  it('aucun tournoi désigné : null', () => {
+    expect(tournoiParId(liste, null)).toBeNull()
+  })
+
+  it('liste pas encore chargée : null, pas une erreur', () => {
+    expect(tournoiParId(undefined, 12)).toBeNull()
+  })
+
+  it('tournoi disparu de la liste (supprimé ailleurs) : null', () => {
+    expect(tournoiParId(liste, 99)).toBeNull()
+  })
+
+  it('l’option vide du sélecteur (Number de la chaîne vide, soit 0) ne désigne aucun tournoi', () => {
+    expect(tournoiParId(liste, Number(''))).toBeNull()
   })
 })

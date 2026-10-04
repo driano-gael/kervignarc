@@ -12,18 +12,28 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { FamilleDuel } from '../../shared/stores/fileDuelsHorsLigneStore'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
-import { libelleEcartCourt } from '../equipes/presentation'
-import type { Camp, Cote, Duel, EquipeEcartee, Tableau } from './api'
+import type { Cote, Duel, EquipeEcartee, Tableau } from './api'
 import {
+  archersARouter,
+  baremeDeManche,
+  campApresFleche,
+  duellistesDuForfait,
   estJouable,
+  estOuvrable,
+  etatBarrage,
+  etatManche,
+  flechesApresZone,
   grouperParTour,
-  libelleMode,
   mancheExistante,
   nouvelIdentifiant,
-  mancheNeuveFermee,
+  pastillesManches,
+  retenirPhase,
+  phasesDeTableau,
   prochaineMancheASaisir,
+  saisieVerrouillee,
+  signatureBarrage,
+  signatureManche,
   statutDuel,
-  type StatutDuel,
   totalVolee,
 } from './duel'
 import {
@@ -36,15 +46,16 @@ import {
   useValiderDuel,
   usePhases,
 } from './hooks'
-
-const LIBELLE_STATUT: Record<StatutDuel, string> = {
-  bye: 'Exempt (bye)',
-  attente_adversaires: 'En attente des adversaires',
-  a_saisir: 'À saisir',
-  en_cours: 'En cours',
-  a_valider: 'À valider',
-  valide: 'Validé',
-}
+import {
+  libelleMetaDuel,
+  libelleSaisiesEnAttente,
+  libelleStatut,
+  motifsEcart,
+  nomCamp,
+  nomCourt,
+  nomVainqueur,
+  titreBarrage,
+} from './presentation'
 
 /**
  * `departId` vient de l'**espace scoreur** depuis E05US030 (`DETTE-056` refermée) : les quatre
@@ -68,14 +79,8 @@ export function SaisieDuels({
   const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
-  // La saisie en duels ne vaut que pour une phase de **tableau** : on ne propose que celles-là (le
-  // serveur reste l'autorité — `phase_pas_un_tableau` si l'on force — mais restreindre évite d'y
-  // arriver par mégarde). Jumeau du sélecteur du plan de duels (E03US009).
-  const tableaux = (phases.data ?? []).filter((p) => p.type === 'elimination_directe')
-  // Changer de créneau rend l'ancien `phaseId` étranger à la liste : le garder ferait scorer le
-  // tableau de l'autre départ, avec un identifiant valide et donc sans la moindre erreur.
-  const phaseRetenue =
-    phaseId !== null && tableaux.some((phase) => phase.id === phaseId) ? phaseId : null
+  const tableaux = phasesDeTableau(phases.data ?? [])
+  const phaseRetenue = retenirPhase(phaseId, tableaux)
 
   return (
     <div className="duels-saisie">
@@ -118,11 +123,11 @@ export function SaisieDuels({
 // Bandeau discret d'actes en attente d'envoi (hors-ligne) — le voyant global de connexion
 // (`IndicateurConnexion`) reste dans l'en-tête de l'app ; celui-ci précise la file **des duels**.
 function IndicateurAttente() {
-  const enAttente = useDuelsEnAttente()
-  if (enAttente === 0) return null
+  const libelle = libelleSaisiesEnAttente(useDuelsEnAttente())
+  if (libelle === null) return null
   return (
     <span className="duels-saisie__attente" role="status">
-      {enAttente} saisie{enAttente > 1 ? 's' : ''} en attente d’envoi
+      {libelle}
     </span>
   )
 }
@@ -210,8 +215,8 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
 
 // La liste des duels **groupés par libellé de tour** (finale en tête). Le regroupement (par libellé,
 // pas par `tour` brut — pour ne pas ranger la petite finale sous « Finale ») est une **logique pure**
-// portée par `grouperParTour` (testée dans `duel.ts`). Un duel jouable est tapable pour l'ouvrir ; un
-// bye ou un duel sans adversaires connus est affiché mais non ouvrable.
+// portée par `grouperParTour` (testée dans `duel.ts`). Un duel jouable est tapable pour l'ouvrir ;
+// les autres sont affichés mais non ouvrables (`estOuvrable`).
 function ListeDuels({
   tableau,
   onOuvrir,
@@ -250,9 +255,8 @@ function ListeDuels({
 
 function LigneDuel({ duel, onOuvrir }: { duel: Duel; onOuvrir: (n: number) => void }) {
   const statut = statutDuel(duel)
-  const ouvrable = statut !== 'bye' && statut !== 'attente_adversaires'
-  const haut = duel.haut ? nomCamp(duel.haut) : '—'
-  const bas = duel.bas ? nomCamp(duel.bas) : '—'
+  const haut = nomCamp(duel.haut)
+  const bas = nomCamp(duel.bas)
 
   const contenu = (
     <>
@@ -262,12 +266,12 @@ function LigneDuel({ duel, onOuvrir }: { duel: Duel; onOuvrir: (n: number) => vo
         <span>{bas}</span>
       </span>
       <span className={`duels-liste__statut duels-liste__statut--${statut}`}>
-        {LIBELLE_STATUT[statut]}
+        {libelleStatut(statut)}
       </span>
     </>
   )
 
-  if (!ouvrable) {
+  if (!estOuvrable(statut)) {
     return <li className="duels-liste__match duels-liste__match--inerte">{contenu}</li>
   }
   return (
@@ -283,14 +287,6 @@ function LigneDuel({ duel, onOuvrir }: { duel: Duel; onOuvrir: (n: number) => vo
   )
 }
 
-// Un camp d'équipe se nomme par l'équipe et ses membres (E13US004) ; un archer, « nom prénom ».
-function nomCamp(camp: Camp): string {
-  if (camp.archer_id !== null) return `${camp.nom} ${camp.prenom}`
-  return camp.membres && camp.membres.length > 0
-    ? `${camp.nom} (${camp.membres.join(', ')})`
-    : camp.nom
-}
-
 function EquipesEcartees({ equipes }: { equipes: EquipeEcartee[] }) {
   return (
     <section className="duels-podium" aria-label="Équipes non engagées">
@@ -298,14 +294,7 @@ function EquipesEcartees({ equipes }: { equipes: EquipeEcartee[] }) {
       <ul className="duels-podium__places">
         {equipes.map((equipe) => (
           <li key={equipe.equipe_id}>
-            <strong>{equipe.nom}</strong> —{' '}
-            {[
-              ...equipe.ecarts.map(libelleEcartCourt),
-              ...equipe.membres_hors_course.map(
-                (membre) =>
-                  `${membre} n’est pas en lice dans ce départ (absent, forfait ou disqualifié)`,
-              ),
-            ].join(' ; ')}
+            <strong>{equipe.nom}</strong> — {motifsEcart(equipe)}
           </li>
         ))}
       </ul>
@@ -388,14 +377,10 @@ export function DuelCharge({
   onValide: (archerIds: number[]) => void
   famille?: FamilleDuel
 }) {
-  const haut = duel.haut ? nomCamp(duel.haut) : '—'
-  const bas = duel.bas ? nomCamp(duel.bas) : '—'
-  // Verrou : duel validé (autorité serveur) OU **validation en file hors-ligne** — dans ce dernier cas
-  // on ferme la saisie **localement**, comme le ferait le serveur en ligne (`DuelVerrouille`). Sans ce
-  // verrou optimiste, le scoreur pourrait rééditer une manche APRÈS avoir validé hors-ligne : au rejeu
-  // FIFO, la validation scellerait le résultat d'avant correction, et la manche corrigée rebondirait en
-  // 422 (perte silencieuse). Se réconcilie à la relecture serveur post-rejeu (revue adversariale).
-  const verrou = duel.validee_par !== null || duel.validation_en_attente === true
+  const haut = nomCamp(duel.haut)
+  const bas = nomCamp(duel.bas)
+  const verrou = saisieVerrouillee(duel)
+  const forfait = duellistesDuForfait(duel, famille)
 
   if (!estJouable(duel)) {
     return (
@@ -411,7 +396,6 @@ export function DuelCharge({
   }
 
   const resultat = duel.resultat
-  const modeLibelle = libelleMode(duel.mode)
 
   return (
     <div className="duel__corps">
@@ -423,13 +407,7 @@ export function DuelCharge({
           </span>
           <span className="duel__camp">{bas}</span>
         </div>
-        <p className="duel__meta">
-          {modeLibelle}
-          {duel.mode === 'sets' && duel.points_pour_gagner !== null
-            ? ` — premier à ${duel.points_pour_gagner} points`
-            : ''}
-          {duel.en_attente === true ? ' · en attente d’envoi' : ''}
-        </p>
+        <p className="duel__meta">{libelleMetaDuel(duel)}</p>
       </div>
 
       {verrou ? (
@@ -452,20 +430,16 @@ export function DuelCharge({
         />
       )}
 
-      {/* DETTE-120 : un forfait se déclare pour un archer — rien à proposer à un duel d'équipes. */}
-      {famille === 'tableau' &&
-        !verrou &&
-        duel.haut?.archer_id != null &&
-        duel.bas?.archer_id != null && (
-          <ForfaitDuel
-            tournoiId={tournoiId}
-            phaseId={phaseId}
-            hautId={duel.haut.archer_id}
-            hautNom={haut}
-            basId={duel.bas.archer_id}
-            basNom={bas}
-          />
-        )}
+      {forfait !== null && (
+        <ForfaitDuel
+          tournoiId={tournoiId}
+          phaseId={phaseId}
+          hautId={forfait.hautId}
+          hautNom={haut}
+          basId={forfait.basId}
+          basNom={bas}
+        />
+      )}
 
       {resultat?.barrage_requis === true && !verrou && (
         <SaisieBarrage
@@ -555,8 +529,7 @@ function SaisieManche({
   duel: Duel
   famille: FamilleDuel
 }) {
-  const nbManches = duel.nb_manches ?? 1
-  const nbFleches = duel.nb_fleches_par_volee ?? 3
+  const { nbManches, nbFleches } = baremeDeManche(duel)
   const saisir = useSaisirManche(tournoiId, phaseId, matchNumero, famille)
 
   const [numeroChoisi, setNumeroChoisi] = useState<number | null>(null)
@@ -565,7 +538,7 @@ function SaisieManche({
 
   // Tampons remis au contenu **persisté** de la manche visée quand elle change (ajustement d'état
   // **au rendu**, pas en effet — le pattern recommandé pour réinitialiser sans cascade).
-  const signature = `${numeroActif}:${(existante?.haut ?? []).join(',')}:${(existante?.bas ?? []).join(',')}`
+  const signature = signatureManche(numeroActif, existante)
   const [ancre, setAncre] = useState(signature)
   const [bufferHaut, setBufferHaut] = useState<string[]>(existante?.haut ?? [])
   const [bufferBas, setBufferBas] = useState<string[]>(existante?.bas ?? [])
@@ -577,20 +550,22 @@ function SaisieManche({
     setCampActif('haut')
   }
 
-  const buffer = campActif === 'haut' ? bufferHaut : bufferBas
   const poserBuffer = campActif === 'haut' ? setBufferHaut : setBufferBas
-  const campComplet = buffer.length >= nbFleches
-  const deuxComplets = bufferHaut.length >= nbFleches && bufferBas.length >= nbFleches
+  const { zonesActives, effacable, enregistrable } = etatManche({
+    bufferHaut,
+    bufferBas,
+    campActif,
+    nbFleches,
+    envoiEnCours: saisir.isPending,
+  })
 
   const ajouter = (zone: string) => {
-    if (campComplet || saisir.isPending) return
+    if (!zonesActives) return
     poserBuffer((actuel) => {
       const suite = [...actuel, zone]
-      // Camp rempli : bascule automatiquement sur l'autre s'il reste à saisir (fluidité tactile).
-      if (suite.length >= nbFleches) {
-        const autre = campActif === 'haut' ? bufferBas : bufferHaut
-        if (autre.length < nbFleches) setCampActif(campActif === 'haut' ? 'bas' : 'haut')
-      }
+      const autre = campActif === 'haut' ? bufferBas : bufferHaut
+      const suivant = campApresFleche(campActif, suite.length, autre.length, nbFleches)
+      if (suivant !== campActif) setCampActif(suivant)
       return suite
     })
   }
@@ -625,14 +600,14 @@ function SaisieManche({
 
       <div className="duel__volees">
         <VoleeCamp
-          nom={duel.haut ? duel.haut.nom : 'Haut'}
+          nom={nomCourt(duel.haut, 'haut')}
           valeurs={bufferHaut}
           nbFleches={nbFleches}
           actif={campActif === 'haut'}
           onActiver={() => setCampActif('haut')}
         />
         <VoleeCamp
-          nom={duel.bas ? duel.bas.nom : 'Bas'}
+          nom={nomCourt(duel.bas, 'bas')}
           valeurs={bufferBas}
           nbFleches={nbFleches}
           actif={campActif === 'bas'}
@@ -646,7 +621,7 @@ function SaisieManche({
             key={zone}
             type="button"
             className="saisie__zone"
-            disabled={campComplet || saisir.isPending}
+            disabled={!zonesActives}
             onClick={() => ajouter(zone)}
           >
             {zone}
@@ -655,15 +630,10 @@ function SaisieManche({
       </div>
 
       <div className="saisie__actions">
-        <button
-          type="button"
-          className="bouton--discret"
-          disabled={buffer.length === 0 || saisir.isPending}
-          onClick={effacer}
-        >
+        <button type="button" className="bouton--discret" disabled={!effacable} onClick={effacer}>
           Effacer
         </button>
-        <button type="button" disabled={!deuxComplets || saisir.isPending} onClick={enregistrer}>
+        <button type="button" disabled={!enregistrable} onClick={enregistrer}>
           {saisir.isPending ? 'Enregistrement…' : 'Enregistrer la manche'}
         </button>
       </div>
@@ -731,23 +701,13 @@ function NavigateurManches({
 }) {
   return (
     <div className="saisie__nav" role="group" aria-label="Manches">
-      {Array.from({ length: nbManches }, (_, i) => {
-        const numero = i + 1
-        const saisie = duel.manches.some((m) => m.numero === numero)
-        const fermee = !saisie && mancheNeuveFermee(duel)
-        const classes = [
-          'saisie__nav-volee',
-          saisie ? 'saisie__nav-volee--saisie' : '',
-          numero === numeroActif ? 'saisie__nav-volee--actif' : '',
-        ]
-          .filter((c) => c !== '')
-          .join(' ')
+      {pastillesManches(duel, nbManches, numeroActif).map(({ numero, classes, fermee, active }) => {
         return (
           <button
             key={numero}
             type="button"
             className={classes}
-            aria-pressed={numero === numeroActif}
+            aria-pressed={active}
             disabled={fermee}
             onClick={() => onChoisir(numero)}
           >
@@ -776,7 +736,7 @@ function SaisieBarrage({
   famille: FamilleDuel
 }) {
   const saisir = useSaisirBarrage(tournoiId, phaseId, matchNumero, famille)
-  const nbFleches = duel.nb_fleches_barrage ?? 1
+  const { nbFlechesBarrage: nbFleches } = baremeDeManche(duel)
   const [flechesHaut, setFlechesHaut] = useState<string[]>(duel.barrage?.haut ?? [])
   const [flechesBas, setFlechesBas] = useState<string[]>(duel.barrage?.bas ?? [])
   const [designe, setDesigne] = useState<Cote | null>(duel.barrage?.gagnant_designe ?? null)
@@ -784,21 +744,22 @@ function SaisieBarrage({
   // Resynchronisation **au rendu** si le barrage serveur change (rejeu / relecture) pendant que le
   // formulaire reste monté — même pattern que la grille de manche. Sans quoi la sélection resterait
   // figée sur les valeurs du montage.
-  const signatureBarrage = `${(duel.barrage?.haut ?? []).join(',')}:${(duel.barrage?.bas ?? []).join(',')}:${duel.barrage?.gagnant_designe ?? ''}`
-  const [ancreBarrage, setAncreBarrage] = useState(signatureBarrage)
-  if (ancreBarrage !== signatureBarrage) {
-    setAncreBarrage(signatureBarrage)
+  const signature = signatureBarrage(duel.barrage)
+  const [ancreBarrage, setAncreBarrage] = useState(signature)
+  if (ancreBarrage !== signature) {
+    setAncreBarrage(signature)
     setFlechesHaut(duel.barrage?.haut ?? [])
     setFlechesBas(duel.barrage?.bas ?? [])
     setDesigne(duel.barrage?.gagnant_designe ?? null)
   }
 
-  // La désignation n'est requise (et proposée) que si les deux camps sont complets **et à égalité
-  // de total** — la règle du serveur (§8.2, E13US003).
-  const complets = flechesHaut.length === nbFleches && flechesBas.length === nbFleches
-  // DETTE-111 — `totalVolee` recopie la règle zone → points du serveur, et décide ici de la désignation.
-  const egales = complets && totalVolee(flechesHaut) === totalVolee(flechesBas)
-  const pretAEnvoyer = complets && (!egales || designe !== null)
+  const { complets, egales, pretAEnvoyer } = etatBarrage(
+    flechesHaut,
+    flechesBas,
+    designe,
+    nbFleches,
+    saisir.isPending,
+  )
 
   // Une désignation vaut pour les flèches qu'elle a vues : toute correction la redemande.
   const changerFleches = (poser: (valeurs: string[]) => void, valeurs: string[]) => {
@@ -821,21 +782,17 @@ function SaisieBarrage({
 
   return (
     <div className="duel__barrage">
-      <p className="duel__barrage-titre">
-        {nbFleches === 1
-          ? 'Barrage (une flèche par archer, le plus près du centre)'
-          : `Barrage (${nbFleches} flèches par camp : le plus haut total, puis le plus près du centre)`}
-      </p>
+      <p className="duel__barrage-titre">{titreBarrage(nbFleches)}</p>
       <div className="duel__barrage-camps">
         <ChoixFleches
-          nom={duel.haut ? duel.haut.nom : 'Haut'}
+          nom={nomCourt(duel.haut, 'haut')}
           zones={duel.zones}
           nbFleches={nbFleches}
           valeurs={flechesHaut}
           onChanger={(valeurs) => changerFleches(setFlechesHaut, valeurs)}
         />
         <ChoixFleches
-          nom={duel.bas ? duel.bas.nom : 'Bas'}
+          nom={nomCourt(duel.bas, 'bas')}
           zones={duel.zones}
           nbFleches={nbFleches}
           valeurs={flechesBas}
@@ -855,7 +812,7 @@ function SaisieBarrage({
               aria-pressed={designe === 'haut'}
               onClick={() => setDesigne('haut')}
             >
-              {duel.haut ? duel.haut.nom : 'Haut'}
+              {nomCourt(duel.haut, 'haut')}
             </button>
             <button
               type="button"
@@ -863,13 +820,13 @@ function SaisieBarrage({
               aria-pressed={designe === 'bas'}
               onClick={() => setDesigne('bas')}
             >
-              {duel.bas ? duel.bas.nom : 'Bas'}
+              {nomCourt(duel.bas, 'bas')}
             </button>
           </div>
         </div>
       )}
 
-      <button type="button" disabled={!pretAEnvoyer || saisir.isPending} onClick={enregistrer}>
+      <button type="button" disabled={!pretAEnvoyer} onClick={enregistrer}>
         {saisir.isPending ? 'Enregistrement…' : 'Enregistrer le barrage'}
       </button>
       <MessageErreurDuel erreur={saisir.error} />
@@ -877,9 +834,9 @@ function SaisieBarrage({
   )
 }
 
-// Les flèches de barrage d'un camp parmi les zones du blason. À une flèche, toucher une zone la
-// **remplace** (sélection unique) ; à plusieurs (équipe, E13US003), les flèches s'ajoutent jusqu'à
-// `nbFleches` et « Effacer » retire la dernière, comme la volée d'une manche.
+// Les flèches de barrage d'un camp parmi les zones du blason (`flechesApresZone` : remplacer ou
+// ajouter). À plusieurs flèches, elles s'ajoutent jusqu'à `nbFleches` et « Effacer » retire la
+// dernière, comme la volée d'une manche.
 function ChoixFleches({
   nom,
   zones,
@@ -909,7 +866,7 @@ function ChoixFleches({
             className="saisie__zone"
             aria-pressed={unique ? valeurs[0] === zone : undefined}
             disabled={!unique && complet}
-            onClick={() => onChanger(unique ? [zone] : [...valeurs, zone])}
+            onClick={() => onChanger(flechesApresZone(valeurs, zone, nbFleches))}
           >
             {zone}
           </button>
@@ -950,16 +907,10 @@ function Validation({
   const valider = useValiderDuel(tournoiId, phaseId, matchNumero, famille)
   // Déjà validé, OU validation déjà en file hors-ligne : rien à proposer (le verrou est affiché plus
   // haut). Masquer sur `validation_en_attente` évite de ré-enfiler des validations à chaque tap.
-  if (duel.validee_par !== null || duel.validation_en_attente === true) return null
+  if (saisieVerrouillee(duel)) return null
 
-  const resultat = duel.resultat
-  const termine = resultat?.termine === true
-  const vainqueur =
-    resultat?.vainqueur === 'haut'
-      ? (duel.haut?.nom ?? 'Haut')
-      : resultat?.vainqueur === 'bas'
-        ? (duel.bas?.nom ?? 'Bas')
-        : null
+  const termine = duel.resultat?.termine === true
+  const vainqueur = nomVainqueur(duel)
 
   return (
     <div className="duel__validation">
@@ -985,15 +936,9 @@ function Validation({
               identifiant_saisie: nouvelIdentifiant(),
             },
             {
-              // Bascule en panneau de routage (E04US018) — mais **seulement si la validation est
-              // partie**. Hors-ligne elle est mise en file (`validation_en_attente`) : le tableau
-              // n'a pas avancé côté serveur, le panneau annoncerait alors le duel qu'on vient de
-              // scorer comme « prochain ». On ne route pas sur une avancée qui n'a pas eu lieu.
+              // Bascule en panneau de routage (E04US018), si `archersARouter` en rend.
               onSuccess: (duelValide) => {
-                if (duelValide.validation_en_attente === true) return
-                const archers = [duel.haut?.archer_id, duel.bas?.archer_id].filter(
-                  (id): id is number => id !== undefined && id !== null,
-                )
+                const archers = archersARouter(duel, duelValide)
                 if (archers.length > 0) onValide(archers)
               },
             },

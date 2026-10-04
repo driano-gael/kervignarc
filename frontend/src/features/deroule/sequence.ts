@@ -8,6 +8,7 @@
 // l'**édition concrète** est passée à l'identité (E05US022) ; `features/phases` ne remappe plus.
 
 import type { Etape, Source } from '../patrimoine/api'
+import { LIBELLE_TYPE, TYPES_SANS_CLASSEMENT } from '../../shared/phases/catalogue'
 import { decrireProfondeur } from '../../shared/phases/profondeur'
 import { deplacer } from '../phases/ordre'
 
@@ -95,6 +96,54 @@ export function decrireEtape(etape: Etape): string {
   return morceaux.join(' · ')
 }
 
+// E16US002 — le titre libre d'abord, le type en repli.
+export function intituleEtape(etape: Pick<Etape, 'titre' | 'type'>): string {
+  return etape.titre ?? LIBELLE_TYPE[etape.type]
+}
+
+/** Les détails d'une ligne de la liste de composition, sous son intitulé. */
+export function detailsEtape(etape: Etape): string {
+  // ⚠️ **Le type doit être réémis ici, et il l'avait été oublié** (relevé en 2ᵉ passe).
+  // `decrireEtape` n'imprime **pas** le type — à la différence de son homonyme de
+  // `patrimoine/format.ts`, doté du type entre parenthèses dans ce même commit. Les deux ont été
+  // confondus, et c'est celui sans type qui reçoit le titre : une étape nommée perdait donc toute
+  // mention de ce qu'elle **fait**, sur l'écran où l'on compose la séquence.
+  const type = etape.titre != null ? `${LIBELLE_TYPE[etape.type]} · ` : ''
+  return `${type}${decrireEtape(etape)}`
+}
+
+// Une phase qui ne produit aucun classement ne se prélève que par « le reste » : le serveur le
+// refuse (`PhaseSansClassementPrelevee`), autant ne pas offrir le choix.
+export function amontPrelevables(etapesAmont: Etape[], nature: Source['nature']): Etape[] {
+  return nature === 'reste'
+    ? etapesAmont
+    : etapesAmont.filter((etape) => !TYPES_SANS_CLASSEMENT.includes(etape.type))
+}
+
+export interface SaisiePrelevement {
+  ordreSource: string
+  nature: Source['nature']
+  rangDebut: string
+  rangFin: string
+  tour: string
+  issue: 'gagnants' | 'perdants'
+}
+
+/** Le prélèvement saisi, ou `null` tant qu'aucune phase d'origine lisible n'est choisie. */
+export function construirePrelevement(saisie: SaisiePrelevement): Source | null {
+  const ordre = Number(saisie.ordreSource)
+  if (!Number.isInteger(ordre) || ordre < 1) return null
+  const { nature } = saisie
+  return {
+    ordre_source: ordre,
+    nature,
+    rang_debut: nature === 'rangs' ? Number(saisie.rangDebut) : 1,
+    rang_fin: nature === 'rangs' && saisie.rangFin.trim() !== '' ? Number(saisie.rangFin) : null,
+    tour: nature === 'issue_de_tour' ? Number(saisie.tour) : null,
+    issue: nature === 'issue_de_tour' ? saisie.issue : null,
+  }
+}
+
 /**
  * Lit un entier saisi ; rend `null` pour « non renseigné » et `undefined` pour « invalide ».
  *
@@ -102,8 +151,6 @@ export function decrireEtape(etape: Etape): string {
  * `JSON.stringify` sérialise en `null` — un effectif déclaré s'effaçait donc silencieusement à la
  * moindre faute de frappe, et un barème vide partait en `0 volées` pour revenir en 422 illisible.
  */
-export { decrireProfondeur }
-
 export function lireEntier(saisi: string): number | null | undefined {
   if (saisi.trim() === '') return null
   const valeur = Number(saisi)

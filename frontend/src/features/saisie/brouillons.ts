@@ -7,6 +7,9 @@
 // Query ni store persisté : une frappe à moitié tapée n'a pas à survivre à l'onglet, et la faire
 // survivre poserait la question de sa péremption.
 
+import type { Volee } from './api'
+import { voleeExistante } from './volees'
+
 /** Les brouillons de tous les archers de la cible, indexés par `archerId:numeroDeVolee`. */
 export type Brouillons = Record<string, string[]>
 
@@ -47,4 +50,18 @@ export function noterBrouillon(
     return suite
   }
   return { ...brouillons, [cle]: valeurs }
+}
+
+// Le tampon d'une volée est **dérivé** : le brouillon s'il existe, sinon le contenu persisté de la
+// volée, sinon rien. Enregistrer efface le brouillon, ce qui fait retomber la lecture sur le serveur
+// — sans ancre ni réinitialisation au rendu. ⚠️ La ligne et le pavé le lisent ICI tous les deux.
+export function tamponDeVolee(
+  brouillons: Brouillons,
+  archerId: number,
+  numero: number,
+  volees: readonly Volee[],
+): string[] {
+  return (
+    lireBrouillon(brouillons, archerId, numero) ?? voleeExistante(volees, numero)?.valeurs ?? []
+  )
 }

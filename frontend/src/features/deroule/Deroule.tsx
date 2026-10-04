@@ -13,12 +13,7 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   AIDE_TYPE,
   LIBELLE_TYPE,
-  MOTEUR_SAIT_JOUER,
   TOUS_LES_TYPES,
-  TYPES_ARRETABLES,
-  TYPES_EN_TABLEAU,
-  TYPES_SANS_CLASSEMENT,
-  TYPES_SIGNALES_EN_ECART,
   type TypePhase,
 } from '../../shared/phases/catalogue'
 import type { Etape, FormatTournoi, Source } from '../patrimoine/api'
@@ -30,77 +25,65 @@ import {
   type PhaseSimulee,
   type SimulationFormat,
 } from './api'
+import { armesDeLaBibliotheque, formatChoisi } from './bibliotheque'
+import {
+  baremeSaisi,
+  construireEtape,
+  fichesOffertes,
+  saisieInvalide,
+  soumissionBloquee,
+  type SaisieEtape,
+} from './compositionEtape'
+import { constatEffectifMinimum, intituleAnomalie, motifsDeReserve } from './diagnostic'
 import { useDiagnostic, useEnregistrerBrouillon, useSimulerFormat } from './hooks'
 import {
   ajouterEtape,
-  decrireEtape,
+  amontPrelevables,
+  construirePrelevement,
   decrireSource,
   deplacerEtape,
+  detailsEtape,
+  intituleEtape,
   lireEntier,
   remplacerEtape,
   retirerEtape,
 } from './sequence'
+import {
+  analyserEffectif,
+  classementAffiche,
+  compteurAffiche,
+  CLASSEMENT_AFFICHE_MAX,
+  motifEmpechementSimulation,
+  noteDEcart,
+} from './simulation'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
 import { ReglageBigShootOff } from '../../shared/phases/ReglageBigShootOff'
 import {
   depuisReglage as depuisReglageBso,
-  estValide as bsoValide,
-  versReglage as versReglageBso,
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { ChampTitre } from '../../shared/phases/ChampTitre'
 import { ChampDureePrevue } from '../../shared/phases/ChampDureePrevue'
-import { depuisDureePrevue, versDureePrevue } from '../../shared/phases/horaires'
+import { depuisDureePrevue } from '../../shared/phases/horaires'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
-import {
-  depuisEtape as depuisArrets,
-  estValide as arretsValides,
-  versArrets,
-} from '../../shared/phases/arrets'
+import { depuisEtape as depuisArrets } from '../../shared/phases/arrets'
 import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
-import {
-  depuisDecoupage,
-  estValide as decoupageValide,
-  versDecoupage,
-} from '../../shared/phases/decoupage'
+import { depuisDecoupage } from '../../shared/phases/decoupage'
 import { ReglageColline } from '../../shared/phases/ReglageColline'
 import { ReglageBaremeDuel } from '../../shared/phases/ReglageBaremeDuel'
 import { ReglageEquipes } from '../../shared/phases/ReglageEquipes'
 import {
   BAREME_DUEL_NON_REGLE,
-  TYPES_A_BAREME_DE_DUEL,
-  armesDistinctes,
   type ArmesConnues,
   depuisReglage as depuisReglageBaremeDuel,
-  estValide as baremeDuelValide,
-  versReglage as versReglageBaremeDuel,
 } from '../../shared/phases/baremeDuel'
-import {
-  depuisReglage as depuisReglageColline,
-  estValide as collineValide,
-  versReglage as versReglageColline,
-} from '../../shared/phases/colline'
+import { depuisReglage as depuisReglageColline } from '../../shared/phases/colline'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
-import {
-  depuisReglage as depuisReglageSuisse,
-  estValide as suisseValide,
-  versReglage as versReglageSuisse,
-  SUISSE_PAR_DEFAUT,
-} from '../../shared/phases/suisse'
-import {
-  depuisReglage,
-  estValide as poulesValides,
-  versReglage,
-  POULES_PAR_DEFAUT,
-} from '../../shared/phases/poules'
-import {
-  depuisProfondeur,
-  estValide,
-  versProfondeur,
-  PROFONDEUR_AU_PRESET,
-} from '../../shared/phases/profondeur'
+import { depuisReglage as depuisReglageSuisse, SUISSE_PAR_DEFAUT } from '../../shared/phases/suisse'
+import { depuisReglage, POULES_PAR_DEFAUT } from '../../shared/phases/poules'
+import { depuisProfondeur, PROFONDEUR_AU_PRESET } from '../../shared/phases/profondeur'
 
 const EFFECTIF_PAR_DEFAUT = 120
 
@@ -110,11 +93,10 @@ export function Deroule() {
   const [effectifSaisi, setEffectifSaisi] = useState(String(EFFECTIF_PAR_DEFAUT))
 
   const effectif = analyserEffectif(effectifSaisi)
-  // Le format courant est **dérivé**, jamais recopié dans un état : à défaut de choix explicite,
-  // le premier de la bibliothèque ouvre l'écran (arriver sur une page vide alors que le club a des
-  // formats donnerait à croire qu'il n'y en a aucun). Le faire en `useEffect` + `setState`
-  // déclencherait un rendu en cascade — ce que `react-hooks/set-state-in-effect` refuse, à raison.
-  const choisi = formats.data?.find((format) => format.id === choix) ?? formats.data?.[0] ?? null
+  // Le format courant est **dérivé**, jamais recopié dans un état (repli : cf. `formatChoisi`).
+  // Le faire en `useEffect` + `setState` déclencherait un rendu en cascade — ce que
+  // `react-hooks/set-state-in-effect` refuse, à raison.
+  const choisi = formatChoisi(formats.data, choix)
 
   return (
     <section className="deroule">
@@ -314,30 +296,23 @@ function Verdict({ diagnostic }: { diagnostic: Diagnostic }) {
  * correspond pas, pas le format. Le blocage n'a lieu qu'au démarrage d'un vrai tournoi.
  */
 export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
-  const minimum = diagnostic.effectif_minimum
-  // 1 = « aucune exigence » : tout déroulé accueille au moins un archer. L'afficher ferait passer
-  // une trivialité pour une contrainte.
-  if (minimum <= 1) return null
-
-  const insuffisant = diagnostic.effectif !== null && diagnostic.effectif < minimum
-  if (!insuffisant) {
+  const constat = constatEffectifMinimum(diagnostic)
+  if (constat === null) return null
+  if (constat.regime === 'information') {
     return (
       <p className="carte__aide">
-        Ce déroulé demande au moins <strong>{minimum} inscrits</strong> pour pouvoir être lancé.
+        Ce déroulé demande au moins <strong>{constat.minimum} inscrits</strong> pour pouvoir être
+        lancé.
       </p>
     )
   }
   return (
     <p className="carte__etat carte__etat--alerte" role="status">
-      ▲ <strong>À vérifier</strong> — à {diagnostic.effectif} archers, ce déroulé ne peut pas être
-      lancé : il en demande au moins {minimum}.
+      ▲ <strong>À vérifier</strong> — à {constat.effectif} archers, ce déroulé ne peut pas être
+      lancé : il en demande au moins {constat.minimum}.
     </p>
   )
 }
-
-// Les types que le moteur ne sait **pas encore** exécuter — domiciliés au catalogue partagé et
-// écrits en **négatif** : un oubli y coûte un avertissement de trop, jamais un de moins.
-const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
 
 /** La réserve que la vue par défaut doit porter (`# DETTE-028`).
  *
@@ -346,42 +321,20 @@ const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
  * déroulera pas comme dessiné. C'est le point où cette US **aggrave** la dette.
  */
 export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
-  // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068) : le moteur lit les prélèvements **par
-  // rangs**, restent inertes « le reste » et « les gagnants/perdants du tour N » (DETTE-033). La
-  // réserve ne s'affiche donc que si l'un d'eux est déclaré : continuer à l'afficher aurait fait
-  // douter d'un déroulé exact, la retirer aurait laissé croire que tout est honoré. ⚠️ Deux causes
-  // distinctes d'inexactitude, que l'ancienne condition couvrait **par accident** — ne garder que
-  // la première aurait fait disparaître l'avertissement d'un « qualification → poules », que le
-  // moteur ne sait toujours pas dérouler.
-  const prelevementInerte = diagnostic.blocs.some((bloc) =>
-    bloc.entrees.some((flux) => flux.nature !== 'rangs'),
-  )
-  // Les types **réellement** en cause, et non une liste figée. Le bandeau nommait « suisse,
-  // colline, Big Shoot Off » en dur alors que `TYPES_SIGNALES_EN_ECART` en compte cinq : composer
-  // une phase `placement` ou `barrage` allumait donc un avertissement qui désignait trois formats
-  // que l'organisateur n'avait pas utilisés (correctif de revue). Le CA fait précisément de la
-  // justesse de ce signal son exigence.
-  const typesEnEcart = [...new Set(diagnostic.blocs.map((bloc) => bloc.type))].filter((type) =>
-    EN_ECART.has(type),
-  )
-  const typeNonDeroule = typesEnEcart.length > 0
-  if (!prelevementInerte && !typeNonDeroule) return null
+  const motifs = motifsDeReserve(diagnostic)
+  if (motifs === null) return null
   return (
     <p className="carte__etat carte__etat--alerte" role="note">
       ▲ Ce déroulé contient quelque chose que le moteur ne sait <strong>pas encore</strong> exécuter
-      {prelevementInerte && (
+      {motifs.prelevementInerte && (
         <>
           {' '}
           — un prélèvement « le reste » ou « les gagnants/perdants d'un tour », dont la phase
           concernée prendra <strong>tous</strong> les archers encore en lice
         </>
       )}
-      {typeNonDeroule && (
-        <>
-          {' '}
-          — un type de phase qu&apos;il ne déroule pas (
-          {typesEnEcart.map((type) => LIBELLE_TYPE[type]).join(', ')})
-        </>
+      {motifs.libellesEnEcart.length > 0 && (
+        <> — un type de phase qu&apos;il ne déroule pas ({motifs.libellesEnEcart.join(', ')})</>
       )}
       . Les prélèvements <strong>par rangs</strong>, eux, sont respectés. Lancez la simulation pour
       voir l'écart.
@@ -393,20 +346,18 @@ function ListeAnomalies({ anomalies }: { anomalies: Anomalie[] }) {
   if (anomalies.length === 0) return null
   return (
     <ul className="deroule__anomalies">
-      {anomalies.map((anomalie, index) => (
-        <li
-          key={`${anomalie.code}-${anomalie.ordre}-${index}`}
-          className={`deroule__anomalie deroule__anomalie--${anomalie.gravite}`}
-        >
-          {/* `DV-03` : jamais la couleur seule — une pastille et un mot portent le sens. */}
-          <span aria-hidden="true">{anomalie.gravite === 'bloquante' ? '●' : '▲'}</span>{' '}
-          <strong>
-            {anomalie.gravite === 'bloquante' ? 'Bloquant' : 'À vérifier'}
-            {anomalie.ordre === null ? '' : ` — phase ${anomalie.ordre}`} :
-          </strong>{' '}
-          {anomalie.message}
-        </li>
-      ))}
+      {anomalies.map((anomalie, index) => {
+        const { pastille, intitule } = intituleAnomalie(anomalie)
+        return (
+          <li
+            key={`${anomalie.code}-${anomalie.ordre}-${index}`}
+            className={`deroule__anomalie deroule__anomalie--${anomalie.gravite}`}
+          >
+            <span aria-hidden="true">{pastille}</span> <strong>{intitule} :</strong>{' '}
+            {anomalie.message}
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -423,21 +374,7 @@ function PanneauSimulation({
   simulation: ReturnType<typeof useSimulerFormat>
 }) {
   const resultat: SimulationFormat | undefined = simulation.data
-  // Le serveur reste l'autorité (400 `format_non_simulable`) ; ce garde évite seulement d'offrir un
-  // bouton dont on sait qu'il sera refusé — même parti que `TYPES_SANS_CLASSEMENT`.
-  const aUneQualification = diagnostic?.blocs.some((bloc) => bloc.type === 'qualification') ?? false
-  const applicable = diagnostic?.applicable ?? false
-  const effectifValide = effectif !== null && effectif >= 2 && effectif <= EFFECTIF_MAX
-  const empeche =
-    diagnostic === undefined
-      ? 'Le déroulé est en cours de calcul.'
-      : !applicable
-        ? 'On ne simule pas un déroulé qu’aucun tournoi ne pourrait recevoir : corrigez d’abord les points bloquants.'
-        : !aUneQualification
-          ? 'Ce format ne décrit aucune qualification : la simulation n’a alors aucun barème d’où tirer des scores. Le format reste applicable à un tournoi.'
-          : !effectifValide
-            ? `Indiquez un effectif entre 2 et ${EFFECTIF_MAX} archers pour lancer la simulation.`
-            : null
+  const empeche = motifEmpechementSimulation(diagnostic, effectif)
   return (
     <div className="carte carte--large">
       {/* E16US002 : « déroulé » est réservé au plan composé sur un tournoi (ADR-0076) ; cet
@@ -466,6 +403,7 @@ function PanneauSimulation({
 }
 
 function ResultatSimulation({ resultat }: { resultat: SimulationFormat }) {
+  const classement = classementAffiche(resultat.classement)
   return (
     <div className="deroule__resultat">
       <p className="carte__etat carte__etat--ok" role="status">
@@ -497,10 +435,10 @@ function ResultatSimulation({ resultat }: { resultat: SimulationFormat }) {
       <details>
         <summary>
           Classement produit ({resultat.classement.length} archers
-          {resultat.classement.length > 32 ? ', 32 premiers affichés' : ''})
+          {classement.tronque ? `, ${CLASSEMENT_AFFICHE_MAX} premiers affichés` : ''})
         </summary>
         <ol className="deroule__classement">
-          {resultat.classement.slice(0, 32).map((ligne) => (
+          {classement.lignes.map((ligne) => (
             <li key={`${ligne.rang}-${ligne.nom}-${ligne.prenom}`}>
               {ligne.rang}. {ligne.prenom} {ligne.nom} — {ligne.total}
             </li>
@@ -515,6 +453,7 @@ function ResultatSimulation({ resultat }: { resultat: SimulationFormat }) {
  * peut vérifier, et son défaut (une entrée manquante à `MOTEUR_SAIT_JOUER`) s'est produit deux fois
  * — E05US028, puis E05US027. Même parti que `ReserveMoteur` juste au-dessus. */
 export function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
+  const note = noteDEcart(phase)
   return (
     <tr className={phase.ecart ? 'deroule__ligne--ecart' : undefined}>
       <th scope="row">
@@ -522,35 +461,15 @@ export function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
       </th>
       <td>
         {phase.joue ? phase.effectif : '—'}
-        {/* Honnêteté d'outil : le **bot de simulation** ne sait dérouler aucun des quatre
-            formats à rencontres (`_TYPES_DEROULABLES`, DETTE-066) alors que le **moteur** les
-            joue tous depuis E05US027, et il n'honore pas les prélèvements « le reste » / «
-            issue de tour » (ADR-0068 §3). On montre donc l'écart avec ce que le schéma
-            annonçait. */}
-
-        {/* ⚠️ **Deux phrases, parce qu'il y a deux causes** (correctif de revue E05US028) : la
-            phrase unique disait « le moteur ne sait pas dérouler ce type », factuellement
-            fausse depuis que les poules et le Big Shoot Off sont jouables — et affichée à
-            l'organisateur la veille du tournoi. */}
-        {!phase.joue ? (
+        {note !== null && (
           <span className="deroule__ecart" role="note">
             {' '}
-            {MOTEUR_SAIT_JOUER.has(phase.type)
-              ? '▲ la simulation ne sait pas encore jouer ce type de phase — le moteur, si : le tournoi réel se déroulera normalement'
-              : "▲ le moteur ne sait pas encore dérouler ce type de phase — rien n'a été joué ici"}
+            {note}
           </span>
-        ) : (
-          phase.ecart && (
-            <span className="deroule__ecart" role="note">
-              {' '}
-              ▲ le schéma annonçait {phase.effectif_projete} archers, {phase.tours_projetes ?? '—'}{' '}
-              tours et {phase.duels_projetes ?? '—'} duels
-            </span>
-          )
         )}
       </td>
-      <td>{phase.joue && phase.tours > 0 ? phase.tours : '—'}</td>
-      <td>{phase.joue && phase.duels > 0 ? phase.duels : '—'}</td>
+      <td>{compteurAffiche(phase.joue, phase.tours)}</td>
+      <td>{compteurAffiche(phase.joue, phase.duels)}</td>
     </tr>
   )
 }
@@ -577,15 +496,9 @@ function EditeurSequence({
   effectifSimule: number | null
 }) {
   const [edition, setEdition] = useState<number | null>(null)
-  // E01US011 : hors tournoi, ce sont les armes des catégories de bibliothèque qui pré-remplissent.
   const categoriesBibliotheque = useCategoriesBibliotheque()
   const armes = useMemo<ArmesConnues>(
-    () =>
-      categoriesBibliotheque.isError
-        ? 'erreur'
-        : categoriesBibliotheque.data === undefined
-          ? 'chargement'
-          : armesDistinctes(categoriesBibliotheque.data.map((categorie) => categorie.arme)),
+    () => armesDeLaBibliotheque(categoriesBibliotheque.isError, categoriesBibliotheque.data),
     [categoriesBibliotheque.isError, categoriesBibliotheque.data],
   )
   return (
@@ -635,17 +548,8 @@ function EditeurSequence({
                     que sa propre liste n'affichait pas — on tapait « Tableau des jeunes », on
                     validait, et la ligne rendait « Élimination directe ». Symétrie exacte de
                     `features/phases/Phases.tsx`, où le type redevient un détail sans disparaître. */}
-                <span className="phase__type">{etape.titre ?? LIBELLE_TYPE[etape.type]}</span>
-                <span className="phase__details">
-                  {/* ⚠️ **Le type doit être réémis ici, et il l'avait été oublié** (relevé en 2ᵉ
-                      passe). `decrireEtape` vient de `./sequence`, qui n'imprime **pas** le type —
-                      à la différence de son homonyme de `patrimoine/format.ts`, doté du type entre
-                      parenthèses dans ce même commit. Les deux ont été confondus, et c'est celui
-                      sans type qui reçoit le titre : une étape nommée perdait donc toute mention
-                      de ce qu'elle **fait**, sur l'écran où l'on compose la séquence. */}
-                  {etape.titre != null && `${LIBELLE_TYPE[etape.type]} · `}
-                  {decrireEtape(etape)}
-                </span>
+                <span className="phase__type">{intituleEtape(etape)}</span>
+                <span className="phase__details">{detailsEtape(etape)}</span>
                 <span className="phase__actions">
                   <button
                     type="button"
@@ -734,6 +638,7 @@ export function FormulaireEtape({
   // donc il ne peut pas détenir son propre état sans diverger de celui-ci au premier changement de
   // type. Une seule source, ici.
   const [poules, setPoules] = useState(depuisReglage(etape?.poules ?? null))
+  // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(etape?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
@@ -755,106 +660,45 @@ export function FormulaireEtape({
   const [titre, setTitre] = useState(etape?.titre ?? '')
   const [duree, setDuree] = useState(depuisDureePrevue(etape?.duree_prevue ?? null))
 
-  const volees = lireEntier(nbVolees)
-  const fleches = lireEntier(nbFleches)
-  const effectifLu = lireEntier(effectif)
-  // Un barème n'est porté que si **les deux** valeurs sont lisibles. Sinon `null` : c'est un
-  // **brouillon** de qualification, l'état que le CA rend explicitement licite. Un premier jet
-  // envoyait `Number('') === 0`, donc `0 volées` — refusé en 422 par `BaremeQualification`, si bien
-  // que « je remplirai le barème plus tard » était le seul brouillon naturel… et le seul impossible.
-  const baremeSaisi =
-    type === 'qualification' && typeof volees === 'number' && typeof fleches === 'number'
-      ? { nb_volees: volees, nb_fleches_par_volee: fleches }
-      : null
-  const enTableau = TYPES_EN_TABLEAU.includes(type)
-  const estPoules = type === 'poules'
-  // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
-  const estBigShootOff = type === 'big_shoot_off'
-  const estSuisse = type === 'suisse'
-  const estColline = type === 'colline'
-  const aBaremeDeDuel = TYPES_A_BAREME_DE_DUEL.has(type)
-  // Pas `aBaremeDeDuel` : poules, suisse et colline ont un barème mais pas d'équipes (ADR-0120).
-  const estEliminationDirecte = type === 'elimination_directe'
-  // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
-  // dont le nombre de tours n'est pas déjà porté par sa structure.
-  const estQualification = type === 'qualification'
-  // E05US033 : `TYPES_ARRETABLES` — les types qui annoncent leurs tours, donc les seuls où une
-  // pause puisse se poser. Même miroir et même raison que dans l'écran des phases. ⚠️ **Pour une
-  // qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** : non découpée, elle n'a qu'un
-  // tour, aucune frontière où poser une pause, et le `PUT` étant total la soumission entière
-  // échouerait. ⚠️ Ici le découpage est **en cours de saisie** : on lit l'état du formulaire, pas
-  // une phase persistée, pour que cocher « 2 tours » ouvre la fiche d'arrêts immédiatement.
-  // `versDecoupage` rend `null` pour un seul tour et `undefined` si illisible — les deux ferment.
-  const arretable =
-    TYPES_ARRETABLES.has(type) &&
-    (type !== 'qualification' || (versDecoupage(decoupage) ?? null) !== null)
-  const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
-  // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
-  // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
-  // qu'il faut faire, puisqu'un top N sans rang d'arrêt est précisément ce qui est refusé.
-  const soumissionBloquee =
-    saisieInvalide ||
-    (enTableau && !estValide(profondeur)) ||
-    (estPoules && !poulesValides(poules)) ||
-    (estBigShootOff && !bsoValide(bigShootOff)) ||
-    (estSuisse && !suisseValide(suisse)) ||
-    (estColline && !collineValide(colline)) ||
-    (aBaremeDeDuel && !baremeDuelValide(baremeDuel)) ||
-    (estQualification && !decoupageValide(decoupage)) ||
-    // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
-    // une liste vide, quoi qu'il reste dans l'état d'édition.
-    !arretsValides(arrets)
-
-  const construire = (): Etape => ({
-    ordre: etape?.ordre ?? etapesAmont.length + 1,
+  const saisie: SaisieEtape = {
     type,
-    // La qualification, et elle seule, porte barème et grain — c'est ce que le domaine exige, et
-    // les proposer ailleurs offrirait un réglage que le serveur refuse (422).
-    bareme: baremeSaisi,
-    validation:
-      type === 'qualification' && baremeSaisi !== null
-        ? { type: 'fin_de_serie', n_volees: null }
-        : null,
+    nbVolees,
+    nbFleches,
+    effectif,
     sources,
-    effectif: effectifLu ?? null,
-    // Même garde que le barème : une profondeur n'a de sens que sur un tableau. Retyper une phase
-    // de tableau en poule **efface** donc le réglage plutôt que de l'envoyer se faire refuser.
-    profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
-    // Même garde encore : un réglage de poules porté par une élimination directe serait refusé en
-    // 422 (`ReglageDePoulesInvalide`). Retyper la phase l'**efface** donc, au lieu de l'envoyer se
-    // faire recaler — symétrique exact de la ligne au-dessus.
-    poules: estPoules ? (versReglage(poules) ?? null) : null,
-    // Même garde encore : un réglage de Big Shoot Off porté par un autre type serait refusé en 422
-    // (`ConfigurationBigShootOffInvalide`). Retyper la phase l'**efface** donc. La garde compte
-    // davantage ici qu'ailleurs : ce réglage décrit **qui sort**.
-    big_shoot_off: estBigShootOff ? (versReglageBso(bigShootOff) ?? null) : null,
-    // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
-    // 422. Retyper la phase l'**efface** donc, au lieu de l'envoyer se faire recaler.
-    suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
-    // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé en
-    // 422. Retyper l'étape l'**efface** donc, au lieu de l'envoyer se faire recaler.
-    colline: estColline ? (versReglageColline(colline) ?? null) : null,
-    bareme_duel: aBaremeDeDuel ? (versReglageBaremeDuel(baremeDuel) ?? null) : null,
-    equipes: estEliminationDirecte ? equipes : null,
-    // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
-    // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
-    // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422.
-    // Retyper l'étape l'**efface** donc, comme ses voisins.
-    decoupage: estQualification ? (versDecoupage(decoupage) ?? null) : null,
-    arrets: arretable ? (versArrets(arrets) ?? []) : [],
-    // E16US002 — vidé = titre **retiré**. ⚠️ **Aucune garde de type ici**, à la différence des cinq
-    // réglages ci-dessus : un titre n'appartient à aucun type, et « Tableau des jeunes » reste
-    // juste si l'étape devient des poules. Le serveur ne le refuse sur aucun type.
-    titre: titre.trim() === '' ? null : titre,
-    duree_prevue: versDureePrevue(duree),
-  })
+    profondeur,
+    poules,
+    bigShootOff,
+    suisse,
+    colline,
+    baremeDuel,
+    equipes,
+    decoupage,
+    arrets,
+    titre,
+    duree,
+  }
+  const effectifLu = lireEntier(effectif)
+  const bareme = baremeSaisi(saisie)
+  const {
+    enTableau,
+    estPoules,
+    estBigShootOff,
+    estSuisse,
+    estColline,
+    aBaremeDeDuel,
+    estEliminationDirecte,
+    estQualification,
+    arretable,
+  } = fichesOffertes(type, decoupage)
+  const invalide = saisieInvalide(saisie)
 
   return (
     <form
       className="formulaire formulaire--colonne"
       onSubmit={(evenement) => {
         evenement.preventDefault()
-        surValider(construire())
+        surValider(construireEtape(saisie, etape?.ordre ?? etapesAmont.length + 1))
         if (surAnnuler === undefined) {
           setSources([])
           setEffectif('')
@@ -1017,7 +861,7 @@ export function FormulaireEtape({
         <ReglageDecoupage
           etat={decoupage}
           surChangement={setDecoupage}
-          nbVolees={baremeSaisi?.nb_volees ?? null}
+          nbVolees={bareme?.nb_volees ?? null}
         />
       )}
 
@@ -1038,10 +882,10 @@ export function FormulaireEtape({
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 
       <div className="formulaire__actions">
-        <button type="submit" disabled={soumissionBloquee}>
+        <button type="submit" disabled={soumissionBloquee(saisie)}>
           {etape === undefined ? 'Ajouter la phase' : 'Valider'}
         </button>
-        {saisieInvalide && (
+        {invalide && (
           <span className="carte__etat carte__etat--alerte" role="status">
             Un nombre entier positif est attendu — laissez le champ vide pour ne rien déclarer.
           </span>
@@ -1079,12 +923,7 @@ function EditeurSources({
   const [tour, setTour] = useState('1')
   const [issue, setIssue] = useState<'gagnants' | 'perdants'>('gagnants')
 
-  // Une phase qui ne produit aucun classement ne se prélève que par « le reste » : le serveur le
-  // refuse (`PhaseSansClassementPrelevee`), autant ne pas offrir le choix.
-  const amontEligibles =
-    nature === 'reste'
-      ? etapesAmont
-      : etapesAmont.filter((etape) => !TYPES_SANS_CLASSEMENT.includes(etape.type))
+  const amontEligibles = amontPrelevables(etapesAmont, nature)
 
   // Changer de nature **réinitialise** la phase choisie : « le reste » autorise les phases sans
   // classement, les deux autres non. Sans cette remise à zéro, le `<select>` s'affichait vide mais
@@ -1096,19 +935,9 @@ function EditeurSources({
   }
 
   const ajouter = () => {
-    const ordre = Number(ordreSource)
-    if (!Number.isInteger(ordre) || ordre < 1) return
-    surSources([
-      ...sources,
-      {
-        ordre_source: ordre,
-        nature,
-        rang_debut: nature === 'rangs' ? Number(rangDebut) : 1,
-        rang_fin: nature === 'rangs' && rangFin.trim() !== '' ? Number(rangFin) : null,
-        tour: nature === 'issue_de_tour' ? Number(tour) : null,
-        issue: nature === 'issue_de_tour' ? issue : null,
-      },
-    ])
+    const source = construirePrelevement({ ordreSource, nature, rangDebut, rangFin, tour, issue })
+    if (source === null) return
+    surSources([...sources, source])
   }
 
   return (
@@ -1159,7 +988,7 @@ function EditeurSources({
                 {/* Sans le titre, composer un format à trois qualifications donnait un menu
                     « 1. Qualification / 2. Qualification / 3. Qualification » — le problème exact
                     que cette US existe pour résoudre, sur l'écran qui vient d'acquérir le champ. */}
-                {etape.ordre}. {etape.titre ?? LIBELLE_TYPE[etape.type]}
+                {etape.ordre}. {intituleEtape(etape)}
               </option>
             ))}
           </select>
@@ -1247,17 +1076,4 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
       <MessageErreur erreur={creer.error} />
     </form>
   )
-}
-
-/** L'effectif simulé, borné **comme le serveur** (`EFFECTIF_MAX`).
- *
- * ⚠️ La borne serveur a été ajoutée sur `GET …/diagnostic` sans être propagée ici dans un premier
- * jet : saisir `300` revenait en 400 « Requête invalide. » et faisait **disparaître tout le
- * schéma**, verdict et anomalies compris, derrière un message qui ne disait pas la borne. Avant
- * l'ajout, ce cas rendait un diagnostic valide : régression introduite par le correctif lui-même.
- */
-function analyserEffectif(saisi: string): number | null {
-  const valeur = lireEntier(saisi)
-  if (typeof valeur !== 'number' || valeur > EFFECTIF_MAX) return null
-  return valeur
 }

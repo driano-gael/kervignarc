@@ -67,11 +67,11 @@ import {
   elementRetenu,
   segmentsCanoniques,
   analyserSegmentsAdmin,
-  contextePilotage,
   destinationParDefaut,
-  tournoisEnCours,
-  destinationValide,
+  marquesDeLAxe,
+  navigationDeLAxe,
   segmentsAdmin,
+  tournoiParId,
   type Axe,
 } from './axes'
 import { analyserChemin, construireChemin } from '../../shared/navigation/routeur'
@@ -138,8 +138,7 @@ function Coquille() {
 
   // Version **fraîche** du tournoi courant : après un démarrer/terminer, la liste est invalidée et
   // re-lue, ce qui rafraîchit le statut ici (badge, accueil) sans état local à synchroniser.
-  const courant =
-    tournoiId === null ? null : (tournois.data?.find((t) => t.id === tournoiId) ?? null)
+  const courant = tournoiParId(tournois.data, tournoiId)
 
   // Toute navigation d'administration passe par ici : le tournoi courant est **reconduit** d'un écran
   // à l'autre et d'un axe à l'autre, puisqu'il fait partie de l'adresse.
@@ -560,19 +559,7 @@ function Coquille() {
   // correction d'adresse ne peut pas vivre après un `return` conditionnel (règles des hooks). Les
   // valeurs ne sont exploitées que dans la branche « un axe est ouvert ».
   const axe = AXES.find((a) => a.axe === axeActif) ?? null
-  const dansAxe =
-    axeActif === null ? [] : destinations.filter((d) => AXE_PAR_DESTINATION[d.id] === axeActif)
-  // La destination vient de l'adresse, **validée contre les destinations de cet axe** : sans ça,
-  // `/admin/atelier/supervision` afficherait un écran de pilotage sous l'intitulé « Atelier ».
-  // À défaut, **l'ouverture de l'axe** — et non `dansAxe[0]`, qui ne coïncidait avec elle que par
-  // l'ordre de déclaration : réordonner la sidebar aurait silencieusement changé l'écran d'entrée.
-  const demandee = destinationValide(
-    destinationDemandee,
-    dansAxe.map((d) => d.id),
-  )
-  const ouverture = axe === null ? null : destinationParDefaut(axe.axe)
-  const active =
-    dansAxe.find((d) => d.id === demandee) ?? dansAxe.find((d) => d.id === ouverture) ?? dansAxe[0]
+  const { dansAxe, active } = navigationDeLAxe(destinations, axeActif, destinationDemandee)
 
   // ⚠️ **L'élément consommé suit la même garde que l'adresse.** La canonisation ci-dessous est un
   // effet, donc postérieure au premier rendu : sans ce filtre, `/admin/12/gestion/doublons/57`
@@ -605,40 +592,37 @@ function Coquille() {
   }, [chemin, chemAttendu])
 
   if (axeActif === null) {
-    // Les deux dérivations sont **pures et testées** dans `axes.ts` : elles portent des règles
-    // invisibles au rendu (un tournoi *en pause* compte comme en cours) que seul un test tient.
+    // Les marques sont **pures et testées** dans `axes.ts` : elles portent des règles invisibles
+    // au rendu (un tournoi *en pause* compte comme en cours) que seul un test tient.
     const liste = tournois.data ?? []
-    const enCours = tournoisEnCours(liste).length
-    const contexte = contextePilotage(liste)
     return (
       <div className="accueil-admin">
         <h2 className="accueil-admin__question">Que venez-vous faire ?</h2>
         <ul className="accueil-admin__axes">
-          {AXES.map((a) => (
-            <li key={a.axe}>
-              <button
-                type="button"
-                className="accueil-admin__axe"
-                onClick={() => entrerDansAxe(a.axe)}
-              >
-                <span className="accueil-admin__titre">
-                  {a.libelle}
-                  {a.axe === 'atelier' && (
-                    <span className="accueil-admin__marque">sans tournoi</span>
-                  )}
-                  {a.axe === 'pilotage' && enCours > 0 && (
-                    <span className="accueil-admin__marque accueil-admin__marque--vif">
-                      {enCours} en cours
-                    </span>
-                  )}
-                </span>
-                <span className="accueil-admin__phrase">{a.phrase}</span>
-                {a.axe === 'pilotage' && contexte !== null && (
-                  <span className="accueil-admin__contexte">{contexte}</span>
-                )}
-              </button>
-            </li>
-          ))}
+          {AXES.map((a) => {
+            const { sansTournoi, enCours, contexte } = marquesDeLAxe(a.axe, liste)
+            return (
+              <li key={a.axe}>
+                <button
+                  type="button"
+                  className="accueil-admin__axe"
+                  onClick={() => entrerDansAxe(a.axe)}
+                >
+                  <span className="accueil-admin__titre">
+                    {a.libelle}
+                    {sansTournoi && <span className="accueil-admin__marque">sans tournoi</span>}
+                    {enCours !== null && (
+                      <span className="accueil-admin__marque accueil-admin__marque--vif">
+                        {enCours} en cours
+                      </span>
+                    )}
+                  </span>
+                  <span className="accueil-admin__phrase">{a.phrase}</span>
+                  {contexte !== null && <span className="accueil-admin__contexte">{contexte}</span>}
+                </button>
+              </li>
+            )
+          })}
         </ul>
         {/* L'aide de l'écran « Tournoi » suit l'écran (E14US002) : il change de place, sa couverture
             d'aide ne doit pas disparaître pour autant. */}
@@ -707,8 +691,7 @@ function Coquille() {
               className="formulaire__champ"
               value={tournoiId ?? ''}
               onChange={(e) => {
-                const id = Number(e.target.value)
-                const t = tournois.data?.find((x) => x.id === id)
+                const t = tournoiParId(tournois.data, Number(e.target.value))
                 if (t) changerTournoi(t)
               }}
             >

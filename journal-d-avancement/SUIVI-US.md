@@ -12,7 +12,17 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 04/10/2026, 17 h 44** · **167 US livrées** · dernière : `E01US027`
+**Dernière mise à jour : 04/10/2026, 20 h 07** · **168 US livrées** · dernière : `E00US024`
+*(**la logique des quatre plus gros écrans du front sort des composants** — déroulé, saisie des
+duels, coquille admin, saisie de cible : **58 fonctions pures** exportées dans des modules voisins, **219
+tests unitaires** neufs ; chaque fonction a été **vue rouge** par sabotage. Rendu **inchangé** : les tests de
+rendu existants restent verts sans retouche de leurs attentes, mais **ne couvrent pas tout** : bien des branches
+recâblées n'en ont aucun (inventaire **non exhaustif** dans la fiche) — leurs décisions sont tenues par les tests
+unitaires, leur **câblage** seulement par la lecture du diff ; deux tests de rendu ajoutés sur les câblages qui
+pèsent (bouton de forfait, marques de l'accueil admin). Deux défauts hérités figés, inscrits en `DETTE-124`. **Sans surface utilisateur.** La fiche
+disait le front « sans tests de rendu » : c'était faux dès sa rédaction (ADR-0053) — Contexte
+corrigé. ⚠️ **Non vérifiée au navigateur** — aucune surface à voir, le rendu est gardé par les tests.)*
+Précédente : `E01US027`
 *(**un barème propre aux derniers tours** d'une phase de duels — le format club se joue enfin tel
 quel : premier à 4, puis à **6 dès les ½ finales**, posé par le « Preset format club ». Le nombre de
 derniers tours est au choix ; le tableau le dit « finale / ½ finales / ¼ de finale », les poules, le
@@ -20,17 +30,7 @@ suisse et la colline « les K derniers tours / rondes / manches », compté **po
 petite finale suit la finale ; le verrou au premier tir couvre les deux barèmes. ADR-0117 amendé
 (§8), `DETTE-117` soldée. ⚠️ **Non vérifiée au navigateur** — couverte par les tests de domaine, de
 service (quatre formats), d'adapter, d'API et d'écran monté.)*
-Précédente : `E13US004`
-*(**un tableau d'équipes se joue de bout en bout** — une élimination directe se règle « par
-équipes » (de trois ou mixtes) ; les équipes **conformes** dont tous les membres sont en lice y
-entrent, rangées par la **somme des qualifications** de leurs membres ; les autres sont **écartées
-et listées** avec leurs motifs, sans bloquer personne. Barème non réglé = **preset FFTA équipe**,
-membres posés à la suite sur les cibles, podium nommant les équipes. **Cadrage** : 1ʳᵉ tranche
-du CA d'origine, le reliquat part en `E13US005` (autres formats, palmarès, affectations, top N,
-forfait d'équipe). [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md) ;
-**aucune migration**. `DETTE-120`, `DETTE-121` créées. ⚠️ **Non vérifiée au navigateur** —
-couverte par les tests de service, d'API et d'écran monté.)*
-Avant : `E00US028` *(un ADR qui nomme du code disparu fait rougir la CI)*, `E09US007` *(le déroulé horaire s'imprime)*, puis `E11US006`
+Avant : `E13US004` *(un tableau d'équipes se joue de bout en bout)*, `E00US028` *(un ADR qui nomme du code disparu fait rougir la CI)*, `E09US007` *(le déroulé horaire s'imprime)*, puis `E11US006`
 *(**une sauvegarde se restaure depuis l'appli, à chaud** — écran « Sauvegardes » (axe Atelier) :
 liste, vérification (intégrité **et** version), restauration confirmée, sans redémarrer. L'état
 courant est d'abord copié (`avant-restauration-*`, hors rétention : une restauration s'annule), les
@@ -1495,7 +1495,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US021 | Atlas — le métier (cycles de vie, énumérations, entités) | hors jalon | 🎯 *(cible, sans fiche détaillée — prochaine tranche de l'atlas)* |
 | E00US022 | Atlas — les flux (saisie → file d'écriture → WebSocket) | hors jalon | ⬜ *(cible)* |
 
-## Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**
+## Ce que la carte du code a révélé (16/08/2026) — 🔶 **en cours (1/4)**
 
 > Ces quatre US **n'existent que parce qu'`E00US020` les a mesurées**. Elles ne sont dans aucun
 > jalon et ne se prennent pas d'elles-mêmes : elles attendent l'arbitrage du commanditaire.
@@ -1504,7 +1504,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | US | Titre | Jalon | État |
 |---|---|---|---|
 | E00US023 | Nommer le noyau partagé du front, et défaire les enchevêtrements | hors jalon | ⬜ |
-| E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ⬜ |
+| E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ✅ *(04/10/2026 — 58 fonctions pures, 219 tests unitaires et 7 de rendu, rendu inchangé ; a mesuré le filtre `elimination_directe` à **3** sites et l'intitulé d'étape à **5** — matière d'`E00US023`)* |
 | E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
 | E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
 
