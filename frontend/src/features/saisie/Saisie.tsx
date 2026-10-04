@@ -7,12 +7,11 @@
 // cible entièrement validée → **panneau de routage**, au moment où l'archer range ses flèches.
 
 import { useEffect, useRef, useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
-import { apresRetour, panneauOuvert, serieClose } from '../routage/presentation'
+import { apresRetour, panneauOuvert } from '../routage/presentation'
 import type { Bareme, LigneGrille } from './api'
-import { lireBrouillon, noterBrouillon, type Brouillons } from './brouillons'
+import { noterBrouillon, type Brouillons } from './brouillons'
 import {
   useBareme,
   useDeparts,
@@ -24,8 +23,18 @@ import {
   useSerie,
   useSeries,
 } from './hooks'
+import { etatLigne, libelleCase, totalAffiche } from './ligneArcher'
+import { classesPastille, complementMeta, estRefusDePreseance, etatPave } from './pave'
 import {
-  heureSaisie,
+  affichagePoste,
+  archerActifParmi,
+  cibleClose as estCibleClose,
+  marqueurActifParmi,
+  ouvertureDeLArcher,
+  signatureComposition,
+  type Ouverture,
+} from './poste'
+import {
   libelleGrain,
   nouvelIdentifiant,
   voleeApresEnregistrement,
@@ -33,10 +42,7 @@ import {
   cumulSaisi,
   flecheVisee,
   frapper,
-  voleeOuverte,
   totalVolee,
-  voleeExistante,
-  type PointsParZone,
 } from './volees'
 
 export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleIndex: number }) {
@@ -66,52 +72,33 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
   // **un seul** : la ligne de l'archer actif et le pavé le lisent tous deux (`voleeOuverte`).
   const [ouverture, setOuverture] = useState<Ouverture | null>(null)
 
-  // Départ courant non fixé : le serveur refuse la grille (409, ADR-0034 §1). C'est un état attendu,
-  // pas un incident — on invite à choisir un départ plutôt que d'afficher une erreur.
-  const besoinDepart =
-    grille.isError &&
-    grille.error instanceof ErreurApi &&
-    grille.error.code === 'depart_courant_non_defini'
-
   const lignes = grille.data ?? []
+  const affichage = affichagePoste({
+    enErreur: grille.isError,
+    erreur: grille.error,
+    succes: grille.isSuccess,
+    nbLignes: lignes.length,
+  })
 
-  // **Le pavé est appelé, pas permanent** — retour maquettes du 04/08/2026 (S02), demandé deux fois
-  // : *« l'appel du pavé doit se faire à la sélection de la zone de saisie »*. L'écran l'ouvrait
-  // d'office sur l'archer A : la grille des quatre archers, celle qu'on lit pour savoir où l'on en
-  // est, était repoussée sous un pavé que personne n'avait demandé, et un tap malheureux saisissait
-  // pour A. ⚠️ `archerActif` n'a donc **plus de repli** : un choix devenu obsolète referme le pavé
-  // au lieu de glisser silencieusement sur un autre archer — le vrai danger du repli.
-  const premier = lignes[0]
-  const archerActif =
-    archerChoisi !== null && lignes.some((l) => l.archer_id === archerChoisi) ? archerChoisi : null
-  // Le marqueur, lui, **garde** son repli : c'est une signature, pas une cible de frappe. Sans nom
-  // par défaut, la première volée de la journée partirait avec `saisie_par: null`.
-  const marqueurActif =
-    marqueur !== null && lignes.some((l) => l.nom === marqueur) ? marqueur : (premier?.nom ?? null)
+  // **Le pavé est appelé, pas permanent** (S02, cf. `archerActifParmi`) : la grille des quatre
+  // archers, celle qu'on lit pour savoir où l'on en est, n'est plus repoussée sous un pavé d'office.
+  const archerActif = archerActifParmi(lignes, archerChoisi)
+  const marqueurActif = marqueurActifParmi(lignes, marqueur)
 
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
-  // ⚠️ **L'ouverture n'appartient qu'à l'archer actif** : dès qu'il change — autre nom touché,
-  // archer sorti de la grille (autre départ) — elle retombe, sans quoi une visée ressusciterait au
-  // retour et la frappe suivante remplacerait une flèche. Ajustement au rendu, comme `panneauFerme`.
-  if (ouverture !== null && ouverture.archerId !== archerActif) setOuverture(null)
-  const ouvertureActive =
-    ouverture !== null && ouverture.archerId === archerActif ? ouverture : null
+  // Ajustement au rendu, comme `panneauFerme` : cf. `ouvertureDeLArcher`.
+  const ouvertureActive = ouvertureDeLArcher(ouverture, archerActif)
+  if (ouverture !== null && ouvertureActive === null) setOuverture(null)
 
-  // L'état « Rattaché » de S01 : la tablette sait quelle cible elle sert, le tir n'a rien à montrer
-  // encore. Exclut le chargement et l'erreur dure, où un numéro géant n'aurait aucun sens.
-  const confirmation = (besoinDepart || grille.isSuccess) && lignes.length === 0
-
-  // Bascule en panneau de routage (E04US018). « Close » = toutes les volées du barème saisies **et**
-  // verrouillées par le scoreur (c'est lui qui clôt une série, pas le marqueur) — **ou** l'archer
-  // est forfait (E04US015 : il reste dans la grille et sa série ne se complétera jamais ; sans cette
-  // clause, une seule DSQ priverait toute la cible du panneau). Les séries sont relues via le
+  // Bascule en panneau de routage (E04US018), cf. `cibleClose`. Les séries sont relues via le
   // **même** cache que les lignes de la grille (`useSeries`), donc sans requête en plus.
   const archerIds = lignes.map((l) => l.archer_id)
   const series = useSeries(tournoiId, archerIds)
-  const nbVolees = bareme.data?.nb_volees ?? null
-  const cibleClose =
-    lignes.length > 0 &&
-    lignes.every((ligne, i) => serieClose(series[i]?.data?.volees ?? [], nbVolees, ligne.forfait))
+  const cibleClose = estCibleClose(
+    lignes,
+    series.map((serie) => serie.data?.volees),
+    bareme.data?.nb_volees ?? null,
+  )
 
   // Ouverture **automatique** quand la cible a fini (CA), « Retour à la grille » qui referme, et
   // panneau **ouvrable à la main** en toutes circonstances : un cas imprévu ne doit pas condamner
@@ -119,7 +106,7 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
   // poignée. ⚠️ Refermer une consultation **manuelle** ne consomme pas la bascule automatique à
   // venir, sans quoi jeter un œil au panneau éteindrait le CA central. `panneauFerme` est
   // réinitialisé quand la grille change de **composition**, pas d'**ordre**. Ajustement au rendu.
-  const signatureGrille = [...archerIds].sort((a, b) => a - b).join(',')
+  const signatureGrille = signatureComposition(archerIds)
   const [ancreGrille, setAncreGrille] = useState(signatureGrille)
   const [panneauFerme, setPanneauFerme] = useState(false)
   const [panneauForce, setPanneauForce] = useState(false)
@@ -156,7 +143,9 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
           chargement et l'erreur dure : le numéro s'affichait en 48 px puis retombait à 22 px à
           chaque montage, et au-dessus d'un message d'erreur. Ici, l'état « Rattaché » de S01 — le
           départ reste à choisir, ou la grille est vide et le serveur a répondu. */}
-      <div className={`saisie__entete${confirmation ? ' saisie__entete--confirmation' : ''}`}>
+      <div
+        className={`saisie__entete${affichage.confirmation ? ' saisie__entete--confirmation' : ''}`}
+      >
         {/* `h2` et non `strong` : c'est le seul titre de l'écran de travail, donc le point d'entrée
             d'une navigation par titres — la coquille ne porte plus que le `h1` de l'application. */}
         <h2 className="saisie__cible">Cible {cibleIndex}</h2>
@@ -178,19 +167,19 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
         </button>
       )}
 
-      {besoinDepart || grille.isSuccess ? (
-        <SelecteurDepart tournoiId={tournoiId} obligatoire={besoinDepart} />
+      {affichage.selecteurDepart ? (
+        <SelecteurDepart tournoiId={tournoiId} obligatoire={affichage.besoinDepart} />
       ) : null}
 
-      {grille.isError && !besoinDepart && <MessageErreur erreur={grille.error} />}
+      {affichage.messageErreur && <MessageErreur erreur={grille.error} />}
 
-      {grille.isSuccess && lignes.length === 0 && (
+      {affichage.grilleVide && (
         <p className="saisie__vide" role="status">
           Aucun archer placé sur cette cible pour ce départ.
         </p>
       )}
 
-      {grille.isSuccess && lignes.length > 0 && (
+      {affichage.travail && (
         // ⚠️ Cette enveloppe n'est pas cosmétique : elle **ancre le pavé en bas** (`App.css`). Empilé
         // sans ancrage, il s'ouvrait sous la ligne de flottaison — invisible sans défiler, pour le
         // geste que S03 dit « répété ~4 300 fois par départ ». Le pavé reste **appelé** (S02).
@@ -402,26 +391,16 @@ function LigneArcher({
   const serie = useSerie(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
   const nbVolees = bareme?.nb_volees ?? null
-  // Un score dont la règle (barème) ou la matière (série) n'est pas lue s'affiche « ? », jamais 0 :
-  // `pointsZone` n'a pas de défaut, un `{}` ici le contournerait.
-  const table: PointsParZone | null = bareme?.points_par_zone ?? null
-  const lue = serie.isSuccess
-  const nbSaisies = lue ? volees.length : '?'
-  const cumul = table === null || !lue ? '?' : cumulSaisi(volees, table)
-  const total = (valeurs: readonly string[]) => (table === null ? '?' : totalVolee(valeurs, table))
-  // La volée ouverte, par le **même** calcul que le pavé (`voleeOuverte`) : pour l'archer actif,
-  // celle que le pavé saisit ; pour les autres, leur prochaine à saisir.
-  const numero =
-    nbVolees === null ? null : voleeOuverte(ouverture?.numero ?? null, volees, nbVolees)
-  const enCours =
-    numero === null
-      ? []
-      : (lireBrouillon(brouillons, ligne.archer_id, numero) ??
-        voleeExistante(volees, numero)?.valeurs ??
-        [])
-  const verrouillee = numero !== null && (voleeExistante(volees, numero)?.verrouillee ?? false)
-  // La case marquée : la flèche visée, sinon la prochaine à remplir — seulement sur l'archer actif.
-  const caseEnCours = actif ? (ouverture?.fleche ?? enCours.length) : null
+  const table = bareme?.points_par_zone ?? null
+  const { nbSaisies, cumul, numero, enCours, verrouillee, caseEnCours } = etatLigne({
+    archerId: ligne.archer_id,
+    volees,
+    serieLue: serie.isSuccess,
+    bareme,
+    brouillons,
+    ouverture,
+    actif,
+  })
 
   return (
     <li>
@@ -462,14 +441,14 @@ function LigneArcher({
               className={i === caseEnCours ? 'saisie__case saisie__case--en-cours' : 'saisie__case'}
               aria-label={libelleCase(i, ligne.nom, enCours[i])}
               // ⚠️ Série pas encore lue : `numero` vaudrait 1 et le toucher figerait le pavé sur la
-              // volée 1 — le garde-fou `chargee` du pavé, repris ici.
+              // volée 1 — le garde-fou `serieChargee` du pavé (`etatPave`), repris ici.
               disabled={!serie.isSuccess || verrouillee}
               onClick={() => onViser(numero, flecheVisee(i, enCours))}
             >
               {enCours[i] ?? ''}
             </button>
           ))}
-          <span className="saisie__somme">{total(enCours)}</span>
+          <span className="saisie__somme">{totalAffiche(enCours, table)}</span>
         </span>
       )}
 
@@ -502,7 +481,9 @@ function LigneArcher({
             // sur les valeurs, pas sur un cumul (revue, axe B).
             return (
               <span key={i} className={classes}>
-                <span className="saisie__relecture-total">{total(volee.valeurs)}</span>
+                <span className="saisie__relecture-total">
+                  {totalAffiche(volee.valeurs, table)}
+                </span>
                 <span className="saisie__relecture-detail">{volee.valeurs.join(' ')}</span>
               </span>
             )
@@ -548,19 +529,25 @@ function PaveArcher({
   const serie = useSerie(tournoiId, ligne.archer_id)
   const saisir = useSaisirVolee(tournoiId, ligne.archer_id)
   const volees = serie.data?.volees ?? []
-
-  // Volée visée : le choix explicite (navigateur, case de ligne), sinon la prochaine non saisie.
-  const numeroActif = voleeOuverte(ouverture?.numero ?? null, volees, bareme.nb_volees)
-  const fleche = ouverture?.fleche ?? null
-  const existante = voleeExistante(volees, numeroActif)
-  const verrouillee = existante?.verrouillee ?? false
-  const valeursExistantes = existante?.valeurs
-
-  // Le tampon est **dérivé** : le brouillon du parent s'il existe, sinon le contenu persisté de la
-  // volée visée. Plus d'ancre ni de réinitialisation au rendu — enregistrer efface le brouillon, ce
-  // qui fait retomber la lecture sur le serveur. Un état de moins, et le pattern d'ajustement au
-  // rendu (délicat) disparaît avec lui.
-  const buffer = lireBrouillon(brouillons, ligne.archer_id, numeroActif) ?? valeursExistantes ?? []
+  const {
+    numeroActif,
+    fleche,
+    existante,
+    verrouillee,
+    buffer,
+    frappable,
+    zonesActives,
+    effacable,
+    enregistrable,
+  } = etatPave({
+    archerId: ligne.archer_id,
+    volees,
+    bareme,
+    brouillons,
+    ouverture,
+    serieChargee: serie.isSuccess,
+    envoiEnCours: saisir.isPending,
+  })
 
   if (ligne.zones.length === 0) {
     return (
@@ -570,15 +557,8 @@ function PaveArcher({
     )
   }
 
-  // Tant que la série n'est pas chargée, `volees` est vide et `numeroActif` pointerait la volée 1
-  // par défaut : on désactive la frappe pour ne pas saisir « à l'aveugle » puis voir le tampon se
-  // réinitialiser à l'arrivée des données (perte silencieuse). Fenêtre courte en LAN, verrou franc.
-  const chargee = serie.isSuccess
-  const complet = buffer.length >= bareme.nb_fleches_par_volee
-  // Une volée pleine reste frappable **sur la flèche visée** : c'est la correction avant envoi.
-  const bloque = complet && fleche === null
   const ajouter = (valeur: string) => {
-    if (!chargee || verrouillee) return
+    if (!frappable) return
     const suivant = frapper(buffer, valeur, fleche, bareme.nb_fleches_par_volee)
     if (suivant === null) return
     onBrouillon(ligne.archer_id, numeroActif, suivant)
@@ -610,8 +590,7 @@ function PaveArcher({
         // devenait faux à l'écran même qui l'affiche (relevé en revue). Le tampon retombe alors
         // sur la valeur serveur, que l'invalidation d'`onError` vient de rafraîchir.
         onError: (erreur: Error) => {
-          if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur')
-            onBrouillon(ligne.archer_id, numeroActif, null)
+          if (estRefusDePreseance(erreur)) onBrouillon(ligne.archer_id, numeroActif, null)
         },
       },
     )
@@ -655,11 +634,7 @@ function PaveArcher({
       {existante !== null && (
         <p className="saisie__meta">
           Saisie par <strong>{existante.saisie_par ?? '—'}</strong>
-          {existante.saisie_le !== null ? ` à ${heureSaisie(existante.saisie_le)}` : ''}
-          {existante.validee_par !== null && existante.en_correction !== true
-            ? ` · validée par ${existante.validee_par}`
-            : ''}
-          {existante.en_attente === true ? ' · en attente d’envoi' : ''}
+          {complementMeta(existante)}
         </p>
       )}
 
@@ -693,19 +668,10 @@ function PaveArcher({
         </div>
 
         <div className="saisie__actions">
-          <button
-            type="button"
-            className="bouton--discret"
-            disabled={buffer.length === 0 || verrouillee || saisir.isPending}
-            onClick={effacer}
-          >
+          <button type="button" className="bouton--discret" disabled={!effacable} onClick={effacer}>
             Effacer
           </button>
-          <button
-            type="button"
-            disabled={!chargee || !complet || verrouillee || saisir.isPending}
-            onClick={enregistrer}
-          >
+          <button type="button" disabled={!enregistrable} onClick={enregistrer}>
             {saisir.isPending ? 'Enregistrement…' : 'Enregistrer la volée'}
           </button>
         </div>
@@ -717,7 +683,7 @@ function PaveArcher({
             key={zone}
             type="button"
             className="saisie__zone"
-            disabled={!chargee || bloque || verrouillee || saisir.isPending}
+            disabled={!zonesActives}
             onClick={() => ajouter(zone)}
           >
             {zone}
@@ -737,7 +703,7 @@ function PaveArcher({
 // ⚠️ DETTE-100 : ce rendu n'est atteignable par AUCUN écran — la tablette est le seul appelant de
 // `saisirVolee`, et deux postes sont à rôle égal (ADR-0107 §3). Il sert le jour où l'admin saisit.
 function MessageErreurSaisie({ erreur }: { erreur: Error | null }) {
-  if (erreur instanceof ErreurApi && erreur.code === 'ecriture_de_role_inferieur') {
+  if (estRefusDePreseance(erreur)) {
     return (
       <p className="placement__alerte" role="alert">
         {erreur.message} Le score affiché est celui qui fait foi : signalez l’erreur à
@@ -767,14 +733,7 @@ function NavigateurVolees({
       {Array.from({ length: nbVolees }, (_, i) => {
         const numero = i + 1
         const volee = volees.find((v) => v.numero === numero)
-        const classes = [
-          'saisie__nav-volee',
-          volee !== undefined ? 'saisie__nav-volee--saisie' : '',
-          volee?.verrouillee ? 'saisie__nav-volee--verrou' : '',
-          numero === numeroActif ? 'saisie__nav-volee--actif' : '',
-        ]
-          .filter((c) => c !== '')
-          .join(' ')
+        const classes = classesPastille(numero, volee, numeroActif)
         return (
           <button
             key={numero}
@@ -789,18 +748,4 @@ function NavigateurVolees({
       })}
     </div>
   )
-}
-
-// Ce qui est ouvert pour un archer : la volée choisie (`null` = sa prochaine à saisir) et la flèche
-// que la prochaine frappe remplace (`null` = à la suite). Portée par `Saisie`, lue par la ligne de
-// l'archer actif et par le pavé — une seule source, pour qu'ils ne divergent pas.
-interface Ouverture {
-  archerId: number
-  numero: number | null
-  fleche: number | null
-}
-
-// Le nom d'une case pour un lecteur d'écran : quatre archers ont chacun trois cases « 10 ».
-function libelleCase(index: number, nom: string, valeur: string | undefined): string {
-  return `Flèche ${index + 1} de ${nom}${valeur === undefined ? '' : ` : ${valeur}`}`
 }

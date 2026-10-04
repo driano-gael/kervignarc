@@ -5,7 +5,8 @@
 // non-régression sur un bloquant, le régime où l'implémenteur est le bon auteur du test (règle 9).
 
 import { describe, expect, it } from 'vitest'
-import { lireBrouillon, noterBrouillon, type Brouillons } from './brouillons'
+import type { Volee } from './api'
+import { lireBrouillon, noterBrouillon, tamponDeVolee, type Brouillons } from './brouillons'
 
 describe('brouillons de frappe', () => {
   it('une volée commencée se relit', () => {
@@ -67,5 +68,44 @@ describe('brouillons de frappe', () => {
     const etat = noterBrouillon({}, 12, 3, [])
     expect(lireBrouillon(etat, 12, 3)).toEqual([])
     expect(lireBrouillon(etat, 12, 4)).toBeUndefined()
+  })
+})
+
+// E00US024 — non-régression : le tampon que la ligne et le pavé calculaient chacun dans leur corps.
+describe('tamponDeVolee', () => {
+  const persistee: Volee = {
+    numero: 2,
+    valeurs: ['10', '9', '8'],
+    saisie_par: 'DUPONT',
+    validee_par: null,
+    verrouillee: false,
+    en_correction: false,
+    correction_ouverte_par: null,
+    lot_validation: null,
+    saisie_le: null,
+  }
+
+  it('le brouillon passe devant la volée persistée', () => {
+    const brouillons = noterBrouillon({}, 12, 2, ['7'])
+    expect(tamponDeVolee(brouillons, 12, 2, [persistee])).toEqual(['7'])
+  })
+
+  it('un brouillon **vide** reste un brouillon : il masque la volée persistée', () => {
+    // Effacer toutes les flèches d'une volée enregistrée ne doit pas la faire réapparaître.
+    const brouillons = noterBrouillon({}, 12, 2, [])
+    expect(tamponDeVolee(brouillons, 12, 2, [persistee])).toEqual([])
+  })
+
+  it('sans brouillon, retombe sur la volée persistée de ce numéro', () => {
+    expect(tamponDeVolee({}, 12, 2, [persistee])).toEqual(['10', '9', '8'])
+  })
+
+  it('le brouillon d’un autre archer ou d’une autre volée ne compte pas', () => {
+    const brouillons = noterBrouillon(noterBrouillon({}, 34, 2, ['1']), 12, 3, ['2'])
+    expect(tamponDeVolee(brouillons, 12, 2, [persistee])).toEqual(['10', '9', '8'])
+  })
+
+  it('ni brouillon ni volée persistée : tampon vide', () => {
+    expect(tamponDeVolee({}, 12, 5, [persistee])).toEqual([])
   })
 })
