@@ -655,7 +655,11 @@ formats, le palmarès et les écrans publics par équipes restent à faire (`E13
 
 ## Chiffres repères
 
-- **167 US livrées** (mergées, revues, CI verte) à la date du 04/10/2026 — la dernière, `E01US027`,
+- **168 US livrées** (mergées, revues, CI verte) à la date du 04/10/2026 — la dernière, `E00US024`,
+  **sans surface utilisateur** : les calculs des quatre plus gros écrans (déroulé, saisie des duels,
+  administration, saisie de cible) sont sortis de l'affichage pour être vérifiés par des tests
+  automatiques — l'écran ne change pas, mais une erreur de calcul ne peut plus y passer inaperçue.
+  Juste avant, `E01US027`,
   à **surface visible** : une phase de duels peut tirer ses **derniers tours** à un autre barème —
   le format club passe à **6 points dès les ½ finales**, posé par le « Preset format club » ; le
   nombre de derniers tours est au choix, pour le tableau comme pour les poules, le suisse et la

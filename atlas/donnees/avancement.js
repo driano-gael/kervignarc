@@ -1022,8 +1022,8 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0053",
    "0117",
-   "0120",
    "0119",
    "0118",
    "0028",
@@ -1035,7 +1035,7 @@ window.ATLAS.avancement = {
    "0074",
    "0104"
   ],
-  "derniere": "E01US027"
+  "derniere": "E00US024"
  },
  "epics": [
   {
@@ -1596,7 +1596,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US023",
    "sections": [
-    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+    "Ce que la carte du code a révélé (16/08/2026) — 🔶 **en cours (1/4)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Nommer le noyau partagé du front, et défaire les enchevêtrements",
@@ -1608,10 +1608,10 @@ window.ATLAS.avancement = {
    "dettes_resorbees": [],
    "epic": "00",
    "epic_titre": "Socle technique & walking skeleton",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E00US024",
    "sections": [
-    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+    "Ce que la carte du code a révélé (16/08/2026) — 🔶 **en cours (1/4)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Sortir la logique des quatre composants XXL du front",
@@ -1628,7 +1628,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US025",
    "sections": [
-    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+    "Ce que la carte du code a révélé (16/08/2026) — 🔶 **en cours (1/4)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Le contrat DTO front ↔ back, vérifié plutôt que recopié",
@@ -1645,7 +1645,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US026",
    "sections": [
-    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+    "Ce que la carte du code a révélé (16/08/2026) — 🔶 **en cours (1/4)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Rallier le JavaScript de l'atlas à l'outillage du front (DETTE-067)",
@@ -5144,7 +5144,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 167,
+  "livrees": 168,
   "vivantes": 182
  },
  "sections": [
@@ -6377,11 +6377,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    0,
+    1,
     4
    ],
    "compteur_ecrit": [
-    0,
+    1,
     4
    ],
    "lignes": [
@@ -6393,7 +6393,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E00US024",
      "titre": "Sortir la logique des quatre composants XXL du front"
     },
@@ -6410,7 +6410,7 @@ window.ATLAS.avancement = {
      "titre": "Rallier le JavaScript de l'atlas à l'outillage du front (DETTE-067)"
     }
    ],
-   "titre": "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+   "titre": "Ce que la carte du code a révélé (16/08/2026) — 🔶 **en cours (1/4)**"
   },
   {
    "calcule": [
