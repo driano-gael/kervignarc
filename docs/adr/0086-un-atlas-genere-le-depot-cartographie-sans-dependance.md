@@ -114,7 +114,8 @@ qu'une falsification n'était visible sur aucun canal.
   rougit sur un choix de style est désactivée en un mois, et on perd alors aussi les contrôles
   justes.
 - Les **contrôles** suivent la même logique : `bloquant` pour un constat sans ambiguïté (chemin
-  inexistant, ADR cité absent), `signal` pour l'heuristique (symbole introuvable) et la forme (11
+  inexistant, ADR cité absent), `signal` pour l'heuristique (symbole introuvable — *bloquant par exception depuis le 03/10/2026,
+  [ADR-0102](0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §3.1, `E00US028`*) et la forme (11
   ADR datent en `JJ/MM/AAAA` au lieu de l'ISO du reste du registre — accepté, normalisé, signalé).
 
 **5. L'ancre comme identité d'une règle.** Chaque règle de `CLAUDE.md` porte

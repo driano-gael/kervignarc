@@ -94,9 +94,9 @@ Trois faits du code ont orienté la décision :
 
 | Point | Module |
 |---|---|
-| 1 — réglage d'étape | `domain/deroule_etape.py`, `domain/phase.py` (garde), `domain/format_tournoi.py`, `infrastructure/db/repositories/moteur.py`, `application/phases.py` (verrou), `api/v1/phases.py`, `api/v1/formats.py`, `frontend/src/shared/phases/` |
-| 2, 3 — engagement et rang d'entrée | `domain/engagement_equipes.py`, `domain/equipe.py` (écarts « blasons différents » et « blason non vérifiable »), `application/equipes.py` (`a_engager`, `jouee`), `application/saisie_duels.py` (`_decor`, `_equipes_sans_tableau`) |
-| 4 — barème par défaut | `domain/duel.py` (`ResolveurBaremeDuelFfta.bareme_equipe_pour`), `application/saisie_duels.py` (`_bareme_du`) |
-| 5 — résolution en couche haute | `application/saisie_duels.py`, `application/placement_duels.py`, `application/pilotage_tour.py`, `domain/placement.py` (adjacence par groupe de duel) ; frontière `Camp` : `api/v1/saisie_duels.py` et `api/v1/tableaux.py` (aplatissement), `application/routage.py` et `application/pilotage_simulation.py` (camp d'équipe écarté) |
-| 6 — îlot | `domain/phase.py` (`_anomalies_ilot_d_equipes`), `application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`) |
-| 7 — composition figée | `application/equipes.py` (`_refuser_si_en_jeu`), `application/verrou_bareme.py` (`VerrouCompositionEquipes`, `VerrouBaremeDuel.etape_tiree_dans`) |
+| 1 — réglage d'étape | `backend/domain/deroule_etape.py`, `backend/domain/phase.py` (garde), `backend/domain/format_tournoi.py`, `backend/infrastructure/db/repositories/moteur.py`, `backend/application/phases.py` (verrou), `backend/api/v1/phases.py`, `backend/api/v1/formats.py`, `frontend/src/shared/phases/` |
+| 2, 3 — engagement et rang d'entrée | `backend/domain/engagement_equipes.py`, `backend/domain/equipe.py` (écarts « blasons différents » et « blason non vérifiable »), `backend/application/equipes.py` (`a_engager`, `jouee`), `backend/application/saisie_duels.py` (`_decor`, `_equipes_sans_tableau`) |
+| 4 — barème par défaut | `backend/domain/duel.py` (`ResolveurBaremeDuelFfta.bareme_equipe_pour`), `backend/application/saisie_duels.py` (`_bareme_du`) |
+| 5 — résolution en couche haute | `backend/application/saisie_duels.py`, `backend/application/placement_duels.py`, `backend/application/pilotage_tour.py`, `backend/domain/placement.py` (adjacence par groupe de duel) ; frontière `Camp` : `backend/api/v1/saisie_duels.py` et `backend/api/v1/tableaux.py` (aplatissement), `backend/application/routage.py` et `backend/application/pilotage_simulation.py` (camp d'équipe écarté) |
+| 6 — îlot | `backend/domain/phase.py` (`_anomalies_ilot_d_equipes`), `backend/application/saisie_duels.py` (`_equipes_engagees`, `_classement_produit`) |
+| 7 — composition figée | `backend/application/equipes.py` (`_refuser_si_en_jeu`), `backend/application/verrou_bareme.py` (`VerrouCompositionEquipes`, `VerrouBaremeDuel.etape_tiree_dans`) |

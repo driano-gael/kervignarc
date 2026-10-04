@@ -252,7 +252,7 @@ cache, c'est là qu'il faudra le poser, pas ici.
   ⚠️ **`_decompter` porte à lui seul les décisions 4 et 5**, et c'est là que le mode de panne vit —
   relevé en revue (axe C2), la première rédaction l'omettait. La décision 4 (« deux fois compté »)
   n'est tenue par **aucune ligne** : elle l'est par l'**absence** de dédoublonnage par archer dans
-  la double boucle `for bloc … for place`. Un mainteneur qui y ajouterait un `vu_par_archer`
+  la double boucle `for bloc … for place`. Un mainteneur qui y ajouterait un dédoublonnage par archer
   casserait l'ADR sans toucher un symbole nommé ailleurs. La décision 5, elle, est tenue par le
   **test** `place.rang <= _METAUX` : retirer la constante ne compilerait pas, relâcher la
   comparaison passerait.
@@ -267,8 +267,9 @@ cache, c'est là qu'il faudra le poser, pas ici.
   (décision 8 + ADR-0103 §7). **C'est le site qui porte la décision 9** : un classement de clubs
   par section, donc un lauréat par créneau. Le remonter d'un cran rétablirait le défaut.
 - `backend/domain/palmares.py` — `SectionPalmares` : le type qui **nomme** la maille à l'appelant
-  et la transporte jusqu'au port. ⚠️ **`classer_clubs` reçoit toujours un `Palmares` nu** : la
-  maille est tenue par sa docstring et par le site d'appel (`SectionPalmaresReponse.de_section`),
+  et la transporte jusqu'au port. ⚠️ **classer_clubs reçoit toujours un `Palmares` nu** : la
+  maille est tenue par sa docstring et par le site d'appel (SectionPalmaresReponse.de_section,
+  entrée précédente),
   **pas par la signature** — rien dans les types n'empêche de lui repasser un palmarès de tournoi.
   Écrire l'inverse ici serait le défaut d'ADR-0017 en version atténuée : nommer un module qui ne
   porte pas ce qu'on lui prête (relevé en revue, axe C2).

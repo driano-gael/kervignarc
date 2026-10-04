@@ -6,10 +6,10 @@
 - **Précise** : [ADR-0067](0067-palmares-agregation-des-rangs-de-phases.md) (agrégation des rangs de
   phases) · [ADR-0081](0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
   (plages indécises) · [ADR-0083](0083-le-contrat-de-phase-jouable.md) (contrat de phase jouable)
-- **Porté dans le code par** : `application/palmares.py` (`_est_terminale`, `_resultat_classant`,
+- **Porté dans le code par** : `backend/application/palmares.py` (`_est_terminale`, `_resultat_classant`,
   `_a_commence`, `_est_epuisee`, `_borne`, `_TYPES_CLASSANTS_AU_PALMARES`) ·
-  `domain/palmares.py` (`OriginePalmares`, `ResultatPhase.origine`, `LignePalmares.decerne`) ·
-  `application/routage.py` (`LecteurRencontresARouter`, dont `epuisee` sert ici aussi)
+  `backend/domain/palmares.py` (`OriginePalmares`, `ResultatPhase.origine`, `LignePalmares.decerne`) ·
+  `backend/application/routage.py` (`LecteurRencontresARouter`, dont `epuisee` sert ici aussi)
 
 ## Contexte et problème
 

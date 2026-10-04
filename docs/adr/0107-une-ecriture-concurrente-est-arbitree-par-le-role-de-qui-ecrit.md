@@ -179,7 +179,7 @@ positifs portant son propre numéro, est pire que de ne rien écrire. Format à 
   pas les lignes existantes parce que la persistance écrit le **nom**.
 - `backend/application/saisie.py` — `_refuser_role_inferieur` (la comparaison elle-même) et
   `_libelle_role` (la phrase du refus). ⚠️ La **décision 2** n'est plus portée ici : le rang est un
-  paramètre **sans défaut** des deux chemins d'écriture, et se calcule dans `api/v1/saisie.py`, là
+  paramètre **sans défaut** des deux chemins d'écriture, et se calcule dans `backend/api/v1/saisie.py`, là
   où la garde a parlé. *(3ᵉ passe de revue : le déduire de `contexte is None` accordait le rang le
   plus haut par omission — un défaut `fail-open`. mypy tient désormais ce qu'un commentaire disait.)* ⚠️ La **décision 3** n'est portée par aucun code : c'est l'**absence** de branche, la
   comparaison étant `<` stricte. Elle ne se lit donc que dans son test négatif — c'est pour cela

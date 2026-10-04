@@ -222,10 +222,10 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > section décrit un code vérifiable, jamais une intention.
 >
 > 🔄 **Re-vérifiée le 18/08/2026**, l'ADR étant rouvert par E05US032 (sa section *Décision* §1 gagne
-> une **7ᵉ question**). Le champ ajouté est `ContratDePhase.unite_de_tour` — `domain/contrat_phase.py`,
+> une **7ᵉ question**). Le champ ajouté est `ContratDePhase.unite_de_tour` — `backend/domain/contrat_phase.py`,
 > avec l'énumération `UniteDeTour` et une valeur renseignée pour six des neuf types du registre, les
 > trois autres tenant le défaut prudent. Sa **résolution en libellé** vit dans
-> `domain/tour_de_phase.py` (`unite_de_tour`, `libelle_de_tour`), qui délègue à
+> `backend/domain/tour_de_phase.py` (`unite_de_tour`, `libelle_de_tour`), qui délègue à
 > `domain.tableau.libelle_tour` pour l'arbre. Cf. [ADR-0090](0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md).
 >
 > 🔄 **Re-vérifiée le 14/08/2026**, l'ADR étant rouvert par E05US028 (sa section *Décision* §2 a
@@ -235,7 +235,7 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > document.** La version du 14/08 affirmait, à trois endroits, que le service, le palmarès et le
 > routage du Big Shoot Off « ne sont pas écrits » et que ses capacités restaient à `False` — vrai
 > quand ces phrases ont été écrites, faux dans le commit qui les livrait, puisque le même diff les
-> a écrits et a basculé les trois capacités à `True` (`domain/contrat_phase.py`). Le commit de
+> a écrits et a basculé les trois capacités à `True` (`backend/domain/contrat_phase.py`). Le commit de
 > rendu annonçait pourtant la section « re-vérifiée sur le code du jour » : elle ne l'avait pas
 > été après coup.
 >
@@ -261,23 +261,23 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 | `backend/domain/deroule.py` · `_TYPES_DEROULES` | §1 — seul consommateur de la table ; l'alias local devient homonyme, comme `_TYPES_CLASSANTS_LUS` juste à côté |
 | `backend/domain/{phase,deroule_etape,format_tournoi}.py` · `big_shoot_off` · `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_big_shoot_off` | §4 — le **précédent appliqué** : un réglage de format vit dans `config` à la racine, **sans migration**, exactement comme `config.poules`. Écrit le 14/08/2026 pour le Big Shoot Off |
 | `backend/application/big_shoot_off.py` · `ServiceBigShootOff` | §1, §7 — le service qui rend le format jouable : projection, rejeu de la phase depuis les volées **validées**, saisie, validation par manche. ⚠️ **Le §7 s'applique à un second format** — là où une rencontre de poule réutilise `duel`, une manche de Big Shoot Off réutilise `serie`/`volee` (clé `(phase_id, archer_id)` depuis E05US025), **sans table ni migration** |
-| `backend/application/big_shoot_off.py` · `LecteurEtatBigShootOff` | §1 — le port d'état du format. ⚠️ Son jumeau de classement (`LecteurClassementBigShootOff`) était une duplication **volontaire**, 2ᵉ occurrence en attente d'une 3ᵉ : elle est arrivée en E05US026 et les ports ont été fondus ([ADR-0084](0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)) |
-| `backend/application/saisie_duels.py` · `_classement_de_l_ordre` | §1 — 4ᵉ cas de résolution d'un ordre amont : un prélèvement visant un Big Shoot Off cesse d'être inerte |
+| `backend/application/big_shoot_off.py` · `LecteurEtatBigShootOff` | §1 — le port d'état du format. ⚠️ Son jumeau de classement (*LecteurClassementBigShootOff*) était une duplication **volontaire**, 2ᵉ occurrence en attente d'une 3ᵉ : elle est arrivée en E05US026 et les ports ont été fondus ([ADR-0084](0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)) |
+| `backend/application/saisie_duels.py` · `_classement_produit` | §1 — 4ᵉ cas de résolution d'un ordre amont : un prélèvement visant un Big Shoot Off cesse d'être inerte |
 | `backend/application/palmares.py` · `_resultat_big_shoot_off` | §1 — l'entrée au palmarès par un **`_resultat` propre au format**, pas par `TYPES_RECONSTRUCTIBLES` : ses rangs sont exacts sans arbre à rejouer. C'est la condition d'entrée que la section « ce que la tranche n'a pas fait » annonçait pour les poules |
 | `backend/application/routage.py` · `_routage_big_shoot_off` · `ProchaineManche` · `IssueRoutage.PROCHAINE_MANCHE` · `backend/domain/contrat_phase.py` | §1 (5ᵉ question) — le routage sait dire **quelle manche** vient et **combien sortent**. ⚠️ Pas **où** : `plan_de_cibles` reste `AUCUN` et le manque est nommé (`DETTE-059`), pas tu |
 | `backend/api/v1/big_shoot_off.py` · `backend/api/v1/{phases,formats}.py` · `ReglageBigShootOffDTO` | §4 — le réglage traverse la frontière sur les **deux** mailles de composition (4ᵉ paire de jumeaux, `DETTE-054` élargie) |
 | `frontend/src/shared/phases/{bigShootOff.ts,ReglageBigShootOff.tsx}` | §4 — la fiche **sans état** partagée par les deux écrans de composition, et la projection des paliers (miroir assumé de `paliers_pour`, 16 tests) |
-| `frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx` | §1 — la **ligne de tir**, et non le pavé de duel : `DecorDeSaisie.VOLEE_COLLECTIVE` n'a pas d'adversaire. ⚠️ Pas de file hors-ligne (`DETTE-060`) — elle transporte un acte de *duel* |
+| `frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx` | §1 — la **ligne de tir**, et non le pavé de duel : `DecorDeSaisie.VOLEE_COLLECTIVE` (`backend/domain/contrat_phase.py`) n'a pas d'adversaire. ⚠️ Pas de file hors-ligne (`DETTE-060`) — elle transporte un acte de *duel* |
 | `backend/tests/test_domain_big_shoot_off.py` | La règle élargie du 14/08/2026, écrite **depuis le CA avant l'implémentation** (règle 9) — c'est ce test qui a fait sortir la contradiction du CA |
 | `backend/domain/deroule.py` · `backend/application/{palmares,simulation_format,saisie_duels,placement_duels,routage}.py` | §1 — les sites **dérivés** ; aucun ne réécrit son filtre |
 | `frontend/src/shared/phases/catalogue.ts` · `TYPES_SIGNALES_EN_ECART` | §1 — le miroir client, écrit **en négatif** (un oubli y coûte un avertissement de trop, jamais un de moins) |
 | `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_poules` | §4 — `config.poules`, à la racine du `config` (ADR-0046), **sans migration** ; barème toujours écrit, relu de ce qui est écrit |
-| `backend/infrastructure/db/models.py` · `PlacementParBlocORM` + `migrations/versions/{0045_placement_des_poules,0046_placement_par_bloc}.py` | §3 — « groupe → couloirs », clé primaire sur le **couloir** (un couloir, un occupant). ⚠️ Table et colonne **renommées en E05US026** (*placement_poule* → `placement_par_bloc`, *poule_numero* → `groupe_numero`, anciens noms retirés) : le mécanisme sert désormais deux formats, et le nom désignait le mauvais concept |
+| `backend/infrastructure/db/models.py` · `PlacementParBlocORM` + `backend/migrations/versions/{0045_placement_des_poules,0046_placement_par_bloc}.py` | §3 — « groupe → couloirs », clé primaire sur le **couloir** (un couloir, un occupant). ⚠️ Table et colonne **renommées en E05US026** (*placement_poule* → `placement_par_bloc`, *poule_numero* → `groupe_numero`, anciens noms retirés) : le mécanisme sert désormais deux formats, et le nom désignait le mauvais concept |
 | `backend/application/poules.py` · `ServicePoules` | §3, §5, §6 — composition le jour J, pose du plan, rencontres par tour, couloirs dérivés, classement, saisie d'une rencontre, et `classement_de_phase` (le port ci-dessous) |
-| `backend/domain/classement_de_poules.py` | §6 — l'ordre « par rang de poule d'abord », les blocs **indécis** (ADR-0081), la liaison d'un ex æquo interne qui enjambe deux blocs, et le départage optionnel. ⚠️ **Descendu dans le domaine** alors que la liste de tranche — supprimée à la clôture — l'annonçait en `application/poules.py` : il croise des `RangPoule`, un `LigneClassement` et une politique `Tiebreak` — l'argument exact qui a placé son jumeau `classement_de_tableau` là |
+| `backend/domain/classement_de_poules.py` | §6 — l'ordre « par rang de poule d'abord », les blocs **indécis** (ADR-0081), la liaison d'un ex æquo interne qui enjambe deux blocs, et le départage optionnel. ⚠️ **Descendu dans le domaine** alors que la liste de tranche — supprimée à la clôture — l'annonçait en `backend/application/poules.py` : il croise des `RangPoule`, un `LigneClassement` et une politique `Tiebreak` — l'argument exact qui a placé son jumeau `classement_de_tableau` là |
 | `backend/domain/poule.py` · `ReglageDePoules.departage_inter_poules` | §6 — le départage optionnel, persisté sous `config.poules.departage` (toujours sans migration) |
 | `backend/application/prelevement.py` · `LecteurClassementDePhase` · `backend/application/poules.py` · `backend/application/saisie_duels.py` | §6 — le **port étroit** qui casse le cycle `ServicePoules` ↔ `ServiceSaisieDuels`, et qui fait traverser le résolveur (donc le cache de reconstruction **et** la chaîne anti-boucle). ⚠️ **Fondu en E05US026** ([ADR-0084](0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)) : il s'appelait *LecteurClassementPoules*, avait été recopié en *LecteurClassementBigShootOff*, et le système suisse a fourni la 3ᵉ preuve qui justifiait de les réunir |
-| `backend/application/saisie_duels.py` · `brancher_lecteur` / `TYPES_DELEGUES` / `_classement_de_l_ordre` | §6 — la résolution d'un ordre amont pour **tout type délégué**. ⚠️ `brancher_poules` a disparu en E05US026 : le type est devenu un *argument*, et `TYPES_DELEGUES` **dérive** du registre — un format déclaré `classement_lisible` y entre seul |
+| `backend/application/saisie_duels.py` · `brancher_lecteur` / `TYPES_DELEGUES` / `_classement_produit` | §6 — la résolution d'un ordre amont pour **tout type délégué**. ⚠️ *brancher_poules* a disparu en E05US026 : le type est devenu un *argument*, et `TYPES_DELEGUES` **dérive** du registre — un format déclaré `classement_lisible` y entre seul |
 | `backend/domain/deroule.py` · `_anomalies_choc_de_poule` | §6 (exception mesurée) — l'avertissement d'atelier quand un tableau nourri par des poules peut réunir deux membres d'un même groupe au premier tour. Prédicat **exact**, confronté à l'appariement du serpent sur 9945 configurations : nombre de poules **impair** *et* paire fautive dans le prélèvement ; plus les trois cas où l'arithmétique ne s'applique pas (départage inter-poules, poules de tailles inégales, nombre de poules inconnu). ⚠️ L'oracle « effectif non puissance de 2 » qui figurait ici était **faux** — corrigé en revue le 10/08/2026 |
 | `backend/api/v1/poules.py` | §3, §5, §7 — répartition, état, pose du plan (admin), et les trois écritures de tir du scoreur, qui renvoient **le même DTO de duel** que `saisie_duels` |
 | `backend/api/v1/{phases,formats}.py` · `ReglagePoulesDTO` | §4 — le réglage traverse la frontière, sur les deux mailles de composition (jumeaux assumés, `DETTE-054`) |
@@ -349,7 +349,7 @@ oppositions). Le premier format d'une autre forme l'a rendue inrépondable.
 
 **Décision** — la capacité est renommée `deroule_par_un_service`, et sa table dérivée
 `TYPES_MONTES` devient `TYPES_DEROULES`. Le verbe « dérouler » n'est pas neuf : c'est celui
-qu'emploient déjà `domain/deroule.py`, `_TYPES_DEROULES` et le message d'atelier « le moteur ne sait
+qu'emploient déjà `backend/domain/deroule.py`, `_TYPES_DEROULES` et le message d'atelier « le moteur ne sait
 pas encore dérouler ce type ». Le renommage **retire** donc un vocabulaire concurrent au lieu d'en
 ajouter un — `deroule._TYPES_DEROULES = TYPES_DEROULES` devient un alias local homonyme, comme
 `_TYPES_CLASSANTS_LUS` juste à côté.

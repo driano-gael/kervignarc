@@ -191,7 +191,7 @@ ce titre rendrait au bloc exactement le mensonge que `DETTE-045` décrivait.
 
 - `backend/domain/podium.py` — `PorteePodium`, `ReglagePodiums`, `PROFONDEUR_PODIUM_PAR_DEFAUT`,
   `PROFONDEUR_PODIUM_MAX` : la décision 1 et la borne du §4. Module à part pour la même raison que
-  `domain/cloisonnement.py` (éviter un cycle avec `domain/palmares`).
+  `backend/domain/cloisonnement.py` (éviter un cycle avec `domain/palmares`).
 - `backend/domain/palmares.py` — `Palmares.podiums`, `_bloc`, `_cle_de`, `_groupes`, `_rang_exact`
   (décisions 2 et 6), `BlocPodium.effectif` / `BlocPodium.en_attente`, qui portent l'état du bloc
   au lieu de le laisser recalculer par ses lecteurs, et `Palmares.duels_non_commences`, qui fait primer
@@ -221,7 +221,7 @@ ce titre rendrait au bloc exactement le mensonge que `DETTE-045` décrivait.
 - `backend/infrastructure/pdf/palmares.py` — `_podiums` saute les blocs vides (décision 6) et
   compose sur `complet` (décision 7).
 - `frontend/src/features/palmares/ReglagePodiums.tsx` — l'écran de réglage, monté par
-  `features/admin/CoquilleAdmin.tsx` et **jamais** par `VuePalmares.tsx`, qui sert aussi le public.
+  `frontend/src/features/admin/CoquilleAdmin.tsx` et **jamais** par `VuePalmares.tsx`, qui sert aussi le public.
 - `frontend/src/features/palmares/presentation.ts` — `etatPodium` : la **mise en mots** de la
   nuance « pas encore » / « plus jamais » (décision 6). Le front ne calcule plus rien : il lit
   `podium.effectif` et `podium.en_attente`.

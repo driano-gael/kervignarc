@@ -99,6 +99,26 @@ de* l'afficher au mur — pendant la qualification comme à son terme — et le 
 ### E09US007 — Déroulé horaire imprimable
 *En tant qu'*organisateur, *je veux* imprimer le déroulé, *afin de* le communiquer.
 - **CA** : PDF du déroulé (phases, tours, horaires) issu d'E03US010.
+  *(Cadrage du 03/10/2026, arbitrages du commanditaire.)*
+  1. **Un seul PDF pour le tournoi, un bloc par départ** (numéro et horaire du créneau), dans
+     l'ordre des départs ; un paramètre facultatif restreint le document à **un** départ.
+  2. **Une ligne par phase**, dans l'ordre du déroulé : son nom (le **titre** de l'étape s'il
+     existe, sinon le **type** en clair), son **début** et sa **fin prévus** — les heures calculées
+     par E03US010, jamais recalculées. Une heure inconnue (pas de durée saisie, repêchage) s'écrit
+     « à préciser », jamais une heure inventée ; une heure le lendemain porte « (lendemain) », au-delà
+     « (J+n) » — les marqueurs de l'écran « Phases » (`decrireHeure`), sauf l'inconnu, que l'écran
+     écrit « — » *(arbitrage du 03/10/2026, en revue : un tiret se lit comme une case oubliée sur un
+     papier envoyé aux clubs)*.
+  3. **Les tours en information, sans heure par tour** : « 2 tours », « 5 rondes », « 3 manches »
+     quand le nombre de tours est un **réglage de l'étape** (qualification découpée, suisse,
+     colline) ; **rien** sinon, et rien pour un seul tour.
+  4. **PDF seul** à l'écran « Exports & impressions ».
+- **Notes** : les heures restent **à la maille de la phase** (ADR-0118) : une heure par tour aurait
+  rouvert l'ADR. Le nombre de tours d'un **tableau**, de **poules** ou d'un **Big Shoot Off** dépend
+  de l'effectif et, pour le tableau, de la politique de `seeding` injectée (règle 2) : l'imprimer
+  figerait une politique en dur. Un tournoi sans départ se refuse comme les autres exports ; un
+  déroulé vide rend un bloc par départ sans ligne. **Route publique**, comme la lecture
+  `GET /tournois/{id}/horaires-prevus` qu'elle imprime.
 - **Dépend de** : E09US001, E03US010 · **Jalon** : J4
 
 ### E09US008 — Imprimer les QR de cible et les codes scoreurs

@@ -190,8 +190,9 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
 - `backend/application/prelevement.py` — le port étroit `LecteurPopulationPhase` : « quels archers
   cette phase a-t-elle reçus ? », la lecture dont la saisie et la complétude ont besoin pour
   discriminer la fourche (§4, §6)
-- `backend/application/classements.py` — `pour_phase` et `_premiere_qualification` (§2)
-- `backend/application/saisie_duels.py` — `_classement_de_l_ordre`, branche `QUALIFICATION` : la
+- `backend/application/classements.py` — `pour_phase` et `premiere_qualification` (§2)
+- `backend/application/saisie_duels.py` — `_classement_produit` (renommé par E05US022), branche
+  `QUALIFICATION` : la
   population par `preleves` et la tranche par `tranche`, sur le **même** résolveur
 - `backend/application/palmares.py` — `_resultat_qualification` (§2, §3) et ses trois écartements
 - `backend/application/completude.py` — `_jugements_du_creneau`, `_population` et `_est_clos` :
@@ -204,10 +205,10 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
   `definir_pour_etape`, `qualifications` (§5)
 - `backend/application/phases.py` — `ajouter` : les réglages de départ d'une qualification composée
   à l'atelier (§5)
-- `backend/infrastructure/db/models.py` · `.../repositories/tir.py` — `UNIQUE(phase_id, archer_id)`
+- `backend/infrastructure/db/models.py` · `backend/infrastructure/db/repositories/tir.py` — `UNIQUE(phase_id, archer_id)`
   et l'upsert sur la nouvelle clé
 - `backend/migrations/versions/0044_serie_par_phase.py` — la reprise des données, ses trois cas
-- `backend/api/v1/bareme_qualification.py` · `.../grain_validation.py` — les routes par étape
+- `backend/api/v1/bareme_qualification.py` · `backend/api/v1/grain_validation.py` — les routes par étape
 - `frontend/src/features/bareme/` · `frontend/src/features/grain-validation/` — l'écran
   « Barème & validation » : un formulaire de barème **et** un de grain par qualification (§5)
 - `backend/tests/test_domain_palmares_qualifications_multiples.py`,

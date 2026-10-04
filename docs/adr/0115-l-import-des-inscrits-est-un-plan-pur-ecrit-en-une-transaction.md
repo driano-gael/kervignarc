@@ -115,12 +115,12 @@ licence FFTA portant ce millésime. Non vérifié sur un texte réglementaire : 
 
 - `backend/domain/import_inscrits.py` — `planifier_import`, `tranche_age`, décisions et motifs.
 - `backend/domain/archer.py` — `Archer.licence`, `normaliser_licence`, `licences_distinctes`.
-- `backend/domain/depart.py` — `Depart.est_complet`, partagé avec `application/inscriptions.py`.
+- `backend/domain/depart.py` — `Depart.est_complet`, partagé avec `backend/application/inscriptions.py`.
 - `backend/domain/doublons.py` — une paire de licences distinctes n'est pas rapprochée.
 - `backend/application/archers.py` — `LicenceDejaPrise` au guichet, homonymie et fusion.
 - `backend/application/import_inscrits.py` — aperçu, confirmation, instantané du tournoi.
 - `backend/infrastructure/import_inscrits/` — lecteurs Ianseo et Résult'Arc, aiguillage.
 - `backend/infrastructure/db/repositories/import_inscrits.py` — écriture en une transaction.
 - `backend/migrations/versions/0058_archer_licence.py` — colonne et index partiel.
-- `backend/api/v1/import_inscrits.py` — les deux routes ; `api/corps.py` — lecture bornée.
+- `backend/api/v1/import_inscrits.py` — les deux routes ; `backend/api/corps.py` — lecture bornée.
 - `backend/api/v1/competition.py` — `lister_archers` ne sert la licence qu'à `est_admin`.

@@ -1006,7 +1006,9 @@ window.ATLAS.avancement = {
    "identifiant": "068",
    "introduite_par": [],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E00US028"
+   ],
    "severite": "mineur"
   },
   {
@@ -1032,6 +1034,7 @@ window.ATLAS.avancement = {
  "entete": {
   "adr_du_resume": [
    "0120",
+   "0102",
    "0119",
    "0118",
    "0028",
@@ -1678,7 +1681,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US027",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Le code porte des pointeurs, pas le raisonnement",
@@ -1687,16 +1690,19 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0075",
+    "0086",
     "0102"
    ],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "068"
+   ],
    "epic": "00",
    "epic_titre": "Socle technique & walking skeleton",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E00US028",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Un ADR qui nomme du code disparu fait rougir la CI",
@@ -1713,7 +1719,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US029",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque",
@@ -1731,7 +1737,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US030",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Un fait, un lieu : la charte des documents",
@@ -1750,7 +1756,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US031",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "La porte mécanique en deux étages, et la checklist d'implémentation",
@@ -1954,7 +1960,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1969,7 +1975,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "~~Gérer plusieurs gabarits~~ → absorbée par E01US007/E01US008",
@@ -2292,7 +2298,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E01US027",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Barème propre aux ½ finales et finales d'un tableau",
@@ -2442,7 +2448,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2624,7 +2630,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2968,7 +2974,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3058,6 +3064,10 @@ window.ATLAS.avancement = {
     "0075",
     "0076",
     "0078",
+    "0080",
+    "0081",
+    "0082",
+    "0084",
     "0085"
    ],
    "dettes_introduites": [
@@ -3839,10 +3849,10 @@ window.ATLAS.avancement = {
    "dettes_resorbees": [],
    "epic": "09",
    "epic_titre": "Exports & documents",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3980,7 +3990,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -4056,7 +4066,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -5147,7 +5157,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 164,
+  "livrees": 166,
   "vivantes": 182
  },
  "sections": [
@@ -5832,11 +5842,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    5,
+    6,
     7
    ],
    "compteur_ecrit": [
-    5,
+    6,
     7
    ],
    "lignes": [
@@ -5866,7 +5876,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E09US007",
      "titre": "Déroulé horaire imprimable"
     },
@@ -5895,7 +5905,7 @@ window.ATLAS.avancement = {
      "titre": "Barème propre aux ½ finales et finales d'un tableau"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (5/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
   },
   {
    "calcule": [
@@ -6417,11 +6427,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    2,
+    3,
     5
    ],
    "compteur_ecrit": [
-    2,
+    3,
     5
    ],
    "lignes": [
@@ -6433,7 +6443,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E00US028",
      "titre": "Un ADR qui nomme du code disparu fait rougir la CI"
     },
@@ -6456,7 +6466,7 @@ window.ATLAS.avancement = {
      "titre": "La porte mécanique en deux étages, et la checklist d'implémentation"
     }
    ],
-   "titre": "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (2/5)**"
+   "titre": "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (3/5)**"
   },
   {
    "calcule": [
