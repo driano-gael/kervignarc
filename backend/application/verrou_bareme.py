@@ -75,6 +75,9 @@ class VerrouBaremeDuel:
         """Premiers **et** derniers tours (E01US027) : que l'un change, et des duels se relisent."""
         if etape.bareme_duel is not None:
             return etape.bareme_duel.baremes_pour(arme)
+        if etape.equipes is not None:
+            # Le défaut que la saisie tirera (ADR-0120 §4), pas celui d'un individuel.
+            return (self._resolveur.bareme_equipe_pour(etape.equipes, arme),)
         return (self._resolveur.bareme_pour(arme),)
 
 

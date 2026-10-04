@@ -1098,6 +1098,56 @@ def test_les_quarts_restent_au_bareme_principal_quand_k_couvre_les_demi_finales(
     assert _seuils_par_tour(monde) == {1: {4}}
 
 
+def _gagner_jusqu_a_trancher(monde: _Monde, numero: int) -> None:
+    """Le camp haut gagne chaque manche jusqu'à trancher le duel, quel que soit son seuil, puis
+    valide : un même geste pour un duel à 4 points et pour un duel à 6."""
+    service = monde.service()
+    for manche in range(1, 6):
+        etat = service.saisir_manche(
+            1, monde.phase_id, numero, manche, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
+        )
+        assert etat.duel is not None
+        if etat.duel.resultat.termine:
+            break
+    service.valider(1, monde.phase_id, numero, "DURAND")
+
+
+def _valider_le_tour(monde: _Monde, tour: int) -> None:
+    for duel in monde.service().etat_tableau(1, monde.phase_id).duels:
+        if duel.tour == tour and duel.bareme is not None:
+            _gagner_jusqu_a_trancher(monde, duel.numero)
+
+
+def test_la_finale_et_la_petite_finale_tirent_le_bareme_des_derniers_tours() -> None:
+    """CA 2 et 3 : tableau de 4, K = 1 — une fois les ½ finales jouées à 4, la finale **et** la
+    petite finale (même tour) se tirent à 6 ; les ½ finales validées, relues, gardent 4."""
+    monde = _monde_classe(4)
+    _regler_le_bareme(monde, _club_a_partir_de(1))
+
+    _valider_le_tour(monde, 1)
+
+    duels = monde.service().etat_tableau(1, monde.phase_id).duels
+    assert {d.place_en_jeu for d in duels if d.tour == 2} == {(1, 2), (3, 4)}
+    assert _seuils_par_tour(monde) == {1: {4}, 2: {6}}
+
+
+def test_le_rejeu_porte_le_vainqueur_d_une_demi_finale_a_6_points_jusqu_au_podium() -> None:
+    """CA 2 et 3 : tableau de 8, K = 2 — les ¼ validés à 4 restent à 4, les ½ jouées à 6 envoient
+    leurs vainqueurs en finale, et finale comme petite finale se tirent à 6."""
+    monde = _monde_classe(8)
+    _regler_le_bareme(monde, _club_a_partir_de(2))
+
+    _valider_le_tour(monde, 1)
+    assert _seuils_par_tour(monde) == {1: {4}, 2: {6}}
+    _valider_le_tour(monde, 2)
+
+    duels = monde.service().etat_tableau(1, monde.phase_id).duels
+    finales = [d for d in duels if d.tour == 3 and d.place_en_jeu in {(1, 2), (3, 4)}]
+    assert len(finales) == 2
+    assert all(d.haut is not None and d.bas is not None for d in finales)
+    assert _seuils_par_tour(monde) == {1: {4}, 2: {6}, 3: {6}}
+
+
 def test_le_bareme_des_derniers_tours_borne_aussi_l_ecriture() -> None:
     """CA 2 : en ½ finale à 6 points, deux manches gagnées (4 points) ne tranchent pas le duel."""
     monde = _monde_classe(4)

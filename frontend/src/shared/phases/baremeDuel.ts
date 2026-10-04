@@ -284,6 +284,8 @@ export function derniersToursDepuis(etat: EtatBaremeDuel): EtatDerniersTours {
 }
 
 /** Les K derniers tours, dits dans le vocabulaire du format (E01US027, CA 3). */
+// DETTE-020 — 3ᵉ domicile du compte « à rebours de la finale » : un libellé de réglage, sans
+// tableau à interroger.
 export function libelleDerniersTours(nb: number, type: TypePhase): string {
   if (type === 'elimination_directe') {
     if (nb === 1) return 'la finale'

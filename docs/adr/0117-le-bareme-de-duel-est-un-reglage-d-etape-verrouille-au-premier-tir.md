@@ -69,7 +69,7 @@ tableau peut faire basculer un vainqueur.
    n'en porte pas lui-même un second. Un duel le tire s'il se joue dans l'un des **K derniers
    tours** de sa phase. Le compte se fait **à rebours** (`tours_restants`, 0 au dernier tour) et
    **par format** : tour de tableau contre `Tableau.nb_tours` ; tour de rencontre contre le nombre
-   de tours **de sa poule** ; ronde contre les rondes jouées ; manche contre `nb_manches`. Compter
+   de tours **de sa poule** ; ronde contre les rondes **jouables** (le réglage, borné par l'effectif) ; manche contre `nb_manches`. Compter
    depuis la fin plutôt que nommer « ½ finale » vaut pour les quatre formats, dont seul le tableau
    nomme ses tours ; le front traduit K en « ½ finales » au tableau. La **petite finale** et tout
    match de classement suivent le barème de leur tour, sans cas particulier.
@@ -139,10 +139,10 @@ tableau peut faire basculer un vainqueur.
   `_decor`, qui a déjà la phase ; `bareme_de` reçoit le tour des trois formats suivants (§8).
 - `backend/application/poules.py` — `_photo` : dernier tour **de la poule**.
 - `backend/application/suisse.py` et `backend/application/colline.py` — `_rejouer` : rondes
-  jouées et manches.
+  jouables et manches.
 - `backend/application/phases.py` — `ServicePhases.modifier` (verrou du §5, via `VerrouBaremeDuel`).
 - `backend/infrastructure/db/repositories/moteur.py` — `_politiques_json` (écriture, deux
   appelants, via `_reglage_bareme_duel_json`) et `_lire_bareme_duel` (deux lectures, via
   `_vers_reglage_bareme_duel`) ; clé `derniers_tours` absente = pas de barème des derniers tours.
-- `backend/api/v1/phases.py` — `ReglageBaremeDuelDTO` et `BaremeDesDerniersToursDTO` (à plat, sans
-  second niveau), importés par `backend/api/v1/formats.py`.
+- `backend/api/v1/phases.py` — `ReglageBaremeDuelDTO` (qui embarque `BaremeDesDerniersToursDTO`, à
+  plat, sans second niveau), importé par `backend/api/v1/formats.py`.

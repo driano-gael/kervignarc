@@ -497,22 +497,21 @@ class ReglageBaremeDuel:
         """
         if self.derniers_tours is not None and self.derniers_tours.couvre(tours_restants):
             return self.derniers_tours.reglage.pour(arme, tours_restants=tours_restants)
+        return self._principal(arme)
+
+    def baremes_pour(self, arme: str | None) -> tuple[BaremeDuel, ...]:
+        """Tous les barèmes que cette arme peut tirer dans la phase, premiers tours d'abord."""
+        principal = self._principal(arme)
+        if self.derniers_tours is None:
+            return (principal,)
+        return principal, self.derniers_tours.reglage.pour(arme, tours_restants=0)
+
+    def _principal(self, arme: str | None) -> BaremeDuel:
         if arme is not None:
             for surcharge in self.surcharges:
                 if surcharge.designe(arme):
                     return surcharge.bareme
         return self.par_defaut
-
-    def baremes_pour(self, arme: str | None) -> tuple[BaremeDuel, ...]:
-        """Tous les barèmes que cette arme peut tirer dans la phase, premiers tours d'abord."""
-        principal = self.pour(arme, tours_restants=_HORS_DERNIERS_TOURS)
-        if self.derniers_tours is None:
-            return (principal,)
-        return principal, self.derniers_tours.reglage.pour(arme, tours_restants=0)
-
-
-# Aucun K ne couvre un tour aussi loin du dernier : la portée « premiers tours » de `baremes_pour`.
-_HORS_DERNIERS_TOURS = 1 << 30
 
 
 @dataclass(frozen=True)

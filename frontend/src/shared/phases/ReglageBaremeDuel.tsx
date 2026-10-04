@@ -280,8 +280,9 @@ export function ReglageBaremeDuel({
               </label>
               {portee !== null && (
                 <p className="carte__aide">
-                  Concerne {portee}. Un match de classement (petite finale, places 5 à 8…) joué à
-                  l’un de ces tours le suit aussi.
+                  Concerne {portee}.
+                  {type === 'elimination_directe' &&
+                    ' Un match de classement (petite finale, places 5 à 8…) joué à l’un de ces tours le suit aussi.'}
                 </p>
               )}
               <EditeurBareme

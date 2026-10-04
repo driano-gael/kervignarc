@@ -64,7 +64,7 @@ from domain.ports import (
     PhaseRepository,
     TournoiRepository,
 )
-from domain.tableau import Match, Tableau, construire_tableau, libelle_tour
+from domain.tableau import Match, Tableau, construire_tableau, libelle_tour, tours_restants
 from domain.tournoi import TournoiId
 
 _TYPES_RESOLUS_SUR_PLACE: frozenset[TypePhase] = frozenset(
@@ -357,7 +357,10 @@ class ServiceSaisieDuels:
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
             bareme = self._bareme_du(
-                reglage, match.haut, lignes, tours_restants=tableau.nb_tours - match.tour
+                reglage,
+                match.haut,
+                lignes,
+                tours_restants=tours_restants(tableau.nb_tours, match.tour),
             )
             duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is not None and (duel.participant_haut, duel.participant_bas) == (
@@ -392,7 +395,7 @@ class ServiceSaisieDuels:
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(
-            reglage, haut, lignes, tours_restants=tableau.nb_tours - match.tour
+            reglage, haut, lignes, tours_restants=tours_restants(tableau.nb_tours, match.tour)
         )
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
@@ -419,7 +422,7 @@ class ServiceSaisieDuels:
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(
-            reglage, haut, lignes, tours_restants=tableau.nb_tours - match.tour
+            reglage, haut, lignes, tours_restants=tours_restants(tableau.nb_tours, match.tour)
         )
         zones = self._zones_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
@@ -437,7 +440,7 @@ class ServiceSaisieDuels:
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(
-            reglage, haut, lignes, tours_restants=tableau.nb_tours - match.tour
+            reglage, haut, lignes, tours_restants=tours_restants(tableau.nb_tours, match.tour)
         )
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
@@ -846,7 +849,10 @@ class ServiceSaisieDuels:
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
             bareme = self._bareme_du(
-                reglage, match.haut, lignes, tours_restants=tableau.nb_tours - match.tour
+                reglage,
+                match.haut,
+                lignes,
+                tours_restants=tours_restants(tableau.nb_tours, match.tour),
             )
             duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is None or duel.validee_par is None:
@@ -1037,7 +1043,9 @@ class ServiceSaisieDuels:
         if haut is not None and bas is not None and not match.est_bye:
             # Match jouable : le pavé est déterminé (barème par arme + zones du blason), même avant
             # tout tir — la grille front sait d'emblée sets/cumul, nb de manches et zones légales.
-            bareme = self._bareme_du(reglage, haut, lignes, tours_restants=nb_tours - match.tour)
+            bareme = self._bareme_du(
+                reglage, haut, lignes, tours_restants=tours_restants(nb_tours, match.tour)
+            )
             zones = self._zones_best_effort(haut, lignes)
             if duel is None:
                 charge = self._duels.charger(phase_id, match.numero, bareme=bareme)

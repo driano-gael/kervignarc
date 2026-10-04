@@ -912,13 +912,16 @@ def test_le_bareme_de_duel_regle_sur_la_phase_atteint_ses_rencontres() -> None:
     assert all(r.bareme == BaremeDuel.preset_club() for r in rencontres)
 
 
-@pytest.mark.parametrize(("nb_rondes", "derniere"), [(1, True), (2, False)])
+@pytest.mark.parametrize(
+    ("effectif", "nb_rondes", "derniere"), [(4, 1, True), (4, 2, False), (2, 5, True)]
+)
 def test_la_derniere_ronde_tire_le_bareme_des_derniers_tours(
-    nb_rondes: int, derniere: bool
+    effectif: int, nb_rondes: int, derniere: bool
 ) -> None:
-    """E01US027, CA 2 : K = 1 — la 1ʳᵉ ronde n'en relève que si elle est la dernière."""
+    """E01US027, CA 2 : K = 1 — la 1ʳᵉ ronde n'en relève que si elle est la dernière **jouable** :
+    à 2 archers, 5 rondes réglées n'en laissent qu'une d'appariable."""
     monde = _Monde()
-    monde.inscrire(4)
+    monde.inscrire(effectif)
     phase_id = monde.regler(ConfigurationSuisse(nb_rondes=nb_rondes))
     phase = monde.phases.par_id(phase_id)
     assert phase is not None
