@@ -392,7 +392,7 @@ function LigneArcher({
   const volees = serie.data?.volees ?? []
   const nbVolees = bareme?.nb_volees ?? null
   const table = bareme?.points_par_zone ?? null
-  const { nbSaisies, cumul, numero, enCours, verrouillee, caseEnCours } = etatLigne({
+  const { nbSaisies, cumul, numero, enCours, caseActivable, caseEnCours } = etatLigne({
     archerId: ligne.archer_id,
     volees,
     serieLue: serie.isSuccess,
@@ -440,9 +440,7 @@ function LigneArcher({
               type="button"
               className={i === caseEnCours ? 'saisie__case saisie__case--en-cours' : 'saisie__case'}
               aria-label={libelleCase(i, ligne.nom, enCours[i])}
-              // ⚠️ Série pas encore lue : `numero` vaudrait 1 et le toucher figerait le pavé sur la
-              // volée 1 — le garde-fou `serieChargee` du pavé (`etatPave`), repris ici.
-              disabled={!serie.isSuccess || verrouillee}
+              disabled={!caseActivable}
               onClick={() => onViser(numero, flecheVisee(i, enCours))}
             >
               {enCours[i] ?? ''}

@@ -19,7 +19,9 @@ export interface EtatLigne {
   // La volée ouverte, `null` tant que le barème n'est pas lu.
   numero: number | null
   enCours: readonly string[]
-  verrouillee: boolean
+  // ⚠️ Série pas encore lue : `numero` vaudrait 1 et toucher une case figerait le pavé sur la
+  // volée 1 — le garde-fou `serieChargee` du pavé (`etatPave`), repris ici. Volée verrouillée : idem.
+  caseActivable: boolean
   // La case marquée, `null` hors archer actif.
   caseEnCours: number | null
 }
@@ -41,12 +43,13 @@ export function etatLigne(ligne: {
   const numero =
     bareme === null ? null : voleeOuverte(ouverture?.numero ?? null, volees, bareme.nb_volees)
   const enCours = numero === null ? [] : tamponDeVolee(brouillons, archerId, numero, volees)
+  const verrouillee = numero !== null && (voleeExistante(volees, numero)?.verrouillee ?? false)
   return {
     nbSaisies: serieLue ? volees.length : '?',
     cumul: table === null || !serieLue ? '?' : cumulSaisi(volees, table),
     numero,
     enCours,
-    verrouillee: numero !== null && (voleeExistante(volees, numero)?.verrouillee ?? false),
+    caseActivable: serieLue && !verrouillee,
     // La flèche visée, sinon la prochaine à remplir — seulement sur l'archer actif.
     caseEnCours: actif ? (ouverture?.fleche ?? enCours.length) : null,
   }

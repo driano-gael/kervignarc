@@ -144,8 +144,6 @@ export function construirePrelevement(saisie: SaisiePrelevement): Source | null 
   }
 }
 
-export { decrireProfondeur }
-
 /**
  * Lit un entier saisi ; rend `null` pour « non renseigné » et `undefined` pour « invalide ».
  *
@@ -153,7 +151,6 @@ export { decrireProfondeur }
  * `JSON.stringify` sérialise en `null` — un effectif déclaré s'effaçait donc silencieusement à la
  * moindre faute de frappe, et un barème vide partait en `0 volées` pour revenir en 422 illisible.
  */
-
 export function lireEntier(saisi: string): number | null | undefined {
   if (saisi.trim() === '') return null
   const valeur = Number(saisi)

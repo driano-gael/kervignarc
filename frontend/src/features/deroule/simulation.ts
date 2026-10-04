@@ -52,6 +52,7 @@ export function noteDEcart(phase: PhaseSimulee): string | null {
       : "▲ le moteur ne sait pas encore dérouler ce type de phase — rien n'a été joué ici"
   }
   if (!phase.ecart) return null
+  // DETTE-124 : `?? ''` reproduit le JSX d'avant (« annonçait␣␣archers ») — défaut hérité.
   return `▲ le schéma annonçait ${phase.effectif_projete ?? ''} archers, ${phase.tours_projetes ?? '—'} tours et ${phase.duels_projetes ?? '—'} duels`
 }
 

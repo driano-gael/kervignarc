@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest'
 import type { Duel, Phase, Resultat, SaisirBarrage, SaisirManche } from './api'
 import {
   archersARouter,
+  baremeDeManche,
   campApresFleche,
   duellistesDuForfait,
   estOuvrable,
   etatBarrage,
+  etatManche,
   flechesApresZone,
   grouperParTour,
   injecterBarrage,
@@ -396,9 +398,21 @@ describe('pastillesManches', () => {
   it('une pastille par manche : saisie, active, ouverte', () => {
     const d = duel({ manches: [{ numero: 1, haut: ['10'], bas: ['9'] }] })
     expect(pastillesManches(d, 3, 2)).toEqual([
-      { numero: 1, saisie: true, fermee: false, active: false },
-      { numero: 2, saisie: false, fermee: false, active: true },
-      { numero: 3, saisie: false, fermee: false, active: false },
+      {
+        numero: 1,
+        saisie: true,
+        fermee: false,
+        active: false,
+        classes: 'saisie__nav-volee saisie__nav-volee--saisie',
+      },
+      {
+        numero: 2,
+        saisie: false,
+        fermee: false,
+        active: true,
+        classes: 'saisie__nav-volee saisie__nav-volee--actif',
+      },
+      { numero: 3, saisie: false, fermee: false, active: false, classes: 'saisie__nav-volee' },
     ])
   })
 
@@ -417,6 +431,86 @@ describe('pastillesManches', () => {
 
   it('aucune pastille pour un barème sans manche', () => {
     expect(pastillesManches(duel(), 0, 1)).toEqual([])
+  })
+})
+
+describe('baremeDeManche', () => {
+  it('lit le barème que porte le duel', () => {
+    expect(baremeDeManche(duel({ nb_manches: 5, nb_fleches_par_volee: 2 }))).toEqual({
+      nbManches: 5,
+      nbFleches: 2,
+    })
+  })
+
+  it('retombe sur une manche de trois flèches quand le duel ne porte pas de barème', () => {
+    expect(baremeDeManche(duel({ nb_manches: null, nb_fleches_par_volee: null }))).toEqual({
+      nbManches: 1,
+      nbFleches: 3,
+    })
+  })
+})
+
+describe('etatManche', () => {
+  const base = { bufferHaut: [], bufferBas: [], campActif: 'haut' as const, nbFleches: 3 }
+
+  it('manche vide : on frappe, rien à effacer ni à enregistrer', () => {
+    expect(etatManche({ ...base, envoiEnCours: false })).toEqual({
+      campComplet: false,
+      zonesActives: true,
+      effacable: false,
+      enregistrable: false,
+    })
+  })
+
+  it('camp actif plein, l’autre vide : zones fermées, rien d’enregistrable', () => {
+    const etat = etatManche({ ...base, bufferHaut: ['10', '9', '8'], envoiEnCours: false })
+    expect(etat).toMatchObject({ campComplet: true, zonesActives: false, enregistrable: false })
+    expect(etat.effacable).toBe(true)
+  })
+
+  it('l’état suit le camp actif, pas le premier camp', () => {
+    const etat = etatManche({
+      ...base,
+      bufferHaut: ['10', '9', '8'],
+      campActif: 'bas',
+      envoiEnCours: false,
+    })
+    expect(etat).toMatchObject({ campComplet: false, zonesActives: true, effacable: false })
+  })
+
+  it('deux camps complets : enregistrable', () => {
+    const etat = etatManche({
+      ...base,
+      bufferHaut: ['10', '9', '8'],
+      bufferBas: ['7', '6', 'M'],
+      envoiEnCours: false,
+    })
+    expect(etat.enregistrable).toBe(true)
+  })
+
+  it('un envoi en cours fige tout, même deux camps complets', () => {
+    const etat = etatManche({
+      ...base,
+      bufferHaut: ['10', '9', '8'],
+      bufferBas: ['7', '6', 'M'],
+      envoiEnCours: true,
+    })
+    expect(etat).toEqual({
+      campComplet: true,
+      zonesActives: false,
+      effacable: false,
+      enregistrable: false,
+    })
+  })
+
+  it('le compte est « au moins » nbFleches, pas « exactement »', () => {
+    const etat = etatManche({
+      ...base,
+      bufferHaut: ['10', '9', '8', '7'],
+      bufferBas: ['7', '6', 'M'],
+      envoiEnCours: false,
+    })
+    expect(etat).toMatchObject({ campComplet: true, enregistrable: true })
   })
 })
 

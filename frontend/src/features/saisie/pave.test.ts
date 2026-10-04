@@ -134,7 +134,8 @@ describe('complementMeta', () => {
     expect(complementMeta(v)).toBe(` à ${heure} · validée par ROUX · en attente d’envoi`)
   })
 
-  it('horodatage illisible : « à » reste, sans heure (comportement hérité)', () => {
+  // DETTE-124 — défaut hérité, figé faute de pouvoir le corriger ici : attente à inverser au remède.
+  it('horodatage illisible : « à » reste, sans heure (défaut connu)', () => {
     expect(complementMeta(volee(1, ['10'], { saisie_le: 'pas une date' }))).toBe(' à ')
   })
 })

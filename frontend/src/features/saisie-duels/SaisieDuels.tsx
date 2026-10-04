@@ -15,11 +15,13 @@ import { PanneauRoutage } from '../routage/PanneauRoutage'
 import type { Cote, Duel, EquipeEcartee, Tableau } from './api'
 import {
   archersARouter,
+  baremeDeManche,
   campApresFleche,
   duellistesDuForfait,
   estJouable,
   estOuvrable,
   etatBarrage,
+  etatManche,
   flechesApresZone,
   grouperParTour,
   mancheExistante,
@@ -527,8 +529,7 @@ function SaisieManche({
   duel: Duel
   famille: FamilleDuel
 }) {
-  const nbManches = duel.nb_manches ?? 1
-  const nbFleches = duel.nb_fleches_par_volee ?? 3
+  const { nbManches, nbFleches } = baremeDeManche(duel)
   const saisir = useSaisirManche(tournoiId, phaseId, matchNumero, famille)
 
   const [numeroChoisi, setNumeroChoisi] = useState<number | null>(null)
@@ -549,13 +550,17 @@ function SaisieManche({
     setCampActif('haut')
   }
 
-  const buffer = campActif === 'haut' ? bufferHaut : bufferBas
   const poserBuffer = campActif === 'haut' ? setBufferHaut : setBufferBas
-  const campComplet = buffer.length >= nbFleches
-  const deuxComplets = bufferHaut.length >= nbFleches && bufferBas.length >= nbFleches
+  const { zonesActives, effacable, enregistrable } = etatManche({
+    bufferHaut,
+    bufferBas,
+    campActif,
+    nbFleches,
+    envoiEnCours: saisir.isPending,
+  })
 
   const ajouter = (zone: string) => {
-    if (campComplet || saisir.isPending) return
+    if (!zonesActives) return
     poserBuffer((actuel) => {
       const suite = [...actuel, zone]
       const autre = campActif === 'haut' ? bufferBas : bufferHaut
@@ -616,7 +621,7 @@ function SaisieManche({
             key={zone}
             type="button"
             className="saisie__zone"
-            disabled={campComplet || saisir.isPending}
+            disabled={!zonesActives}
             onClick={() => ajouter(zone)}
           >
             {zone}
@@ -625,15 +630,10 @@ function SaisieManche({
       </div>
 
       <div className="saisie__actions">
-        <button
-          type="button"
-          className="bouton--discret"
-          disabled={buffer.length === 0 || saisir.isPending}
-          onClick={effacer}
-        >
+        <button type="button" className="bouton--discret" disabled={!effacable} onClick={effacer}>
           Effacer
         </button>
-        <button type="button" disabled={!deuxComplets || saisir.isPending} onClick={enregistrer}>
+        <button type="button" disabled={!enregistrable} onClick={enregistrer}>
           {saisir.isPending ? 'Enregistrement…' : 'Enregistrer la manche'}
         </button>
       </div>
@@ -701,14 +701,7 @@ function NavigateurManches({
 }) {
   return (
     <div className="saisie__nav" role="group" aria-label="Manches">
-      {pastillesManches(duel, nbManches, numeroActif).map(({ numero, saisie, fermee, active }) => {
-        const classes = [
-          'saisie__nav-volee',
-          saisie ? 'saisie__nav-volee--saisie' : '',
-          active ? 'saisie__nav-volee--actif' : '',
-        ]
-          .filter((c) => c !== '')
-          .join(' ')
+      {pastillesManches(duel, nbManches, numeroActif).map(({ numero, classes, fermee, active }) => {
         return (
           <button
             key={numero}

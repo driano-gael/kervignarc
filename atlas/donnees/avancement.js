@@ -4,6 +4,15 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "124",
+   "introduite_par": [
+    "E00US024"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "123",
    "introduite_par": [
     "E13US004"
@@ -706,10 +715,13 @@ window.ATLAS.avancement = {
     "E16US002",
     "E01US011",
     "E03US010",
-    "E13US004"
+    "E13US004",
+    "E00US024"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E00US024"
+   ],
    "severite": "mineur"
   },
   {
@@ -1604,8 +1616,13 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [],
-   "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_introduites": [
+    "080",
+    "124"
+   ],
+   "dettes_resorbees": [
+    "080"
+   ],
    "epic": "00",
    "epic_titre": "Socle technique & walking skeleton",
    "etat": "✅",

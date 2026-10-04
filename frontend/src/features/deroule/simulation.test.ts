@@ -126,7 +126,8 @@ describe('noteDEcart', () => {
     )
   })
 
-  it('rend un effectif projeté inconnu par du vide, comme le faisait le rendu JSX', () => {
+  // DETTE-124 — défaut hérité, figé faute de pouvoir le corriger ici : attente à inverser au remède.
+  it('rend un effectif projeté inconnu par du vide (défaut connu)', () => {
     expect(noteDEcart(phase({ ecart: true, effectif_projete: null }))).toBe(
       '▲ le schéma annonçait  archers, 5 tours et 31 duels',
     )

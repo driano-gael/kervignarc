@@ -55,7 +55,8 @@ export function etatPave(pave: {
 }
 
 // La suite de « Saisie par NOM » : l'heure, le validateur — omis tant que la volée est rendue en
-// correction — et l'attente d'envoi hors ligne. Un horodatage illisible laisse « à » seul.
+// correction — et l'attente d'envoi hors ligne.
+// DETTE-124 : un horodatage illisible laisse « à » seul — défaut hérité, figé par son test.
 export function complementMeta(existante: Volee): string {
   const heure = existante.saisie_le !== null ? ` à ${heureSaisie(existante.saisie_le)}` : ''
   const validee =

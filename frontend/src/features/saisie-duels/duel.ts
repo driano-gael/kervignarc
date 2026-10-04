@@ -176,8 +176,9 @@ export function saisieVerrouillee(
   return duel.validee_par !== null || duel.validation_en_attente === true
 }
 
-// Les deux archers à qui proposer le forfait, ou `null` s'il n'y a pas de bouton à rendre : jamais
-// en poule (ADR-0083 §7), jamais sur une saisie close.
+// Les deux archers à qui proposer le forfait, ou `null` s'il n'y a pas de bouton à rendre :
+// uniquement dans un tableau (ni poule — ADR-0083 §7 —, ni suisse, ni colline), jamais sur une
+// saisie close.
 // DETTE-120 : un forfait se déclare pour un archer — rien à proposer à un duel d'équipes.
 export function duellistesDuForfait(
   duel: Pick<Duel, 'haut' | 'bas' | 'validee_par' | 'validation_en_attente'>,
@@ -210,17 +211,51 @@ export function pastillesManches(
   duel: Pick<Duel, 'manches' | 'resultat'>,
   nbManches: number,
   numeroActif: number,
-): { numero: number; saisie: boolean; fermee: boolean; active: boolean }[] {
+): { numero: number; saisie: boolean; fermee: boolean; active: boolean; classes: string }[] {
   return Array.from({ length: nbManches }, (_, i) => {
     const numero = i + 1
     const saisie = duel.manches.some((m) => m.numero === numero)
-    return {
-      numero,
-      saisie,
-      fermee: !saisie && mancheNeuveFermee(duel),
-      active: numero === numeroActif,
-    }
+    const active = numero === numeroActif
+    // Jumeau de `saisie/pave.ts` `classesPastille` (sans la variante `--verrou`) — cf. E00US023.
+    const classes = [
+      'saisie__nav-volee',
+      saisie ? 'saisie__nav-volee--saisie' : '',
+      active ? 'saisie__nav-volee--actif' : '',
+    ]
+      .filter((c) => c !== '')
+      .join(' ')
+    return { numero, saisie, fermee: !saisie && mancheNeuveFermee(duel), active, classes }
   })
+}
+
+// Barème de saisie d'un duel : le serveur peut ne pas le porter (duel pas encore réglé) ; l'écran
+// retombe alors sur une manche de trois flèches.
+export function baremeDeManche(duel: Pick<Duel, 'nb_manches' | 'nb_fleches_par_volee'>): {
+  nbManches: number
+  nbFleches: number
+} {
+  return { nbManches: duel.nb_manches ?? 1, nbFleches: duel.nb_fleches_par_volee ?? 3 }
+}
+
+// Les gestes ouverts sur une manche en frappe. On n'enregistre que les **deux** camps complets ;
+// le camp actif plein ferme les zones, et un envoi en cours fige tout.
+export function etatManche(manche: {
+  bufferHaut: readonly string[]
+  bufferBas: readonly string[]
+  campActif: Cote
+  nbFleches: number
+  envoiEnCours: boolean
+}): { campComplet: boolean; zonesActives: boolean; effacable: boolean; enregistrable: boolean } {
+  const { bufferHaut, bufferBas, campActif, nbFleches, envoiEnCours } = manche
+  const buffer = campActif === 'haut' ? bufferHaut : bufferBas
+  const campComplet = buffer.length >= nbFleches
+  const deuxComplets = bufferHaut.length >= nbFleches && bufferBas.length >= nbFleches
+  return {
+    campComplet,
+    zonesActives: !campComplet && !envoiEnCours,
+    effacable: buffer.length > 0 && !envoiEnCours,
+    enregistrable: deuxComplets && !envoiEnCours,
+  }
 }
 
 // Le camp actif après une flèche : camp rempli, on bascule automatiquement sur l'autre s'il reste à

@@ -55,7 +55,7 @@ describe('etatLigne', () => {
       cumul: 46,
       numero: 3,
       enCours: [],
-      verrouillee: false,
+      caseActivable: true,
       caseEnCours: null,
     })
   })
@@ -64,6 +64,7 @@ describe('etatLigne', () => {
     const etat = etatLigne({ ...BASE, volees: [], serieLue: false })
     expect(etat.nbSaisies).toBe('?')
     expect(etat.cumul).toBe('?')
+    expect(etat.caseActivable).toBe(false)
   })
 
   it('barème non lu : cumul « ? » et pas de volée ouverte', () => {
@@ -71,7 +72,7 @@ describe('etatLigne', () => {
     expect(etat.cumul).toBe('?')
     expect(etat.numero).toBeNull()
     expect(etat.enCours).toEqual([])
-    expect(etat.verrouillee).toBe(false)
+    expect(etat.caseActivable).toBe(true)
     // L'avancement, lui, ne dépend que de la série.
     expect(etat.nbSaisies).toBe(2)
   })
@@ -100,9 +101,9 @@ describe('etatLigne', () => {
     expect(etat.caseEnCours).toBeNull()
   })
 
-  it('une volée verrouillée ouverte est signalée verrouillée', () => {
+  it('une volée verrouillée ouverte rend ses cases inactivables', () => {
     const etat = etatLigne({ ...BASE, ouverture: { numero: 1, fleche: null } })
-    expect(etat.verrouillee).toBe(true)
+    expect(etat.caseActivable).toBe(false)
   })
 })
 
