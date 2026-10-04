@@ -437,3 +437,60 @@ export function elementRetenu(
   const consomme = destinationAffichee !== 'tournoi' && OUVRE_UN_ELEMENT[destinationAffichee]
   return memeDestination && consomme ? route.elementDemande : null
 }
+
+/**
+ * Les entrées de la sidebar d'un axe, et celle qui est **réellement affichée** (E00US024).
+ *
+ * La destination de l'adresse est validée contre celles de l'axe : sans ça, `/admin/atelier/
+ * supervision` afficherait un écran de pilotage sous l'intitulé « Atelier ». ⚠️ À défaut, le repli
+ * est **l'ouverture de l'axe**, et non `dansAxe[0]`, qui ne coïncidait avec elle que par l'ordre de
+ * déclaration : réordonner la sidebar aurait changé en silence l'écran d'entrée.
+ */
+export function navigationDeLAxe<D extends { id: Exclude<DestinationAdminId, 'tournoi'> }>(
+  destinations: readonly D[],
+  axe: Axe | null,
+  destinationDemandee: string | null,
+): { dansAxe: readonly D[]; active: D | undefined } {
+  if (axe === null) return { dansAxe: [], active: undefined }
+  const dansAxe = destinations.filter((d) => AXE_PAR_DESTINATION[d.id] === axe)
+  const demandee = destinationValide(
+    destinationDemandee,
+    dansAxe.map((d) => d.id),
+  )
+  const ouverture = destinationParDefaut(axe)
+  const active =
+    dansAxe.find((d) => d.id === demandee) ?? dansAxe.find((d) => d.id === ouverture) ?? dansAxe[0]
+  return { dansAxe, active }
+}
+
+/**
+ * Ce que la carte d'un axe porte, sur l'accueil de l'admin, en plus de son titre et de sa phrase.
+ *
+ * ⚠️ `enCours` vaut `null` et non `0` quand rien ne tourne : la carte n'affiche jamais « 0 en
+ * cours ». Le compte et le contexte ne concernent que le **pilotage** (E17US003, planche A02).
+ */
+export function marquesDeLAxe(
+  axe: Axe,
+  tournois: readonly Pick<Tournoi, 'nom' | 'statut'>[],
+): { sansTournoi: boolean; enCours: number | null; contexte: string | null } {
+  if (axe !== 'pilotage') return { sansTournoi: axe === 'atelier', enCours: null, contexte: null }
+  const enCours = tournoisEnCours(tournois).length
+  return {
+    sansTournoi: false,
+    enCours: enCours > 0 ? enCours : null,
+    contexte: contextePilotage(tournois),
+  }
+}
+
+/**
+ * Le tournoi désigné par l'adresse ou le sélecteur, lu dans la liste **fraîche** — ou `null`.
+ *
+ * `null` aussi quand la liste n'est pas encore chargée, ou que le tournoi a disparu (supprimé
+ * depuis un autre poste) : l'écran retombe alors sur « choisissez un tournoi ».
+ */
+export function tournoiParId<T extends { id: number }>(
+  tournois: readonly T[] | undefined,
+  id: number | null,
+): T | null {
+  return id === null ? null : (tournois?.find((t) => t.id === id) ?? null)
+}
