@@ -107,6 +107,26 @@ class BaremeDuelVerrouille(ApplicationError):
     code = "bareme_duel_verrouille"
 
 
+class EquipesVerrouillees(ApplicationError):
+    """Changer le réglage « par équipes » d'une étape dont une phase a déjà un tir (E13US004) → 409.
+
+    Même motif que `BaremeDuelVerrouille` : les tirs d'avant opposeraient d'autres participants.
+    """
+
+    code = "equipes_verrouillees"
+
+
+class CompositionEquipeVerrouillee(ApplicationError):
+    """Supprimer ou recomposer une équipe dont un membre tire un départ où le tableau d'équipes de
+    ce type a un tir (E13US004) → 409.
+
+    Le tableau se recalcule à chaque lecture (ADR-0120 §2) : la recomposer après le premier tir
+    réécrirait l'ensemencement et masquerait les tirs faits.
+    """
+
+    code = "composition_equipe_verrouillee"
+
+
 class ArmeDeCategorieVerrouillee(ApplicationError):
     """Changer l'arme d'une catégorie quand une étape réglée du tournoi a un tir (E01US011) → 409.
 

@@ -72,7 +72,8 @@ Aucune branche `if équipe` dans le moteur : une politique de plus.
 > Les « volées alternées » sont un ordre de tir (§9), sans effet sur le score. Aucune branche
 > `if équipe` : l'intention du point est tenue, sa lettre non. ⚠️ **Ce qui est perdu** : la
 > résolution **automatique** par type de participant. Une phase d'équipes **non réglée** jouerait
-> le barème individuel (`ResolveurBaremeDuelFfta` ne lit que l'arme) — à trancher par `E13US004`.
+> le barème individuel (`ResolveurBaremeDuelFfta` ne lit que l'arme) — **tranché le 03/10/2026** :
+> le preset FFTA du type d'équipe ([ADR-0120](0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md) §4).
 
 **4. Placement, saisie et classement clés sur le participant.** En phase par équipes, le placement
 pose des **équipes** (leurs archers sur des cibles voisines), la saisie enregistre une **volée
@@ -137,7 +138,7 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   `ecarts_de_composition` (point 2) ; `backend/application/equipes.py` (`ServiceEquipes`) tient les
   règles d'ensemble (nom unique, membre du tournoi, une équipe par type) ;
   `backend/infrastructure/db/repositories/equipes.py` (`EquipeRepositorySQL`) et la migration
-  `0059_equipe` persistent `equipe` et `membre_equipe` ; `backend/api/v1/equipes.py` les expose ;
+  `0059_equipe` persistent les tables equipe et membre_equipe ; `backend/api/v1/equipes.py` les expose ;
   `frontend/src/features/equipes/` est l'écran d'administration.
 - `backend/domain/duel.py` — `BaremeDuel.nb_fleches_barrage` et `Barrage(fleches_haut,
   fleches_bas, …)` portent le point 3 tel qu'amendé : `_vainqueur_barrage` compare des **totaux**,
@@ -149,14 +150,13 @@ Les points 1 à 3 sont livrés ; le point 4 **n'a aucun module** :
 
 | Point de la décision | État |
 |---|---|
-| 1. Le match oppose des participants | ✅ `domain/participant.py` |
-| 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ✅ tel qu'amendé le 01/10/2026 — `domain/equipe.py`, `application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
-| 3. Score d'équipe sans branche `if équipe` (amendé : barème de duel, pas la famille `scoring`) | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`domain/duel.py`), pas la famille `scoring`. `E13US003` |
-| 4. Placement / saisie / classement clés sur le participant | ⬜ `E13US004` |
+| 1. Le match oppose des participants | ✅ `backend/domain/participant.py` |
+| 2. `Equipe` est une entité du tournoi (+ la table membre_equipe) | ✅ tel qu'amendé le 01/10/2026 — `backend/domain/equipe.py`, `backend/application/equipes.py`, `E13US002`. Effectif surchargeable par équipe ; règles d'arme et de sexe **fixes** (FFTA), signalées seulement. La surcharge de la *contrainte* promise par la rédaction d'origine n'est **pas** portée : elle a été **abandonnée**, pas oubliée |
+| 3. Score d'équipe sans branche `if équipe` (amendé : barème de duel, pas la famille scoring) | ✅ tel qu'amendé le 02/10/2026 — barème de duel (`backend/domain/duel.py`), pas la famille scoring. `E13US003` |
+| 4. Placement / saisie / classement clés sur le participant | ◐ le **tableau à élimination directe** seul, `E13US004` ([ADR-0120](0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md)) — `backend/domain/engagement_equipes.py`, `backend/application/saisie_duels.py`, `backend/application/placement_duels.py`, `backend/application/pilotage_tour.py`. Poules, suisse, colline, Big Shoot Off, palmarès et affectations publiques : ⬜ `E13US005` |
 
-⚠️ **Une équipe se compose, elle ne se joue pas encore.** Aucun module de production ne construit
-`Participant.equipe(...)` (seuls des tests le font) : moteur, placement, saisie et classement
-ignorent les équipes. Un lecteur qui verrait l'écran « Équipes » livré pourrait conclure qu'une
-épreuve par équipes se déroule — pas avant E13US004 : E13US003 a rendu le **barème** d'équipe
-exprimable, pas le match lui-même jouable. C'est le mode de défaillance
+⚠️ **Une équipe ne se joue qu'en tableau à élimination directe** (E13US004). Seul
+`ServiceSaisieDuels` construit `Participant.equipe(...)` ; les autres formats, le palmarès et les
+affectations publiques ignorent encore les équipes. Un lecteur qui verrait un tableau d'équipes
+se jouer pourrait conclure que tout format les accepte — pas avant `E13US005`. C'est le mode de défaillance
 d'ADR-0017 (une décision que seule une partie du code porte), et la seule parade est de l'écrire.

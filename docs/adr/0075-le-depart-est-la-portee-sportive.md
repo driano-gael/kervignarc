@@ -148,10 +148,11 @@ appliquées dans l'US qui porte cet ADR :
 ## Porté dans le code par
 
 - `backend/domain/phase.py` (`Phase.depart_id`, `SequencePhases`)
-- `backend/application/classements.py` (`pour_depart`, et **plus** de `pour_tournoi`)
-  ⚠️ *Corrigé le 07/08/2026 en revue : cette liste nommait aussi `domain/classement.py`,
-  `domain/tableau.py` et `domain/duel.py`, qui ne portent **rien** de la portée — aucun n'a de champ
-  de rattachement, ils suivent la phase par `phase_id`. Une section « Porté dans le code par » qui
+- `backend/application/classements.py` (`pour_depart` ; la méthode pour_tournoi a disparu — reste `_forfaits_qualif`, à la maille
+  tournoi, `DETTE-047`)
+  ⚠️ *Corrigé le 07/08/2026 en revue : cette liste nommait aussi domain/classement.py,
+  domain/tableau.py et domain/duel.py, qui ne portent **rien** de la portée — aucun n'a de champ
+  de rattachement, ils suivent la phase par son identifiant. Une section « Porté dans le code par » qui
   nomme des modules vides reproduit exactement le défaut d'ADR-0017 qu'elle existe pour empêcher.*
 - `backend/domain/format_tournoi.py` (`verifier_applicable`, le garde appelable **avant** toute
   écriture, et `etapes_ordonnees`, qui rend les modèles dans l'ordre où ils doivent être posés)
@@ -237,7 +238,10 @@ que la même US le **rouvre** (sa *Décision* change d'acteur en duels) ; sa sec
 code par » a donc été écrite dans le même commit. Leçon distincte, donc : la liste des **seize
 retenus** mérite le même balayage que celle des ajouts.
 
-**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : **`0117`**
+**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : **`0120`**
+(E13US004, 03/10/2026 — une phase oppose des équipes par un réglage d'étape, l'engagement est
+dérivé ; il **rouvre `0028`**, dont la section « Porté dans le code par » a été relue dans le même
+commit), **`0117`**
 (E01US011, 01/10/2026 — le barème de duel, politique `scoring` au sens de la règle 2, devient un
 réglage d'étape verrouillé au premier tir ; il **rouvre `0049`** §2 et §4, dont la section « Porté
 dans le code par » a été relue dans le même commit), **`0111`**

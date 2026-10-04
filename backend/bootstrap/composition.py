@@ -35,6 +35,7 @@ from api.v1.competition import router as competition_router
 from api.v1.completude import router as completude_router
 from api.v1.departs import router as departs_router
 from api.v1.deroule import router as deroule_router
+from api.v1.deroule_imprime import router as deroule_imprime_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.ecrans import router as ecrans_router
 from api.v1.ecrans import session_router as ecran_session_router
@@ -93,6 +94,7 @@ from application.clubs import ServiceClubs
 from application.colline import ServiceColline
 from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
+from application.deroule_imprime import ServiceDerouleImprime
 from application.documents_salle import ServiceDocumentsSalle
 from application.ecrans import ServiceEcrans
 from application.equipes import ServiceEquipes
@@ -150,7 +152,7 @@ from application.suivi_deroule import (
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
-from application.verrou_bareme import VerrouBaremeDuel
+from application.verrou_bareme import VerrouBaremeDuel, VerrouCompositionEquipes
 from domain.contrat_phase import TypePhase
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
@@ -213,6 +215,7 @@ from infrastructure.memory.repositories import (
     InMemoryDepartRepository,
     InMemoryDerouleRepository,
     InMemoryDuelRepository,
+    InMemoryEquipeRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
@@ -223,6 +226,7 @@ from infrastructure.memory.repositories import (
 )
 from infrastructure.pdf import (
     GenerateurClassementQualificationPdf,
+    GenerateurDerouleHorairePdf,
     GenerateurDocumentsSallePdf,
     GenerateurFeuilleDeMarquePdf,
     GenerateurListesImpressionPdf,
@@ -295,6 +299,8 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         "Aggregation",
         registre.resoudre(FamillePolitique.AGGREGATION, "par_qualification", {}),
     )
+    # Un seul résolveur pour la saisie et le verrou, comme `create_app` (ADR-0117).
+    resolveur_bareme = ResolveurBaremeDuelFfta()
     # ⚠️ **La saisie se construit avant le placement** depuis E05US024 : le plan de cibles lui
     # emprunte sa résolution de classement amont, pour ensemencer exactement la population que
     # l'arbre fera jouer. L'ordre inverse ne compilait pas.
@@ -311,12 +317,23 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         duels,
         forfaits,
         classement,
-        ResolveurBaremeDuelFfta(),
+        resolveur_bareme,
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
         registre,
         aggregation_simulation,
+        equipes=ServiceEquipes(
+            InMemoryEquipeRepository(),
+            tournois,
+            archers,
+            categories,
+            verrou=VerrouCompositionEquipes(
+                VerrouBaremeDuel(departs, phases, deroules, duels, resolveur_bareme),
+                deroules,
+                inscriptions,
+            ),
+        ),
     )
     placement_duels = ServicePlacementDuels(
         tournois,
@@ -641,7 +658,11 @@ def create_app(
     )
     # Équipes d'un tournoi (E13US002).
     app.state.service_equipes = ServiceEquipes(
-        equipe_repository, tournoi_repository, archer_repository, categorie_repository
+        equipe_repository,
+        tournoi_repository,
+        archer_repository,
+        categorie_repository,
+        verrou=VerrouCompositionEquipes(verrou_bareme, deroule_repository, inscription_repository),
     )
     # Classement de qualification (E06US001) : lit les **séries** de saisie, plus les catégories
     # pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail flèche par
@@ -774,6 +795,7 @@ def create_app(
         PlacementEnCascade(),
         app.state.registre_politiques,
         aggregation,
+        equipes=app.state.service_equipes,
     )
     # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*` rend
     # `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui attendent un
@@ -1140,6 +1162,13 @@ def create_app(
             }
         ),
     )
+    # E09US007 : le déroulé horaire imprimable, PDF seul. Il **compose** `service_phases` : les
+    # heures sont celles que sert l'écran (ADR-0118), jamais recalculées.
+    app.state.service_deroule_imprime = ServiceDerouleImprime(
+        tournois=tournoi_repository,
+        phases=app.state.service_phases,
+        generateurs=RegistreDeFormats({FormatExport.PDF: GenerateurDerouleHorairePdf()}),
+    )
     # Catalogue d'exports (E16US007, ADR-0101 §3) : ce que l'écran « Exports & impressions »
     # propose. ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici. La composition
     # vit dans `construire_catalogue`, fonction pure, pour rester **testable**.
@@ -1159,12 +1188,16 @@ def create_app(
     formats_classement: tuple[FormatExport, ...] = (
         app.state.service_classement_imprime.formats_disponibles
     )
+    formats_deroule: tuple[FormatExport, ...] = (
+        app.state.service_deroule_imprime.formats_disponibles
+    )
     app.state.catalogue_exports = construire_catalogue(
         formats_listes=formats_listes,
         formats_feuille=formats_feuille,
         formats_palmares=formats_palmares,
         formats_audit=formats_audit,
         formats_classement=formats_classement,
+        formats_deroule=formats_deroule,
     )
 
     # --- Pilotage d'un tour (E12US002, ADR-0056) : feu vert + lancement. Compose les services de
@@ -1554,6 +1587,7 @@ def create_app(
     app.include_router(listes_impression_router)
     app.include_router(palmares_router)
     app.include_router(classement_imprime_router)
+    app.include_router(deroule_imprime_router)
     app.include_router(archive_router)
     app.include_router(sauvegardes_router)
 

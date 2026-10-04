@@ -67,6 +67,7 @@ import {
 } from '../../shared/phases/decoupage'
 import { ReglageColline } from '../../shared/phases/ReglageColline'
 import { ReglageBaremeDuel } from '../../shared/phases/ReglageBaremeDuel'
+import { ReglageEquipes } from '../../shared/phases/ReglageEquipes'
 import {
   BAREME_DUEL_NON_REGLE,
   TYPES_A_BAREME_DE_DUEL,
@@ -739,6 +740,8 @@ export function FormulaireEtape({
   // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [colline, setColline] = useState(depuisReglageColline(etape?.colline ?? null))
   const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(etape?.bareme_duel ?? null))
+  // E13US004 — DETTE-080, 13ᵉ réglage écrit ici et dans le formulaire jumeau.
+  const [equipes, setEquipes] = useState(etape?.equipes ?? null)
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
   // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
@@ -770,6 +773,8 @@ export function FormulaireEtape({
   const estSuisse = type === 'suisse'
   const estColline = type === 'colline'
   const aBaremeDeDuel = TYPES_A_BAREME_DE_DUEL.has(type)
+  // Pas `aBaremeDeDuel` : poules, suisse et colline ont un barème mais pas d'équipes (ADR-0120).
+  const estEliminationDirecte = type === 'elimination_directe'
   // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
   // dont le nombre de tours n'est pas déjà porté par sa structure.
   const estQualification = type === 'qualification'
@@ -830,6 +835,7 @@ export function FormulaireEtape({
     // 422. Retyper l'étape l'**efface** donc, au lieu de l'envoyer se faire recaler.
     colline: estColline ? (versReglageColline(colline) ?? null) : null,
     bareme_duel: aBaremeDeDuel ? (versReglageBaremeDuel(baremeDuel) ?? null) : null,
+    equipes: estEliminationDirecte ? equipes : null,
     // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
     // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
     // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422.
@@ -863,6 +869,7 @@ export function FormulaireEtape({
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
           setBaremeDuel(BAREME_DUEL_NON_REGLE)
+          setEquipes(null)
           // E16US002, même raison que ses voisins : sans ce reset, « Tableau des jeunes » se
           // reporterait sur l'étape suivante — et un titre reporté est pire qu'un réglage reporté,
           // puisqu'il **désigne** une phase précise.
@@ -990,6 +997,7 @@ export function FormulaireEtape({
         />
       )}
 
+      {estEliminationDirecte && <ReglageEquipes valeur={equipes} surChangement={setEquipes} />}
       {aBaremeDeDuel && (
         <ReglageBaremeDuel
           etat={baremeDuel}

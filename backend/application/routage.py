@@ -1008,7 +1008,8 @@ class ServiceRoutage:
             ),
             cible=pose[0] if pose is not None else None,
             position=pose[1] if pose is not None else None,
-            adversaire=adversaire,
+            # Le routage annonce un archer : son adversaire en est un (équipes : E13US005).
+            adversaire=adversaire if isinstance(adversaire, Duelliste) else None,
             sources_en_attente=self._sources_en_attente(match),
             manque=manque,
             alerte=alerte,

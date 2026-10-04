@@ -16,8 +16,18 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.archer import Archer
+from domain.categorie import Categorie
 from domain.duel import BaremeDuel, Duel
+from domain.equipe import TypeEquipe
+from domain.inscription import Inscription
 from domain.participant import GenreParticipant, Participant
+from infrastructure.db import (
+    ArcherRepositorySQL,
+    AuditRepositorySQL,
+    CategorieRepositorySQL,
+    InscriptionRepositorySQL,
+)
 from infrastructure.db.repositories.moteur import PhaseRepositorySQL
 from infrastructure.db.repositories.tir import DuelRepositorySQL
 from tests.base_migree import preparer_base
@@ -1068,3 +1078,144 @@ def test_le_bareme_des_derniers_tours_fait_l_aller_retour_http(
         refus = client.post(base, json={"type": "elimination_directe", "bareme_duel": sans_tour})
         assert refus.status_code == 400, refus.text
         assert refus.json()["code"] == "requete_invalide"
+
+
+def test_le_reglage_par_equipes_fait_l_aller_retour_http(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US004 CA 1 — le réglage s'envoie, se relit, et l'édition totale le retire."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(base, json={"type": "elimination_directe", "equipes": "mixte"})
+        assert creation.status_code == 201, creation.text
+        assert client.get(base).json()[0]["equipes"] == "mixte"
+
+        efface = client.put(
+            f"{base}/{creation.json()['id']}", json={"type": "elimination_directe", "sources": []}
+        )
+        assert efface.status_code == 200, efface.text
+        assert client.get(base).json()[0]["equipes"] is None
+
+
+def test_des_poules_par_equipes_sont_refusees(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={"type": "poules", "equipes": "standard"},
+        )
+
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "equipes_non_prises_en_charge"
+
+
+def test_une_phase_d_equipes_qui_preleve_par_rangs_est_refusee(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA 8 — `DETTE-120` : le déroulé refuse le prélèvement d'une phase d'équipes."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        qualif = client.post(base, json={"type": "qualification"})
+        assert qualif.status_code == 201, qualif.text
+
+        reponse = client.post(
+            base,
+            json={
+                "type": "elimination_directe",
+                "equipes": "standard",
+                "sources": [
+                    {"etape_source_id": qualif.json()["id"], "rang_debut": 1, "rang_fin": 8}
+                ],
+            },
+        )
+
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "equipes_non_prises_en_charge"
+
+
+def test_changer_le_reglage_par_equipes_d_une_phase_deja_tiree_repond_409(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        creation = client.post(base, json={"type": "elimination_directe"})
+        assert creation.status_code == 201, creation.text
+        fabrique = app_phases.state.database.session_factory
+        (phase,) = PhaseRepositorySQL(fabrique).par_tournoi(tournoi_id)
+        assert phase.id is not None
+        DuelRepositorySQL(fabrique).enregistrer(
+            phase.id,
+            1,
+            Duel.vide(
+                BaremeDuel.preset_ffta_classique(),
+                Participant(GenreParticipant.INDIVIDUEL, 1),
+                Participant(GenreParticipant.INDIVIDUEL, 2),
+            ),
+        )
+
+        reponse = client.put(
+            f"{base}/{creation.json()['id']}",
+            json={"type": "elimination_directe", "sources": [], "equipes": "standard"},
+        )
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "equipes_verrouillees"
+
+
+def test_supprimer_une_equipe_d_un_type_en_jeu_repond_409(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Arbitrage de revue d'E13US004 : la composition se fige au premier tir, code stable."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        creation = client.post(base, json={"type": "elimination_directe", "equipes": "standard"})
+        assert creation.status_code == 201, creation.text
+        equipe = client.post(
+            f"/api/v1/tournois/{tournoi_id}/equipes", json={"nom": "A", "type": "standard"}
+        )
+        assert equipe.status_code == 201, equipe.text
+        fabrique = app_phases.state.database.session_factory
+        (phase,) = PhaseRepositorySQL(fabrique).par_tournoi(tournoi_id)
+        assert phase.id is not None
+        # Un membre inscrit au départ du tableau : le verrou est **par départ** (ADR-0120 §7).
+        categorie = CategorieRepositorySQL(fabrique).ajouter(Categorie.creer(tournoi_id, "CLH"))
+        assert categorie.id is not None
+        archer = ArcherRepositorySQL(fabrique).ajouter(
+            Archer.creer("Tell", "Guillaume", tournoi_id, categorie.id)
+        )
+        assert archer.id is not None
+        InscriptionRepositorySQL(fabrique, AuditRepositorySQL(fabrique)).ajouter(
+            Inscription(archer.id, phase.depart_id)
+        )
+        membre = client.post(
+            f"/api/v1/tournois/{tournoi_id}/equipes/{equipe.json()['id']}/membres",
+            json={"archer_id": archer.id},
+        )
+        assert membre.status_code == 200, membre.text
+        DuelRepositorySQL(fabrique).enregistrer(
+            phase.id,
+            1,
+            Duel.vide(
+                BaremeDuel.preset_ffta_equipe(TypeEquipe.STANDARD, poulies=False),
+                Participant(GenreParticipant.EQUIPE, 1),
+                Participant(GenreParticipant.EQUIPE, 2),
+            ),
+        )
+
+        reponse = client.delete(f"/api/v1/tournois/{tournoi_id}/equipes/{equipe.json()['id']}")
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "composition_equipe_verrouillee"

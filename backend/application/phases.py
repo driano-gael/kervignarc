@@ -17,6 +17,7 @@ from dataclasses import dataclass, replace
 from application.erreurs import (
     BaremeDuelVerrouille,
     DepartIntrouvable,
+    EquipesVerrouillees,
     PhaseIntrouvable,
     PhaseQualificationNonSupprimable,
     PhaseSourceReferencee,
@@ -38,6 +39,7 @@ from domain.deroule_etape import (
     vues_du_deroule,
 )
 from domain.duel import ReglageBaremeDuel, memes_baremes
+from domain.equipe import TypeEquipe
 from domain.horaire_prevu import HorairePrevu, horaires_prevus
 from domain.phase import (
     Phase,
@@ -142,6 +144,7 @@ class ServicePhases:
         arrets: tuple[ArretProgramme, ...] = (),
         titre: str | None = None,
         bareme_duel: ReglageBaremeDuel | None = None,
+        equipes: TypeEquipe | None = None,
         duree_prevue: int | None = None,
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
@@ -178,11 +181,12 @@ class ServicePhases:
             arrets=arrets,
             titre=titre,
             bareme_duel=bareme_duel,
+            equipes=equipes,
             duree_prevue=duree_prevue,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence(vues_du_deroule([*existantes, nouvelle]))
-        # ⚠️ **Avant l'écriture** (E05US022) : cinq gardes de `Phase` vivent
+        # ⚠️ **Avant l'écriture** (E05US022) : sept gardes de `Phase` vivent
         # sur `Phase.__post_init__`, donc ne se levaient qu'**après** que l'étape avait rejoint le
         # déroulé. Même remède que `FormatTournoi.verifier_applicable`.
         nouvelle.verifier_instanciable()
@@ -208,6 +212,7 @@ class ServicePhases:
         arrets: tuple[ArretProgramme, ...] = (),
         titre: str | None = None,
         bareme_duel: ReglageBaremeDuel | None = None,
+        equipes: TypeEquipe | None = None,
         duree_prevue: int | None = None,
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape — édition **totale** de sa config.
@@ -246,9 +251,15 @@ class ServicePhases:
             arrets=arrets,
             # E01US011 : passé explicitement, même motif que ses voisins (édition totale).
             bareme_duel=bareme_duel,
+            equipes=equipes,
             # E03US010 : idem — une durée omise par le client est effacée, pas conservée.
             duree_prevue=duree_prevue,
         )
+        if modifiee.equipes is not etape.equipes and self._verrou.etape_tiree(tournoi_id, etape_id):
+            raise EquipesVerrouillees(
+                "Des duels de cette phase ont déjà été tirés : elle ne peut plus passer d'un jeu "
+                "individuel à un jeu par équipes, ni l'inverse."
+            )
         if not memes_baremes(modifiee.bareme_duel, etape.bareme_duel) and self._verrou.etape_tiree(
             tournoi_id, etape_id
         ):

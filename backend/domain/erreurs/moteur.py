@@ -80,6 +80,16 @@ class ReglageDePoulesInvalide(DomainError):
     code = "reglage_de_poules_invalide"
 
 
+class EquipesNonPrisesEnCharge(DomainError):
+    """Une phase réglée « par équipes » là où cette tranche ne sait pas les jouer (E13US004).
+
+    Deux cas, un même motif — ADR-0120 : un type de phase autre que l'élimination directe, ou une
+    phase d'équipes reliée par un prélèvement (`DETTE-120`).
+    """
+
+    code = "equipes_non_prises_en_charge"
+
+
 class SeuilDeBarrageInvalide(DomainError):
     """Le rang jusqu'auquel une phase départage **au tir** n'est pas un entier `>= 1` (E06US003).
 

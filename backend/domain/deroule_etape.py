@@ -22,6 +22,7 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline, portee_maximale
 from domain.depart import DepartId
 from domain.duel import ReglageBaremeDuel
+from domain.equipe import TypeEquipe
 from domain.erreurs import (
     ConfigurationBigShootOffInvalide,
     ConfigurationCollineInvalide,
@@ -140,6 +141,9 @@ class EtapeDeroule:
     n'importe quel créneau : cf. `Phase.bareme_duel` et ADR-0117.
     """
 
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe que cette étape oppose, `None` en individuel (E13US004, ADR-0120)."""
+
     titre: str | None = None
     """Le **libellé** que l'organisateur donne à cette étape — « Tableau des jeunes » (E16US002).
 
@@ -232,6 +236,8 @@ class EtapeDeroule:
         » sur une phase réglée à 3 était acceptée et **définitivement inerte**. À rejouer pour tout
         type ajouté à `TYPES_ARRETABLES`.
         """
+
+        # ⚠️ Jumeau de `deroule_imprime.tours_annonces` (qui compte aussi le suisse, E09US007).
 
         # DETTE-062 : rien n'interdit de changer ce nombre sur une phase **en cours**, et le
         # changer déplace les frontières de tour — une pause non encore atteinte peut devenir
@@ -335,17 +341,18 @@ class EtapeDeroule:
             colline=self.colline,
             decoupage=self.decoupage,
             bareme_duel=self.bareme_duel,
+            equipes=self.equipes,
             statut=StatutPhase.A_VENIR,
         )
 
     def verifier_instanciable(self) -> None:
         """Lève si cette étape ne pourra pas s'instancier — **à appeler avant d'écrire**.
 
-        ⚠️ **Six** gardes vivent sur `Phase.__post_init__` et pas ici : `profondeur`, `poules`,
-        `big_shoot_off`, `suisse`, `bareme_duel` sur un type qui ne les lit pas, `barrage_jusqu_au`.
-        Sans cet appel, une étape invalide **rejoint le déroulé** puis fait tomber chaque lecture
-        (E05US022). Une **méthode**, et non un `instancier(...)` dont on jette le résultat : un
-        résultat perdu se lit comme du code mort, et un nettoyage le supprimerait sans rougir.
+        ⚠️ **Sept** gardes vivent sur `Phase.__post_init__` et pas ici (`profondeur`, `poules`,
+        `big_shoot_off`, `suisse`, `bareme_duel`, `equipes`, `barrage_jusqu_au`). Sans cet appel,
+        une étape invalide **rejoint le déroulé** puis fait tomber chaque lecture (E05US022). Une
+        **méthode**, pas un `instancier(...)` au résultat jeté : un résultat perdu se lit comme du
+        code mort, et un nettoyage le supprimerait sans rougir.
         """
         self.instancier(_DEPART_A_BLANC)
 
@@ -386,6 +393,7 @@ def vues_du_deroule(etapes: Sequence[EtapeDeroule]) -> tuple[VueParRangs, ...]:
             bareme=etape.bareme,
             validation=etape.validation,
             poules=etape.poules,
+            equipes=etape.equipes,
         )
         for etape in etapes
     )

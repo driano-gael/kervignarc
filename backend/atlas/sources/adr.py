@@ -145,22 +145,51 @@ def _liens(champs: list[tuple[str, str]], *, fichier: str) -> tuple[Lien, ...]:
     return tuple(trouves)
 
 
+def _section_portage(texte: str, champs: list[tuple[str, str]]) -> str:
+    brut = markdown.section(texte, "Porté dans le code par")
+    return (
+        brut + "\n" + "\n".join(f"- {v}" for libelle, v in champs if "code par" in libelle.lower())
+    )
+
+
+def _est_test(chemin: str) -> bool:
+    nom = chemin.rsplit("/", 1)[-1]
+    return "/tests/" in chemin or nom.startswith("test_") or ".test." in nom
+
+
+def _chemins_non_reconnus(texte: str, champs: list[tuple[str, str]]) -> tuple[str, ...]:
+    """Les fichiers de code cités sans chemin depuis la racine, que rien ne contrôle (E00US028).
+
+    Tout chemin abrégé (`application/prelevement.py`) ; un nom nu (`routage.py`) n'est toléré
+    qu'à côté d'un chemin complet **du même genre** — un test contiendrait le symbole promis.
+    ⚠️ Code seulement : `.claude/`, `maquettes/` restent hors des racines lues (DETTE-068).
+    """
+    trouves: list[str] = []
+    for entree in _entrees(_section_portage(texte, champs)):
+        tokens = _TOKEN.findall(entree)
+        genres = {_est_test(t) for t in tokens if _est_chemin(t)}
+        trouves.extend(
+            t
+            for t in tokens
+            if not _est_chemin(t)
+            and t.endswith(_EXTENSIONS_VERIFIABLES)
+            and ("/" in t or _est_test(t) not in genres)
+        )
+    return tuple(dict.fromkeys(trouves))
+
+
 def _portage(texte: str, champs: list[tuple[str, str]], racine: Path) -> tuple[Portage, ...]:
     """Les modules qu'un ADR déclare porter sa décision, et l'état réel de chacun.
 
-    Deux formes coexistent dans le registre : une section `## Porté dans le code par` (24 ADR) et
-    un champ d'en-tête du même nom (1 ADR). On lit les deux — préférer l'une reviendrait à ne pas
-    voir un quart des promesses.
+    Section `## Porté dans le code par` **et** champ d'en-tête du même nom : lus tous deux
+    (`_section_portage`), sans quoi un quart des promesses échappait.
     """
-    brut = markdown.section(texte, "Porté dans le code par")
-    brut += "\n" + "\n".join(f"- {v}" for libelle, v in champs if "code par" in libelle.lower())
-
     # Un même module peut être cité par plusieurs entrées (ADR-0083 nomme `poule.py` quatre fois,
     # à chaque fois pour un rôle différent) : on **fusionne** les symboles au lieu d'ignorer les
     # entrées suivantes, sinon les promesses des puces 2 à 4 disparaissaient sans bruit.
     promesses: dict[str, list[str]] = {}
     fratries: list[list[str]] = []
-    for entree in _entrees(brut):
+    for entree in _entrees(_section_portage(texte, champs)):
         tokens = _TOKEN.findall(entree)
         cites = [t for t in tokens if _est_chemin(t)]
         if not cites:
@@ -175,13 +204,25 @@ def _portage(texte: str, champs: list[tuple[str, str]], racine: Path) -> tuple[P
         # module « ne contient pas routage.py ». Du bruit dans un signal finit par le rendre
         # inaudible, et la page « Écarts constatés » ne vaut que par son crédit.
         promis = [t for t in tokens if t not in cites and _est_symbole(t)]
+        production = [c for c in chemins if not _est_test(c)]
+        tests = [c for c in chemins if _est_test(c)]
+        noms_de_test = [s for s in promis if s.startswith("test_")]
+        autres = [s for s in promis if not s.startswith("test_")]
         for chemin in chemins:
-            promesses.setdefault(chemin, []).extend(promis)
+            promesses.setdefault(chemin, [])
+        # ⚠️ Un test ne témoigne pas pour un module de production cité dans l'entrée : il contient
+        # le symbole par construction (mutation de l'axe D, E00US028). Sans module de production,
+        # les symboles reviennent au test — limite écrite dans ADR-0102 § Porté.
+        for porteurs, noms in (
+            (production or tests, autres),
+            (tests or production, noms_de_test),
+        ):
+            for chemin in porteurs:
+                promesses[chemin].extend(noms)
         # Une entrée qui nomme plusieurs modules **répartit** ses symboles entre eux : elle ne
         # promet pas chacun d'eux dans chacun. Sans cette fraternité, ADR-0083 se voyait reprocher
         # trois fois le même symbole, absent de deux modules sur trois **par construction**.
-        if len(chemins) > 1:
-            fratries.append(chemins)
+        fratries.extend(groupe for groupe in (production, tests) if len(groupe) > 1)
 
     portes: dict[str, Portage] = {}
     for chemin in sorted(promesses):
@@ -216,7 +257,8 @@ def _dedouaner_les_fratries(
         presents = {
             symbole
             for frere in fratrie
-            if frere in portes
+            # ⚠️ Un frère non vérifiable (répertoire, `.md`) n'a rien lu : il n'excuse rien.
+            if frere in portes and portes[frere].verifiable and portes[frere].existe
             for symbole in portes[frere].symboles
             if symbole not in portes[frere].symboles_absents
         }
@@ -256,6 +298,7 @@ def _entrees(section: str) -> list[str]:
     """
     entrees: list[list[str]] = []
     tableau: list[str] = []
+    puce_ouverte = False
 
     def vider_tableau() -> None:
         # Une ligne de séparation (`|---|---|`) marque la ligne précédente comme en-tête : les
@@ -266,17 +309,25 @@ def _entrees(section: str) -> list[str]:
 
     for ligne in section.split("\n"):
         nue = ligne.strip()
+        indentee = ligne.startswith((" ", "\t"))
         if nue.startswith("|"):
             tableau.append(nue)
+            puce_ouverte = False
             continue
         vider_tableau()
-        if nue.startswith(("- ", "* ")) and not ligne.startswith((" ", "\t")):
+        if nue.startswith(("- ", "* ")) and not indentee:
             entrees.append([nue])
-        elif entrees and nue and ligne.startswith((" ", "\t")):
+            puce_ouverte = True
+        elif puce_ouverte and nue and indentee:
             # Seules les lignes **indentées** continuent une puce. Recoller toute ligne non vide
             # collait la prose qui suit la liste sur la dernière entrée : ADR-0062 se voyait alors
             # reprocher de ne pas contenir des identifiants tirés du paragraphe d'après.
             entrees[-1].append(nue)
+        elif nue and not indentee:
+            # ⚠️ Toute autre ligne de tête (`1. …`, `### …`, prose) ferme la puce : sinon les
+            # lignes indentées d'une liste numérotée se recollaient à la dernière entrée — y
+            # compris une ligne de tableau, qui n'a pas de suite (ADR-0083, E00US028).
+            puce_ouverte = False
     vider_tableau()
     return [" ".join(morceaux) for morceaux in entrees]
 
@@ -290,8 +341,9 @@ def _symboles_absents(cible: Path, symboles: tuple[str, ...]) -> tuple[str, ...]
 
     Contrôle volontairement grossier — une recherche de nom, pas une analyse. Il attrape le cas
     qui compte (un ADR promettant une classe qui n'existe pas) sans prétendre vérifier que le
-    module **fait** ce que l'ADR annonce. Cette limite est assumée, affichée, et c'est pourquoi
-    le résultat est un signal et non un blocage.
+    module **fait** ce que l'ADR annonce. ⚠️ Le résultat est **bloquant** : un nom historique ou
+    hypothétique se cite sans accents graves ; un symbole censé porter la décision se **corrige**,
+    jamais ne se désarme. Convention et limites : ADR-0102 § « Porté dans le code par ».
     """
     source = markdown.lire(cible)
     return tuple(s for s in symboles if s.rsplit(".", 1)[-1] not in source)
@@ -333,6 +385,7 @@ def lire_decision(chemin: Path, racine: Path) -> Decision:
         fichier=fichier,
         liens=_liens(champs, fichier=fichier),
         portage=_portage(texte, champs, racine),
+        portage_non_reconnu=_chemins_non_reconnus(texte, champs),
         us=tuple(sorted(set(_US_CITEE.findall(texte)))),
         extrait=markdown.tronquer(markdown.en_clair(markdown.section(texte, "Décision")), 700),
     )

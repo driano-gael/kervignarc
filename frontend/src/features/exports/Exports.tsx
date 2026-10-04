@@ -12,6 +12,7 @@ import {
   cheminAudit,
   cheminClassementQualification,
   cheminClubPaiement,
+  cheminDerouleHoraire,
   cheminFeuilleDeMarque,
   cheminPalmares,
   cheminPlacement,
@@ -78,6 +79,7 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
   const [departId, setDepartId] = useState<number | null>(null)
   const [departFeuille, setDepartFeuille] = useState<number | null>(null)
   const [departClassement, setDepartClassement] = useState<number | null>(null)
+  const [departDeroule, setDepartDeroule] = useState<number | null>(null)
 
   const listeDeparts = departs.data ?? []
   const suffixePlacement = departId !== null ? `-depart-${departId}` : ''
@@ -180,6 +182,35 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
             value={departClassement ?? ''}
             onChange={(e) =>
               setDepartClassement(e.target.value === '' ? null : Number(e.target.value))
+            }
+          >
+            <option value="">Tous les départs</option>
+            {listeDeparts.map((depart) => (
+              <option key={depart.id} value={depart.id}>
+                Départ {depart.numero}
+              </option>
+            ))}
+          </select>
+        </label>
+      ),
+    },
+    {
+      identifiant: 'deroule-horaire',
+      libelle: 'Déroulé horaire',
+      description:
+        'Les phases de chaque départ avec leurs heures prévues de début et de fin, et leur nombre de tours quand il est réglé — à afficher ou à envoyer aux clubs.',
+      chemin: cheminDerouleHoraire(tournoiId, departDeroule),
+      nomSansExtension: `deroule-horaire-${tournoiId}${
+        departDeroule !== null ? `-depart-${departDeroule}` : ''
+      }`,
+      commandes: (
+        <label className="formulaire__libelle">
+          Départ
+          <select
+            className="formulaire__champ"
+            value={departDeroule ?? ''}
+            onChange={(e) =>
+              setDepartDeroule(e.target.value === '' ? null : Number(e.target.value))
             }
           >
             <option value="">Tous les départs</option>

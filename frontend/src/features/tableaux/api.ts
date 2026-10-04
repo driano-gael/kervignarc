@@ -11,9 +11,11 @@ import { fetchJson } from '../../shared/api/client'
 // Un duelliste tel que l'arbre l'affiche. `archer_id` sert à reconnaître un **archer suivi**
 // (E07US006) sans comparer des noms — comparaison qui casse au premier homonyme, et il y en a.
 export interface DuellistePublic {
-  archer_id: number
+  // Un camp d'équipe (E13US004) n'a pas d'archer : `nom` porte l'équipe, `prenom` est vide.
+  archer_id: number | null
   nom: string
   prenom: string
+  equipe_id?: number | null
 }
 
 // Un match de l'arbre.

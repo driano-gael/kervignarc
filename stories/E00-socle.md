@@ -236,7 +236,7 @@ ADR promet un module qui ne porte rien.
   dans un lot de 45 que personne ne lit. **Cette US ne construit donc rien : elle solde une dette et
   relève une sévérité.** C'est ce qui la rend petite, et c'est aussi ce qui la rend gênante — le
   dépôt avait la mesure et le constat, et le défaut est passé quand même.
-- **CA — les 22 constats sont soldés** : chaque ADR concerné est **corrigé sur le code du jour**
+- **CA — les constats sont soldés** (22 au 30/08/2026, **30** à la prise le 03/10/2026) : chaque ADR concerné est **corrigé sur le code du jour**
   (symbole renommé, module déplacé, promesse retirée si elle n'est pas tenue). ⚠️ **Corriger ne veut
   pas dire retirer la ligne** : un ADR dont plus rien ne porte la décision doit le **dire** — c'est
   l'information la plus utile qu'il puisse rendre.
@@ -245,7 +245,8 @@ ADR promet un module qui ne porte rien.
   passe plus.
 - **CA — le cliquet ne se relève pas** : le compte des constats tolérés est **zéro** et le reste,
   au patron d'`E00US027` (« faire descendre un chiffre est le seul geste autorisé »).
-- **CA — un portage non vérifiable est dit tel** : `portage-non-verifiable` (4 constats) reste en
+- **CA — un portage non vérifiable est dit tel** : `portage-non-verifiable` (4 constats au 30/08, 8 à la
+  prise) reste en
   signal — un chemin qui n'est pas lisible symbole par symbole (un dossier, un `.md`) n'est pas une
   promesse fausse, c'est une promesse qu'on ne sait pas contrôler. Ne pas les confondre.
 - **Notes** : ⚠️ **Le vrai enseignement n'est pas technique** : *un contrôle en `SIGNAL` n'est pas un
@@ -256,6 +257,26 @@ ADR promet un module qui ne porte rien.
   l'inverse. ⚠️ **Risque à surveiller** : rendre le contrôle bloquant crée une incitation à écrire
   des sections vagues (« le module `X` ») pour échapper au contrôle. Le remède n'est pas mécanique,
   il est de revue.
+  ⚠️ **Tranché à la livraison (03/10/2026)** : sur les 30 constats, **une minorité seulement**
+  était une promesse morte (`_classement_de_l_ordre`, renommé par E05US022 et cité par quatre ADR ;
+  `_premiere_qualification`, devenue publique) ;
+  le reste était de **forme** — chemins abrégés dans un tableau (`moteur.py`), noms de tests cités
+  sans leur fichier, mentions historiques ou hypothétiques entre accents graves. D'où la
+  **convention** désormais dite dans la docstring de `_symboles_absents` : un nom cité en prose se
+  cite **sans** accents graves, ou **avec** le chemin du fichier qui le porte. Un constat venait du
+  **lecteur** : une liste numérotée sous un tableau se recollait à sa dernière ligne (ADR-0083,
+  ADR-0004) — corrigé dans `atlas/sources/adr.py`, effet mesuré : 8 faux symboles retirés, aucun
+  portage perdu (lecteur seul).
+  ⚠️ **La revue a démenti une partie de la 1ʳᵉ livraison** : citer un symbole « avec le chemin du
+  fichier qui le porte » **désarmait** le contrôle — chaque chemin d'une entrée excuse ses frères,
+  et un test ou un importeur contient le nom par construction (prouvé par mutation, axe D). D'où :
+  un test ne témoigne plus pour la production ni un répertoire pour un module ; un **fichier de
+  code** cité sans chemin depuis la racine lève
+  `portage-chemin-non-reconnu` (bloquant, cliquet à zéro ; étendu en 2ᵉ passe à tout chemin abrégé,
+  37 réécrits dans une vingtaine d'ADR — elle cachait encore un nom mort,
+  ADR-0084) ; la convention est écrite dans ADR-0102 § Porté. Le nom périmé survit dans le texte
+  **daté** de deux décisions (ADR-0080, ADR-0084) : non rouvertes, à dessein. Reste, mesuré :
+  `DETTE-068`.
 - **Dépend de** : E00US018 (atlas) · **Jalon** : hors jalon · **Origine** : revue d'`E16US007`,
   30/08/2026 (majeur de l'axe D) + limite écrite d'`E00US027`
 

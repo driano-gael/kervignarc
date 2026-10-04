@@ -56,6 +56,7 @@ const TABLEAU: Tableau = {
   est_termine: false,
   duels: [DUEL, DUEL_2],
   podium: [],
+  equipes_ecartees: [],
 }
 
 // La validation « part » : c'est la condition qui déclenche la bascule (hors-ligne, on ne route pas

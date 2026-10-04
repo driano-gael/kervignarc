@@ -695,6 +695,7 @@ class ServiceSaisie:
         self._arrets.signaler(phase.depart_id)
         return enregistree
 
+    # DETTE-123 — la volée corrigée d'un membre change le rang d'entrée d'un tableau d'équipes tiré.
     def corriger_volee(
         self,
         tournoi_id: TournoiId,
@@ -745,6 +746,7 @@ class ServiceSaisie:
         )
         return self._series.enregistrer_avec_trace(serie, entree)
 
+    # DETTE-123 — annuler une validation change le rang d'entrée d'un tableau d'équipes tiré.
     def annuler_validation(
         self,
         tournoi_id: TournoiId,

@@ -424,15 +424,15 @@ def _ordonner_pour_mixite(
     return ordonnes
 
 
-def _grouper_paires(
-    groupe: list[ArcherAPlacer], partenaire: Mapping[ArcherId, ArcherId]
+def _grouper_duels(
+    groupe: list[ArcherAPlacer], duel_de: Mapping[ArcherId, tuple[ArcherId, ...]]
 ) -> list[ArcherAPlacer]:
-    """Émet les deux membres d'un duel **consécutivement** dans un groupe trié par `archer_id`.
+    """Émet les archers d'un même duel **consécutivement** dans un groupe trié par `archer_id`.
 
-    On parcourt le groupe dans cet ordre ; dès qu'un archer non émis a son **partenaire** dans le
-    même groupe et pas encore émis, on émet les deux à la suite. Chaque paire est ainsi clusterisée
-    à la tête de son membre de plus petit `archer_id`, et le glouton les posera sur deux positions
-    voisines. Un archer sans partenaire dans le groupe reste **en place**.
+    On parcourt le groupe dans cet ordre ; dès qu'un archer non émis est rencontré, on l'émet, puis
+    les autres archers de son duel présents dans le groupe et pas encore émis, dans l'ordre du duel.
+    Une paire individuelle se clusterise ainsi à la tête de son membre de plus petit `archer_id` ;
+    deux équipes (E13US004) émettent leurs membres à la suite. Un archer sans duel reste en place.
     """
     par_id = {a.archer_id: a for a in groupe}
     emis: set[ArcherId] = set()
@@ -442,18 +442,19 @@ def _grouper_paires(
             continue
         resultat.append(archer)
         emis.add(archer.archer_id)
-        conjoint = partenaire.get(archer.archer_id)
-        if conjoint is not None and conjoint in par_id and conjoint not in emis:
-            resultat.append(par_id[conjoint])
-            emis.add(conjoint)
+        for autre in duel_de.get(archer.archer_id, ()):
+            if autre in par_id and autre not in emis:
+                resultat.append(par_id[autre])
+                emis.add(autre)
     return resultat
 
 
+# DETTE-120 — les deux membres d'une équipe mixte tombent dans deux groupes de cloisonnement.
 def _ordonner_pour_adjacence(
     archers: tuple[ArcherAPlacer, ...],
     cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
     *,
-    partenaire: Mapping[ArcherId, ArcherId],
+    duel_de: Mapping[ArcherId, tuple[ArcherId, ...]],
 ) -> list[ArcherAPlacer]:
     """Ordre d'entrée du glouton favorisant le côte à côte des duellistes (E03US009, ADR-0048).
 
@@ -467,7 +468,7 @@ def _ordonner_pour_adjacence(
     base = sorted(archers, key=lambda a: (*groupe_de(a), a.archer_id))
     ordonnes: list[ArcherAPlacer] = []
     for _, groupe in groupby(base, key=groupe_de):
-        ordonnes.extend(_grouper_paires(list(groupe), partenaire))
+        ordonnes.extend(_grouper_duels(list(groupe), duel_de))
     return ordonnes
 
 

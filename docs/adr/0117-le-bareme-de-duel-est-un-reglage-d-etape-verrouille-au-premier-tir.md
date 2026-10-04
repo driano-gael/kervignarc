@@ -123,8 +123,8 @@ tableau peut faire basculer un vainqueur.
   vaut `null`.
 - `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`, `arme_figee` via
   `_baremes`, les deux portées), qui résout avec le **même** `ResolveurBaremeDuel` que la saisie ;
-  une instance, câblée dans `bootstrap/composition.py`, partagée par `ServicePhases` et
-  `ServiceCategories`.
+  une instance, câblée dans bootstrap/composition.py, partagée par les services de phases et de
+  catégories.
 - `backend/application/categories.py` — `ServiceCategories.modifier` (§7).
 - `backend/domain/duel.py` — `memes_baremes`, l'égalité à la casse près que compare le §5.
 - `frontend/src/features/saisie-duels/duel.ts` — `mancheNeuveFermee` (§6 : pas de 5ᵉ manche).
@@ -136,8 +136,10 @@ tableau peut faire basculer un vainqueur.
   `d_etape`.
 - `backend/application/saisie_duels.py` — `_bareme_du` (réglage, sinon résolveur), qui reçoit
   `tours_restants = tableau.nb_tours - match.tour` de ses six appelants ; le réglage est rendu par
-  `_decor`, qui a déjà la phase ; `bareme_de` le reçoit de `poules.py` (`_photo`, dernier tour
-  **de la poule**), `suisse.py` et `colline.py` (`_rejouer`, rondes jouées et manches) (§8).
+  `_decor`, qui a déjà la phase ; `bareme_de` reçoit le tour des trois formats suivants (§8).
+- `backend/application/poules.py` — `_photo` : dernier tour **de la poule**.
+- `backend/application/suisse.py` et `backend/application/colline.py` — `_rejouer` : rondes
+  jouées et manches.
 - `backend/application/phases.py` — `ServicePhases.modifier` (verrou du §5, via `VerrouBaremeDuel`).
 - `backend/infrastructure/db/repositories/moteur.py` — `_politiques_json` (écriture, deux
   appelants, via `_reglage_bareme_duel_json`) et `_lire_bareme_duel` (deux lectures, via

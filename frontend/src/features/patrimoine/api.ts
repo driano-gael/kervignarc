@@ -6,6 +6,7 @@
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
 import type { ArretProgramme } from '../../shared/phases/arrets'
 import type { ReglageBaremeDuel } from '../../shared/phases/baremeDuel'
+import type { TypeEquipe } from '../../shared/phases/equipes'
 
 import { fetchJson } from '../../shared/api/client'
 import type { Profondeur, TypePhase } from '../../shared/phases/catalogue'
@@ -204,6 +205,8 @@ export interface Etape {
   colline: ReglageColline | null
   // Le barème des duels (E01US011) — voyage avec le format (CA 6). `null` = défaut FFTA.
   bareme_duel: ReglageBaremeDuel | null
+  // E13US004 — voyage avec le format, comme le barème. `null` = individuelle.
+  equipes: TypeEquipe | null
   // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
   // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
   // totale que ses voisins.

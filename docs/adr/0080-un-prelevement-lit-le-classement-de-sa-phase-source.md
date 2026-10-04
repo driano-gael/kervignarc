@@ -211,7 +211,8 @@ déjà ce chemin. Corollaire au composition root : **la saisie se construit avan
 - `backend/application/prelevement.py` — `ResolveurClassement`, `preleves` et `tranche` : la règle
   **partagée** par les deux services de tableau
 - `backend/application/saisie_duels.py` — `resolveur_de_classement` (exposé pour le plan de cibles)
-  et `_classement_de_l_ordre` (les trois cas + la garde de boucle) ; `_decor` porte la chaîne en
+  et `_classement_produit` (les cas par type + la garde de boucle ; renommé par E05US022,
+  appelé par `_classement_de_l_etape`) ; `_decor` porte la chaîne en
   cours de descente
 - `backend/application/placement_duels.py` — emprunte le résolveur de la saisie
 - `backend/application/palmares.py` — `tranche` sur le même résolveur que l'ensemencement

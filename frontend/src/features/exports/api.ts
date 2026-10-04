@@ -60,6 +60,12 @@ export function cheminClassementQualification(tournoiId: number, departId: numbe
   return departId === null ? base : `${base}?depart_id=${departId}`
 }
 
+// E09US007 : même parti que le classement — tous les départs à la suite, ou le seul choisi.
+export function cheminDerouleHoraire(tournoiId: number, departId: number | null): string {
+  const base = `/api/v1/tournois/${tournoiId}/deroule-horaire/document`
+  return departId === null ? base : `${base}?depart_id=${departId}`
+}
+
 export function cheminAudit(tournoiId: number): string {
   return `/api/v1/tournois/${tournoiId}/audit/document`
 }

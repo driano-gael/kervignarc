@@ -87,3 +87,6 @@ Le référentiel FFTA ne donne que le temps de **tir** d'une volée (2 min), pas
   `frontend/src/shared/phases/ChampDureePrevue.tsx`, bornée par `dureeSaisieValide`.
 - `frontend/src/features/departs/hooks.ts` — `invaliderLesCreneaux` (§ Conséquences).
 - `frontend/src/features/en-cours/presentation.ts` — `debutsPrevus`, lu par `VueEnCours.tsx` (§5).
+- `backend/application/deroule_imprime.py` — `ServiceDerouleImprime` (E09US007) imprime la même
+  lecture, `ServicePhases.horaires_prevus`, sans recalcul ; rendu par
+  `backend/infrastructure/pdf/deroule_horaire.py`.

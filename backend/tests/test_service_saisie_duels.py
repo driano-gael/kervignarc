@@ -19,6 +19,7 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
+from application.equipes import ServiceEquipes
 from application.erreurs import (
     DerouleCyclique,
     DuelDesynchronise,
@@ -58,9 +59,12 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxDepartRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
+    archer_de,
     identite_d_etape,
 )
 from tests.test_service_placement_duels import (
@@ -173,6 +177,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                FauxEquipeRepository(),
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
 
 
@@ -208,14 +219,14 @@ def test_vainqueur_valide_avance_le_tableau() -> None:
 
     # Le mieux classé de chaque demi gagne (a et b, rangs 1 et 2).
     for numero, (haut, _bas) in demis.items():
-        gagnant_cote = "haut" if haut is not None and haut.archer_id in (a, b) else "bas"
+        gagnant_cote = "haut" if haut is not None and archer_de(haut) in (a, b) else "bas"
         _gagner_manches(service, monde, numero, gagnant_cote)
 
     # La finale (tour 2) oppose désormais a et b : la progression a été transmise au moteur.
     apres = service.etat_tableau(monde.tournoi_id, monde.phase_id)
     finale = next(m for m in apres.duels if m.place_en_jeu == (1, 2))
     assert finale.haut is not None and finale.bas is not None
-    assert {finale.haut.archer_id, finale.bas.archer_id} == {a, b}
+    assert {archer_de(finale.haut), archer_de(finale.bas)} == {a, b}
     assert finale.duel is None  # pas encore joué
     _ = (c, d)
 
@@ -269,7 +280,7 @@ def test_duel_desynchronise_quand_le_classement_change() -> None:
 
     apres = service.etat_tableau(1, monde.phase_id)
     finale = next(m for m in apres.duels if m.place_en_jeu == (1, 2))
-    assert finale.haut is not None and finale.haut.archer_id == b  # b est désormais tête n°1
+    assert finale.haut is not None and archer_de(finale.haut) == b  # b est désormais tête n°1
     assert finale.duel is None  # tir divergent masqué
     assert apres.est_termine is False  # aucun vainqueur avancé en silence
     with pytest.raises(DuelDesynchronise):
@@ -387,7 +398,7 @@ def test_forfait_en_duel_fait_passer_l_adversaire() -> None:
     etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
     assert etat.est_termine
     assert etat.podium[0][0] == 1
-    assert etat.podium[0][1].archer_id == gagnant
+    assert archer_de(etat.podium[0][1]) == gagnant
 
 
 def test_annuler_le_forfait_de_duel_retire_le_walkover() -> None:
@@ -460,7 +471,7 @@ def test_forfait_de_qualif_est_exclu_du_bracket() -> None:
     c = monde.inscrire_classe(("8", "8"))
     monde.forfaits.semer(_forfait(monde, forfaitaire, monde.qualif_id))  # forfait EN QUALIF
     etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
-    dans_tableau = {d.archer_id for m in etat.duels for d in (m.haut, m.bas) if d is not None}
+    dans_tableau = {archer_de(d) for m in etat.duels for d in (m.haut, m.bas) if d is not None}
     assert forfaitaire not in dans_tableau  # exclu du bracket
     assert dans_tableau == {b, c}  # seuls les deux en-lice s'affrontent
 
@@ -476,7 +487,7 @@ def test_walkover_se_propage_au_tour_suivant() -> None:
     monde.forfaits.semer(_forfait(monde, d, monde.phase_id))  # d abandonne → a passe d'office
     etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
     finale = next(m for m in etat.duels if m.place_en_jeu == (1, 2))
-    occupants = {m.archer_id for m in (finale.haut, finale.bas) if m is not None}
+    occupants = {archer_de(m) for m in (finale.haut, finale.bas) if m is not None}
     assert a in occupants  # a a avancé au tour 2 par walkover
     _ = (b, c)
 
@@ -492,7 +503,7 @@ def test_double_forfait_le_camp_haut_avance() -> None:
     monde.forfaits.semer(_forfait(monde, d, monde.phase_id))
     etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
     finale = next(m for m in etat.duels if m.place_en_jeu == (1, 2))
-    occupants = {m.archer_id for m in (finale.haut, finale.bas) if m is not None}
+    occupants = {archer_de(m) for m in (finale.haut, finale.bas) if m is not None}
     assert a in occupants  # le haut (rang 1) avance malgré son forfait
     assert d not in occupants
 

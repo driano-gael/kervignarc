@@ -142,6 +142,7 @@ class ServiceArchers:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return detecter_doublons(self._archers.par_tournoi(tournoi_id))
 
+    # DETTE-123 — membre d'une équipe en jeu : réensemence le tableau d'équipes déjà tiré.
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> Archer:
         """Fusionne un doublon : le **gagnant** absorbe la descendance du **perdant** (E02US005).
 
@@ -237,6 +238,7 @@ class ServiceArchers:
             archer.avec_handicap(officiel=handicap_officiel, surcharge=handicap_surcharge)
         )
 
+    # DETTE-123 — membre d'une équipe en jeu : réensemence le tableau d'équipes déjà tiré.
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
@@ -468,6 +470,7 @@ class ServiceArchers:
         """Le nombre de flèches **validées** de cet archer, toutes qualifications du tournoi."""
         return sum(serie.nb_fleches_validees for serie in self._feuilles(tournoi_id, archer_id))
 
+    # DETTE-123 — membre d'une équipe en jeu : réensemence le tableau d'équipes déjà tiré.
     def _signaler_changement_categorie(self, archer_id: ArcherId, edite: Archer) -> None:
         """Lève `ChangementCategorieArcherEngage` si l'archer a déjà tiré (E02US003).
 

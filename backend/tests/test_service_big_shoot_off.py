@@ -21,6 +21,7 @@ import pytest
 
 from application.big_shoot_off import ServiceBigShootOff
 from application.classements import ServiceClassement
+from application.equipes import ServiceEquipes
 from application.erreurs import (
     ArcherDejaSorti,
     ArcherHorsBigShootOff,
@@ -59,9 +60,11 @@ from tests.conftest import (
     FauxClubRepository,
     FauxDepartRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
@@ -268,6 +271,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                FauxEquipeRepository(),
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
         return ServiceBigShootOff(
             self.tournois,

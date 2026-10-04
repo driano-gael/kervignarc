@@ -27,7 +27,7 @@ from application.erreurs import (
 )
 from application.generateur_scores import GenerateurScores
 from application.portee import qualification_courante
-from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
+from application.saisie_duels import Camp, Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
     CreneauSimule,
     HarnaisSimulation,
@@ -704,8 +704,8 @@ class ServicePilotageSimulation:
     def _cote_gagnante_bot(self, session: SessionSimulation, etat_duel: EtatDuel) -> Cote:
         """Le camp que le bot fait gagner : biaisé vers le meilleur niveau, sans être
         déterministe."""
-        niveau_haut = session.niveaux.get(etat_duel.haut.archer_id, 0.5) if etat_duel.haut else 0.5
-        niveau_bas = session.niveaux.get(etat_duel.bas.archer_id, 0.5) if etat_duel.bas else 0.5
+        niveau_haut = _niveau(session, etat_duel.haut)
+        niveau_bas = _niveau(session, etat_duel.bas)
         proba_haut = min(0.9, max(0.1, 0.5 + 0.4 * (niveau_haut - niveau_bas)))
         return Cote.HAUT if session.alea.random() < proba_haut else Cote.BAS
 
@@ -860,8 +860,8 @@ class ServicePilotageSimulation:
                 phase_id=phase_id,
                 match_numero=etat_duel.numero,
                 tour=etat_duel.tour,
-                haut=etat_duel.haut,
-                bas=etat_duel.bas,
+                haut=etat_duel.haut if isinstance(etat_duel.haut, Duelliste) else None,
+                bas=etat_duel.bas if isinstance(etat_duel.bas, Duelliste) else None,
                 mode=etat_duel.bareme.mode.value if etat_duel.bareme is not None else "",
             )
         return None
@@ -949,3 +949,10 @@ class ServicePilotageSimulation:
         (anti-boucle)."""
         n = len(session.archers_ordonnes)
         return session.bareme.nb_volees * n + n * (len(session.phases_duels) + 1) + 50
+
+
+def _niveau(session: SessionSimulation, camp: Camp | None) -> float:
+    # Le harnais ne compose aucune équipe (E13US004) : un camp d'équipe a le niveau neutre.
+    if not isinstance(camp, Duelliste):
+        return 0.5
+    return session.niveaux.get(camp.archer_id, 0.5)

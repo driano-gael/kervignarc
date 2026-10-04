@@ -19,6 +19,14 @@ export interface Duelliste {
   prenom: string
 }
 
+// Un camp **du tableau** (E13US004) : un archer, ou une équipe — sans `archer_id`, nommée par
+// `nom`, `prenom` vide. Distinct de `Duelliste`, que poules, suisse et colline gardent individuel.
+export interface Camp extends Omit<Duelliste, 'archer_id'> {
+  archer_id: number | null
+  equipe_id?: number | null
+  membres?: string[]
+}
+
 // Une manche (« set ») relue : son rang et les deux volées opposées (codes de zone).
 export interface Manche {
   numero: number
@@ -59,8 +67,8 @@ export interface Duel {
   numero: number
   tour: number
   place_en_jeu: number[] | null
-  haut: Duelliste | null
-  bas: Duelliste | null
+  haut: Camp | null
+  bas: Camp | null
   est_bye: boolean
   mode: ModeDuel | null
   nb_manches: number | null
@@ -84,7 +92,7 @@ export interface Duel {
 // Une place de podium acquise (rang + duelliste).
 export interface Place {
   rang: number
-  duelliste: Duelliste
+  duelliste: Camp
 }
 
 // La photo du tableau reconstruit : dimensions, matchs (avec tir) et podium acquis.
@@ -95,6 +103,15 @@ export interface Tableau {
   est_termine: boolean
   duels: Duel[]
   podium: Place[]
+  // E13US004 (CA 2) : les équipes du type de la phase qui n'entrent pas, et pourquoi.
+  equipes_ecartees: EquipeEcartee[]
+}
+
+export interface EquipeEcartee {
+  equipe_id: number
+  nom: string
+  ecarts: string[]
+  membres_hors_course: string[]
 }
 
 // Une phase **d'un créneau** (sous-ensemble de `features/phases/api` — on ne garde que ce que le

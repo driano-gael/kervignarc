@@ -100,9 +100,9 @@ class Lien:
 class Portage:
     """Un module qu'un ADR déclare porter sa décision — et l'état réel de cette promesse.
 
-    `existe` est un constat sans ambiguïté, donc **bloquant** ; `symboles_absents` repose sur une
-    extraction heuristique (les symboles sont cités en prose, après un tiret), donc **signalé** et
-    non bloquant : un contrôle heuristique qui bloque la CI finit désactivé.
+    `existe` est un constat sans ambiguïté ; `symboles_absents` repose sur une extraction
+    heuristique (les symboles sont cités en prose, après un tiret). Les deux sont **bloquants**
+    depuis E00US028 — le second par exception, ADR-0102 §3.
     """
 
     chemin: str
@@ -132,6 +132,7 @@ class Decision:
     us: tuple[str, ...]
     extrait: str
     amende_par: tuple[str, ...] = ()
+    portage_non_reconnu: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

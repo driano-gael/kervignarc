@@ -21,6 +21,7 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
+from application.equipes import ServiceEquipes
 from application.erreurs import PhaseEnPause, PhasePasDesPoules, PhasePasReglee
 from application.poules import ServicePoules
 from application.saisie_duels import ServiceSaisieDuels
@@ -52,9 +53,11 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxDepartRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
     identite_d_etape,
 )
 from tests.test_service_placement_duels import (
@@ -207,6 +210,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                FauxEquipeRepository(),
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
         return ServicePoules(
             self.tournois,

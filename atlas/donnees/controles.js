@@ -107,7 +107,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 31 port(s) hors du domaine (CompteurArchersParTournoi, CompteurEngages, ConstructeurArchive, DiffusionSimulation…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 32 port(s) hors du domaine (CompteurArchersParTournoi, CompteurEngages, ConstructeurArchive, DiffusionSimulation…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application, infrastructure"
   },
@@ -119,7 +119,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-non-verifiable",
-   "message": "annonce Equipe, TypeEquipe, EFFECTIF_FFTA, ecarts_de_composition, ServiceEquipes, EquipeRepositorySQL, equipe, membre_equipe dans « frontend/src/features/equipes/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "message": "annonce Equipe, TypeEquipe, EFFECTIF_FFTA, ecarts_de_composition, ServiceEquipes, EquipeRepositorySQL dans « frontend/src/features/equipes/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0028"
   },
@@ -158,196 +158,10 @@ window.ATLAS.controles = {
    "message": "annonce swap, input, select, textarea dans « frontend/src/index.css », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0116"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0004"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce elimination_directe dans « backend/domain/politiques.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0062"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce FormatTournoi.effectif_minimum_exige dans « backend/domain/deroule.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0069"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce PrelevementVide dans « backend/application/formats.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0069"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce pour_tournoi, phase_id dans « backend/application/classements.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0075"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0080"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0081"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _classement_de_l_ordre dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0082"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _premiere_qualification dans « backend/application/classements.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0082"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce DecorDeSaisie.VOLEE_COLLECTIVE dans « frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce LecteurClassementBigShootOff dans « backend/application/big_shoot_off.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce ProchainDuel, _resultat_classant, ScoreAvecHandicap, RoutingRepechage dans « backend/tests/test_domain_contrat_phase.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _classement_de_l_ordre, brancher_poules dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce saisir_manche, saisir_barrage, projection dans « backend/application/saisie.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0091"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce CeQuiManqueEncore dans « frontend/src/features/suisse/presentation.test.ts » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce CeQuiManqueEncore dans « frontend/src/features/suisse/presentation.ts » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce IntegrityError, doublon_d_arret dans « backend/infrastructure/db/models.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce IntegrityError, doublon_d_arret dans « backend/migrations/versions/0049_arret_de_circonstance.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce PoserUnePause, peutPoserUnePause, toursBloquablesRestants dans « frontend/src/features/suivi-deroule/api.ts » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce PoserUnePause, peutPoserUnePause, toursBloquablesRestants dans « frontend/src/features/suivi-deroule/hooks.ts » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_chaque_format_porte_un_media_type_distinct dans « backend/api/documents.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0101"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne dans « backend/application/exports.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0101"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne dans « backend/bootstrap/composition.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0101"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_le_contenu_compose_ne_depend_pas_du_format dans « backend/application/listes_impression.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0101"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/grille.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0101"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce classer_clubs, SectionPalmaresReponse.de_section dans « backend/domain/palmares.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0104"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce vu_par_archer dans « backend/domain/classement_clubs.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0104"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0106"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce ServicePhases, ServiceCategories dans « backend/application/verrou_bareme.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0117"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _photo dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0117"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 57
+  "signaux": 26
  }
 };

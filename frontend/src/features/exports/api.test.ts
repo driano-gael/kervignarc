@@ -8,6 +8,7 @@ import {
   cheminAudit,
   cheminClassementQualification,
   cheminClubPaiement,
+  cheminDerouleHoraire,
   cheminFeuilleDeMarque,
   cheminPalmares,
   cheminPlacement,
@@ -63,6 +64,18 @@ describe('cheminClassementQualification', () => {
   it('avec un départ, le format se joint après lui', () => {
     expect(avecFormat(cheminClassementQualification(7, 3), 'csv')).toBe(
       '/api/v1/tournois/7/classement-qualification/document?depart_id=3&format=csv',
+    )
+  })
+})
+
+describe('cheminDerouleHoraire', () => {
+  it('sans départ, vise tout le tournoi', () => {
+    expect(cheminDerouleHoraire(7, null)).toBe('/api/v1/tournois/7/deroule-horaire/document')
+  })
+
+  it('avec un départ, le format se joint après lui', () => {
+    expect(avecFormat(cheminDerouleHoraire(7, 3), 'pdf')).toBe(
+      '/api/v1/tournois/7/deroule-horaire/document?depart_id=3&format=pdf',
     )
   })
 })

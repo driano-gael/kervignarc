@@ -35,6 +35,7 @@ from domain.duel import (
     ReglageBaremeDuel,
     SurchargeArme,
 )
+from domain.equipe import TypeEquipe
 from domain.horaire_prevu import HeurePrevue
 from domain.phase import (
     IssueTour,
@@ -545,6 +546,12 @@ class ConfigPhaseRequete(BaseModel):
     sans duel → 422 ; changé alors qu'un duel de l'étape est tiré → 409 `bareme_duel_verrouille`.
     """
 
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe que l'étape oppose (E13US004, ADR-0120) — `null` = individuelle.
+
+    Même régime d'édition **totale** ; changé alors qu'un duel de l'étape est tiré → 409
+    `equipes_verrouillees`. Posé sur un autre type qu'une élimination directe → 422."""
+
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
 
@@ -601,6 +608,9 @@ class PhaseReponse(BaseModel):
     bareme_duel: ReglageBaremeDuelDTO | None = None
     """Le barème des duels de l'étape (E01US011) — `null` = défaut FFTA."""
 
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe que l'étape oppose (E13US004, ADR-0120) — `null` = individuelle."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -641,6 +651,7 @@ class PhaseReponse(BaseModel):
                 if phase.bareme_duel is None
                 else ReglageBaremeDuelDTO.de_agregat(phase.bareme_duel)
             ),
+            equipes=phase.equipes,
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -673,6 +684,9 @@ class EtapeReponse(BaseModel):
 
     bareme_duel: ReglageBaremeDuelDTO | None = None
     """Le barème des duels de l'étape (E01US011) — `null` = défaut FFTA."""
+
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe que l'étape oppose (E13US004, ADR-0120) — `null` = individuelle."""
 
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
@@ -737,6 +751,7 @@ class EtapeReponse(BaseModel):
                 if etape.bareme_duel is None
                 else ReglageBaremeDuelDTO.de_agregat(etape.bareme_duel)
             ),
+            equipes=etape.equipes,
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             titre=etape.titre,
             duree_prevue=etape.duree_prevue,
@@ -860,6 +875,7 @@ async def ajouter_phase(
                 bareme_duel=(
                     None if requete.bareme_duel is None else requete.bareme_duel.vers_agregat()
                 ),
+                equipes=requete.equipes,
                 duree_prevue=requete.duree_prevue,
             )
         )
@@ -899,6 +915,7 @@ async def modifier_phase(
                 bareme_duel=(
                     None if requete.bareme_duel is None else requete.bareme_duel.vers_agregat()
                 ),
+                equipes=requete.equipes,
                 duree_prevue=requete.duree_prevue,
             )
         )

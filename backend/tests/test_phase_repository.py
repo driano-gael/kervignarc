@@ -41,6 +41,7 @@ from domain.duel import (
     ReglageBaremeDuel,
     SurchargeArme,
 )
+from domain.equipe import TypeEquipe
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
@@ -1734,5 +1735,56 @@ def test_le_bareme_des_derniers_tours_fait_l_aller_retour(tmp_path: Path) -> Non
 
         assert relue.bareme_duel == reglage
         assert etape.bareme_duel == reglage
+    finally:
+        db.engine.dispose()
+
+
+def test_le_reglage_par_equipes_fait_l_aller_retour(tmp_path: Path) -> None:
+    """E13US004 : `config.equipes` s'écrit et se relit, sur l'étape comme sur la phase."""
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+
+        _poser(db, depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE, equipes=TypeEquipe.MIXTE)
+        tournoi_id = _tournoi_du(db, depart_id)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)[0]
+        etape = DerouleEtapeRepositorySQL(db.session_factory).par_tournoi(tournoi_id)[0]
+
+        assert relue.equipes is TypeEquipe.MIXTE
+        assert etape.equipes is TypeEquipe.MIXTE
+    finally:
+        db.engine.dispose()
+
+
+def test_une_etape_sans_reglage_par_equipes_se_relit_individuelle(tmp_path: Path) -> None:
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(db, depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.equipes is None
+    finally:
+        db.engine.dispose()
+
+
+def test_un_format_conserve_le_reglage_par_equipes_de_ses_etapes(tmp_path: Path) -> None:
+    """`_politiques_json` a deux appelants : le format doit porter le champ lui aussi."""
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(
+            ordre=1, type=TypePhase.ELIMINATION_DIRECTE, equipes=TypeEquipe.STANDARD
+        )
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Format équipes", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
     finally:
         db.engine.dispose()

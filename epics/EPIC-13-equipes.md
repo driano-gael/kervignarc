@@ -27,7 +27,7 @@ oppose des participants, pas des archers). Un tournoi individuel devient le cas 
 - [ ] Abstraction participant dans le moteur.
 - [ ] CRUD des équipes + règle de composition.
 - [x] Barème d'équipe et barrage à N flèches (E13US003) — et non une politique `scoring`.
-- [ ] Placement / saisie / classement par équipe.
+- [ ] Placement / saisie / classement par équipe — **tableau à élimination directe livré** (E13US004, ADR-0120) ; autres formats, palmarès, affectations, top N et forfait d'équipe : E13US005.
 
 ## Critères d'acceptation (epic)
 - Un duel individuel et un duel par équipes sont **deux assemblages du même moteur** (aucune branche `if équipe`).

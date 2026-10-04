@@ -106,11 +106,12 @@ function deplier(numero: number, duels: DuelAVenir[]): DuelSource {
   // là s'écrirait sans rien débloquer. Le DÉPLIAGE, lui, dit ce qu'il sait — le CA veut « ses
   // occupants, sa cible », et le camp connu est justement l'archer à aller chercher.
   if (source.haut === null || source.bas === null) return { numero, detail, archers: [] }
-  const archers = [source.haut, source.bas].map((d) => ({
-    archer_id: d.archer_id,
-    libelle: nomDuelliste(d),
-    numero_duel: numero,
-  }))
+  // DETTE-120 : un camp d'équipe n'a pas d'archer à déclarer forfait.
+  const archers = [source.haut, source.bas].flatMap((d) =>
+    d.archer_id === null
+      ? []
+      : [{ archer_id: d.archer_id, libelle: nomDuelliste(d), numero_duel: numero }],
+  )
   return { numero, detail, archers }
 }
 

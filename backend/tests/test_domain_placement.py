@@ -479,17 +479,35 @@ def _placer_duels(
     paires: list[tuple[int, int]],
 ) -> PlanDeCibles:
     """Place `archers` en favorisant le côte à côte des `paires` (stratégie d'ordre injectée)."""
-    partenaire: dict[int, int] = {}
-    for a, b in paires:
-        partenaire[a] = b
-        partenaire[b] = a
+    return _placer_groupes(cibles, archers, [(a, b) for a, b in paires])
+
+
+def _placer_groupes(
+    cibles: tuple[Cible, ...],
+    archers: tuple[ArcherAPlacer, ...],
+    duels: list[tuple[int, ...]],
+) -> PlanDeCibles:
+    """Place `archers` en gardant à la suite les archers de chaque duel (paire ou deux équipes)."""
+    duel_de = {archer: duel for duel in duels for archer in duel}
     # La stratégie d'ordre reçoit le cloisonnement depuis E03US007 (clé de groupe) : ces tests-là
     # ne cloisonnent pas, le paramètre traverse tel quel.
     return placer(
         cibles,
         archers,
-        ordonner=lambda ar, cl: _ordonner_pour_adjacence(ar, cl, partenaire=partenaire),
+        ordonner=lambda ar, cl: _ordonner_pour_adjacence(ar, cl, duel_de=duel_de),
     )
+
+
+def test_les_archers_d_un_duel_d_equipes_sont_poses_a_la_suite() -> None:
+    # E13US004, CA 6 : deux duels de deux équipes de trois, membres d'identifiants entrelacés. Le
+    # ré-ordonnancement émet les six archers d'un duel avant ceux de l'autre.
+    archers = tuple(_archer(i, blason=1, taille=0.25) for i in range(1, 13))
+    duels: list[tuple[int, ...]] = [(1, 3, 5, 7, 9, 11), (2, 4, 6, 8, 10, 12)]
+
+    plan = _placer_groupes(_cibles(4, 4, 4), archers, duels)
+
+    poses = [a for cible in plan.cibles for a in _archers_de(cible)]
+    assert poses == [1, 3, 5, 7, 9, 11, 2, 4, 6, 8, 10, 12]
 
 
 def test_duellistes_places_cote_a_cote_quand_la_cible_a_la_place() -> None:
