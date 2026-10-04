@@ -70,17 +70,6 @@ window.ATLAS.avancement = {
    "severite": "majeur"
   },
   {
-   "identifiant": "117",
-   "introduite_par": [
-    "E01US011"
-   ],
-   "ouverte": true,
-   "resorption_us": [
-    "E01US027"
-   ],
-   "severite": "mineur"
-  },
-  {
    "identifiant": "116",
    "introduite_par": [
     "E04US019"
@@ -1033,13 +1022,12 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
+   "0117",
    "0120",
-   "0102",
    "0119",
    "0118",
    "0028",
    "0049",
-   "0117",
    "0115",
    "0014",
    "0114",
@@ -1047,7 +1035,7 @@ window.ATLAS.avancement = {
    "0074",
    "0104"
   ],
-  "derniere": "E13US004"
+  "derniere": "E01US027"
  },
  "epics": [
   {
@@ -1950,7 +1938,6 @@ window.ATLAS.avancement = {
     "054",
     "064",
     "080",
-    "117",
     "118",
     "119"
    ],
@@ -1960,7 +1947,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US011",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Presets de barèmes multi-phases",
@@ -1975,7 +1962,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E01US012",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "~~Gérer plusieurs gabarits~~ → absorbée par E01US007/E01US008",
@@ -2295,10 +2282,10 @@ window.ATLAS.avancement = {
    ],
    "epic": "01",
    "epic_titre": "Configuration du tournoi",
-   "etat": "⬜",
+   "etat": "✅",
    "identifiant": "E01US027",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Barème propre aux ½ finales et finales d'un tableau",
@@ -2448,7 +2435,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E02US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E02-inscriptions.md",
    "titre": "Importer un fichier inscript'arc",
@@ -2630,7 +2617,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E03US010",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Générer / éditer le déroulé horaire",
@@ -2974,7 +2961,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US016",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "",
    "titre": "~~Routing repêchage (WA)~~ → absorbée par E05US015",
@@ -3852,7 +3839,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E09US007",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Déroulé horaire imprimable",
@@ -3990,7 +3977,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E10US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E10-acces-roles.md",
    "titre": "Modifier le mot de passe admin",
@@ -4066,7 +4053,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E11US006",
    "sections": [
-    "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+    "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
    ],
    "story": "stories/E11-exploitation.md",
    "titre": "Restauration & arrêt propre",
@@ -5157,7 +5144,7 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 166,
+  "livrees": 167,
   "vivantes": 182
  },
  "sections": [
@@ -5842,11 +5829,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    6,
+    7,
     7
    ],
    "compteur_ecrit": [
-    6,
+    7,
     7
    ],
    "lignes": [
@@ -5900,12 +5887,12 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "✅",
      "identifiant": "E01US027",
      "titre": "Barème propre aux ½ finales et finales d'un tableau"
     }
    ],
-   "titre": "J4 — Confort, richesse & robustesse — 🟡 **entamé (6/7)**"
+   "titre": "J4 — Confort, richesse & robustesse — ✅ **terminé (7/7)**"
   },
   {
    "calcule": [

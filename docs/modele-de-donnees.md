@@ -752,7 +752,9 @@ de `poules`, `big_shoot_off`, `suisse` (E05US026 — `{"suisse": {"rondes": 5}}`
 (E01US011 — `{"bareme_duel": {"defaut": {"mode": "sets", "manches": 5, "fleches": 3, "points": 6,
 "barrage": 1}, "surcharges": [{"arme": "Arc à poulies", "mode": "cumul", …}]}}` ; clé absente =
 défaut FFTA, relecture **stricte** — sauf `barrage`, flèches de barrage par camp, ajouté par
-E13US003 : absent, il vaut 1) **et `decoupage`**
+E13US003 : absent, il vaut 1 ; E01US027 y ajoute `derniers_tours`, `{"tours": 2, "defaut": …,
+"surcharges": […]}`, le barème des K derniers tours, clé **omise** quand il n'y en a pas) **et
+`decoupage`**
 (E05US035 — `{"decoupage": {"tours": 2}}`, le découpage d'une qualification en tours ; clé **omise**
 quand elle n'est pas découpée, si bien qu'une config d'avant l'US et une config non découpée sont le
 **même** document — c'est ce qui rend la livraison sûre sans migration. ⚠️ Relecture **stricte** : un

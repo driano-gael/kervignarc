@@ -519,6 +519,12 @@ def tour_a_poser(tableau: Tableau) -> int | None:
     return min((m.tour for m in jouables), default=None)
 
 
+def tours_restants(nb_tours: int, tour: int) -> int:
+    """Les tours du tableau **après** `tour` : 0 en finale. Un match de classement joué au même tour
+    (petite finale, places 5 à 8) en partage le compte (E01US027, CA 3)."""
+    return nb_tours - tour
+
+
 def libelle_tour(
     tour: int,
     nb_tours: int,
@@ -549,7 +555,7 @@ def libelle_tour(
     # `# DETTE-038` — mêmes rangs relatifs que la branche ci-dessus.
     if place_en_jeu is None and plage is not None and plage.debut > 1:
         return f"Places {plage.debut} à {plage.fin}"
-    restants = nb_tours - tour
+    restants = tours_restants(nb_tours, tour)
     if restants <= 0:
         return "Finale"
     if restants == 1:

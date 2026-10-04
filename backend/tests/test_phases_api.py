@@ -886,7 +886,7 @@ def test_le_bareme_de_duel_fait_l_aller_retour_http(
             base, json={"type": "elimination_directe", "bareme_duel": _BAREME_CLUB}
         )
         assert creation.status_code == 201, creation.text
-        assert client.get(base).json()[0]["bareme_duel"] == _BAREME_CLUB
+        assert client.get(base).json()[0]["bareme_duel"] == {**_BAREME_CLUB, "derniers_tours": None}
 
         efface = client.put(
             f"{base}/{creation.json()['id']}", json={"type": "elimination_directe", "sources": []}
@@ -1053,6 +1053,31 @@ def test_les_horaires_prevus_se_lisent_sans_compte_par_depart(
 def test_les_horaires_prevus_d_un_tournoi_inconnu_repondent_404(app_phases: FastAPI) -> None:
     with TestClient(app_phases) as client:
         assert client.get("/api/v1/tournois/999/horaires-prevus").status_code == 404
+
+
+def test_le_bareme_des_derniers_tours_fait_l_aller_retour_http(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US027 — le barème des derniers tours fait l'aller-retour ; K = 0 est refusé (400)."""
+    derniers: dict[str, object] = {
+        "nb_tours": 2,
+        "par_defaut": {**_SETS_4, "points_pour_gagner": 6},
+        "surcharges": [{"arme": "Arc à poulies", "bareme": _CUMUL}],
+    }
+    reglage: dict[str, object] = {**_BAREME_CLUB, "derniers_tours": derniers}
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(base, json={"type": "elimination_directe", "bareme_duel": reglage})
+        assert creation.status_code == 201, creation.text
+        assert client.get(base).json()[0]["bareme_duel"] == reglage
+
+        sans_tour: dict[str, object] = {**reglage, "derniers_tours": {**derniers, "nb_tours": 0}}
+        refus = client.post(base, json={"type": "elimination_directe", "bareme_duel": sans_tour})
+        assert refus.status_code == 400, refus.text
+        assert refus.json()["code"] == "requete_invalide"
 
 
 def test_le_reglage_par_equipes_fait_l_aller_retour_http(

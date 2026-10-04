@@ -116,3 +116,31 @@ def test_une_equipe_sans_membre_n_est_jamais_en_jeu() -> None:
     tournoi.tirer(tournoi.etape(TypeEquipe.STANDARD), tournoi.samedi)
 
     assert not tournoi.verrou().en_jeu(1, TypeEquipe.STANDARD, [])
+
+
+class _ResolveurEquipeSensibleALArme:
+    """Un défaut **équipe** qui change à l'arc nu, un défaut individuel qui ne change jamais : la
+    coïncidence du résolveur FFTA (deux défauts basculant au même libellé) n'existe plus."""
+
+    def bareme_pour(self, arme: str | None) -> BaremeDuel:
+        return BaremeDuel.preset_ffta_classique()
+
+    def bareme_equipe_pour(self, type: TypeEquipe, arme: str | None) -> BaremeDuel:
+        if arme == "Arc Nu":
+            return BaremeDuel.preset_club()
+        return BaremeDuel.preset_ffta_classique()
+
+
+def test_l_arme_d_une_etape_d_equipes_non_reglee_se_juge_sur_le_defaut_equipe() -> None:
+    """Revue d'E01US027 : le verrou compare le défaut que la saisie tirera (ADR-0120 §4)."""
+    tournoi = _Tournoi()
+    tournoi.tirer(tournoi.etape(TypeEquipe.STANDARD), tournoi.samedi)
+    verrou = VerrouBaremeDuel(
+        tournoi.departs,
+        tournoi.phases,
+        tournoi.deroules,
+        tournoi.duels,
+        _ResolveurEquipeSensibleALArme(),
+    )
+
+    assert verrou.arme_figee(1, "Arc Classique", "Arc Nu")

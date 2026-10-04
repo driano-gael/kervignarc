@@ -264,7 +264,9 @@ En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de
 
 **Décision (2026-07-14)** — L'application livre **deux jeux de presets** : *FFTA officiel* et *format club*. L'organisateur choisit à la création ; les deux restent surchargeables (principe directeur du §10).
 
-**Arbitrages du 01/10/2026** (revue d'`E01US011`) — au format club, deux archers **au seuil dans la même manche** (4-4) se départagent au **barrage**, comme le 5-5 FFTA. Le barème « ½ finales / finales à 6 points » ci-dessus n'est **pas encore exprimable** (une phase porte tout le tableau) : `E01US027`, `DETTE-117`.
+**Arbitrages du 01/10/2026** (revue d'`E01US011`) — au format club, deux archers **au seuil dans la même manche** (4-4) se départagent au **barrage**, comme le 5-5 FFTA. Le barème « ½ finales / finales à 6 points » ci-dessus n'était **pas exprimable** (une phase porte tout le tableau) : `DETTE-117`.
+
+**Arbitrages du 03/10/2026** (cadrage d'`E01US027`) — le barème des ½ finales et finales devient un **barème des derniers tours** : un réglage complet appliqué aux **K derniers tours** de la phase, K au choix (au tableau, 2 = ½ finales et finale). Le preset *format club* le pose à 6 points ; la **petite finale** suit le barème de la finale, puisqu'elle se joue au même tour. Il vaut aussi pour les poules, le suisse et la colline (« les K dernières rondes / manches / tours »). [ADR-0117](adr/0117-le-bareme-de-duel-est-un-reglage-d-etape-verrouille-au-premier-tir.md) §8.
 
 ### 10.1 Formats propres au club — sans équivalent FFTA
 

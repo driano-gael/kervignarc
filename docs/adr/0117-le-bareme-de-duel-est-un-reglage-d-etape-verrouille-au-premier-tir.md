@@ -7,6 +7,7 @@
 - **Amende** : [ADR-0049](0049-saisie-et-scoring-des-duels.md) §2 (la résolution « par (phase,
   arme) » que son titre annonçait devient vraie) et §4 (le barème reste non stocké avec le tir, ce
   qui impose le verrou décrit ici).
+- **Amendé** : 2026-10-03, E01US027 — §8 (barème des derniers tours), §4, §5, §7 et Conséquences.
 
 ## Contexte
 
@@ -45,10 +46,14 @@ tableau peut faire basculer un vainqueur.
    appelant : la reconnaissance par libellé n'y sert qu'au **pré-remplissage**, visible et
    corrigeable. Ils **attendent** les armes chargées, et la fiche signale un arc à poulies sans
    surcharge comme une surcharge sans catégorie. Le domaine ne porte que la structure.
+   *(E01US027)* Le *format club* pose en plus le barème des **½ finales** (§8) : sets à 6, poulies
+   au cumul — le référentiel §10.1 sans retouche à la main. Le *FFTA officiel* n'en pose pas.
 5. **Verrou au premier tir** : changer le barème d'une étape — y compris le retirer ou en poser un
    sur une étape qui n'en avait pas — est **refusé** (`BaremeDuelVerrouille`, 409) dès qu'une
    phase de cette étape a un tir enregistré, **dans n'importe quel créneau**. L'égalité est
    **sémantique** : l'ordre des surcharges et le seuil ignoré au cumul n'en font pas partie.
+   *(E01US027)* Elle couvre le réglage **entier** : poser, retirer ou changer le barème des
+   derniers tours, ou son nombre de tours, est un changement comme un autre.
 6. **Égalité au seuil** *(arbitrage du 01/10/2026, revue)* : deux archers au seuil **dans la même
    manche** — 4-4 au format club — se départagent au **barrage**, comme 5-5 (§7). Au barème FFTA
    le cas est impossible ; le preset club le rendait atteignable, et le mieux placé gagnait. Un
@@ -57,6 +62,17 @@ tableau peut faire basculer un vainqueur.
    reposé en 2ᵉ passe)* : refus (`ArmeDeCategorieVerrouillee`, 409) dès que, pour une étape **déjà
    tirée — réglée ou non** —, l'ancienne et la nouvelle arme ne résolvent pas le même barème. La 1ʳᵉ
    rédaction exemptait les étapes non réglées : faux, le défaut bascule sets/cumul au libellé.
+   *(E01US027)* « Le même barème » s'entend des **deux** portées : une arme que seul le barème des
+   derniers tours distingue se fige aussi.
+8. **Barème des derniers tours** *(E01US027, cadrage du 03/10/2026)* : un réglage peut porter un
+   `BaremeDesDerniersTours` — un nombre **K ≥ 1** et un réglage complet (défaut et surcharges), qui
+   n'en porte pas lui-même un second. Un duel le tire s'il se joue dans l'un des **K derniers
+   tours** de sa phase. Le compte se fait **à rebours** (`tours_restants`, 0 au dernier tour) et
+   **par format** : tour de tableau contre `Tableau.nb_tours` ; tour de rencontre contre le nombre
+   de tours **de sa poule** ; ronde contre les rondes **jouables** (le réglage, borné par l'effectif) ; manche contre `nb_manches`. Compter
+   depuis la fin plutôt que nommer « ½ finale » vaut pour les quatre formats, dont seul le tableau
+   nomme ses tours ; le front traduit K en « ½ finales » au tableau. La **petite finale** et tout
+   match de classement suivent le barème de leur tour, sans cas particulier.
 
 ## Alternatives écartées
 
@@ -83,8 +99,13 @@ tableau peut faire basculer un vainqueur.
 - **−** Il ne ferme pas la route jumelle : **déplacer un archer** vers une catégorie d'une autre
   arme après son duel relit ses duels. Arbitrage : pas de refus, le message de confirmation le dit ;
   `DETTE-118`, remède attendu le gel du classement (E01US017/E12US002).
-- **−** Le barème club des ½ finales et finales (6 points, référentiel §10.1) n'est **pas**
-  exprimable : une étape porte tout le tableau. Arbitrage : US dédiée, `E01US027`, `DETTE-117`.
+- **+** *(E01US027)* Le barème club des ½ finales et finales (6 points, référentiel §10.1) est
+  exprimable, et posé par le preset : `DETTE-117` est soldée. La résolution prend le **tour** en
+  argument **obligatoire** (`pour(arme, tours_restants=…)`) : l'oublier échoue à `mypy`.
+- **−** *(E01US027)* En **poules**, toutes contre toutes, le « dernier tour » n'est qu'un ordre de
+  calendrier : le réglage s'y applique quand même, par cohérence (arbitrage du 03/10/2026).
+- **−** *(E01US027)* Un match de classement (places 5-8…) joué à l'un des K derniers tours suit le
+  barème des derniers tours : c'est la conséquence de la règle « par tour », assumée.
 - **−** Les presets ont un **miroir** de la reconnaissance des poulies au front (`estPoulies`, de
   `_est_poulies`), dont dépendent aussi les avertissements d'écart : `DETTE-119`.
 - **=** `DETTE-054` n'est **pas** élargie : `ReglageBaremeDuelDTO` est défini une fois dans
@@ -92,15 +113,18 @@ tableau peut faire basculer un vainqueur.
 
 ## Porté dans le code par
 
-- `backend/domain/duel.py` — `ReglageBaremeDuel` (`pour`, surcharges rangées) et `SurchargeArme`
-  (`designe`) ; `BaremeDuel.__post_init__` (seuil ramené à 0 au cumul) ; `Duel._resultat_sets` et
-  `_issue_d_egalite` (§6), et la garde de `saisir_manche`.
+- `backend/domain/duel.py` — `ReglageBaremeDuel` (`pour`, surcharges rangées, `baremes_pour`) et
+  `SurchargeArme` (`designe`) ; `BaremeDesDerniersTours` (`couvre`, §8) ; `BaremeDuel.__post_init__`
+  (seuil ramené à 0 au cumul) ; `Duel._resultat_sets` et `_issue_d_egalite` (§6), et la garde de
+  `saisir_manche`.
 - `frontend/src/shared/phases/baremeDuel.ts` — `presetFfta`, `presetClub`, `estPoulies` (§4),
-  `ecartsDArmes` ; rendus par `frontend/src/shared/phases/ReglageBaremeDuel.tsx`, qui retient ses
-  presets tant que `armes` vaut `null`.
-- `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`, `arme_figee`), qui
-  résout avec le **même** `ResolveurBaremeDuel` que la saisie ; une instance, câblée dans
-  bootstrap/composition.py, partagée par les services de phases et de catégories.
+  `ecartsDArmes` (les deux portées), `derniersToursDepuis` et `libelleDerniersTours` (§8) ; rendus
+  par `frontend/src/shared/phases/ReglageBaremeDuel.tsx`, qui retient ses presets tant que `armes`
+  vaut `null`.
+- `backend/application/verrou_bareme.py` — `VerrouBaremeDuel` (`etape_tiree`, `arme_figee` via
+  `_baremes`, les deux portées), qui résout avec le **même** `ResolveurBaremeDuel` que la saisie ;
+  une instance, câblée dans bootstrap/composition.py, partagée par les services de phases et de
+  catégories.
 - `backend/application/categories.py` — `ServiceCategories.modifier` (§7).
 - `backend/domain/duel.py` — `memes_baremes`, l'égalité à la casse près que compare le §5.
 - `frontend/src/features/saisie-duels/duel.ts` — `mancheNeuveFermee` (§6 : pas de 5ᵉ manche).
@@ -110,10 +134,15 @@ tableau peut faire basculer un vainqueur.
 - `backend/domain/deroule_etape.py` — `EtapeDeroule.bareme_duel`, recopié par `instancier`.
 - `backend/domain/format_tournoi.py` — `ModelePhase.bareme_duel`, traduit par `pour_tournoi` et
   `d_etape`.
-- `backend/application/saisie_duels.py` — `_bareme_du` (réglage, sinon résolveur) ; le réglage est
-  rendu par `_decor`, qui a déjà la phase ; `bareme_de` le reçoit de `poules.py`, `suisse.py` et
-  `colline.py`.
+- `backend/application/saisie_duels.py` — `_bareme_du` (réglage, sinon résolveur), qui reçoit
+  `tours_restants = tableau.nb_tours - match.tour` de ses six appelants ; le réglage est rendu par
+  `_decor`, qui a déjà la phase ; `bareme_de` reçoit le tour des trois formats suivants (§8).
+- `backend/application/poules.py` — `_photo` : dernier tour **de la poule**.
+- `backend/application/suisse.py` et `backend/application/colline.py` — `_rejouer` : rondes
+  jouables et manches.
 - `backend/application/phases.py` — `ServicePhases.modifier` (verrou du §5, via `VerrouBaremeDuel`).
 - `backend/infrastructure/db/repositories/moteur.py` — `_politiques_json` (écriture, deux
-  appelants) et `_lire_bareme_duel` (deux lectures).
-- `backend/api/v1/phases.py` — `ReglageBaremeDuelDTO`, importé par `backend/api/v1/formats.py`.
+  appelants, via `_reglage_bareme_duel_json`) et `_lire_bareme_duel` (deux lectures, via
+  `_vers_reglage_bareme_duel`) ; clé `derniers_tours` absente = pas de barème des derniers tours.
+- `backend/api/v1/phases.py` — `ReglageBaremeDuelDTO` (qui embarque `BaremeDesDerniersToursDTO`, à
+  plat, sans second niveau), importé par `backend/api/v1/formats.py`.

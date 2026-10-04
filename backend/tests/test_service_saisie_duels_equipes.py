@@ -25,7 +25,14 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie, SexeCategorie
 from domain.depart import Depart
-from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, ResolveurBaremeDuelFfta
+from domain.duel import (
+    BaremeDesDerniersTours,
+    BaremeDuel,
+    ModeDuel,
+    ReglageBaremeDuel,
+    ResolveurBaremeDuelFfta,
+    SurchargeArme,
+)
 from domain.equipe import EcartComposition, Equipe, TypeEquipe
 from domain.erreurs import EffectifTableauInvalide, NombreFlechesVoleeInvalide
 from domain.forfait import Forfait, NatureForfait
@@ -307,6 +314,27 @@ def test_le_reglage_de_la_phase_l_emporte_sur_le_preset() -> None:
     match = _premier_match(monde.service(), monde)
 
     assert match.bareme == BaremeDuel(ModeDuel.SETS, 3, 6, 4, 3)
+
+
+def test_la_finale_d_equipes_tire_le_bareme_des_derniers_tours_surcharge_pour_son_arme() -> None:
+    """E01US027 croisée avec E13US004 : deux équipes, un seul match — la finale. Le barème des
+    derniers tours s'y applique, résolu par l'arme **commune** de l'équipe (sa surcharge prime)."""
+    principal = BaremeDuel(ModeDuel.SETS, 3, 6, 4, 3)
+    finale = BaremeDuel(ModeDuel.CUMUL, 4, 6, 0, 3)
+    reglage = ReglageBaremeDuel(
+        principal,
+        derniers_tours=BaremeDesDerniersTours(
+            nb_tours=1,
+            reglage=ReglageBaremeDuel(principal, (SurchargeArme("Arc Classique", finale),)),
+        ),
+    )
+    monde = _Monde(bareme_duel=reglage)
+    monde.equipe_de_trois("A", 10)
+    monde.equipe_de_trois("B", 9)
+
+    match = _premier_match(monde.service(), monde)
+
+    assert match.bareme == finale
 
 
 # --- CA 5 et 7 : saisie, barrage, validation, podium -----------------------------------------

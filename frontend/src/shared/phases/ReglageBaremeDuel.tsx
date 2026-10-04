@@ -4,19 +4,23 @@
 
 import { useId } from 'react'
 
-import type { EtatBareme, EtatBaremeDuel, ModeDuel } from './baremeDuel'
+import type { EtatBareme, EtatBaremeDuel, EtatSurcharge, ModeDuel } from './baremeDuel'
 import {
   BAREME_DUEL_NON_REGLE,
+  DERNIERS_TOURS_MAX,
   FLECHES_MAX,
   MANCHES_MAX,
+  derniersToursDepuis,
   ecartsDArmes,
   type ArmesConnues,
   estValide,
+  libelleDerniersTours,
   presetClub,
   presetFfta,
   presetFftaEquipe,
   presetFftaMixte,
 } from './baremeDuel'
+import type { TypePhase } from './catalogue'
 
 function EditeurBareme({
   etat,
@@ -77,6 +81,62 @@ function EditeurBareme({
   )
 }
 
+function ListeSurcharges({
+  surcharges,
+  surChangement,
+  idListe,
+  defaut,
+  portee,
+}: {
+  surcharges: EtatSurcharge[]
+  surChangement: (surcharges: EtatSurcharge[]) => void
+  idListe: string
+  defaut: EtatBareme
+  /** Distingue au lecteur d'écran les surcharges des deux barèmes, rendues sur le même écran. */
+  portee: string
+}) {
+  const changer = (index: number, partiel: Partial<EtatSurcharge>) =>
+    surChangement(surcharges.map((s, i) => (i === index ? { ...s, ...partiel } : s)))
+  return (
+    <>
+      <ul className="deroule__liste">
+        {surcharges.map((surcharge, index) => (
+          <li key={index}>
+            <label className="formulaire__libelle">
+              Arme
+              <input
+                list={idListe}
+                value={surcharge.arme}
+                onChange={(e) => changer(index, { arme: e.target.value })}
+              />
+            </label>
+            <EditeurBareme
+              libelle={`Barème de l’arme ${surcharge.arme || 'sans nom'}${portee}`}
+              etat={surcharge.bareme}
+              surChangement={(bareme) => changer(index, { bareme })}
+            />
+            <button
+              type="button"
+              className="bouton bouton--discret"
+              aria-label={`Retirer la surcharge de l’arme ${surcharge.arme || 'sans nom'}${portee}`}
+              onClick={() => surChangement(surcharges.filter((_, i) => i !== index))}
+            >
+              Retirer
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="bouton bouton--discret"
+        onClick={() => surChangement([...surcharges, { arme: '', bareme: { ...defaut } }])}
+      >
+        Ajouter une arme au barème propre{portee}
+      </button>
+    </>
+  )
+}
+
 /**
  * `armes` : celles des catégories connues, pour pré-remplir les poulies d'un preset et signaler
  * les écarts — ou `'chargement'` / `'erreur'` : un preset posé sans elles oublierait les poulies,
@@ -87,24 +147,24 @@ export function ReglageBaremeDuel({
   surChangement,
   armes,
   sourceArmes,
+  type,
 }: {
   etat: EtatBaremeDuel
   surChangement: (etat: EtatBaremeDuel) => void
   armes: ArmesConnues
   sourceArmes: 'tournoi' | 'bibliotheque'
+  type: TypePhase
 }) {
   const idListe = useId()
   const connues = typeof armes === 'string' ? null : armes
   const presetsPossibles = connues !== null
   const ecarts = connues === null ? null : ecartsDArmes(etat, connues)
-  const changerSurcharge = (
-    index: number,
-    partiel: Partial<EtatBaremeDuel['surcharges'][number]>,
-  ) =>
-    surChangement({
-      ...etat,
-      surcharges: etat.surcharges.map((s, i) => (i === index ? { ...s, ...partiel } : s)),
-    })
+  const derniers = etat.derniers
+  const nbDerniers = derniers === null ? NaN : Number(derniers.tours)
+  const portee =
+    derniers !== null && Number.isInteger(nbDerniers) && nbDerniers >= 1
+      ? libelleDerniersTours(nbDerniers, type)
+      : null
 
   return (
     <fieldset className="deroule__sources">
@@ -180,55 +240,69 @@ export function ReglageBaremeDuel({
             Une arme listée ci-dessous tire avec son propre barème. Son nom est celui de la
             catégorie — majuscules et espaces en bord ne comptent pas.
           </p>
-          <ul className="deroule__liste">
-            {etat.surcharges.map((surcharge, index) => (
-              <li key={index}>
-                <label className="formulaire__libelle">
-                  Arme
-                  <input
-                    list={idListe}
-                    value={surcharge.arme}
-                    onChange={(e) => changerSurcharge(index, { arme: e.target.value })}
-                  />
-                </label>
-                <EditeurBareme
-                  libelle={`Barème de l’arme ${surcharge.arme || 'sans nom'}`}
-                  etat={surcharge.bareme}
-                  surChangement={(bareme) => changerSurcharge(index, { bareme })}
-                />
-                <button
-                  type="button"
-                  className="bouton bouton--discret"
-                  aria-label={`Retirer la surcharge de l’arme ${surcharge.arme || 'sans nom'}`}
-                  onClick={() =>
-                    surChangement({
-                      ...etat,
-                      surcharges: etat.surcharges.filter((_, i) => i !== index),
-                    })
-                  }
-                >
-                  Retirer
-                </button>
-              </li>
-            ))}
-          </ul>
+          <ListeSurcharges
+            surcharges={etat.surcharges}
+            surChangement={(surcharges) => surChangement({ ...etat, surcharges })}
+            idListe={idListe}
+            defaut={etat.par_defaut}
+            portee=""
+          />
           <datalist id={idListe}>
             {(connues ?? []).map((arme) => (
               <option key={arme} value={arme} />
             ))}
           </datalist>
-          <button
-            type="button"
-            className="bouton bouton--discret"
-            onClick={() =>
-              surChangement({
-                ...etat,
-                surcharges: [...etat.surcharges, { arme: '', bareme: { ...etat.par_defaut } }],
-              })
-            }
-          >
-            Ajouter une arme au barème propre
-          </button>
+
+          <label className="formulaire__libelle">
+            <input
+              type="checkbox"
+              checked={derniers !== null}
+              onChange={(e) =>
+                surChangement({
+                  ...etat,
+                  derniers: e.target.checked ? derniersToursDepuis(etat) : null,
+                })
+              }
+            />
+            Un autre barème pour les derniers tours
+          </label>
+          {derniers !== null && (
+            <div role="group" aria-label="Barème des derniers tours">
+              <label className="formulaire__libelle">
+                Nombre de derniers tours
+                <input
+                  inputMode="numeric"
+                  value={derniers.tours}
+                  onChange={(e) =>
+                    surChangement({ ...etat, derniers: { ...derniers, tours: e.target.value } })
+                  }
+                />
+              </label>
+              {portee !== null && (
+                <p className="carte__aide">
+                  Concerne {portee}.
+                  {type === 'elimination_directe' &&
+                    ' Un match de classement (petite finale, places 5 à 8…) joué à l’un de ces tours le suit aussi.'}
+                </p>
+              )}
+              <EditeurBareme
+                libelle="Barème par défaut des derniers tours"
+                etat={derniers.par_defaut}
+                surChangement={(par_defaut) =>
+                  surChangement({ ...etat, derniers: { ...derniers, par_defaut } })
+                }
+              />
+              <ListeSurcharges
+                surcharges={derniers.surcharges}
+                surChangement={(surcharges) =>
+                  surChangement({ ...etat, derniers: { ...derniers, surcharges } })
+                }
+                idListe={idListe}
+                defaut={derniers.par_defaut}
+                portee=" (derniers tours)"
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -254,8 +328,8 @@ export function ReglageBaremeDuel({
       {!estValide(etat) && (
         <span className="carte__etat carte__etat--alerte" role="status">
           Complétez le barème&nbsp;: au plus {MANCHES_MAX} manches de {FLECHES_MAX} flèches au plus,
-          de 1 à {FLECHES_MAX} flèches de barrage, un seuil atteignable en sets, et une arme nommée
-          une seule fois.
+          de 1 à {FLECHES_MAX} flèches de barrage, un seuil atteignable en sets, une arme nommée une
+          seule fois par barème, et de 1 à {DERNIERS_TOURS_MAX} derniers tours.
         </span>
       )}
     </fieldset>

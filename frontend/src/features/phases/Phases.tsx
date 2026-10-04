@@ -886,6 +886,7 @@ export function FormulairePhase({
             surChangement={setBaremeDuel}
             armes={armes}
             sourceArmes="tournoi"
+            type={type}
           />
         )}
         {/* E05US033 — montée **sans condition de type**, à la différence des cinq fiches

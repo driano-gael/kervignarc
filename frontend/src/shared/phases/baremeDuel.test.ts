@@ -7,8 +7,10 @@ import {
   armesDistinctes,
   ecartsDArmes,
   depuisReglage,
+  derniersToursDepuis,
   estPoulies,
   estValide,
+  libelleDerniersTours,
   presetClub,
   presetFfta,
   presetFftaEquipe,
@@ -38,6 +40,7 @@ const CLUB_AVEC_POULIES: ReglageBaremeDuel = {
       },
     },
   ],
+  derniers_tours: null,
 }
 
 describe('versReglage / depuisReglage', () => {
@@ -107,6 +110,22 @@ describe('presets (CA 2)', () => {
     expect(reglage?.surcharges.map((s) => s.bareme.mode)).toEqual(['cumul'])
   })
 
+  it('club : 6 points dès les ½ finales, poulies au cumul (E01US027 CA 4)', () => {
+    const fin = versReglage(presetClub(armes))?.derniers_tours
+    expect(fin?.nb_tours).toBe(2)
+    expect(fin?.par_defaut).toMatchObject({ mode: 'sets', points_pour_gagner: 6 })
+    expect(fin?.surcharges).toEqual([
+      expect.objectContaining({
+        arme: 'Arc à poulies',
+        bareme: expect.objectContaining({ mode: 'cumul' }),
+      }),
+    ])
+  })
+
+  it('FFTA : un seul barème pour toute la phase (E01US027 CA 4)', () => {
+    expect(versReglage(presetFfta(armes))?.derniers_tours).toBeNull()
+  })
+
   it('sans arme connue, un preset ne pose aucune surcharge', () => {
     expect(versReglage(presetFfta([]))?.surcharges).toEqual([])
   })
@@ -136,6 +155,7 @@ describe('presets FFTA équipe (E13US003 CA 4)', () => {
           },
         },
       ],
+      derniers_tours: null,
     })
   })
 
@@ -160,6 +180,7 @@ describe('presets FFTA équipe (E13US003 CA 4)', () => {
           },
         },
       ],
+      derniers_tours: null,
     })
   })
 
@@ -215,5 +236,65 @@ describe('un défaut au cumul couvre déjà les poulies', () => {
     const etat = presetFfta([])
     const auCumul = { ...etat, par_defaut: { ...etat.par_defaut, mode: 'cumul' as const } }
     expect(ecartsDArmes(auCumul, ['Compound']).poulieSansSurcharge).toEqual([])
+  })
+})
+
+describe('le barème des derniers tours (E01US027)', () => {
+  const CLUB_A_PARTIR_DES_DEMIES: ReglageBaremeDuel = {
+    ...CLUB_AVEC_POULIES,
+    derniers_tours: {
+      nb_tours: 2,
+      par_defaut: { ...CLUB_AVEC_POULIES.par_defaut, points_pour_gagner: 6 },
+      surcharges: CLUB_AVEC_POULIES.surcharges,
+    },
+  }
+
+  it('fait l’aller-retour, surcharges comprises (CA 1)', () => {
+    expect(versReglage(depuisReglage(CLUB_A_PARTIR_DES_DEMIES))).toEqual(CLUB_A_PARTIR_DES_DEMIES)
+  })
+
+  it.each(['0', '', '17', '1.5'])('refuse %j derniers tours', (tours) => {
+    const etat = depuisReglage(CLUB_A_PARTIR_DES_DEMIES)
+    expect(estValide({ ...etat, derniers: { ...etat.derniers!, tours } })).toBe(false)
+  })
+
+  it('refuse un barème des derniers tours invalide, même si le principal est bon', () => {
+    const etat = depuisReglage(CLUB_A_PARTIR_DES_DEMIES)
+    const derniers = etat.derniers!
+    const faux = { ...derniers, par_defaut: { ...derniers.par_defaut, points: '11' } }
+    expect(estValide({ ...etat, derniers: faux })).toBe(false)
+  })
+
+  it('cocher la case recopie le barème principal sur les ½ finales', () => {
+    const etat = depuisReglage(CLUB_AVEC_POULIES)
+    expect(derniersToursDepuis(etat)).toEqual({
+      tours: '2',
+      par_defaut: etat.par_defaut,
+      surcharges: etat.surcharges,
+    })
+  })
+
+  it.each([
+    [1, 'elimination_directe', 'la finale'],
+    [2, 'elimination_directe', 'les ½ finales et la finale'],
+    [3, 'elimination_directe', 'les ¼ de finale, les ½ finales et la finale'],
+    [4, 'elimination_directe', 'les 4 derniers tours'],
+    [1, 'suisse', 'la dernière ronde'],
+    [2, 'suisse', 'les 2 dernières rondes'],
+    [1, 'colline', 'la dernière manche'],
+    [3, 'colline', 'les 3 dernières manches'],
+    [1, 'poules', 'le dernier tour'],
+    [2, 'poules', 'les 2 derniers tours'],
+  ] as const)('dit %i tour(s) en %s : « %s » (CA 3)', (nb, type, attendu) => {
+    expect(libelleDerniersTours(nb, type)).toBe(attendu)
+  })
+
+  it('signale un arc à poulies oublié du seul barème des derniers tours', () => {
+    const etat = depuisReglage(CLUB_A_PARTIR_DES_DEMIES)
+    const sansPoulies = { ...etat, derniers: { ...etat.derniers!, surcharges: [] } }
+    expect(ecartsDArmes(sansPoulies, ['Arc à poulies']).poulieSansSurcharge).toEqual([
+      'Arc à poulies',
+    ])
+    expect(ecartsDArmes(etat, ['Arc à poulies']).poulieSansSurcharge).toEqual([])
   })
 })

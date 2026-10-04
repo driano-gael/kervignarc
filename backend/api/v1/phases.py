@@ -28,7 +28,13 @@ from domain.arret_programme import (
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule_etape import EtapeDeroule
-from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
+from domain.duel import (
+    BaremeDesDerniersTours,
+    BaremeDuel,
+    ModeDuel,
+    ReglageBaremeDuel,
+    SurchargeArme,
+)
 from domain.equipe import TypeEquipe
 from domain.horaire_prevu import HeurePrevue
 from domain.phase import (
@@ -350,6 +356,39 @@ class SurchargeArmeDTO(BaseModel):
     bareme: BaremeDuelDTO
 
 
+class BaremeDesDerniersToursDTO(BaseModel):
+    """Le barème des `nb_tours` derniers tours d'une phase (E01US027) — à plat, sans second
+    niveau : le domaine refuse qu'il en porte un lui-même."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_tours: int = Field(ge=1, le=16)
+    par_defaut: BaremeDuelDTO
+    surcharges: list[SurchargeArmeDTO] = Field(default_factory=list, max_length=32)
+
+    def vers_agregat(self) -> BaremeDesDerniersTours:
+        return BaremeDesDerniersTours(
+            nb_tours=self.nb_tours,
+            reglage=ReglageBaremeDuel(
+                par_defaut=self.par_defaut.vers_agregat(),
+                surcharges=tuple(
+                    SurchargeArme(s.arme, s.bareme.vers_agregat()) for s in self.surcharges
+                ),
+            ),
+        )
+
+    @staticmethod
+    def de_agregat(fin: BaremeDesDerniersTours) -> BaremeDesDerniersToursDTO:
+        return BaremeDesDerniersToursDTO(
+            nb_tours=fin.nb_tours,
+            par_defaut=BaremeDuelDTO.de_agregat(fin.reglage.par_defaut),
+            surcharges=[
+                SurchargeArmeDTO(arme=s.arme, bareme=BaremeDuelDTO.de_agregat(s.bareme))
+                for s in fin.reglage.surcharges
+            ],
+        )
+
+
 class ReglageBaremeDuelDTO(BaseModel):
     """Le barème de duel d'une étape (E01US011, ADR-0117) — défaut et surcharges par arme.
 
@@ -361,12 +400,16 @@ class ReglageBaremeDuelDTO(BaseModel):
 
     par_defaut: BaremeDuelDTO
     surcharges: list[SurchargeArmeDTO] = Field(default_factory=list, max_length=32)
+    derniers_tours: BaremeDesDerniersToursDTO | None = None
 
     def vers_agregat(self) -> ReglageBaremeDuel:
         return ReglageBaremeDuel(
             par_defaut=self.par_defaut.vers_agregat(),
             surcharges=tuple(
                 SurchargeArme(s.arme, s.bareme.vers_agregat()) for s in self.surcharges
+            ),
+            derniers_tours=(
+                None if self.derniers_tours is None else self.derniers_tours.vers_agregat()
             ),
         )
 
@@ -378,6 +421,11 @@ class ReglageBaremeDuelDTO(BaseModel):
                 SurchargeArmeDTO(arme=s.arme, bareme=BaremeDuelDTO.de_agregat(s.bareme))
                 for s in reglage.surcharges
             ],
+            derniers_tours=(
+                None
+                if reglage.derniers_tours is None
+                else BaremeDesDerniersToursDTO.de_agregat(reglage.derniers_tours)
+            ),
         )
 
 

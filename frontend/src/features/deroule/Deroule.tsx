@@ -1004,6 +1004,7 @@ export function FormulaireEtape({
           surChangement={setBaremeDuel}
           armes={armes}
           sourceArmes="bibliotheque"
+          type={type}
         />
       )}
 

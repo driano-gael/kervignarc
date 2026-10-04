@@ -12221,7 +12221,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/formats.py",
      "existe": true,
      "symboles": [
-      "ReglageBaremeDuelDTO"
+      "ReglageBaremeDuelDTO",
+      "BaremeDesDerniersToursDTO"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -12230,7 +12231,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/phases.py",
      "existe": true,
      "symboles": [
-      "ReglageBaremeDuelDTO"
+      "ReglageBaremeDuelDTO",
+      "BaremeDesDerniersToursDTO"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -12254,11 +12256,29 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/colline.py",
+     "existe": true,
+     "symboles": [
+      "_rejouer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/phases.py",
      "existe": true,
      "symboles": [
       "ServicePhases.modifier",
       "VerrouBaremeDuel"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/poules.py",
+     "existe": true,
+     "symboles": [
+      "_photo"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -12275,12 +12295,22 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/suisse.py",
+     "existe": true,
+     "symboles": [
+      "_rejouer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/verrou_bareme.py",
      "existe": true,
      "symboles": [
       "VerrouBaremeDuel",
       "etape_tiree",
       "arme_figee",
+      "_baremes",
       "ResolveurBaremeDuel"
      ],
      "symboles_absents": [],
@@ -12312,8 +12342,11 @@ window.ATLAS.decisions = {
      "symboles": [
       "ReglageBaremeDuel",
       "pour",
+      "baremes_pour",
       "SurchargeArme",
       "designe",
+      "BaremeDesDerniersTours",
+      "couvre",
       "BaremeDuel.__post_init__",
       "Duel._resultat_sets",
       "_issue_d_egalite",
@@ -12349,7 +12382,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "_politiques_json",
-      "_lire_bareme_duel"
+      "_reglage_bareme_duel_json",
+      "_lire_bareme_duel",
+      "_vers_reglage_bareme_duel",
+      "derniers_tours"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -12371,6 +12407,8 @@ window.ATLAS.decisions = {
       "presetClub",
       "estPoulies",
       "ecartsDArmes",
+      "derniersToursDepuis",
+      "libelleDerniersTours",
       "armes",
       "null"
      ],
@@ -12385,6 +12423,8 @@ window.ATLAS.decisions = {
       "presetClub",
       "estPoulies",
       "ecartsDArmes",
+      "derniersToursDepuis",
+      "libelleDerniersTours",
       "armes",
       "null"
      ],

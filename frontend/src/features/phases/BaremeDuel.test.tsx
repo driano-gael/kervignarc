@@ -55,30 +55,57 @@ describe('le barème des duels d’une phase', () => {
     // Le preset attend les armes (sinon il oublierait les poulies) : un seul clic, une fois actif.
     await waitFor(() => expect(preset).toBeEnabled())
     await userEvent.click(preset)
+    expect(screen.getByText(/Concerne les ½ finales et la finale\./)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter la phase' }))
 
     await waitFor(() => expect(ajouterPhase).toHaveBeenCalled())
-    expect(configEnvoyee().bareme_duel).toEqual({
-      par_defaut: {
-        mode: 'sets',
-        nb_manches: 5,
-        nb_fleches_par_volee: 3,
-        points_pour_gagner: 4,
-        nb_fleches_barrage: 1,
-      },
-      surcharges: [
-        {
-          arme: 'Arc à poulies',
-          bareme: {
-            mode: 'cumul',
-            nb_manches: 5,
-            nb_fleches_par_volee: 3,
-            points_pour_gagner: 0,
-            nb_fleches_barrage: 1,
-          },
+    const sets = {
+      mode: 'sets',
+      nb_manches: 5,
+      nb_fleches_par_volee: 3,
+      points_pour_gagner: 4,
+      nb_fleches_barrage: 1,
+    }
+    const poulies = [
+      {
+        arme: 'Arc à poulies',
+        bareme: {
+          mode: 'cumul',
+          nb_manches: 5,
+          nb_fleches_par_volee: 3,
+          points_pour_gagner: 0,
+          nb_fleches_barrage: 1,
         },
-      ],
+      },
+    ]
+    // E01US027 CA 4 : le format club passe à 6 points dès les ½ finales.
+    expect(configEnvoyee().bareme_duel).toEqual({
+      par_defaut: sets,
+      surcharges: poulies,
+      derniers_tours: {
+        nb_tours: 2,
+        par_defaut: { ...sets, points_pour_gagner: 6 },
+        surcharges: poulies,
+      },
     })
+  })
+
+  it('le barème de la finale seule part au serveur (E01US027)', async () => {
+    monter()
+    const preset = await screen.findByRole('button', { name: 'Preset FFTA officiel' })
+    await waitFor(() => expect(preset).toBeEnabled())
+    await userEvent.click(preset)
+    await userEvent.click(
+      screen.getByRole('checkbox', { name: 'Un autre barème pour les derniers tours' }),
+    )
+    const nombre = screen.getByRole('textbox', { name: 'Nombre de derniers tours' })
+    await userEvent.clear(nombre)
+    await userEvent.type(nombre, '1')
+    expect(screen.getByText(/Concerne la finale\./)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter la phase' }))
+
+    await waitFor(() => expect(ajouterPhase).toHaveBeenCalled())
+    expect(configEnvoyee().bareme_duel?.derniers_tours?.nb_tours).toBe(1)
   })
 
   it('le preset FFTA équipe part au serveur avec un barrage à trois flèches (E13US003)', async () => {

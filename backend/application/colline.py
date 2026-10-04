@@ -412,6 +412,7 @@ class ServiceColline:
                     lignes,
                     bloc,
                     position,
+                    tours_restants=configuration.nb_manches - (index + 1),
                 )
                 defis.append(defi)
                 engages.add(defi_domaine.defie.ref_id)
@@ -448,6 +449,8 @@ class ServiceColline:
         lignes: dict[int, LigneClassement],
         bloc: BlocDeCouloirs | None,
         position: int,
+        *,
+        tours_restants: int,
     ) -> DefiDeLaManche:
         """Assemble un défi : ses adversaires résolus, son pavé, son tir.
 
@@ -457,7 +460,7 @@ class ServiceColline:
         """
         haut = defi.defie
         bas = defi.challenger
-        bareme = self._saisie_duels.bareme_de(reglage, haut, lignes)
+        bareme = self._saisie_duels.bareme_de(reglage, haut, lignes, tours_restants=tours_restants)
         charge = self._duels.charger(phase_id, numero, bareme=bareme)
         # ⚠️ **L'ancrage d'ADR-0049 §4.** Un tir dont les duellistes enregistrés divergent des
         # adversaires recalculés est **masqué**, jamais ré-attribué : le défi s'affiche non tiré

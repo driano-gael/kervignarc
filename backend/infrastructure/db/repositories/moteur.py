@@ -30,7 +30,13 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
-from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel, SurchargeArme
+from domain.duel import (
+    BaremeDesDerniersTours,
+    BaremeDuel,
+    ModeDuel,
+    ReglageBaremeDuel,
+    SurchargeArme,
+)
 from domain.entree_audit import EntreeAudit
 from domain.equipe import TypeEquipe
 from domain.erreurs import DomainError
@@ -488,13 +494,7 @@ def _politiques_json(
     if bareme_duel is not None:
         # E01US011 : racine du `config`, comme ses voisins — aucune migration, une étape écrite
         # avant se relit « non réglée », donc au défaut injecté (ADR-0117).
-        config["bareme_duel"] = {
-            "defaut": _bareme_duel_json(bareme_duel.par_defaut),
-            "surcharges": [
-                {"arme": surcharge.arme, **_bareme_duel_json(surcharge.bareme)}
-                for surcharge in bareme_duel.surcharges
-            ],
-        }
+        config["bareme_duel"] = _reglage_bareme_duel_json(bareme_duel)
     if equipes is not None:
         # E13US004 : racine du `config`, comme `bareme_duel` — absente = individuelle, sans
         # migration (ADR-0120).
@@ -618,6 +618,23 @@ def _lire_reglage_colline(config: Any) -> ConfigurationColline | None:
     return ConfigurationColline(nb_manches=int(manches), portee_de_defi=int(portee))
 
 
+def _reglage_bareme_duel_json(reglage: ReglageBaremeDuel) -> dict[str, object]:
+    souffle: dict[str, object] = {
+        "defaut": _bareme_duel_json(reglage.par_defaut),
+        "surcharges": [
+            {"arme": surcharge.arme, **_bareme_duel_json(surcharge.bareme)}
+            for surcharge in reglage.surcharges
+        ],
+    }
+    if reglage.derniers_tours is not None:
+        # E01US027 : clé absente = pas de barème des derniers tours, d'où aucune migration.
+        souffle["derniers_tours"] = {
+            "tours": reglage.derniers_tours.nb_tours,
+            **_reglage_bareme_duel_json(reglage.derniers_tours.reglage),
+        }
+    return souffle
+
+
 def _bareme_duel_json(bareme: BaremeDuel) -> dict[str, object]:
     return {
         "mode": bareme.mode.value,
@@ -649,11 +666,23 @@ def _lire_bareme_duel(config: Any) -> ReglageBaremeDuel | None:
     souffle = config.get("bareme_duel")
     if souffle is None:
         return None
+    return _vers_reglage_bareme_duel(souffle)
+
+
+def _vers_reglage_bareme_duel(souffle: Any) -> ReglageBaremeDuel:
+    fin = souffle.get("derniers_tours")
     return ReglageBaremeDuel(
         par_defaut=_vers_bareme_duel(souffle["defaut"]),
         surcharges=tuple(
             SurchargeArme(str(brute["arme"]), _vers_bareme_duel(brute))
             for brute in souffle["surcharges"]
+        ),
+        derniers_tours=(
+            None
+            if fin is None
+            else BaremeDesDerniersTours(
+                nb_tours=int(fin["tours"]), reglage=_vers_reglage_bareme_duel(fin)
+            )
         ),
     )
 
