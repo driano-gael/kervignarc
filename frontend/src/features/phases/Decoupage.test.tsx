@@ -40,6 +40,7 @@ const QUALIFICATION: EtapeDeroule = {
   big_shoot_off: null,
   suisse: null,
   bareme_duel: null,
+  equipes: null,
   colline: null,
   decoupage: null,
   titre: null,

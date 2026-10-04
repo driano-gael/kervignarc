@@ -1294,6 +1294,27 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/pilotage_tour.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/placement_duels.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/duel.py",
      "existe": true,
      "symboles": [
@@ -1304,6 +1325,13 @@ window.ATLAS.decisions = {
       "presetFftaEquipe",
       "presetFftaMixte"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/engagement_equipes.py",
+     "existe": true,
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -1395,7 +1423,8 @@ window.ATLAS.decisions = {
     "E13US001",
     "E13US002",
     "E13US003",
-    "E13US004"
+    "E13US004",
+    "E13US005"
    ]
   },
   {
@@ -4470,6 +4499,7 @@ window.ATLAS.decisions = {
     "E05US035",
     "E06US009",
     "E13US002",
+    "E13US004",
     "E16US002",
     "E16US007",
     "E16US008",
@@ -12637,6 +12667,242 @@ window.ATLAS.decisions = {
     "E00US007",
     "E11US003",
     "E11US006"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-10-03",
+   "date_brute": "2026-10-03",
+   "extrait": "1. « Par équipes » est un réglage d'étape : EtapeDeroule.equipes: TypeEquipe | None, recopié sur Phase.equipes à l'instanciation et porté par le format de bibliothèque. None = individuel, le comportement d'avant. Seule l'élimination directe l'accepte dans cette tranche ; tout autre type le refuse (EquipesNonPrisesEnCharge). Comme le barème, le réglage est verrouillé au premier tir de l'étape (ADR-0117 §5). 2. L'engagement est une dérivation, pas un geste. À chaque reconstruction, engager_les_equipes (domaine pur) range les équipes du type : sont engagées celles qui sont conformes et dont tous les membres sont en lice au classement du départ ; les autres sont écartées avec leurs motifs, […]",
+   "fichier": "docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md",
+   "identifiant": "0120",
+   "liens": [
+    {
+     "cible": "E13US004",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0028",
+     "libelle": "Prolonge",
+     "sens": "sortant",
+     "type": "complete"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/tableaux.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/equipes.py",
+     "existe": true,
+     "symboles": [
+      "a_engager",
+      "jouee",
+      "_decor",
+      "_equipes_sans_tableau",
+      "_refuser_si_en_jeu",
+      "VerrouCompositionEquipes",
+      "VerrouBaremeDuel.etape_tiree_dans"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/pilotage_simulation.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/pilotage_tour.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/placement_duels.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "a_engager",
+      "jouee",
+      "_decor",
+      "_equipes_sans_tableau",
+      "ResolveurBaremeDuelFfta.bareme_equipe_pour",
+      "_bareme_du",
+      "Camp",
+      "_anomalies_ilot_d_equipes",
+      "_equipes_engagees",
+      "_classement_produit"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/verrou_bareme.py",
+     "existe": true,
+     "symboles": [
+      "_refuser_si_en_jeu",
+      "VerrouCompositionEquipes",
+      "VerrouBaremeDuel.etape_tiree_dans"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/duel.py",
+     "existe": true,
+     "symboles": [
+      "ResolveurBaremeDuelFfta.bareme_equipe_pour",
+      "_bareme_du"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/engagement_equipes.py",
+     "existe": true,
+     "symboles": [
+      "a_engager",
+      "jouee",
+      "_decor",
+      "_equipes_sans_tableau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/equipe.py",
+     "existe": true,
+     "symboles": [
+      "a_engager",
+      "jouee",
+      "_decor",
+      "_equipes_sans_tableau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "_anomalies_ilot_d_equipes",
+      "_equipes_engagees",
+      "_classement_produit"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/placement.py",
+     "existe": true,
+     "symboles": [
+      "Camp"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "portage_non_reconnu": [],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une phase oppose des équipes par un réglage d'étape ; l'engagement est dérivé",
+   "us": [
+    "E13US002",
+    "E13US003",
+    "E13US004",
+    "E13US005"
    ]
   }
  ]

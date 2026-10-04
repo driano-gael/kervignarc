@@ -28,6 +28,7 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
+from domain.equipe import TypeEquipe
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.horaire_prevu import verifier_duree_prevue
@@ -387,6 +388,9 @@ class EtapeDTO(BaseModel):
     bareme_duel: ReglageBaremeDuelDTO | None = None
     """Le barème des duels (E01US011) — `null` = défaut FFTA. **Le même DTO** que `phases.py`."""
 
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe que l'étape oppose (E13US004, ADR-0120) — `null` = individuelle."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -450,6 +454,7 @@ class EtapeDTO(BaseModel):
             titre=self.titre,
             duree_prevue=self.duree_prevue,
             bareme_duel=(None if self.bareme_duel is None else self.bareme_duel.vers_agregat()),
+            equipes=self.equipes,
         )
 
     @staticmethod
@@ -496,6 +501,7 @@ class EtapeDTO(BaseModel):
                 if etape.bareme_duel is None
                 else ReglageBaremeDuelDTO.de_agregat(etape.bareme_duel)
             ),
+            equipes=etape.equipes,
         )
 
 

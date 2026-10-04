@@ -1196,3 +1196,23 @@ def test_un_format_a_duree_hors_bornes_est_refuse_a_l_ecriture(
 
     assert refus.status_code == 422, refus.text
     assert refus.json()["code"] == "duree_prevue_invalide"
+
+
+def test_un_format_garde_le_reglage_par_equipes_de_ses_etapes(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US004, CA 1 — « comme dans un format de bibliothèque » : DTO → `config` → DTO."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        creation = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Tableau mixte",
+                "etapes": [{"ordre": 1, "type": "elimination_directe", "equipes": "mixte"}],
+            },
+        )
+
+        assert creation.status_code == 201, creation.text
+        (relu,) = client.get("/api/v1/formats").json()
+        assert relu["etapes"][0]["equipes"] == "mixte"

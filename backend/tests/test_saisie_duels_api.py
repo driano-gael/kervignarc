@@ -25,9 +25,10 @@ from bootstrap.composition import create_app
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
-from domain.categorie import Categorie
+from domain.categorie import Categorie, SexeCategorie
 from domain.depart import Depart
 from domain.duel import BaremeDuel, ModeDuel, ReglageBaremeDuel
+from domain.equipe import Equipe, TypeEquipe
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.serie import Serie, Volee
@@ -43,6 +44,7 @@ from infrastructure.db import (
     SerieRepositorySQL,
     TournoiRepositorySQL,
 )
+from infrastructure.db.repositories.equipes import EquipeRepositorySQL
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin, poser_phase_sql
@@ -351,3 +353,124 @@ def test_barrage_d_equipe_a_trois_fleches_relu_depuis_la_base(
         assert finale["nb_fleches_barrage"] == 3
         assert finale["barrage"]["haut"] == ["9", "9", "9"]
         assert finale["barrage"]["bas"] == ["10", "8", "8"]
+
+
+def _tableau_d_equipes(app: FastAPI) -> tuple[int, int]:
+    """Deux équipes conformes de trois et une incomplète, une phase réglée par équipes (E13US004).
+
+    Rend `(tournoi_id, phase_id)`. Toutes les catégories portent arme **et** sexe : sans eux, la
+    composition serait « non vérifiable » et l'équipe écartée.
+    """
+    db: Database = app.state.database
+    tournoi = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Salle", _DATE))
+    assert tournoi.id is not None
+    blason = BlasonRepositorySQL(db.session_factory).ajouter(
+        Blason.creer(tournoi.id, "Triple", taille=0.25, capacite=1)
+    )
+    categorie = CategorieRepositorySQL(db.session_factory).ajouter(
+        Categorie.creer(
+            tournoi.id, "CLH", arme="Classique", sexe=SexeCategorie.HOMME, blason_id=blason.id
+        )
+    )
+    depart = DepartRepositorySQL(db.session_factory).ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None and categorie.id is not None
+    qualif = poser_phase_sql(
+        db.session_factory, Phase.qualification(depart.id, BaremeQualification.creer(1, 3))
+    )
+    assert qualif.id is not None
+    series = SerieRepositorySQL(
+        db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
+    )
+    inscriptions = InscriptionRepositorySQL(
+        db.session_factory, AuditRepositorySQL(db.session_factory)
+    )
+    archers: list[int] = []
+    for valeur in ("10", "10", "10", "9", "9", "9", "8", "8"):
+        archer = ArcherRepositorySQL(db.session_factory).ajouter(
+            Archer(nom="N", prenom="P", tournoi_id=tournoi.id, categorie_id=categorie.id)
+        )
+        assert archer.id is not None
+        series.enregistrer(
+            Serie(
+                tournoi_id=tournoi.id,
+                archer_id=archer.id,
+                volees=(Volee(numero=1, valeurs=(ZoneScore(valeur),) * 3, validee_par="S"),),
+                phase_id=qualif.id,
+            )
+        )
+        inscriptions.ajouter(Inscription(archer.id, depart.id))
+        archers.append(archer.id)
+    equipes = EquipeRepositorySQL(db.session_factory)
+    for nom, membres in (("A", archers[0:3]), ("B", archers[3:6]), ("C", archers[6:8])):
+        equipes.enregistrer(
+            Equipe(tournoi.id, nom, TypeEquipe.STANDARD, effectif_attendu=3, membres=tuple(membres))
+        )
+    phase = poser_phase_sql(
+        db.session_factory,
+        replace(
+            Phase.creer(depart.id, 2, TypePhase.ELIMINATION_DIRECTE), equipes=TypeEquipe.STANDARD
+        ),
+    )
+    assert phase.id is not None
+    return tournoi.id, phase.id
+
+
+def test_un_tableau_d_equipes_se_lit_et_se_saisit_de_bout_en_bout(
+    app_duels: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E13US004 : camps nommés par l'équipe, équipe écartée listée, manche de 6 flèches par camp."""
+    with TestClient(app_duels) as client:
+        tournoi_id, phase_id = _tableau_d_equipes(app_duels)
+        entete = _scoreur(client, tournoi_id, connecter_admin)
+
+        tableau = client.get(f"/api/v1/duels/tableau/{tournoi_id}/{phase_id}", headers=entete)
+
+        assert tableau.status_code == 200, tableau.text
+        corps = tableau.json()
+        (finale,) = corps["duels"]
+        assert (finale["haut"]["nom"], finale["haut"]["archer_id"]) == ("A", None)
+        assert finale["haut"]["equipe_id"] is not None
+        assert len(finale["haut"]["membres"]) == 3
+        assert finale["nb_fleches_par_volee"] == 6
+        assert corps["equipes_ecartees"] == [
+            {
+                "equipe_id": corps["equipes_ecartees"][0]["equipe_id"],
+                "nom": "C",
+                "ecarts": ["effectif_insuffisant"],
+                "membres_hors_course": [],
+            }
+        ]
+        # Deux manches : la seconde relit le camp d'équipe persisté (genre `equipe` en base) et
+        # doit traverser la garde de désynchronisation sans faux refus.
+        for numero in (1, 2):
+            manche = client.post(
+                "/api/v1/duels/manches",
+                json=_manche(numero, ("10",) * 6, ("9",) * 6, phase_id, tournoi_id),
+                headers=entete,
+            )
+            assert manche.status_code == 200, manche.text
+        assert len(manche.json()["manches"]) == 2
+
+
+def test_l_ecran_des_duels_a_une_seule_equipe_engagee_dit_pourquoi(
+    app_duels: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La route de l'écran passe par `etat_tableau_de_saisie` : 200 et les motifs, pas un 422 muet
+    (relevé en 3ᵉ passe de revue, axe B — sans ce test, revenir à `etat_tableau` resterait vert)."""
+    with TestClient(app_duels) as client:
+        tournoi_id, phase_id = _tableau_d_equipes(app_duels)
+        db: Database = app_duels.state.database
+        equipes = EquipeRepositorySQL(db.session_factory)
+        b = next(e for e in equipes.par_tournoi(tournoi_id) if e.nom == "B")
+        assert b.id is not None
+        equipes.supprimer(b.id)
+        entete = _scoreur(client, tournoi_id, connecter_admin)
+
+        tableau = client.get(f"/api/v1/duels/tableau/{tournoi_id}/{phase_id}", headers=entete)
+
+        assert tableau.status_code == 200, tableau.text
+        assert tableau.json()["duels"] == []
+        assert [e["nom"] for e in tableau.json()["equipes_ecartees"]] == ["C"]
+        assert tableau.json()["equipes_ecartees"][0]["ecarts"] == ["effectif_insuffisant"]

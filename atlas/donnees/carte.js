@@ -136,6 +136,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
+    "feature": "equipes"
+   },
+   {
+    "clientes": 3,
     "feature": "identite"
    },
    {
@@ -169,10 +173,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "en-cours"
-   },
-   {
-    "clientes": 2,
-    "feature": "equipes"
    },
    {
     "clientes": 2,
@@ -289,7 +289,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 399,
+   "occurrences": 406,
    "source": "application"
   },
   {
@@ -313,7 +313,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 119,
+   "occurrences": 121,
    "source": "infrastructure"
   },
   {
@@ -337,7 +337,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 104,
+   "occurrences": 106,
    "source": "api"
   },
   {
@@ -576,7 +576,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 100,
+   "occurrences": 102,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -801,7 +801,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 384,
+   "occurrences": 391,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1165,7 +1165,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 63,
+   "occurrences": 64,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/equipes.py",
@@ -1221,7 +1221,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 17,
+   "occurrences": 18,
    "origines": [
     "backend/infrastructure/memory/repositories.py"
    ],
@@ -1801,6 +1801,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/infrastructure/db/repositories/equipes.py",
      "nom": "EquipeRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryEquipeRepository"
     }
    ],
    "couche": "domain",
@@ -1845,6 +1849,7 @@ window.ATLAS.carte = {
    "methodes": [
     "bareme",
     "effectif",
+    "equipes",
     "ordre",
     "poules",
     "sources",
@@ -1890,6 +1895,7 @@ window.ATLAS.carte = {
    "hors_domaine": false,
    "methodes": [
     "effectif",
+    "equipes",
     "ordre",
     "sources",
     "type"
@@ -2501,6 +2507,10 @@ window.ATLAS.carte = {
     },
     {
      "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryEquipeRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
      "nom": "InMemoryForfaitRepository"
     },
     {
@@ -2901,6 +2911,10 @@ window.ATLAS.carte = {
     },
     {
      "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryEquipeRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
      "nom": "InMemoryForfaitRepository"
     },
     {
@@ -3221,6 +3235,7 @@ window.ATLAS.carte = {
    "fichier": "backend/domain/duel.py",
    "hors_domaine": false,
    "methodes": [
+    "bareme_equipe_pour",
     "bareme_pour"
    ],
    "nom": "ResolveurBaremeDuel",
@@ -3322,6 +3337,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/domain/completude.py",
      "nom": "LigneCompletude"
+    },
+    {
+     "fichier": "backend/domain/engagement_equipes.py",
+     "nom": "EquipeEngagee"
     },
     {
      "fichier": "backend/domain/politiques.py",
@@ -3533,17 +3552,33 @@ window.ATLAS.carte = {
    ],
    "nom": "TournoiRepository",
    "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/application/verrou_bareme.py",
+     "nom": "VerrouCompositionEquipes"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/equipes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "en_jeu"
+   ],
+   "nom": "VerrouDeComposition",
+   "sans_adapter": false
   }
  ],
  "resume": {
-  "aretes_front": 189,
+  "aretes_front": 190,
   "enchevetrements": 4,
   "features": 54,
-  "imports": 1074,
-  "imports_entre_couches": 899,
+  "imports": 1085,
+  "imports_entre_couches": 910,
   "plus_gros_noeud": 25,
-  "ports": 80,
-  "ports_hors_domaine": 31,
+  "ports": 81,
+  "ports_hors_domaine": 32,
   "ports_sans_adapter": 0,
   "violations": 0
  },

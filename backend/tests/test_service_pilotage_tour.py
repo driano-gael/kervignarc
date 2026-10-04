@@ -26,6 +26,7 @@ import pytest
 
 from application.audit import ServiceAudit
 from application.classements import ServiceClassement
+from application.equipes import ServiceEquipes
 from application.erreurs import (
     AucunDuelALancer,
     PhasePasUnTableau,
@@ -35,15 +36,16 @@ from application.forfaits import ServiceForfait
 from application.phases import ServicePhases
 from application.pilotage_tour import ServicePilotageTour
 from application.placement_duels import ServicePlacementDuels
-from application.saisie_duels import ServiceSaisieDuels
+from application.saisie_duels import DuellisteEquipe, ServiceSaisieDuels
 from application.verrou_bareme import VerrouBaremeDuel
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
-from domain.categorie import Categorie
+from domain.categorie import Categorie, SexeCategorie
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee
+from domain.equipe import Equipe, TypeEquipe
 from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
@@ -62,9 +64,12 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxDerouleRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
+    archer_de,
 )
 from tests.test_domain_tableau import construire, jouer_gagne_mieux_classe
 from tests.test_service_audit import FauxAuditRepository, HorlogeFigee
@@ -109,6 +114,7 @@ class _Monde:
         self.placements = FauxPlacementTableauRepository()
         self.duels = FauxDuelRepository()
         self.audit = FauxAuditRepository()
+        self.equipes = FauxEquipeRepository()
         self.gabarits.ajouter(
             GabaritSalle(nom="Salle", capacites=capacites, tournoi_id=self.tournoi_id)
         )
@@ -208,6 +214,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                self.equipes,
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
 
     @property
@@ -361,8 +374,8 @@ def test_feu_vert_tour2_annonce_les_cibles_du_tour_2() -> None:
         assert duel.blocage is None
         # L'assertion qui compte : la cible annoncée EST celle du plan du tour 2.
         assert duel.haut is not None and duel.bas is not None
-        assert duel.cible_haut == poses[duel.haut.archer_id]
-        assert duel.cible_bas == poses[duel.bas.archer_id]
+        assert duel.cible_haut == poses[archer_de(duel.haut)]
+        assert duel.cible_bas == poses[archer_de(duel.bas)]
     assert feu.nb_prets == len(tour2)
 
 
@@ -559,7 +572,7 @@ def test_un_forfait_sur_un_amont_de_tour_2_ne_fait_pas_bouger_le_compteur() -> N
     monde.forfaits.semer(
         Forfait.creer(
             monde.tournoi_id,
-            finale.haut.archer_id if finale.haut else 0,
+            archer_de(finale.haut) if finale.haut else 0,
             monde.phase_id,
             NatureForfait.ABANDON,
             "Administrateur",
@@ -861,7 +874,7 @@ def test_un_tour_acheve_par_walkover_recoit_ses_cibles() -> None:
     assert duel.haut is not None
 
     monde.forfait.declarer_en_duel(
-        monde.tournoi_id, monde.phase_id, duel.haut.archer_id, NatureForfait.ABANDON, "ADMIN"
+        monde.tournoi_id, monde.phase_id, archer_de(duel.haut), NatureForfait.ABANDON, "ADMIN"
     )
 
     tour2 = [
@@ -940,13 +953,13 @@ def test_un_duel_tranche_par_walkover_n_occupe_pas_de_place_sur_la_butte() -> No
     )
     assert duel.haut is not None
     monde.forfait.declarer_en_duel(
-        monde.tournoi_id, monde.phase_id, duel.haut.archer_id, NatureForfait.ABANDON, "ADMIN"
+        monde.tournoi_id, monde.phase_id, archer_de(duel.haut), NatureForfait.ABANDON, "ADMIN"
     )
 
     monde.placer()
 
     poses = {a.inscription_id for a in monde.placements.par_phase_et_tour(monde.phase_id, 1)}
-    forfaitaire = monde.inscription_de(duel.haut.archer_id)
+    forfaitaire = monde.inscription_de(archer_de(duel.haut))
     assert forfaitaire not in poses, "un archer forfait n'occupe pas de couloir"
 
 
@@ -967,12 +980,65 @@ def test_annuler_un_forfait_laisse_le_tour_suivant_posable() -> None:
     )
     assert duel.haut is not None and duel.bas is not None
     monde.forfait.declarer_en_duel(
-        monde.tournoi_id, monde.phase_id, duel.bas.archer_id, NatureForfait.ABANDON, "ADMIN"
+        monde.tournoi_id, monde.phase_id, archer_de(duel.bas), NatureForfait.ABANDON, "ADMIN"
     )
     assert monde.placements.par_phase_et_tour(monde.phase_id, 2), "le tour 2 est posé"
 
-    monde.forfait.annuler_en_duel(monde.tournoi_id, monde.phase_id, duel.bas.archer_id, "ADMIN")
+    monde.forfait.annuler_en_duel(monde.tournoi_id, monde.phase_id, archer_de(duel.bas), "ADMIN")
 
     assert (
         monde.placements.par_phase_et_tour(monde.phase_id, 2) == []
     ), "le recul du tour purge les poses aval, sans quoi le tour aval passe pour posé"
+
+
+def test_le_feu_vert_annonce_la_cible_du_premier_membre_de_chaque_equipe() -> None:
+    """E13US004, CA 6 : un duel d'équipes est « prêt » quand tous les membres des deux camps
+    sont posés ; chaque camp annonce la cible de son premier membre ; six archers au lancement."""
+    monde = _Monde(capacites=(4, 4))
+    categorie = monde.categories.par_id(monde.categorie_id)
+    assert categorie is not None
+    monde.categories.enregistrer(replace(categorie, sexe=SexeCategorie.HOMME))
+    archers = [monde.inscrire_classe(("10", "10")) for _ in range(6)]
+    for nom, trio in (("A", archers[:3]), ("B", archers[3:])):
+        monde.equipes.enregistrer(
+            Equipe(tournoi_id=1, nom=nom, type=TypeEquipe.STANDARD, effectif_attendu=3,
+                   membres=tuple(trio))
+        )  # fmt: skip
+    monde.phases._phases[monde.phase_id] = replace(
+        monde.phases._phases[monde.phase_id], equipes=TypeEquipe.STANDARD
+    )
+    monde.placer()
+
+    plan = monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    poses = {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
+    (duel,) = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+    assert isinstance(duel.haut, DuellisteEquipe) and isinstance(duel.bas, DuellisteEquipe)
+    premier = {"A": archers[0], "B": archers[3]}
+    assert duel.cible_haut == poses[premier[duel.haut.nom]]
+    assert duel.cible_bas == poses[premier[duel.bas.nom]]
+    assert duel.pret_a_lancer
+    assert monde.pilotage.impact_lancement(monde.tournoi_id, monde.phase_id).nb_archers == 6
+
+
+def test_un_duel_d_equipes_dont_un_membre_est_en_reserve_n_est_pas_pret() -> None:
+    """Relevé en revue (axes C1 et D) : « en réserve, comme tout archer » — un seul membre posé ne
+    suffit pas, sans quoi le tour partirait avec des archers sans butte."""
+    monde = _Monde(capacites=(4,))
+    categorie = monde.categories.par_id(monde.categorie_id)
+    assert categorie is not None
+    monde.categories.enregistrer(replace(categorie, sexe=SexeCategorie.HOMME))
+    archers = [monde.inscrire_classe(("10", "10")) for _ in range(6)]
+    for nom, trio in (("A", archers[:3]), ("B", archers[3:])):
+        monde.equipes.enregistrer(
+            Equipe(tournoi_id=1, nom=nom, type=TypeEquipe.STANDARD, effectif_attendu=3,
+                   membres=tuple(trio))
+        )  # fmt: skip
+    monde.phases._phases[monde.phase_id] = replace(
+        monde.phases._phases[monde.phase_id], equipes=TypeEquipe.STANDARD
+    )
+    monde.placer()
+
+    (duel,) = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+
+    assert not duel.pret_a_lancer
+    assert duel.blocage == "cible non attribuée"

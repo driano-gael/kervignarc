@@ -152,7 +152,7 @@ from application.suivi_deroule import (
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
-from application.verrou_bareme import VerrouBaremeDuel
+from application.verrou_bareme import VerrouBaremeDuel, VerrouCompositionEquipes
 from domain.contrat_phase import TypePhase
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
@@ -215,6 +215,7 @@ from infrastructure.memory.repositories import (
     InMemoryDepartRepository,
     InMemoryDerouleRepository,
     InMemoryDuelRepository,
+    InMemoryEquipeRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
@@ -298,6 +299,8 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         "Aggregation",
         registre.resoudre(FamillePolitique.AGGREGATION, "par_qualification", {}),
     )
+    # Un seul résolveur pour la saisie et le verrou, comme `create_app` (ADR-0117).
+    resolveur_bareme = ResolveurBaremeDuelFfta()
     # ⚠️ **La saisie se construit avant le placement** depuis E05US024 : le plan de cibles lui
     # emprunte sa résolution de classement amont, pour ensemencer exactement la population que
     # l'arbre fera jouer. L'ordre inverse ne compilait pas.
@@ -314,12 +317,23 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         duels,
         forfaits,
         classement,
-        ResolveurBaremeDuelFfta(),
+        resolveur_bareme,
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
         registre,
         aggregation_simulation,
+        equipes=ServiceEquipes(
+            InMemoryEquipeRepository(),
+            tournois,
+            archers,
+            categories,
+            verrou=VerrouCompositionEquipes(
+                VerrouBaremeDuel(departs, phases, deroules, duels, resolveur_bareme),
+                deroules,
+                inscriptions,
+            ),
+        ),
     )
     placement_duels = ServicePlacementDuels(
         tournois,
@@ -644,7 +658,11 @@ def create_app(
     )
     # Équipes d'un tournoi (E13US002).
     app.state.service_equipes = ServiceEquipes(
-        equipe_repository, tournoi_repository, archer_repository, categorie_repository
+        equipe_repository,
+        tournoi_repository,
+        archer_repository,
+        categorie_repository,
+        verrou=VerrouCompositionEquipes(verrou_bareme, deroule_repository, inscription_repository),
     )
     # Classement de qualification (E06US001) : lit les **séries** de saisie, plus les catégories
     # pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail flèche par
@@ -777,6 +795,7 @@ def create_app(
         PlacementEnCascade(),
         app.state.registre_politiques,
         aggregation,
+        equipes=app.state.service_equipes,
     )
     # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*` rend
     # `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui attendent un

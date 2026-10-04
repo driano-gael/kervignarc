@@ -30,6 +30,7 @@ function poser(type: 'elimination_directe' | 'poules' | 'placement' = 'eliminati
         big_shoot_off: null,
         suisse: null,
         bareme_duel: null,
+        equipes: null,
         colline: null,
         decoupage: null,
         sources: [],

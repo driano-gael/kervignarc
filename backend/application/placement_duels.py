@@ -2,7 +2,7 @@
 
 ⚠️ **L'appariement, lui, n'est JAMAIS persisté** : il est recalculé du classement à chaque
 régénération (déterministe, ADR-0023). Ensemencement scratch, **un tour à la fois** — celui qui se
-joue (ADR-0106 §2) —, gabarit du tournoi réutilisé. Les participants de genre équipe sont ignorés.
+joue (ADR-0106 §2) —, gabarit du tournoi réutilisé. Un camp d'équipe pose ses membres (E13US004).
 """
 
 from __future__ import annotations
@@ -84,8 +84,9 @@ class PlanDeDuels:
 class _Contexte:
     """Décor d'un **tour** de phase de tableau : gabarit, duellistes du tour et leurs jointures.
 
-    `donnees` ne contient que les duellistes **plaçables** (blason exploitable) ; `partenaire`
-    associe chaque archer à son adversaire (pour l'ordre d'adjacence) ; `paires` liste les duels en
+    `donnees` ne contient que les duellistes **plaçables** (blason exploitable) ; `duel_de`
+    associe chaque archer à tous ceux de son duel (pour l'ordre d'adjacence) ; `paires` liste les
+    duels **individuels** en
     `ArcherId` (pour le signal). Un archer sans inscription n'atteint pas ce décor.
     """
 
@@ -111,7 +112,7 @@ class _Contexte:
     sans_blason: set[InscriptionId] = field(default_factory=set)
     archer_par_inscription: dict[InscriptionId, ArcherId] = field(default_factory=dict)
     inscription_par_archer: dict[ArcherId, InscriptionId] = field(default_factory=dict)
-    partenaire: dict[ArcherId, ArcherId] = field(default_factory=dict)
+    duel_de: dict[ArcherId, tuple[ArcherId, ...]] = field(default_factory=dict)
     paires: list[tuple[ArcherId, ArcherId]] = field(default_factory=list)
 
     def est_placable(self, inscription_id: InscriptionId) -> bool:
@@ -187,7 +188,7 @@ class ServicePlacementDuels:
         plan = placer(
             contexte.gabarit.cibles,
             a_placer,
-            ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
+            ordonner=partial(_ordonner_pour_adjacence, duel_de=contexte.duel_de),
             cloisonnement=contexte.cloisonnement,
         )
         affectations = [
@@ -320,7 +321,7 @@ class ServicePlacementDuels:
             plan_actuel.cibles,
             contexte.donnees,
             a_placer,
-            ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
+            ordonner=partial(_ordonner_pour_adjacence, duel_de=contexte.duel_de),
             cloisonnement=contexte.cloisonnement,
         )
         nouvelles = [
@@ -724,37 +725,27 @@ class ServicePlacementDuels:
     ) -> None:
         """Range les duellistes d'un duel déjà tranché hors des archers **à placer**."""
         for participant in (haut, bas):
-            archer_id = self._archer_du(participant) if participant is not None else None
-            if archer_id is None:
-                continue
-            inscription_id = contexte.inscription_par_archer.get(archer_id)
-            if inscription_id is not None:
-                contexte.tranches.add(inscription_id)
+            archers = self._saisie_duels.archers_du(participant) if participant is not None else ()
+            for archer_id in archers:
+                inscription_id = contexte.inscription_par_archer.get(archer_id)
+                if inscription_id is not None:
+                    contexte.tranches.add(inscription_id)
 
     def _enregistrer_duel(self, contexte: _Contexte, haut: Participant, bas: Participant) -> None:
-        """Résout un duel (Participant → archer → inscription) et l'inscrit au décor.
+        """Résout un duel (Participant → archers → inscriptions) et l'inscrit au décor.
 
-        Les `Participant` de genre **équipe** sont ignorés (hors périmètre, E13US002). Un archer
-        sans inscription au tournoi n'est pas plaçable (rien à persister) : le duel est alors
-        incomplet et ressortira **signalé** (un membre non posé) — jamais un plantage.
+        Un camp d'équipe apporte tous ses membres (E13US004, CA 6). Un archer sans inscription au
+        tournoi n'est pas plaçable (rien à persister) : le duel est alors incomplet et ressortira
+        **signalé** (un membre non posé) — jamais un plantage.
         """
-        archer_haut = self._archer_du(haut)
-        archer_bas = self._archer_du(bas)
-        if archer_haut is None or archer_bas is None:
-            return
-        inscription_haut = self._inscrire_au_decor(contexte, archer_haut)
-        inscription_bas = self._inscrire_au_decor(contexte, archer_bas)
-        contexte.paires.append((archer_haut, archer_bas))
-        if inscription_haut is not None and inscription_bas is not None:
-            contexte.partenaire[archer_haut] = archer_bas
-            contexte.partenaire[archer_bas] = archer_haut
-
-    @staticmethod
-    def _archer_du(participant: Participant) -> ArcherId | None:
-        """L'`ArcherId` d'un participant individuel, ou `None` pour une équipe (hors périmètre)."""
-        if participant.genre is not GenreParticipant.INDIVIDUEL:
-            return None
-        return participant.ref_id
+        archers = (*self._saisie_duels.archers_du(haut), *self._saisie_duels.archers_du(bas))
+        inscrits = tuple(a for a in archers if self._inscrire_au_decor(contexte, a) is not None)
+        for archer_id in inscrits:
+            contexte.duel_de[archer_id] = inscrits
+        # Le signal « côte à côte » ne vaut que pour un duel individuel : deux équipes occupent
+        # forcément plusieurs cibles, elles seraient toujours signalées (CA 6).
+        if haut.genre is GenreParticipant.INDIVIDUEL and bas.genre is GenreParticipant.INDIVIDUEL:
+            contexte.paires.append((haut.ref_id, bas.ref_id))
 
     def _inscrire_au_decor(self, contexte: _Contexte, archer_id: ArcherId) -> InscriptionId | None:
         """Rattache un archer duelliste au décor (inscription + `ArcherAPlacer`), une fois.

@@ -43,6 +43,7 @@ import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
 import { depuisDecoupage, versDecoupage } from '../../shared/phases/decoupage'
 import { ReglageColline } from '../../shared/phases/ReglageColline'
 import { ReglageBaremeDuel } from '../../shared/phases/ReglageBaremeDuel'
+import { ReglageEquipes } from '../../shared/phases/ReglageEquipes'
 import {
   BAREME_DUEL_NON_REGLE,
   TYPES_A_BAREME_DE_DUEL,
@@ -549,6 +550,8 @@ export function FormulairePhase({
   const [colline, setColline] = useState(depuisReglageColline(phase?.colline ?? null))
   // E01US011, même parti : l'état vit ici. Les armes des catégories pré-remplissent les presets.
   const [baremeDuel, setBaremeDuel] = useState(depuisReglageBaremeDuel(phase?.bareme_duel ?? null))
+  // E13US004 — DETTE-080, 13ᵉ réglage écrit ici et dans le formulaire jumeau.
+  const [equipes, setEquipes] = useState(phase?.equipes ?? null)
   const categories = useCategories(tournoiId)
   // `null` tant que la requête n'a pas réussi : la fiche retient alors ses presets (E01US011).
   const armes = useMemo<ArmesConnues>(
@@ -652,6 +655,8 @@ export function FormulairePhase({
   const estSuisse = type === 'suisse'
   const estColline = type === 'colline'
   const aBaremeDeDuel = TYPES_A_BAREME_DE_DUEL.has(type)
+  // Pas `aBaremeDeDuel` : poules, suisse et colline ont un barème mais pas d'équipes (ADR-0120).
+  const estEliminationDirecte = type === 'elimination_directe'
   // E05US035 : le découpage en tours n'existe que pour la qualification. E05US033 :
   // `TYPES_ARRETABLES` (miroir de la table de même nom côté domaine, ADR-0093) dit quels types
   // annoncent leurs tours, donc où une pause peut se poser. ⚠️ **Pour une qualification,
@@ -719,6 +724,7 @@ export function FormulairePhase({
       colline: estColline ? (versReglageColline(colline) ?? null) : null,
       // E01US011, même garde : porté par un type sans duel, le serveur refuserait en 422.
       bareme_duel: aBaremeDeDuel ? (versReglageBaremeDuel(baremeDuel) ?? null) : null,
+      equipes: estEliminationDirecte ? equipes : null,
       // Retyper la phase **efface** l'arrêt (E05US033) et le découpage (E05US035), comme les
       // quatre autres réglages : portés par un autre type, ils seraient refusés en 422 et le `PUT`
       // étant total, c'est l'enregistrement entier qui échouerait. ⚠️ **Perte de planning
@@ -760,6 +766,7 @@ export function FormulairePhase({
           // sur la phase suivante, alors que c'est un choix de format, pas une préférence.
           setColline(depuisReglageColline(null))
           setBaremeDuel(BAREME_DUEL_NON_REGLE)
+          setEquipes(null)
           setArrets(ARRETS_PAR_DEFAUT)
           setAvecSource(false)
           setEtapeSource('')
@@ -872,6 +879,7 @@ export function FormulairePhase({
             }
           />
         )}
+        {estEliminationDirecte && <ReglageEquipes valeur={equipes} surChangement={setEquipes} />}
         {aBaremeDeDuel && (
           <ReglageBaremeDuel
             etat={baremeDuel}
@@ -977,6 +985,7 @@ function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
     suisse: phase.suisse,
     colline: phase.colline,
     bareme_duel: phase.bareme_duel,
+    equipes: phase.equipes,
     decoupage: phase.decoupage,
     arrets: phase.arrets,
     titre: phase.titre,

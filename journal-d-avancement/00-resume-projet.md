@@ -646,14 +646,19 @@ est désormais **livré** (E01US017), et les **écrans d'administration** se lis
 ou en listes arbitrées sur planche (E00US016) ; restent le **vocabulaire de score configurable** et les
 **épreuves par équipes** (EPIC-13) : depuis `E13US002`, l'organisateur **compose** ses équipes
 — standard ou mixte, avec leur conformité affichée —, et depuis `E13US003` une phase sait se
-régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; mais les équipes ne
-se **jouent** pas encore (placement, saisie et classement par équipe restent à faire).
+régler au **barème d'équipe** FFTA (barrage d'une flèche par archer compris) ; et depuis
+`E13US004`, un **tableau à élimination directe se joue par équipes** de bout en bout — les autres
+formats, le palmarès et les écrans publics par équipes restent à faire (`E13US005`).
 
 ---
 
 ## Chiffres repères
 
-- **165 US livrées** (mergées, revues, CI verte) à la date du 03/10/2026 — la dernière, `E00US028`,
+- **166 US livrées** (mergées, revues, CI verte) à la date du 04/10/2026 — la dernière, `E13US004`,
+  à **surface visible** : une phase d'élimination directe se règle **par équipes** ; les équipes
+  conformes y entrent, rangées par la somme des qualifications de leurs membres, les autres sont
+  listées avec la raison de leur absence, et chaque duel se saisit volée de camp par volée de camp
+  jusqu'au podium. Juste avant, `E00US028`,
   **sans surface utilisateur** : un document de décision qui nomme du code disparu fait désormais
   échouer la vérification automatique, au lieu d'attendre qu'un relecteur le remarque. Juste avant,
   `E09US007`, à **surface visible** : le **déroulé horaire s'imprime** en PDF depuis « Exports & impressions »,

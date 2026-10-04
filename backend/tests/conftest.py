@@ -45,7 +45,7 @@ import dataclasses
 import datetime
 import logging
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -62,7 +62,7 @@ from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
-from domain.equipe import Equipe, EquipeId
+from domain.equipe import Equipe, EquipeId, TypeEquipe
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi
 from domain.gabarit_salle import GabaritSalle
@@ -75,6 +75,8 @@ from domain.tournoi import DescendanceTournoi, Tournoi, TournoiId
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+
+    from application.saisie_duels import Camp
 
 # Alias de type en **forward-ref** (chaîne) : `conftest.py` reste importable sans `fastapi`
 # installé — nécessaire au hook pre-commit `domain-isolation`, qui exécute pytest dans un
@@ -965,6 +967,7 @@ def poser_phase_factice(
                 colline=phase.colline,
                 # E01US011 : câblé du premier coup — 5ᵉ réglage, `DETTE-064`.
                 bareme_duel=phase.bareme_duel,
+                equipes=phase.equipes,
                 # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
                 # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
                 # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
@@ -1056,6 +1059,8 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
             colline=phase.colline,
             # E01US011 : câblé du premier coup — 5ᵉ réglage, `DETTE-064`.
             bareme_duel=phase.bareme_duel,
+            # E13US004 : 6ᵉ réglage, **oublié** puis rattrapé par un test d'API — `DETTE-064`.
+            equipes=phase.equipes,
             # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
             # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
             # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
@@ -1350,3 +1355,23 @@ def section_unique(corps: dict[str, Any]) -> dict[str, Any]:
     (section,) = corps["sections"]
     assert isinstance(section, dict)
     return section
+
+
+def archer_de(camp: Camp | None) -> int:
+    """L'archer d'un camp **individuel** — échoue net sur une équipe ou un camp vide (E13US004)."""
+    # Import local : ce fichier est chargé par le hook d'isolation du domaine (pytest seul).
+    from application.saisie_duels import Duelliste
+
+    assert isinstance(camp, Duelliste), f"camp individuel attendu, reçu {camp!r}"
+    return camp.archer_id
+
+
+class FauxVerrouDeComposition:
+    """`VerrouDeComposition` réglé à la main : les types d'équipe dont un tableau a un tir."""
+
+    def __init__(self) -> None:
+        self.tires: set[TypeEquipe] = set()
+
+    def en_jeu(self, tournoi_id: TournoiId, type: TypeEquipe, archers: Iterable[ArcherId]) -> bool:
+        # Une équipe sans membre ne tire aucun départ : jamais en jeu, comme la vraie classe.
+        return type in self.tires and any(True for _ in archers)

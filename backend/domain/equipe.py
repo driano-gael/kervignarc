@@ -13,6 +13,7 @@ from enum import Enum
 from types import MappingProxyType
 
 from domain.archer import ArcherId
+from domain.blason import BlasonId
 from domain.categorie import Categorie, SexeCategorie
 from domain.erreurs import (
     ArcherDejaMembre,
@@ -106,6 +107,8 @@ class EcartComposition(str, Enum):
     MIXITE_MANQUANTE = "mixite_manquante"
     SEXES_DIFFERENTS = "sexes_differents"
     SEXE_NON_VERIFIABLE = "sexe_non_verifiable"
+    BLASONS_DIFFERENTS = "blasons_differents"
+    BLASON_NON_VERIFIABLE = "blason_non_verifiable"
 
 
 @dataclass(frozen=True)
@@ -118,13 +121,15 @@ class ProfilMembre:
 
     arme: str | None
     sexe: SexeCategorie | None
+    blason_id: BlasonId | None = None
+    """Le blason de la catégorie : un duel d'équipe se saisit sur un seul pavé (E13US004)."""
 
     @staticmethod
     def de_categorie(categorie: Categorie | None) -> ProfilMembre:
         """Sans catégorie résolue, arme et sexe sont inconnus — jamais devinés."""
         if categorie is None:
             return ProfilMembre(arme=None, sexe=None)
-        return ProfilMembre(arme=categorie.arme, sexe=categorie.sexe)
+        return ProfilMembre(arme=categorie.arme, sexe=categorie.sexe, blason_id=categorie.blason_id)
 
 
 def conflit_de_type(
@@ -149,6 +154,7 @@ def ecarts_de_composition(
 
     ⚠️ **On ne devine dans aucun sens** : une arme ou un sexe inconnu rend le critère « non
     vérifiable », sans effacer pour autant une différence **déjà établie** entre membres connus.
+    Le blason, lui, n'est « non vérifiable » qu'à côté d'un blason connu (CA 9 d'E13US004).
     """
     ecarts: list[EcartComposition] = []
     if len(profils) < equipe.effectif_attendu:
@@ -159,6 +165,13 @@ def ecarts_de_composition(
         return tuple(ecarts)
     ecarts.extend(_ecarts_d_arme(profils))
     ecarts.extend(_ecarts_de_sexe(equipe.type, profils))
+    # Le pavé d'un duel d'équipe est celui du premier membre : un blason inconnu à côté d'un blason
+    # connu le rendrait faux, ou introuvable, selon l'ordre d'ajout — sans rien deviner.
+    connus = {p.blason_id for p in profils if p.blason_id is not None}
+    if len(connus) > 1:
+        ecarts.append(EcartComposition.BLASONS_DIFFERENTS)
+    if connus and any(p.blason_id is None for p in profils):
+        ecarts.append(EcartComposition.BLASON_NON_VERIFIABLE)
     return tuple(ecarts)
 
 

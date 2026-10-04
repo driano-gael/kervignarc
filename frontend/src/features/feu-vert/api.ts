@@ -5,9 +5,12 @@
 import { fetchJson } from '../../shared/api/client'
 
 export interface Duelliste {
-  archer_id: number
+  // Un camp d'équipe (E13US004) n'a pas d'archer : `nom` porte l'équipe, `prenom` est vide.
+  archer_id: number | null
   nom: string
   prenom: string
+  equipe_id?: number | null
+  membres?: string[]
 }
 
 // Un duel **à venir** (non tranché) et son état de préparation : les trois questions du CA, plus le

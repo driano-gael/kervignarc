@@ -20,17 +20,19 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
+from application.equipes import ServiceEquipes
 from application.erreurs import DeplacementInvalide, PhasePasUnTableau
 from application.placement_duels import PlanDeDuels, ServicePlacementDuels
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
-from domain.categorie import Categorie
+from domain.categorie import Categorie, SexeCategorie
 from domain.cloisonnement import Cloisonnement
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.entree_audit import EntreeAudit
+from domain.equipe import Equipe, TypeEquipe
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
@@ -49,9 +51,11 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxDepartRepository,
     FauxDuelRepository,
+    FauxEquipeRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
+    FauxVerrouDeComposition,
     identite_d_etape,
 )
 
@@ -268,6 +272,7 @@ class _Monde:
         self.series = FauxSerieRepository()
         self.forfaits = FauxForfaitRepository()
         self.placements = FauxPlacementTableauRepository()
+        self.equipes = FauxEquipeRepository()
         self.gabarits.ajouter(
             GabaritSalle(nom="Salle", capacites=capacites, tournoi_id=self.tournoi_id)
         )
@@ -417,6 +422,13 @@ class _Monde:
             PlacementEnCascade(),
             registre_par_defaut(),
             AggregationParQualification(),
+            equipes=ServiceEquipes(
+                self.equipes,
+                self.tournois,
+                self.archers,
+                self.categories,
+                verrou=FauxVerrouDeComposition(),
+            ),
         )
 
 
@@ -870,3 +882,38 @@ def test_le_plan_de_cibles_honore_les_prelevements_comme_l_arbre() -> None:
         camp.ref_id for match in tableau.matchs for camp in (match.haut, match.bas) if camp
     }
     assert set(poses) == duellistes
+
+
+def test_les_membres_de_deux_equipes_en_duel_sont_poses_a_la_suite() -> None:
+    """E13US004, CA 6 : un camp d'équipe pose tous ses membres, à la suite de ceux de l'adversaire.
+
+    Deux équipes de trois sur trois cibles de quatre : le duel occupe les six premières positions.
+    Le signal « côte à côte » reste celui des duels individuels — aucun duel n'est signalé.
+    """
+    monde = _Monde(capacites=(4, 4, 4))
+    categorie = monde.categories.par_id(monde.categorie_id)
+    assert categorie is not None
+    blason_id = categorie.blason_id
+    homme = monde.categories.ajouter(
+        Categorie.creer(1, "CLH", arme="Classique", sexe=SexeCategorie.HOMME, blason_id=blason_id)
+    )
+    assert homme.id is not None
+    membres = [
+        monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX), categorie_id=homme.id)
+        for _ in range(6)
+    ]
+    for nom, trio in (("A", membres[:3]), ("B", membres[3:])):
+        monde.equipes.enregistrer(
+            Equipe(tournoi_id=1, nom=nom, type=TypeEquipe.STANDARD, effectif_attendu=3,
+                   membres=tuple(trio))
+        )  # fmt: skip
+    monde.phases._phases[monde.phase_id] = replace(
+        monde.phases._phases[monde.phase_id], equipes=TypeEquipe.STANDARD
+    )
+
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+
+    poses = [(cible.index, p.archer_id) for cible in plan.cibles for p in cible.placements]
+    assert sorted(a for _, a in poses) == sorted(membres)
+    assert [index for index, _ in poses] == [1, 1, 1, 1, 2, 2]
+    assert plan.duels_separes == ()

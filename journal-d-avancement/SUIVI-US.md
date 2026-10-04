@@ -12,23 +12,24 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 03/10/2026, 20 h 18** · **165 US livrées** · dernière : `E00US028`
+**Dernière mise à jour : 04/10/2026, 17 h 38** · **166 US livrées** · dernière : `E13US004`
+*(**un tableau d'équipes se joue de bout en bout** — une élimination directe se règle « par
+équipes » (de trois ou mixtes) ; les équipes **conformes** dont tous les membres sont en lice y
+entrent, rangées par la **somme des qualifications** de leurs membres ; les autres sont **écartées
+et listées** avec leurs motifs, sans bloquer personne. Barème non réglé = **preset FFTA équipe**,
+membres posés à la suite sur les cibles, podium nommant les équipes. **Cadrage** : 1ʳᵉ tranche
+du CA d'origine, le reliquat part en `E13US005` (autres formats, palmarès, affectations, top N,
+forfait d'équipe). [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md) ;
+**aucune migration**. `DETTE-120`, `DETTE-121` créées. ⚠️ **Non vérifiée au navigateur** —
+couverte par les tests de service, d'API et d'écran monté.)*
+Précédente : `E00US028`
 *(**un ADR qui nomme du code disparu fait rougir la CI** ([ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §3) — `portage-symbole-absent` passe bloquant,
 cliquet à zéro. Les constats étaient **30**, pas 22 : une minorité de promesses mortes (un renommage
 d'`E05US022` cité par quatre ADR), le reste de **forme** — chemins abrégés, tests cités sans leur
 fichier, noms historiques entre accents graves. Un faux constat venait du lecteur de l'atlas, corrigé
 sans perdre un portage (mesuré). Sans surface utilisateur. ⚠️ Le contrôle prouve qu'un symbole
 **existe**, jamais qu'il **porte** la décision.)*
-Précédente : `E09US007`
-*(**le déroulé horaire s'imprime** — un PDF depuis « Exports & impressions », un bloc par départ,
-une ligne par phase : nom (titre ou type), début et fin prévus **lus sur `E03US010`**, jamais
-recalculés (« à préciser » pour l'inconnu, « (lendemain) » comme à l'écran — arbitré en revue), et les tours **en information**
-quand l'étape les règle (qualification découpée, suisse, colline). Trois arbitrages au cadrage,
-reversés dans `stories/` : maille **phase** (pas d'heure par tour, ADR-0118 inchangé), **un bloc
-par départ** avec filtre facultatif, **PDF seul**. Route publique, comme la lecture qu'elle imprime.
-**Aucune migration.** ⚠️ **Non vérifiée au navigateur** — couverte par les tests d'adapter, d'API et
-d'écran monté.)*
-Avant : `E11US006`
+Avant : `E09US007` *(le déroulé horaire s'imprime)*, puis `E11US006`
 *(**une sauvegarde se restaure depuis l'appli, à chaud** — écran « Sauvegardes » (axe Atelier) :
 liste, vérification (intégrité **et** version), restauration confirmée, sans redémarrer. L'état
 courant est d'abord copié (`avant-restauration-*`, hors rétention : une restauration s'annule), les
@@ -492,7 +493,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~🎯~~ ✅ | ~~`E00US016`~~ | **Livrée le 03/10/2026 — désignée par le commanditaire hors de la file, en mode multi-agent** : les quatre candidates étaient prises (`E13US004`, `E11US006`, `E03US010`) ou recoupaient une réservation (`E01US027` ↔ `E13US004`, même résolveur de barème). **Recadrée au cadrage** : le CA du 18/07 était **périmé**, pas étroit — les planches A04/A06/A08/A09 avaient arbitré ; le **reliquat** est livré (quatre listes en tableaux, taille de blason en fractions). |
 > | ~~🎯~~ ✅ | ~~`E11US006`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent** : `E03US010` réservée ailleurs, `E13US004` et `E01US027` écartées sur un recoupement avec un travail en cours non réservé (équipes, barème de duel). Arbitrages au cadrage : restauration **à chaud depuis l'admin**, arrêt par la croix de la console inclus. |
 > | ~~🎯~~ ✅ | ~~`E09US007`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir » (jalon J4), en mode multi-agent** (`E13US004` et `E11US006` réservées ailleurs, `E01US027` écartée sur un doute de recoupement). Cadrage : maille **phase** avec les tours **en information**, **un bloc par départ**, **PDF seul**. ⚠️ Le nombre de tours d'un tableau n'est pas imprimé : il dépend de la politique de `seeding` injectée. |
-> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : `E00US029` (suite du chantier [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md), après `E00US028` livrée le 03/10), la suite du fil **équipes** (`E13US004` — engager, placer, saisir et classer des équipes), le jalon **J4** (`E01US027`). |
+> | ~~🎯~~ ✅ | ~~`E13US004`~~ | **Livrée le 03/10/2026 — prise dans le « à choisir », en mode multi-agent.** Cadrage en cinq arbitrages : **1ʳᵉ tranche** jouable (le tableau à élimination directe), rang d'entrée = **somme des qualifications**, barème non réglé = **preset équipe**, équipe non conforme **écartée et listée** (pas de phase bloquée), top N **différé** (`DETTE-120`). L'engagement est une **dérivation**, pas un geste. [ADR-0120](../docs/adr/0120-une-phase-oppose-des-equipes-par-reglage-d-etape.md). Reliquat : `E13US005`. |
+> | 🎯 **à choisir** | — | **La file d'exécution est vide hors arbitrages** : les trois lignes ci-dessous attendent une décision de votre part. Candidates ⬜ prenables sans arbitrage : `E00US029` (suite du chantier [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md), après `E00US028` livrée le 03/10), la suite du fil **équipes** (`E13US005` — les équipes dans les autres formats, au palmarès et sur les écrans publics ; à redécouper), le jalon **J4** (`E01US027`). |
 > | 🔒 **besoin sans porteur** | **A12 · actions sur un poste** | **Régénérer un code de cible, Détacher, Réactiver** figurent sur la planche A12 mais n'existent **ni au front ni au serveur** : seule la **révocation** existe (supervision). Capacités neuves, **hors fidélité** (arbitrage du 26/09/2026) — à épiquer si le besoin est confirmé. |
 > | ~~🔒~~ ✅ | ~~`E17US006`~~ | **Livrée le 26/09/2026** — arbitrage rendu le jour même : **option (c)**, l'action destructrice se signale par la **forme**, jamais par la couleur ; l'ambre est réservé à l'alerte ([ADR-0114](../docs/adr/0114-l-action-destructrice-se-signale-par-la-forme-pas-par-la-couleur.md)). |
 > | 🔒 **en attente de vous** | **tour 2 des questionnaires `S**`** | **Trois planches de saisie n'ont plus d'étalon** — `S04`, `S05`, `S08` —, et aucune US ne peut les résorber sans deviner. Les questionnaires du 04/08 ont été remplis sur les **vignettes** ; les planches ont été redessinées le 05/08. Les feuilles de saisie existent déjà (`maquettes/questionnaires/s0*.html`) et produisent le `.md` à déposer. ⚠️ **Une livraison attend votre confirmation** : sur `S04`, `E17US008` a livré la phrase qui explique le rôle du marqueur — identique dans les deux variantes, donc sans choisir de forme, mais elle **agrandit le panneau**, or la planche dit se juger « à l'espace volé au pavé ». À reposer avec le reste (ADR-0113 §3, 3ᵉ condition). ⚠️ C'est **votre** temps, pas celui de l'assistant : d'où sa place ici. |
@@ -1335,7 +1337,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 91 | E10US006 | Modifier le mot de passe admin | ✅ *(livrée le 02/10/2026 — écran « Compte administrateur », mot de passe actuel exigé, autres sessions admin fermées ; refus en 403/400, jamais 401)* |
 | 92 | E01US027 | Barème propre aux ½ finales et finales d'un tableau | ⬜ *(ajoutée le 01/10/2026 à la revue d'E01US011 — format club du référentiel §10.1 ; résorbe `DETTE-117`)* |
 
-## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (7/10)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (8/11)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -1351,7 +1353,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
 | E13US002 | Composer les équipes d'un tournoi | J2 | ✅ *(entité `Equipe` + écran « Équipes » ; composition **signalée, pas bloquée** ; sexe et arme lus sur la catégorie ; une équipe par type ; migration `0059`. ADR-0028 porté à moitié : les équipes se composent, elles ne se jouent pas encore)* |
 | E13US003 | Scoring d'équipe (barème et barrage) | J2 | ✅ *(presets FFTA équipe / mixte, barrage à N flèches ; barème de duel et non politique `scoring`, ADR-0028 §3 amendé)* |
-| E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
+| E13US004 | Un tableau d'équipes jouable de bout en bout | J2→J3 | ✅ *(livrée le 03/10/2026 — élimination directe par équipes : engagement dérivé, rang d'entrée par somme des qualifications, preset équipe par défaut, équipes écartées listées ; ADR-0120)* |
+| E13US005 | Équipes jouées : le reliquat d'E13US004 | J3 | ⬜ *(créée le 03/10/2026 au cadrage d'E13US004 — autres formats, palmarès, affectations, top N, forfait d'équipe ; à redécouper)* |
 
 ## Ajout du 20/07/2026 — ✅ **livrée (1/1)**
 

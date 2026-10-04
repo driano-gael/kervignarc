@@ -331,3 +331,61 @@ def test_le_profil_d_un_membre_est_lu_sur_sa_categorie() -> None:
     categorie = Categorie.creer(1, "Femme arc classique", arme="Classique", sexe=F)
 
     assert ProfilMembre.de_categorie(categorie) == ProfilMembre(arme="Classique", sexe=F)
+
+
+# --- E13US004, arbitrage de revue (03/10/2026) : des blasons différents ------------------------
+
+
+def test_des_membres_sur_des_blasons_differents_sont_un_ecart() -> None:
+    # Le pavé d'un duel est celui d'un seul blason : une équipe mêlant un 60 cm et un trispot ne
+    # se saisit pas juste. Signalé ici comme les autres écarts, refusé à l'engagement (E13US004).
+    equipe = Equipe(1, "Mêlée", TypeEquipe.STANDARD, 3, (1, 2, 3), id=1)
+    profils = [
+        ProfilMembre(arme="Classique", sexe=H, blason_id=10),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=10),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=20),
+    ]
+
+    assert ecarts_de_composition(equipe, profils) == (EcartComposition.BLASONS_DIFFERENTS,)
+
+
+def test_un_blason_connu_mele_a_un_blason_inconnu_est_non_verifiable() -> None:
+    # Le pavé est celui du premier membre : sans cet écart, l'issue dépendrait de l'ordre d'ajout
+    # (relevé en 2ᵉ passe de revue, axe C1).
+    equipe = Equipe(1, "Partielle", TypeEquipe.STANDARD, 2, (1, 2), id=1)
+    profils = [
+        ProfilMembre(arme="Classique", sexe=H, blason_id=10),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=None),
+    ]
+
+    assert ecarts_de_composition(equipe, profils) == (EcartComposition.BLASON_NON_VERIFIABLE,)
+
+
+def test_aucun_blason_connu_ne_cree_pas_d_ecart_de_blason() -> None:
+    equipe = Equipe(1, "Sans blason", TypeEquipe.STANDARD, 2, (1, 2), id=1)
+    profils = [ProfilMembre(arme="Classique", sexe=H), ProfilMembre(arme="Classique", sexe=H)]
+
+    ecarts = ecarts_de_composition(equipe, profils)
+    assert EcartComposition.BLASONS_DIFFERENTS not in ecarts
+    assert EcartComposition.BLASON_NON_VERIFIABLE not in ecarts
+
+
+def test_le_profil_lit_le_blason_de_la_categorie() -> None:
+    categorie = Categorie.creer(1, "CLH", arme="Classique", sexe=H, blason_id=7)
+
+    assert ProfilMembre.de_categorie(categorie).blason_id == 7
+
+
+def test_deux_blasons_differents_et_un_inconnu_donnent_les_deux_ecarts() -> None:
+    # Un blason inconnu n'efface pas une différence déjà établie entre blasons connus.
+    equipe = Equipe(1, "Mêlée", TypeEquipe.STANDARD, 3, (1, 2, 3), id=1)
+    profils = [
+        ProfilMembre(arme="Classique", sexe=H, blason_id=1),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=2),
+        ProfilMembre(arme="Classique", sexe=H, blason_id=None),
+    ]
+
+    assert ecarts_de_composition(equipe, profils) == (
+        EcartComposition.BLASONS_DIFFERENTS,
+        EcartComposition.BLASON_NON_VERIFIABLE,
+    )

@@ -38,7 +38,7 @@ from application.tableaux_publics import ServiceTableauxPublics, TableauPublic
 from domain.bareme import BaremeQualification
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.politiques import ProfondeurClassement
-from tests.conftest import identite_d_etape, poser_phase_factice
+from tests.conftest import archer_de, identite_d_etape, poser_phase_factice
 from tests.test_service_routage import _huit, _Monde, _quatre
 
 
@@ -235,7 +235,7 @@ def test_l_arbre_rendu_porte_le_vainqueur_acquis_et_le_match_suivant() -> None:
         duel.numero
         for duel in _etat(tableaux[0]).duels
         if duel.tour == 2
-        and vainqueur in {d.archer_id for d in (duel.haut, duel.bas) if d is not None}
+        and vainqueur in {archer_de(d) for d in (duel.haut, duel.bas) if d is not None}
     ]
     assert occupants, "le vainqueur validé doit occuper un match du tour suivant"
 

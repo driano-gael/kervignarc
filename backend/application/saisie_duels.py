@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from application.classements import ServiceClassement
+from application.equipes import EquipeJouee, ServiceEquipes
 from application.erreurs import (
     BlasonIntrouvable,
     DerouleCyclique,
@@ -36,13 +37,16 @@ from application.prelevement import (
     tranche,
 )
 from domain.blason import ZoneScore
+from domain.categorie import Categorie
 from domain.classement import Classement, LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDerouleId
 from domain.duel import BaremeDuel, Cote, Duel, ReglageBaremeDuel, ResolveurBaremeDuel
-from domain.erreurs import MatchNonJouable
+from domain.engagement_equipes import Engagement, EquipeEcartee, engager_les_equipes
+from domain.equipe import EcartComposition
+from domain.erreurs import EffectifTableauInvalide, EquipesNonPrisesEnCharge, MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import (
@@ -96,6 +100,32 @@ class Duelliste:
 
 
 @dataclass(frozen=True)
+class DuellisteEquipe:
+    """Un camp d'**équipe** résolu pour l'affichage (E13US004) : `membres` en « prénom nom ».
+
+    ⚠️ **Type distinct, à dessein** : seul le tableau à élimination directe joue des équipes ; les
+    poules, le suisse ou la colline, qui produisent des `Duelliste`, n'ont pas à traiter ce cas.
+    """
+
+    equipe_id: int
+    nom: str
+    membres: tuple[str, ...]
+
+
+Camp = Duelliste | DuellisteEquipe
+
+
+@dataclass(frozen=True)
+class EquipeEcarteeVue:
+    """Une équipe écartée du tableau, ses motifs résolus en noms pour l'écran (E13US004, CA 2)."""
+
+    equipe_id: int
+    nom: str
+    ecarts: tuple[EcartComposition, ...]
+    membres_hors_course: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class EtatDuel:
     """L'état d'un match du tableau : son câblage, ses occupants résolus et son tir (`duel`).
 
@@ -108,8 +138,8 @@ class EtatDuel:
     numero: int
     tour: int
     place_en_jeu: tuple[int, int] | None
-    haut: Duelliste | None
-    bas: Duelliste | None
+    haut: Camp | None
+    bas: Camp | None
     est_bye: bool
     duel: Duel | None
     bareme: BaremeDuel | None = None
@@ -149,7 +179,9 @@ class EtatTableau:
     nb_tours: int
     est_termine: bool
     duels: tuple[EtatDuel, ...]
-    podium: tuple[tuple[int, Duelliste], ...]
+    podium: tuple[tuple[int, Camp], ...]
+    equipes_ecartees: tuple[EquipeEcarteeVue, ...] = ()
+    """Les équipes du type de la phase qui n'entrent pas, avec leurs motifs (E13US004, CA 2)."""
 
 
 def amorce_du_cache(
@@ -189,8 +221,11 @@ class ServiceSaisieDuels:
         routing: Routing,
         registre: RegistrePolitiques,
         aggregation: Aggregation,
+        *,
+        equipes: ServiceEquipes,
     ) -> None:
         self._tournois = tournois
+        self._equipes = equipes
         self._phases = phases
         self._categories = categories
         self._blasons = blasons
@@ -247,6 +282,21 @@ class ServiceSaisieDuels:
 
     # --- Lecture -------------------------------------------------------------------------------
 
+    def etat_tableau_de_saisie(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
+        """`etat_tableau` pour l'écran des duels : sous deux équipes engagées, un tableau **vide**
+        qui porte les équipes écartées et leurs motifs (E13US004, CA 2), au lieu de lever.
+
+        ⚠️ Distinct d'`etat_tableau`, qui lève toujours : les tableaux publics et la simulation
+        sautent une phase pas encore jouable sur cette exception.
+        """
+        try:
+            return self.etat_tableau(tournoi_id, phase_id)
+        except EffectifTableauInvalide:
+            sans_tableau = self._equipes_sans_tableau(tournoi_id, phase_id)
+            if sans_tableau is None:
+                raise
+            return sans_tableau
+
     def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
         """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
         tableau, lignes, reglage = self._decor(tournoi_id, phase_id)
@@ -267,6 +317,7 @@ class ServiceSaisieDuels:
             est_termine=tableau.est_termine,
             duels=duels,
             podium=podium,
+            equipes_ecartees=self._ecartees(tournoi_id, phase_id, lignes),
         )
 
     def etat_duel(self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int) -> EtatDuel:
@@ -316,11 +367,11 @@ class ServiceSaisieDuels:
 
     def duelliste(
         self, participant: Participant | None, lignes: dict[int, LigneClassement]
-    ) -> Duelliste | None:
+    ) -> Camp | None:
         """Résout un participant en `Duelliste` (nom du classement), pour un lecteur externe.
 
         Expose la même résolution que la saisie applique à ses propres occupants (le pilotage
-        affiche les mêmes noms) — `None` pour un camp vide ou une équipe (hors périmètre, E13US002).
+        affiche les mêmes noms) — `None` pour un camp vide.
         """
         return self._duelliste(participant, lignes)
 
@@ -487,16 +538,19 @@ class ServiceSaisieDuels:
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
         # dans `lignes` pour résoudre les noms.
-        participants = [
-            Participant.individuel(ligne.archer_id)
-            for ligne in preleves(
-                phase,
-                classement,
-                self.resolveur_de_classement(
-                    tournoi_id, phase.depart_id, (*_chaine, phase_id), cache
-                ),
-            )
-        ]
+        if phase.equipes is not None:
+            participants = self._equipes_engagees(tournoi_id, phase, lignes)
+        else:
+            participants = [
+                Participant.individuel(ligne.archer_id)
+                for ligne in preleves(
+                    phase,
+                    classement,
+                    self.resolveur_de_classement(
+                        tournoi_id, phase.depart_id, (*_chaine, phase_id), cache
+                    ),
+                )
+            ]
         tableau = construire_tableau(
             participants,
             self._seeding,
@@ -623,6 +677,13 @@ class ServiceSaisieDuels:
             )
         if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
             return None
+        if phase.equipes is not None:
+            # Le déroulé le signale en anomalie ; ici on refuse plutôt que de prélever des équipes
+            # comme des archers (ADR-0120 §6, `DETTE-120`).
+            raise EquipesNonPrisesEnCharge(
+                f"La phase {phase.ordre} oppose des équipes : son classement n'alimente pas "
+                "encore d'autre phase."
+            )
         if phase.id in chaine:
             # Inatteignable par la composition : `verifier_sequence` exige qu'une source soit
             # **antérieure**, donc le déroulé est acyclique. La garde vise une base incohérente
@@ -647,6 +708,79 @@ class ServiceSaisieDuels:
             ),
         )
 
+    def archers_du(self, participant: Participant) -> tuple[int, ...]:
+        """Les archers qui tirent pour un camp : lui-même, ou les membres de l'équipe (E13US004).
+
+        **Exposé** pour le plan de duels et le pilotage, qui posent et annoncent des archers : la
+        résolution d'une équipe en membres n'a qu'un domicile.
+        """
+        if participant.genre is GenreParticipant.INDIVIDUEL:
+            return (participant.ref_id,)
+        equipe = self._equipes.jouee(participant.ref_id)
+        return () if equipe is None else equipe.equipe.membres
+
+    def _equipes_engagees(
+        self, tournoi_id: TournoiId, phase: Phase, lignes: dict[int, LigneClassement]
+    ) -> list[Participant]:
+        """Les équipes engagées, dans l'ordre de leur rang d'entrée (CA 2 et 3, ADR-0120 §2)."""
+        if phase.sources:
+            raise EquipesNonPrisesEnCharge(
+                f"La phase {phase.ordre} oppose des équipes : elle ne prélève pas encore par "
+                "rangs (DETTE-120)."
+            )
+        engagement = self._engagement(tournoi_id, phase, lignes)
+        return [
+            Participant.equipe(e.equipe.id) for e in engagement.engagees if e.equipe.id is not None
+        ]
+
+    def _ecartees(
+        self, tournoi_id: TournoiId, phase_id: PhaseId, lignes: dict[int, LigneClassement]
+    ) -> tuple[EquipeEcarteeVue, ...]:
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None or phase.equipes is None:
+            return ()
+        return tuple(
+            self._vue_ecartee(e) for e in self._engagement(tournoi_id, phase, lignes).ecartees
+        )
+
+    def _equipes_sans_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau | None:
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None or phase.equipes is None:
+            return None
+        classement = self._classements.pour_depart(phase.depart_id)
+        lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
+        engagement = self._engagement(tournoi_id, phase, lignes)
+        return EtatTableau(
+            phase_id=phase_id,
+            effectif=len(engagement.engagees),
+            taille=0,
+            nb_tours=0,
+            est_termine=False,
+            duels=(),
+            podium=(),
+            equipes_ecartees=tuple(self._vue_ecartee(e) for e in engagement.ecartees),
+        )
+
+    def _vue_ecartee(self, ecartee: EquipeEcartee) -> EquipeEcarteeVue:
+        assert ecartee.equipe.id is not None  # relue du dépôt : toujours persistée
+        jouee = self._equipes.jouee(ecartee.equipe.id)
+        noms = {} if jouee is None else {m.archer_id: f"{m.prenom} {m.nom}" for m in jouee.membres}
+        return EquipeEcarteeVue(
+            equipe_id=ecartee.equipe.id,
+            nom=ecartee.equipe.nom,
+            ecarts=ecartee.ecarts,
+            membres_hors_course=tuple(
+                noms.get(a, f"archer {a}") for a in ecartee.membres_hors_course
+            ),
+        )
+
+    def _engagement(
+        self, tournoi_id: TournoiId, phase: Phase, lignes: dict[int, LigneClassement]
+    ) -> Engagement:
+        assert phase.equipes is not None
+        equipes, profils = self._equipes.a_engager(tournoi_id, phase.equipes)
+        return engager_les_equipes(phase.equipes, equipes, profils, lignes)
+
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
         """Fait **passer l'adversaire** d'un duelliste forfait dans cette phase (ADR-0050).
 
@@ -656,7 +790,11 @@ class ServiceSaisieDuels:
         : le camp **haut** avance par convention. Les forfaits de qualification ne passent pas ici
         — leurs archers ne sont pas dans le tableau.
         """
-        forfaits = {f.archer_id for f in self._forfaits.par_phase(phase_id)}
+        forfaits = {
+            # DETTE-120 : des participants, pas des `ref_id` — une équipe n'est pas l'archer n° id.
+            Participant.individuel(f.archer_id)
+            for f in self._forfaits.par_phase(phase_id)
+        }
         if not forfaits:
             return tableau
         for numero in sorted(
@@ -670,8 +808,8 @@ class ServiceSaisieDuels:
                 or match.vainqueur is not None
             ):
                 continue
-            haut_forfait = match.haut.ref_id in forfaits
-            bas_forfait = match.bas.ref_id in forfaits
+            haut_forfait = match.haut in forfaits
+            bas_forfait = match.bas in forfaits
             if haut_forfait and not bas_forfait:
                 tableau = tableau.jouer(numero, match.bas)
             elif (bas_forfait and not haut_forfait) or (haut_forfait and bas_forfait):
@@ -801,20 +939,25 @@ class ServiceSaisieDuels:
         """Le barème du duel par l'**arme** du participant : le réglage de la phase s'il existe,
         le défaut injecté sinon (ADR-0117). ⚠️ `reglage` **sans défaut** : l'omettre retomberait en
         silence sur FFTA."""
-        arme = self._arme_du(participant, lignes)
+        categorie = self._categorie_du(participant, lignes)
+        arme = None if categorie is None else categorie.arme
         if reglage is not None:
             return reglage.pour(arme)
+        if participant.genre is GenreParticipant.EQUIPE:
+            equipe = self._equipes.jouee(participant.ref_id)
+            if equipe is not None:
+                return self._resolveur.bareme_equipe_pour(equipe.equipe.type, arme)
         return self._resolveur.bareme_pour(arme)
 
-    def _arme_du(self, participant: Participant, lignes: dict[int, LigneClassement]) -> str | None:
-        """L'arme (texte libre de la catégorie) d'un participant individuel, ou `None`."""
-        if participant.genre is not GenreParticipant.INDIVIDUEL:
-            return None
+    def _categorie_du(
+        self, participant: Participant, lignes: dict[int, LigneClassement]
+    ) -> Categorie | None:
+        """La catégorie d'un archer, ou la catégorie commune d'une équipe (ADR-0120 §5)."""
+        if participant.genre is GenreParticipant.EQUIPE:
+            equipe = self._equipes.jouee(participant.ref_id)
+            return None if equipe is None else equipe.categorie
         ligne = lignes.get(participant.ref_id)
-        if ligne is None:
-            return None
-        categorie = self._categories.par_id(ligne.categorie_id)
-        return None if categorie is None else categorie.arme
+        return None if ligne is None else self._categories.par_id(ligne.categorie_id)
 
     def _zones_du(
         self, participant: Participant, lignes: dict[int, LigneClassement]
@@ -822,9 +965,7 @@ class ServiceSaisieDuels:
         """Les zones admises du blason tiré (le pavé). **Strict** sur le chemin d'écriture : blason
         indéterminable → `BlasonIntrouvable` (404, erreur **visible**, jamais de score faux
         silencieux — même exigence que la grille de qualification, E04US002)."""
-        individuel = participant.genre is GenreParticipant.INDIVIDUEL
-        ligne = lignes.get(participant.ref_id) if individuel else None
-        categorie = None if ligne is None else self._categories.par_id(ligne.categorie_id)
+        categorie = self._categorie_du(participant, lignes)
         blason_id = None if categorie is None else categorie.blason_id
         blason = None if blason_id is None else self._blasons.par_id(blason_id)
         if blason is None:
@@ -848,10 +989,13 @@ class ServiceSaisieDuels:
 
     def _duelliste(
         self, participant: Participant | None, lignes: dict[int, LigneClassement]
-    ) -> Duelliste | None:
-        """Résout un participant en `Duelliste` (nom du classement), ou `None` (vide / équipe)."""
-        if participant is None or participant.genre is not GenreParticipant.INDIVIDUEL:
+    ) -> Camp | None:
+        """Résout un participant en camp (nom du classement ou de l'équipe), `None` si vide."""
+        if participant is None:
             return None
+        if participant.genre is GenreParticipant.EQUIPE:
+            equipe = self._equipes.jouee(participant.ref_id)
+            return None if equipe is None else _duelliste_equipe(equipe)
         ligne = lignes.get(participant.ref_id)
         if ligne is None:
             return None
@@ -900,3 +1044,12 @@ class ServiceSaisieDuels:
             plage=None if match.plage is None else (match.plage.debut, match.plage.fin),
             libelle=libelle_tour(match.tour, nb_tours, match.place_en_jeu, match.plage),
         )
+
+
+def _duelliste_equipe(equipe: EquipeJouee) -> DuellisteEquipe:
+    assert equipe.equipe.id is not None  # relue du dépôt : toujours persistée
+    return DuellisteEquipe(
+        equipe_id=equipe.equipe.id,
+        nom=equipe.equipe.nom,
+        membres=tuple(f"{m.prenom} {m.nom}" for m in equipe.membres),
+    )

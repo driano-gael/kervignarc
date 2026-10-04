@@ -177,7 +177,10 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
             "termine",
             "validee",
         }, f"champs inattendus sur la route publique : {sorted(joue)}"
-        assert set(joue["haut"]) == {"archer_id", "nom", "prenom"}, sorted(joue["haut"])
+        # `equipe_id` (E13US004) : l'identité d'un camp d'équipe, au même titre qu'`archer_id`.
+        assert set(joue["haut"]) == {"archer_id", "nom", "prenom", "equipe_id"}, sorted(
+            joue["haut"]
+        )
         # **L'enveloppe aussi** (correctif de la 2ᵉ passe) : le verrou ne couvrait que le duel
         # et son duelliste, alors que le commit affirmait fermer « les deux trous d'un coup ».
         # Un champ ajouté à `TableauPublicReponse` partirait sur le LAN sans casser un test.

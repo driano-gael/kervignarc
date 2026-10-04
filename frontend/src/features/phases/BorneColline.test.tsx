@@ -42,6 +42,7 @@ const PHASE: EtapeDeroule = {
   suisse: null,
   // Un Ladder réglé au-delà de ce que 8 archers permettent : c'est le cas qui doit *parler*.
   bareme_duel: null,
+  equipes: null,
   colline: { nb_manches: 3, portee_de_defi: 12 },
   decoupage: null,
   titre: null,

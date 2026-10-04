@@ -40,6 +40,7 @@ const PHASE: EtapeDeroule = {
   big_shoot_off: null,
   suisse: { nb_rondes: 5 },
   bareme_duel: null,
+  equipes: null,
   colline: null,
   decoupage: null,
   titre: null,

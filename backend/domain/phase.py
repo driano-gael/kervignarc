@@ -29,6 +29,7 @@ from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
 from domain.contrat_phase import TypePhase as TypePhase
 from domain.contrat_phase import produit_un_classement as produit_un_classement
 from domain.depart import DepartId
+from domain.equipe import TypeEquipe
 from domain.erreurs import (
     BaremeDuelInvalide,
     CadenceValidationSuperieureAuBareme,
@@ -37,6 +38,7 @@ from domain.erreurs import (
     ConfigurationSuisseInvalide,
     EffectifIncompatible,
     EffectifPhaseInvalide,
+    EquipesNonPrisesEnCharge,
     GrainIncompatibleAvecTypePhase,
     PhaseQualificationIncomplete,
     PhaseSansClassementPrelevee,
@@ -460,6 +462,7 @@ class VueParRangs:
     bareme: BaremeQualification | None = None
     validation: GrainValidation | None = None
     poules: ReglageDePoules | None = None
+    equipes: TypeEquipe | None = None
 
 
 def vues_par_rangs(phases: Sequence[Phase]) -> tuple[VueParRangs, ...]:
@@ -481,6 +484,7 @@ def vues_par_rangs(phases: Sequence[Phase]) -> tuple[VueParRangs, ...]:
             bareme=phase.bareme,
             validation=phase.validation,
             poules=phase.poules,
+            equipes=phase.equipes,
         )
         for phase in phases
     )
@@ -603,6 +607,12 @@ class Phase:
     `ServicePhases.modifier`, sans quoi un duel validé se relirait sous un autre barème.
     """
 
+    equipes: TypeEquipe | None = None
+    """Le type d'équipe que cette phase oppose, ou `None` pour une phase individuelle (ADR-0120).
+
+    Même régime que `bareme_duel` : porté par l'étape, verrouillé au premier tir.
+    """
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -632,8 +642,9 @@ class Phase:
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
             )
-        # ⚠️ **CINQ gardes vivent sur `Phase`, pas sur l'étape** : `profondeur` et `poules`
-        # ci-dessus, `big_shoot_off`, `suisse` et `barrage_jusqu_au` ci-dessous — `colline` et
+        # ⚠️ **SEPT gardes vivent sur `Phase`, pas sur l'étape** : `profondeur` et `poules`
+        # ci-dessus, `big_shoot_off`, `suisse`, `bareme_duel`, `equipes` et `barrage_jusqu_au`
+        # ci-dessous — `colline` et
         # `decoupage` sont portés par `EtapeDeroule`. Elles ne se lèvent donc qu'à `instancier()`,
         # **après** l'écriture de l'étape : d'où l'appel à `verifier_instanciable()` aux trois
         # sites qui écrivent (E05US022). Retirer l'un d'eux ne fait rougir que son test dédié —
@@ -666,6 +677,11 @@ class Phase:
             raise BaremeDuelInvalide(
                 f"Une phase de type « {self.type.value} » ne tire pas de duels : elle n'a pas de "
                 "barème de duel à régler."
+            )
+        if self.equipes is not None and self.type is not TypePhase.ELIMINATION_DIRECTE:
+            raise EquipesNonPrisesEnCharge(
+                f"Une phase de type « {self.type.value} » ne se joue pas encore par équipes : "
+                "seule l'élimination directe les accepte."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(
@@ -798,10 +814,10 @@ class SequencePhases:
 class EtapeSequencee(Protocol):
     """Ce dont les contrôles de séquence ont besoin d'une étape — **rien de plus**.
 
-    Les contrôles ne regardent que `ordre`, `sources` et `effectif`. Membres en **propriétés** :
-    les implémentations sont `frozen`, et un protocole à attributs variables exigerait qu'ils
-    soient assignables (règle 4). ⚠️ **Contrat ancré sur les rangs** (ADR-0078), les anomalies
-    désignant « la phase 2 » ; une édition concrète s'y ramène par `vues_du_deroule`.
+    Les contrôles ne regardent que `ordre`, `sources`, `effectif` et `equipes`. Membres en
+    **propriétés** : les implémentations sont `frozen`, et un protocole à attributs variables
+    exigerait qu'ils soient assignables (règle 4). ⚠️ **Contrat ancré sur les rangs** (ADR-0078),
+    les anomalies désignant « la phase 2 » ; une édition concrète s'y ramène par `vues_du_deroule`.
     """
 
     @property
@@ -815,6 +831,9 @@ class EtapeSequencee(Protocol):
 
     @property
     def effectif(self) -> int | None: ...
+
+    @property
+    def equipes(self) -> TypeEquipe | None: ...
 
 
 def verifier_sequence(etapes: Sequence[EtapeSequencee]) -> None:
@@ -968,6 +987,7 @@ def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
     """
     par_ordre = {phase.ordre: phase for phase in phases}
     for phase in phases:
+        yield from _anomalies_ilot_d_equipes(phase, par_ordre)
         for source in phase.sources:
             phase_source = par_ordre.get(source.ordre_source)
             if phase_source is None:
@@ -1027,6 +1047,29 @@ def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
                 )
         yield from _anomalies_recoupements(phase, par_ordre)
         yield from _anomalies_somme(phase)
+
+
+def _anomalies_ilot_d_equipes(
+    phase: EtapeSequencee, par_ordre: Mapping[int, EtapeSequencee]
+) -> Iterator[Anomalie]:
+    """Une phase d'équipes ne prélève pas et n'alimente personne — `DETTE-120`, ADR-0120 §6."""
+    if phase.equipes is not None and phase.sources:
+        yield Anomalie(
+            EquipesNonPrisesEnCharge(
+                f"La phase {phase.ordre} oppose des équipes : elle engage toutes les équipes "
+                "conformes de son type et ne prélève pas encore par rangs."
+            ),
+            phase.ordre,
+        )
+    amont = [par_ordre.get(source.ordre_source) for source in phase.sources]
+    if any(source is not None and source.equipes is not None for source in amont):
+        yield Anomalie(
+            EquipesNonPrisesEnCharge(
+                f"La phase {phase.ordre} prélève dans une phase d'équipes : un classement "
+                "d'équipes n'alimente pas encore d'autre phase."
+            ),
+            phase.ordre,
+        )
 
 
 def _anomalies_recoupements(
