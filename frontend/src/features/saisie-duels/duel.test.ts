@@ -2,17 +2,29 @@
 // optimiste. Le serveur reste l'autorité (résultat, mode, zones) ; on teste ce qui pilote l'affichage.
 
 import { describe, expect, it } from 'vitest'
-import type { Duel, SaisirBarrage, SaisirManche } from './api'
+import type { Duel, Phase, Resultat, SaisirBarrage, SaisirManche } from './api'
 import {
+  archersARouter,
+  campApresFleche,
+  duellistesDuForfait,
+  estOuvrable,
+  etatBarrage,
+  flechesApresZone,
   grouperParTour,
   injecterBarrage,
   injecterManche,
   libelleMode,
   libelleTour,
   mancheExistante,
+  pastillesManches,
+  retenirPhase,
+  phasesDeTableau,
   pointsZone,
   mancheNeuveFermee,
   prochaineMancheASaisir,
+  saisieVerrouillee,
+  signatureBarrage,
+  signatureManche,
   statutDuel,
   totalVolee,
 } from './duel'
@@ -258,5 +270,252 @@ describe('pointsZone (duel) — le miroir du domaine', () => {
   it('donne à chaque zone du vocabulaire FFTA sa valeur, M valant 0', () => {
     const zones = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
     expect(zones.map(pointsZone)).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+  })
+})
+
+// --- Décisions de l'écran sorties du composant (E00US024) : l'oracle est le comportement d'avant. ---
+
+function resultat(over: Partial<Resultat> = {}): Resultat {
+  return {
+    points_haut: 0,
+    points_bas: 0,
+    vainqueur: null,
+    termine: false,
+    barrage_requis: false,
+    ...over,
+  }
+}
+
+const EQUIPE = { archer_id: null, nom: 'Les Flèches', prenom: '', membres: ['A', 'B'] }
+
+describe('estOuvrable', () => {
+  it('ferme le bye et le duel sans adversaires, ouvre tout le reste', () => {
+    expect(estOuvrable('bye')).toBe(false)
+    expect(estOuvrable('attente_adversaires')).toBe(false)
+    for (const statut of ['a_saisir', 'en_cours', 'a_valider', 'valide'] as const) {
+      expect(estOuvrable(statut)).toBe(true)
+    }
+  })
+})
+
+describe('phasesDeTableau', () => {
+  it('ne garde que les phases à élimination directe, dans leur ordre', () => {
+    const phases: Phase[] = [
+      { id: 1, ordre: 1, type: 'qualification' },
+      { id: 2, ordre: 2, type: 'elimination_directe' },
+      { id: 3, ordre: 3, type: 'poules' },
+      { id: 4, ordre: 4, type: 'elimination_directe' },
+    ]
+    expect(phasesDeTableau(phases).map((p) => p.id)).toEqual([2, 4])
+  })
+
+  it('rend une liste vide sans phase de tableau', () => {
+    expect(phasesDeTableau([])).toEqual([])
+    expect(phasesDeTableau([{ id: 1, ordre: 1, type: 'qualification' }])).toEqual([])
+  })
+})
+
+describe('retenirPhase', () => {
+  const tableaux: Phase[] = [
+    { id: 2, ordre: 2, type: 'elimination_directe' },
+    { id: 4, ordre: 4, type: 'elimination_directe' },
+  ]
+
+  it('garde la phase choisie si elle appartient à la liste', () => {
+    expect(retenirPhase(4, tableaux)).toBe(4)
+  })
+
+  it('oublie une phase étrangère à la liste (changement de créneau)', () => {
+    expect(retenirPhase(7, tableaux)).toBeNull()
+    expect(retenirPhase(2, [])).toBeNull()
+  })
+
+  it('reste sans phase quand aucune n’est choisie', () => {
+    expect(retenirPhase(null, tableaux)).toBeNull()
+  })
+})
+
+describe('saisieVerrouillee', () => {
+  it('verrouille un duel validé par le serveur', () => {
+    expect(saisieVerrouillee(duel({ validee_par: 'Scoreur 1' }))).toBe(true)
+  })
+
+  it('verrouille localement une validation en file hors-ligne', () => {
+    expect(saisieVerrouillee(duel({ validation_en_attente: true }))).toBe(true)
+  })
+
+  it('laisse ouverte une saisie ni validée ni en file', () => {
+    expect(saisieVerrouillee(duel())).toBe(false)
+    expect(saisieVerrouillee(duel({ validation_en_attente: false }))).toBe(false)
+  })
+})
+
+describe('duellistesDuForfait', () => {
+  it('propose les deux archers d’un duel de tableau ouvert', () => {
+    expect(duellistesDuForfait(duel(), 'tableau')).toEqual({ hautId: 1, basId: 2 })
+  })
+
+  it('ne propose rien en poule', () => {
+    expect(duellistesDuForfait(duel(), 'poule')).toBeNull()
+  })
+
+  it('ne propose rien sur une saisie close', () => {
+    expect(duellistesDuForfait(duel({ validee_par: 'Scoreur 1' }), 'tableau')).toBeNull()
+    expect(duellistesDuForfait(duel({ validation_en_attente: true }), 'tableau')).toBeNull()
+  })
+
+  it('ne propose rien quand un camp est une équipe ou inconnu', () => {
+    expect(duellistesDuForfait(duel({ haut: EQUIPE }), 'tableau')).toBeNull()
+    expect(duellistesDuForfait(duel({ bas: EQUIPE }), 'tableau')).toBeNull()
+    expect(duellistesDuForfait(duel({ bas: null }), 'tableau')).toBeNull()
+  })
+
+  it('accepte l’identifiant 0 (seul `null` écarte un camp)', () => {
+    const haut = { archer_id: 0, nom: 'ZERO', prenom: 'Z' }
+    expect(duellistesDuForfait(duel({ haut }), 'tableau')).toEqual({ hautId: 0, basId: 2 })
+  })
+})
+
+describe('archersARouter', () => {
+  it('rend les deux archers quand la validation est partie', () => {
+    expect(archersARouter(duel(), {})).toEqual([1, 2])
+    expect(archersARouter(duel(), { validation_en_attente: false })).toEqual([1, 2])
+  })
+
+  it('ne route personne sur une validation mise en file hors-ligne', () => {
+    expect(archersARouter(duel(), { validation_en_attente: true })).toEqual([])
+  })
+
+  it('écarte les camps sans archer (équipe, camp inconnu)', () => {
+    expect(archersARouter(duel({ haut: EQUIPE }), {})).toEqual([2])
+    expect(archersARouter(duel({ haut: EQUIPE, bas: null }), {})).toEqual([])
+  })
+})
+
+describe('pastillesManches', () => {
+  it('une pastille par manche : saisie, active, ouverte', () => {
+    const d = duel({ manches: [{ numero: 1, haut: ['10'], bas: ['9'] }] })
+    expect(pastillesManches(d, 3, 2)).toEqual([
+      { numero: 1, saisie: true, fermee: false, active: false },
+      { numero: 2, saisie: false, fermee: false, active: true },
+      { numero: 3, saisie: false, fermee: false, active: false },
+    ])
+  })
+
+  it('ferme les manches non saisies d’un duel tranché, pas les saisies', () => {
+    const d = duel({
+      manches: [{ numero: 1, haut: ['10'], bas: ['9'] }],
+      resultat: resultat({ termine: true }),
+    })
+    expect(pastillesManches(d, 2, 1).map((p) => p.fermee)).toEqual([false, true])
+  })
+
+  it('ferme aussi en attente de barrage', () => {
+    const d = duel({ resultat: resultat({ barrage_requis: true }) })
+    expect(pastillesManches(d, 2, 1).map((p) => p.fermee)).toEqual([true, true])
+  })
+
+  it('aucune pastille pour un barème sans manche', () => {
+    expect(pastillesManches(duel(), 0, 1)).toEqual([])
+  })
+})
+
+describe('campApresFleche', () => {
+  it('reste sur le camp tant qu’il n’est pas rempli', () => {
+    expect(campApresFleche('haut', 2, 0, 3)).toBe('haut')
+  })
+
+  it('bascule sur l’autre camp dès le camp rempli, s’il reste à saisir', () => {
+    expect(campApresFleche('haut', 3, 0, 3)).toBe('bas')
+    expect(campApresFleche('bas', 3, 2, 3)).toBe('haut')
+  })
+
+  it('ne bascule pas quand l’autre camp est déjà complet', () => {
+    expect(campApresFleche('haut', 3, 3, 3)).toBe('haut')
+    expect(campApresFleche('bas', 3, 4, 3)).toBe('bas')
+  })
+})
+
+describe('signatureManche', () => {
+  it('encode le numéro et les deux volées persistées', () => {
+    expect(signatureManche(2, { numero: 2, haut: ['10', '9'], bas: ['M'] })).toBe('2:10,9:M')
+  })
+
+  it('une manche absente ne signe que son numéro', () => {
+    expect(signatureManche(3, null)).toBe('3::')
+  })
+
+  it('change dès que le numéro ou le contenu persisté change', () => {
+    const base = signatureManche(1, { numero: 1, haut: ['10'], bas: ['9'] })
+    expect(signatureManche(2, { numero: 1, haut: ['10'], bas: ['9'] })).not.toBe(base)
+    expect(signatureManche(1, { numero: 1, haut: ['10'], bas: ['8'] })).not.toBe(base)
+    expect(signatureManche(1, { numero: 1, haut: ['10'], bas: ['9'] })).toBe(base)
+  })
+})
+
+describe('signatureBarrage', () => {
+  it('encode les flèches et la désignation', () => {
+    expect(signatureBarrage({ haut: ['10'], bas: ['10'], gagnant_designe: 'bas' })).toBe(
+      '10:10:bas',
+    )
+    expect(signatureBarrage({ haut: ['9', '8'], bas: ['X'], gagnant_designe: null })).toBe('9,8:X:')
+  })
+
+  it('un barrage absent a une empreinte vide stable', () => {
+    expect(signatureBarrage(null)).toBe('::')
+  })
+
+  it('change quand seule la désignation change', () => {
+    const sans = signatureBarrage({ haut: ['10'], bas: ['10'], gagnant_designe: null })
+    const avec = signatureBarrage({ haut: ['10'], bas: ['10'], gagnant_designe: 'haut' })
+    expect(avec).not.toBe(sans)
+  })
+})
+
+describe('etatBarrage', () => {
+  it('incomplet : rien n’est prêt ni à égalité', () => {
+    expect(etatBarrage(['10'], [], null, 1)).toEqual({
+      complets: false,
+      egales: false,
+      pretAEnvoyer: false,
+    })
+  })
+
+  it('complet et inégal : prêt sans désignation', () => {
+    expect(etatBarrage(['10'], ['9'], null, 1)).toEqual({
+      complets: true,
+      egales: false,
+      pretAEnvoyer: true,
+    })
+  })
+
+  it('complet et à égalité : prêt seulement une fois le gagnant désigné', () => {
+    expect(etatBarrage(['10'], ['10'], null, 1).pretAEnvoyer).toBe(false)
+    expect(etatBarrage(['10'], ['10'], 'bas', 1)).toEqual({
+      complets: true,
+      egales: true,
+      pretAEnvoyer: true,
+    })
+  })
+
+  it('compare les totaux à plusieurs flèches (équipe), M valant 0', () => {
+    expect(etatBarrage(['10', '8'], ['9', '9'], null, 2).egales).toBe(true)
+    expect(etatBarrage(['10', 'M'], ['9', '1'], null, 2).egales).toBe(true)
+    expect(etatBarrage(['10', '9'], ['9', '9'], null, 2).egales).toBe(false)
+  })
+
+  it('exige le compte exact de flèches, pas un minimum', () => {
+    expect(etatBarrage(['10', '9'], ['10'], null, 1).complets).toBe(false)
+  })
+})
+
+describe('flechesApresZone', () => {
+  it('à une flèche, la zone touchée remplace la précédente', () => {
+    expect(flechesApresZone(['9'], '10', 1)).toEqual(['10'])
+    expect(flechesApresZone([], '10', 1)).toEqual(['10'])
+  })
+
+  it('à plusieurs flèches, la zone touchée s’ajoute', () => {
+    expect(flechesApresZone(['9'], '10', 3)).toEqual(['9', '10'])
   })
 })
