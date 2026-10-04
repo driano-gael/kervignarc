@@ -3,12 +3,17 @@ import { describe, expect, it } from 'vitest'
 import type { Etape, Source } from '../patrimoine/api'
 import {
   ajouterEtape,
+  amontPrelevables,
+  construirePrelevement,
   decrireEtape,
   decrireSource,
   deplacerEtape,
+  detailsEtape,
+  intituleEtape,
   lireEntier,
   remplacerEtape,
   retirerEtape,
+  type SaisiePrelevement,
 } from './sequence'
 
 function rangs(ordre_source: number, rang_debut = 1, rang_fin: number | null = 8): Source {
@@ -193,5 +198,89 @@ describe('lireEntier', () => {
     expect(lireEntier('-3')).toBeUndefined()
     expect(lireEntier('2.5')).toBeUndefined()
     expect(lireEntier('20')).toBe(20)
+  })
+})
+
+// E00US024 — extraits du composant ; l'oracle est son rendu avant l'extraction.
+describe('intituleEtape et detailsEtape', () => {
+  it('nomme l’étape par son titre, à défaut par son type', () => {
+    expect(intituleEtape(etape(1))).toBe('Élimination directe')
+    expect(intituleEtape({ ...etape(1), titre: 'Tableau des jeunes' })).toBe('Tableau des jeunes')
+  })
+
+  it('réémet le type dans les détails d’une étape titrée, pas d’une étape sans titre', () => {
+    expect(detailsEtape(etape(1))).toBe('tous les inscrits')
+    expect(detailsEtape({ ...etape(1), titre: 'Tableau des jeunes' })).toBe(
+      'Élimination directe · tous les inscrits',
+    )
+  })
+})
+
+describe('amontPrelevables', () => {
+  const amont = [{ ...etape(1), type: 'echauffement' as const }, etape(2)]
+
+  it('écarte les phases sans classement d’un prélèvement par rangs ou par issue', () => {
+    expect(amontPrelevables(amont, 'rangs').map((e) => e.ordre)).toEqual([2])
+    expect(amontPrelevables(amont, 'issue_de_tour').map((e) => e.ordre)).toEqual([2])
+  })
+
+  it('les garde toutes pour « le reste »', () => {
+    expect(amontPrelevables(amont, 'reste').map((e) => e.ordre)).toEqual([1, 2])
+  })
+
+  it('rend une liste vide sans amont', () => {
+    expect(amontPrelevables([], 'rangs')).toEqual([])
+  })
+})
+
+describe('construirePrelevement', () => {
+  function saisie(surcharge: Partial<SaisiePrelevement> = {}): SaisiePrelevement {
+    return {
+      ordreSource: '1',
+      nature: 'rangs',
+      rangDebut: '1',
+      rangFin: '',
+      tour: '1',
+      issue: 'gagnants',
+      ...surcharge,
+    }
+  }
+
+  it('refuse une phase d’origine absente ou illisible', () => {
+    expect(construirePrelevement(saisie({ ordreSource: '' }))).toBeNull()
+    expect(construirePrelevement(saisie({ ordreSource: '0' }))).toBeNull()
+    expect(construirePrelevement(saisie({ ordreSource: '1.5' }))).toBeNull()
+  })
+
+  it('compose un prélèvement par rangs, fin vide valant « et suivants »', () => {
+    expect(construirePrelevement(saisie({ rangDebut: '3' }))).toEqual(rangs(1, 3, null))
+    expect(construirePrelevement(saisie({ rangFin: '8' }))).toEqual(rangs(1, 1, 8))
+    expect(construirePrelevement(saisie({ rangFin: '  ' }))?.rang_fin).toBeNull()
+  })
+
+  it('compose un prélèvement par issue de tour, sans rangs', () => {
+    expect(
+      construirePrelevement(saisie({ nature: 'issue_de_tour', tour: '2', issue: 'perdants' })),
+    ).toEqual({
+      ordre_source: 1,
+      nature: 'issue_de_tour',
+      rang_debut: 1,
+      rang_fin: null,
+      tour: 2,
+      issue: 'perdants',
+    })
+  })
+
+  it('compose « le reste » sans rang, tour ni issue', () => {
+    expect(
+      construirePrelevement(saisie({ nature: 'reste', ordreSource: '2', rangFin: '8' })),
+    ).toEqual({
+      ordre_source: 2,
+      nature: 'reste',
+      rang_debut: 1,
+      rang_fin: null,
+      tour: null,
+      issue: null,
+    })
   })
 })
