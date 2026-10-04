@@ -229,12 +229,15 @@ export function pastillesManches(
 }
 
 // Barème de saisie d'un duel : le serveur peut ne pas le porter (duel pas encore réglé) ; l'écran
-// retombe alors sur une manche de trois flèches.
-export function baremeDeManche(duel: Pick<Duel, 'nb_manches' | 'nb_fleches_par_volee'>): {
-  nbManches: number
-  nbFleches: number
-} {
-  return { nbManches: duel.nb_manches ?? 1, nbFleches: duel.nb_fleches_par_volee ?? 3 }
+// retombe alors sur une manche de trois flèches et un barrage d'une flèche.
+export function baremeDeManche(
+  duel: Pick<Duel, 'nb_manches' | 'nb_fleches_par_volee' | 'nb_fleches_barrage'>,
+): { nbManches: number; nbFleches: number; nbFlechesBarrage: number } {
+  return {
+    nbManches: duel.nb_manches ?? 1,
+    nbFleches: duel.nb_fleches_par_volee ?? 3,
+    nbFlechesBarrage: duel.nb_fleches_barrage ?? 1,
+  }
 }
 
 // Les gestes ouverts sur une manche en frappe. On n'enregistre que les **deux** camps complets ;
@@ -284,17 +287,22 @@ export function signatureBarrage(barrage: Barrage | null): string {
 }
 
 // La désignation n'est requise (et proposée) que si les deux camps sont complets **et à égalité
-// de total** — la règle du serveur (§8.2, E13US003).
+// de total** — la règle du serveur (§8.2, E13US003). Un envoi en cours fige l'envoi.
 export function etatBarrage(
   flechesHaut: readonly string[],
   flechesBas: readonly string[],
   designe: Cote | null,
   nbFleches: number,
+  envoiEnCours: boolean,
 ): { complets: boolean; egales: boolean; pretAEnvoyer: boolean } {
   const complets = flechesHaut.length === nbFleches && flechesBas.length === nbFleches
   // DETTE-111 — `totalVolee` recopie la règle zone → points du serveur, et décide ici de la désignation.
   const egales = complets && totalVolee(flechesHaut) === totalVolee(flechesBas)
-  return { complets, egales, pretAEnvoyer: complets && (!egales || designe !== null) }
+  return {
+    complets,
+    egales,
+    pretAEnvoyer: complets && (!egales || designe !== null) && !envoiEnCours,
+  }
 }
 
 // À une flèche de barrage, toucher une zone la **remplace** (sélection unique) ; à plusieurs

@@ -73,6 +73,7 @@ describe('accueil admin — les cartes d’axe lisent marquesDeLAxe', () => {
     expect(within(await carte('Atelier')).getByText('sans tournoi')).toBeVisible()
     const gestion = await carte('Gestion')
     expect(within(gestion).queryByText(/en cours|sans tournoi/)).toBeNull()
+    expect(within(gestion).queryByText('Salle 18m')).toBeNull()
   })
 
   it('aucun tournoi lancé : jamais « 0 en cours »', async () => {

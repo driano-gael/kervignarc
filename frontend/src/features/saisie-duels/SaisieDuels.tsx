@@ -736,7 +736,7 @@ function SaisieBarrage({
   famille: FamilleDuel
 }) {
   const saisir = useSaisirBarrage(tournoiId, phaseId, matchNumero, famille)
-  const nbFleches = duel.nb_fleches_barrage ?? 1
+  const { nbFlechesBarrage: nbFleches } = baremeDeManche(duel)
   const [flechesHaut, setFlechesHaut] = useState<string[]>(duel.barrage?.haut ?? [])
   const [flechesBas, setFlechesBas] = useState<string[]>(duel.barrage?.bas ?? [])
   const [designe, setDesigne] = useState<Cote | null>(duel.barrage?.gagnant_designe ?? null)
@@ -758,6 +758,7 @@ function SaisieBarrage({
     flechesBas,
     designe,
     nbFleches,
+    saisir.isPending,
   )
 
   // Une désignation vaut pour les flèches qu'elle a vues : toute correction la redemande.
@@ -825,7 +826,7 @@ function SaisieBarrage({
         </div>
       )}
 
-      <button type="button" disabled={!pretAEnvoyer || saisir.isPending} onClick={enregistrer}>
+      <button type="button" disabled={!pretAEnvoyer} onClick={enregistrer}>
         {saisir.isPending ? 'Enregistrement…' : 'Enregistrer le barrage'}
       </button>
       <MessageErreurDuel erreur={saisir.error} />

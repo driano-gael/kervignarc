@@ -71,11 +71,15 @@ describe('DuelCharge — le bouton de forfait suit duellistesDuForfait', () => {
 
   it('ne le propose pas en poule', () => {
     monter(DUEL, 'poule')
+    // Témoin : l'écran est monté — sans lui, l'absence passerait sur un rendu vide.
+    expect(screen.getAllByText('DUPONT Jean')[0]).toBeVisible()
     expect(boutonsForfait()).toEqual([])
   })
 
   it('ne le propose pas sur un duel validé', () => {
     monter({ ...DUEL, validee_par: 'ROUX' })
+    // Témoin : l'écran est monté — sans lui, l'absence passerait sur un rendu vide.
+    expect(screen.getAllByText('DUPONT Jean')[0]).toBeVisible()
     expect(boutonsForfait()).toEqual([])
   })
 
@@ -85,6 +89,8 @@ describe('DuelCharge — le bouton de forfait suit duellistesDuForfait', () => {
       haut: { archer_id: null, nom: 'Kervignac 1', prenom: '', equipe_id: 7, membres: [] },
       bas: { archer_id: null, nom: 'Lorient', prenom: '', equipe_id: 8, membres: [] },
     })
+    // Témoin : l'écran est monté — sans lui, l'absence passerait sur un rendu vide.
+    expect(screen.getAllByText('Kervignac 1')[0]).toBeVisible()
     expect(boutonsForfait()).toEqual([])
   })
 })

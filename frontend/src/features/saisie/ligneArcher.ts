@@ -20,7 +20,8 @@ export interface EtatLigne {
   numero: number | null
   enCours: readonly string[]
   // ⚠️ Série pas encore lue : `numero` vaudrait 1 et toucher une case figerait le pavé sur la
-  // volée 1 — le garde-fou `serieChargee` du pavé (`etatPave`), repris ici. Volée verrouillée : idem.
+  // volée 1 — le garde-fou `serieChargee` du pavé (`etatPave`), repris ici. Volée verrouillée ou
+  // barème non lu (aucune volée ouverte) : idem.
   caseActivable: boolean
   // La case marquée, `null` hors archer actif.
   caseEnCours: number | null
@@ -49,7 +50,7 @@ export function etatLigne(ligne: {
     cumul: table === null || !serieLue ? '?' : cumulSaisi(volees, table),
     numero,
     enCours,
-    caseActivable: serieLue && !verrouillee,
+    caseActivable: serieLue && numero !== null && !verrouillee,
     // La flèche visée, sinon la prochaine à remplir — seulement sur l'archer actif.
     caseEnCours: actif ? (ouverture?.fleche ?? enCours.length) : null,
   }

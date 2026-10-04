@@ -357,8 +357,8 @@ describe('duellistesDuForfait', () => {
     expect(duellistesDuForfait(duel(), 'tableau')).toEqual({ hautId: 1, basId: 2 })
   })
 
-  it('ne propose rien en poule', () => {
-    expect(duellistesDuForfait(duel(), 'poule')).toBeNull()
+  it.each(['poule', 'suisse', 'colline'] as const)('ne propose rien en %s', (famille) => {
+    expect(duellistesDuForfait(duel(), famille)).toBeNull()
   })
 
   it('ne propose rien sur une saisie close', () => {
@@ -429,6 +429,13 @@ describe('pastillesManches', () => {
     expect(pastillesManches(d, 2, 1).map((p) => p.fermee)).toEqual([true, true])
   })
 
+  it('une manche saisie ET visée cumule les deux classes', () => {
+    const d = duel({ manches: [{ numero: 1, haut: ['10'], bas: ['9'] }] })
+    expect(pastillesManches(d, 2, 1)[0]?.classes).toBe(
+      'saisie__nav-volee saisie__nav-volee--saisie saisie__nav-volee--actif',
+    )
+  })
+
   it('aucune pastille pour un barème sans manche', () => {
     expect(pastillesManches(duel(), 0, 1)).toEqual([])
   })
@@ -436,17 +443,17 @@ describe('pastillesManches', () => {
 
 describe('baremeDeManche', () => {
   it('lit le barème que porte le duel', () => {
-    expect(baremeDeManche(duel({ nb_manches: 5, nb_fleches_par_volee: 2 }))).toEqual({
-      nbManches: 5,
-      nbFleches: 2,
-    })
+    expect(
+      baremeDeManche(duel({ nb_manches: 5, nb_fleches_par_volee: 2, nb_fleches_barrage: 3 })),
+    ).toEqual({ nbManches: 5, nbFleches: 2, nbFlechesBarrage: 3 })
   })
 
-  it('retombe sur une manche de trois flèches quand le duel ne porte pas de barème', () => {
-    expect(baremeDeManche(duel({ nb_manches: null, nb_fleches_par_volee: null }))).toEqual({
-      nbManches: 1,
-      nbFleches: 3,
-    })
+  it('retombe sur une manche de trois flèches et un barrage d’une flèche sans barème', () => {
+    expect(
+      baremeDeManche(
+        duel({ nb_manches: null, nb_fleches_par_volee: null, nb_fleches_barrage: null }),
+      ),
+    ).toEqual({ nbManches: 1, nbFleches: 3, nbFlechesBarrage: 1 })
   })
 })
 
@@ -568,7 +575,7 @@ describe('signatureBarrage', () => {
 
 describe('etatBarrage', () => {
   it('incomplet : rien n’est prêt ni à égalité', () => {
-    expect(etatBarrage(['10'], [], null, 1)).toEqual({
+    expect(etatBarrage(['10'], [], null, 1, false)).toEqual({
       complets: false,
       egales: false,
       pretAEnvoyer: false,
@@ -576,7 +583,7 @@ describe('etatBarrage', () => {
   })
 
   it('complet et inégal : prêt sans désignation', () => {
-    expect(etatBarrage(['10'], ['9'], null, 1)).toEqual({
+    expect(etatBarrage(['10'], ['9'], null, 1, false)).toEqual({
       complets: true,
       egales: false,
       pretAEnvoyer: true,
@@ -584,8 +591,8 @@ describe('etatBarrage', () => {
   })
 
   it('complet et à égalité : prêt seulement une fois le gagnant désigné', () => {
-    expect(etatBarrage(['10'], ['10'], null, 1).pretAEnvoyer).toBe(false)
-    expect(etatBarrage(['10'], ['10'], 'bas', 1)).toEqual({
+    expect(etatBarrage(['10'], ['10'], null, 1, false).pretAEnvoyer).toBe(false)
+    expect(etatBarrage(['10'], ['10'], 'bas', 1, false)).toEqual({
       complets: true,
       egales: true,
       pretAEnvoyer: true,
@@ -593,13 +600,17 @@ describe('etatBarrage', () => {
   })
 
   it('compare les totaux à plusieurs flèches (équipe), M valant 0', () => {
-    expect(etatBarrage(['10', '8'], ['9', '9'], null, 2).egales).toBe(true)
-    expect(etatBarrage(['10', 'M'], ['9', '1'], null, 2).egales).toBe(true)
-    expect(etatBarrage(['10', '9'], ['9', '9'], null, 2).egales).toBe(false)
+    expect(etatBarrage(['10', '8'], ['9', '9'], null, 2, false).egales).toBe(true)
+    expect(etatBarrage(['10', 'M'], ['9', '1'], null, 2, false).egales).toBe(true)
+    expect(etatBarrage(['10', '9'], ['9', '9'], null, 2, false).egales).toBe(false)
   })
 
   it('exige le compte exact de flèches, pas un minimum', () => {
-    expect(etatBarrage(['10', '9'], ['10'], null, 1).complets).toBe(false)
+    expect(etatBarrage(['10', '9'], ['10'], null, 1, false).complets).toBe(false)
+  })
+
+  it('un envoi en cours fige l’envoi d’un barrage pourtant prêt', () => {
+    expect(etatBarrage(['10'], ['9'], null, 1, true).pretAEnvoyer).toBe(false)
   })
 })
 

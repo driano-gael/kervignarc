@@ -14,11 +14,12 @@
 
 **Dernière mise à jour : 04/10/2026, 20 h 07** · **168 US livrées** · dernière : `E00US024`
 *(**la logique des quatre plus gros écrans du front sort des composants** — déroulé, saisie des
-duels, coquille admin, saisie de cible : **58 fonctions pures** exportées dans des modules voisins, **217
+duels, coquille admin, saisie de cible : **58 fonctions pures** exportées dans des modules voisins, **219
 tests unitaires** neufs ; chaque fonction a été **vue rouge** par sabotage. Rendu **inchangé** : les tests de
-rendu existants restent verts sans retouche de leurs attentes, mais **ne couvrent pas tout** — sept branches
-recâblées n'en avaient aucun, vérifiées par lecture du diff ; deux tests de rendu ajoutés sur celles qui pèsent
-(bouton de forfait, marques de l'accueil admin). Deux défauts hérités figés, inscrits en `DETTE-124`. **Sans surface utilisateur.** La fiche
+rendu existants restent verts sans retouche de leurs attentes, mais **ne couvrent pas tout** : bien des branches
+recâblées n'en ont aucun (inventaire **non exhaustif** dans la fiche) — leurs décisions sont tenues par les tests
+unitaires, leur **câblage** seulement par la lecture du diff ; deux tests de rendu ajoutés sur les câblages qui
+pèsent (bouton de forfait, marques de l'accueil admin). Deux défauts hérités figés, inscrits en `DETTE-124`. **Sans surface utilisateur.** La fiche
 disait le front « sans tests de rendu » : c'était faux dès sa rédaction (ADR-0053) — Contexte
 corrigé. ⚠️ **Non vérifiée au navigateur** — aucune surface à voir, le rendu est gardé par les tests.)*
 Précédente : `E01US027`
@@ -1503,7 +1504,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | US | Titre | Jalon | État |
 |---|---|---|---|
 | E00US023 | Nommer le noyau partagé du front, et défaire les enchevêtrements | hors jalon | ⬜ |
-| E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ✅ *(04/10/2026 — 58 fonctions pures, 217 tests unitaires et 7 de rendu, rendu inchangé ; a mesuré le filtre `elimination_directe` à **3** sites et l'intitulé d'étape à **5** — matière d'`E00US023`)* |
+| E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ✅ *(04/10/2026 — 58 fonctions pures, 219 tests unitaires et 7 de rendu, rendu inchangé ; a mesuré le filtre `elimination_directe` à **3** sites et l'intitulé d'étape à **5** — matière d'`E00US023`)* |
 | E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
 | E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
 

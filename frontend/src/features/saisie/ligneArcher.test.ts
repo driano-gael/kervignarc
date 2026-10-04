@@ -72,7 +72,7 @@ describe('etatLigne', () => {
     expect(etat.cumul).toBe('?')
     expect(etat.numero).toBeNull()
     expect(etat.enCours).toEqual([])
-    expect(etat.caseActivable).toBe(true)
+    expect(etat.caseActivable).toBe(false)
     // L'avancement, lui, ne dépend que de la série.
     expect(etat.nbSaisies).toBe(2)
   })
